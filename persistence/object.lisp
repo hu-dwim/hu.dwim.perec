@@ -1,0 +1,93 @@
+;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;;
+;;; Copyright (c) 2006 by the authors.
+;;;
+;;; See LICENCE for details.
+
+(in-package :cl-perec)
+
+(defun object-exists-in-database-p (object)
+  "Returns true if the object can be found in the database"
+  (and (oid-of object)
+       (select-records '(1)
+                       (list (name-of (primary-table-of (class-of object))))
+                       (oid-matcher-reader-where-clause object))))
+
+(defun debug-persistent-p (object)
+  "Same as persistent-p except it never prefetches slot values. Use for debug purposes."
+  (if (slot-boundp object 'persistent)
+      (persistent-p object)
+      (object-exists-in-database-p object)))
+
+(defun create-object (oid &optional (persistent 'unknown))
+  "Creates an object representing the given oid as its identity. The object will not be associated with the current transaction nor will it be stored in the database. The object may or may not be known to be either persistent or transient."
+  (assert oid)
+  (prog1-bind object (make-instance (find-class (oid-class-name oid)) :oid oid :persistent 'unknown)
+    (unless (eq persistent 'unknown)
+      (setf (persistent-p object) persistent))))
+
+(defgeneric cache-object (thing)
+  (:documentation "Attaches an object to the current transaction. The object must be already present in the database, so load-object would return an instance for it. The purpose of this method is to cache objects returned by a query or when the existence may be guaranteed by some other means.")
+
+  (:method ((values list))
+           (assert (= 2 (length values)))
+           (cache-object (make-oid :id (first values) :class-name (symbol-from-canonical-name (second values)))))
+
+  (:method ((oid oid))
+           (aif (cached-object-of oid)
+                it
+                (setf (cached-object-of oid) (create-object oid #t))))
+
+  (:method ((object persistent-object))
+           (assert (debug-persistent-p object))
+           (setf (cached-object-of (oid-of object)) object)))
+
+(defgeneric load-object (thing &key otherwise prefetch skip-existence-check)
+  (:documentation "Loads an object with the given oid and attaches it with the current transaction if not yet attached. If no such object exists in the database then one of two things may happen. If the value of otherwise is a lambda function with one parameter then it is called with the given object. Otherwise the value of otherwise is returned. If prefetch is false then only the identity of the object is loaded, otherwise all attributes are loaded. Note that the object may not yet be committed into the database and therefore may not be seen by other transactions. Also objects not yet committed by other transactions are not returned according to transaction isolation rules. The object returned will be kept for the duration of the transaction and any subsequent calls to load, select, etc. will return the exact same object for which eq is required to return #t.")
+
+  (:method ((object persistent-object) &rest args)
+           (apply 'load-object (oid-of object) args))
+
+  (:method ((oid oid) &key (otherwise nil otherwise-provided-p) (prefetch #f) (skip-existence-check #f))
+           (declare (ignore prefetch))
+           (flet ((object-not-found ()
+                    (cond ((not otherwise-provided-p)
+                           (error 'object-not-found-error :oid oid))
+                          ((functionp otherwise)
+                           (funcall otherwise oid))
+                          (t otherwise))))
+             (aif (cached-object-of oid)
+                  it
+                  (let ((new-object (create-object oid)))
+                    ;; REVIEW: is this the correct thing to do?
+                    ;; we push the new-object into the cache first
+                    ;; even tough we are unsure if the object is persistent or not
+                    ;; because prefetching slots may recursively call load-object from persistent-p
+                    ;; we also want to have non persistent objects in the cache anyway
+                    (cache-object new-object)
+                    (if (or skip-existence-check (persistent-p new-object))
+                        new-object
+                        (object-not-found)))))))
+
+(defgeneric purge-object (object)
+  (:documentation "Purges the given object without respect to associations and other references.")
+  
+  (:method ((object persistent-object))
+           (dolist (table (data-tables-of (class-of object)))
+             (delete-records (name-of table)
+                             (oid-matcher-where-clause object +id-column-name+)))))
+
+(define-condition object-not-found-error (error)
+  ((oid :accessor oid-of :initarg :oid))
+  (:report (lambda (c stream)
+             (format stream "Object not found for oid ~A" (oid-of c)))))
+
+(defmacro revive-object (place &rest args)
+  "Load object found in PLACE into the current transaction, update PLACE if needed."
+  (with-unique-names (instance)
+    `(bind ((,instance ,place))
+      (when ,instance
+        (assert (or (not (object-in-transaction-p ,instance))
+                    (eq (transaction-of ,instance)
+                        *transaction*)))
+        (setf ,place (load-object ,instance ,@args))))))

@@ -1,0 +1,9 @@
+- rename :dwim-meta-model to cl-perec
+- rename entity type to persistent-class
+- rename entity name to class
+- rename effective-property type to persistent-effective-slot-definition
+- rename direct-property type to persistent-direct-slot-definition
+- rename property/properties names to slot/slots
+- rename rdbms-object to persistent-object
+- rename (id-column-name) and friends to +id-column-name+, +class-name-column-name+, +oid-column-names+
+- ask ati to fix indention in (defgeneric (:method (a b c) ...))
