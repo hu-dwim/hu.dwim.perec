@@ -11,11 +11,7 @@
    (columns
     (compute-as nil)
     :type (list column)
-    :documentation "The list of RDBMS columns of this table.")
-   (triggers
-    (compute-as nil)
-    :type (list trigger)
-    :documentation "The RDBMS triggers defined on this table."))
+    :documentation "The list of RDBMS columns of this table."))
   (:documentation "This is an RDBMS table with some related RDBMS definitions. The actual table will be created in the database when export-table is called on it.")
   (:metaclass computed-class))
 
@@ -54,17 +50,6 @@
    (class-name-column
     (compute-as nil)
     :type column))
-  (:metaclass computed-class))
-
-(defclass* trigger ()
-  ((table
-    (compute-as nil)
-    :type table
-    :documentation "The RDBMS table on which this trigger is defined.")
-   (command
-    :type string
-    :documentation "The SQL command that defines this RDBMS trigger."))
-  (:documentation "An RDBMS trigger")
   (:metaclass computed-class))
 
 (defconstant +oid-id-bit-size+ 64)

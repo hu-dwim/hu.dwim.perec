@@ -95,7 +95,15 @@
 
 (defmethod perform ((op test-op) (system (eql (find-system :cl-perec))))
   (operate 'load-op :cl-perec-test)
-  (in-package :cl-perec-test))
+  (in-package :cl-perec-test)
+  (eval (read-from-string
+         "(setf *database*
+                (make-instance 'postgresql-pg
+                               :transaction-mixin 'cl-perec::transaction-mixin
+                               :connection-specification '(:host \"localhost\"
+                                                           :database \"dwim\"
+                                                           :user-name \"root\"
+                                                           :password \"admin123\")))")))
 
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :cl-perec))))
   nil)

@@ -42,6 +42,9 @@
            #:persistent-direct-slot-definition
            #:persistent-effective-slot-definition
 
+           #:make-persistent
+           #:make-transient
+
            #:revive-object))
 
 (defpackage :cl-perec-test
