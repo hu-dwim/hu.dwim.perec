@@ -20,9 +20,9 @@
    (declare (ignore s c n))
    nil))
 
-(defmacro delete! (object place)
-  `(setf ,place
-    (delete ,object ,place)))
+(defmacro debug-only (&body body)
+  #+debug`(progn ,@body)
+  #-debug(declare (ignore body)))
 
 (defun canonical-symbol-name (symbol)
   "Returns the package name and symbol name concatenated."
@@ -34,6 +34,10 @@
 (defun symbol-from-canonical-name (name)
   (read-from-string name))
 
+(defmacro delete! (object place)
+  `(setf ,place
+    (delete ,object ,place)))
+
 (defun find-slot (class slot-name)
   (find slot-name (class-slots class) :key 'slot-definition-name))
 
@@ -44,3 +48,7 @@
   `(bind ((,var ,ret))
     ,@body
     ,var))
+
+(defun mappend (function &rest lists)
+  "Same as mapcar except the results are appended."  
+  (apply 'append (apply 'mapcar function lists)))

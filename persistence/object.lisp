@@ -6,88 +6,111 @@
 
 (in-package :cl-perec)
 
-(defun object-exists-in-database-p (object)
-  "Returns true if the object can be found in the database"
-  (and (oid-of object)
-       (select-records '(1)
-                       (list (name-of (primary-table-of (class-of object))))
-                       (oid-matcher-reader-where-clause object))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Persistent object base class
 
-(defun debug-persistent-p (object)
-  "Same as persistent-p except it never prefetches slot values. Use for debug purposes."
-  (if (slot-boundp object 'persistent)
-      (persistent-p object)
-      (object-exists-in-database-p object)))
+(defclass* persistent-object ()
+  ((oid
+    nil
+    :type oid
+    :persistent #f
+    :documentation "Life time unique identifier of the object which can be remembered and may be used the load the object later.")
+   (persistent
+    :type boolean
+    :persistent #f
+    :documentation "True means the object is known to be persistent, false means the object is known to be transient, unbound means the state is not yet determined. Actually, in the latter case slot-value-using-class will automatically determine whether the object is in the database or not. Therefore reading the persistent slot will always return either true or false.")
+   (transaction
+    nil
+    :accessor #f
+    :type t
+    :persistent #f
+    :documentation "A weak reference to the transaction to this object is currently attached to.")
+   (created
+    #f
+    :type boolean
+    :persistent #f
+    :documentation "True means the object was created in the current transaction.")
+   (modified
+    #f
+    :type boolean
+    :persistent #f
+    :documentation "True means the object was modified in the current transaction.")
+   (deleted
+    #f
+    :type boolean
+    :persistent #f
+    :documentation "True means the object was deleted in the current transaction.")
+   (cached-slots
+    nil
+    :type (list persistent-effective-slot-definition)
+    :persistent #f
+    :documentation "A list of slots for which the slot values are currently cached in the object in the lisp VM. This list must be updated when database update happens outside of slot access (batch update, trigger, etc."))
+  (:default-initargs :persistent #t)
+  (:metaclass persistent-class))
 
-(defun create-object (oid &optional (persistent 'unknown))
-  "Creates an object representing the given oid as its identity. The object will not be associated with the current transaction nor will it be stored in the database. The object may or may not be known to be either persistent or transient."
-  (assert oid)
-  (prog1-bind object (make-instance (find-class (oid-class-name oid)) :oid oid :persistent 'unknown)
-    (unless (eq persistent 'unknown)
-      (setf (persistent-p object) persistent))))
+(defprint-object (self persistent-object)
+  "Prints the oid of the object and whether the object is known to be persistent or transient."
+  (princ ":persistent ")
+  (princ (cond ((not (slot-boundp self 'persistent))
+                "#? ")
+               ((persistent-p self)
+                "#t ")
+               (t "#f ")))
+  (if (and (slot-boundp self 'oid)
+           (oid-of self))
+      (princ (id-of self))
+      (princ "nil")))
 
-(defgeneric cache-object (thing)
-  (:documentation "Attaches an object to the current transaction. The object must be already present in the database, so load-object would return an instance for it. The purpose of this method is to cache objects returned by a query or when the existence may be guaranteed by some other means.")
+;;;;;;;;;;;;;;;
+;;; MOP methods
 
-  (:method ((values list))
-           (assert (= 2 (length values)))
-           (cache-object (make-oid :id (first values) :class-name (symbol-from-canonical-name (second values)))))
+(defmethod shared-initialize :around ((object persistent-object) slot-names &rest args &key persistent &allow-other-keys)
+  "Make sure that this slot is set before any other slots, especially persistent ones."
+  ;; make-persistent will be called from initialize-instance
+  ;; this allows svuc to cache initargs and ignore the database
+  (remf-keywords args :persistent :cached-slots)
+  (prog1 (apply #'call-next-method object slot-names :persistent #f :cached-slots nil args)
+    (when (eq persistent 'unknown)
+      (slot-makunbound object 'persistent))))
 
-  (:method ((oid oid))
-           (aif (cached-object-of oid)
-                it
-                (setf (cached-object-of oid) (create-object oid #t))))
+(defmethod initialize-instance :after ((object persistent-object) &key persistent &allow-other-keys)
+  (when (eq persistent #t)
+    (make-persistent object)
+    (setf (cached-slots-of object)
+          ;; TODO: is there a better place to do this?
+          (remove-if-not #'cached-slot-p 
+                         (persistent-slots-of (class-of object))))))
 
-  (:method ((object persistent-object))
-           (assert (debug-persistent-p object))
-           (setf (cached-object-of (oid-of object)) object)))
+(defgeneric make-persistent (object)
+  (:documentation "Makes an object persistent without making its associated objects persistent."))
 
-(defgeneric load-object (thing &key otherwise prefetch skip-existence-check)
-  (:documentation "Loads an object with the given oid and attaches it with the current transaction if not yet attached. If no such object exists in the database then one of two things may happen. If the value of otherwise is a lambda function with one parameter then it is called with the given object. Otherwise the value of otherwise is returned. If prefetch is false then only the identity of the object is loaded, otherwise all attributes are loaded. Note that the object may not yet be committed into the database and therefore may not be seen by other transactions. Also objects not yet committed by other transactions are not returned according to transaction isolation rules. The object returned will be kept for the duration of the transaction and any subsequent calls to load, select, etc. will return the exact same object for which eq is required to return #t.")
+(defgeneric make-transient (object)
+  (:documentation "Makes an object transient without making its associated objects transient."))
 
-  (:method ((object persistent-object) &rest args)
-           (apply 'load-object (oid-of object) args))
+;;;;;;;;;;;;;;;;;;
+;;; Helper methods
 
-  (:method ((oid oid) &key (otherwise nil otherwise-provided-p) (prefetch #f) (skip-existence-check #f))
-           (declare (ignore prefetch))
-           (flet ((object-not-found ()
-                    (cond ((not otherwise-provided-p)
-                           (error 'object-not-found-error :oid oid))
-                          ((functionp otherwise)
-                           (funcall otherwise oid))
-                          (t otherwise))))
-             (aif (cached-object-of oid)
-                  it
-                  (let ((new-object (create-object oid)))
-                    ;; REVIEW: is this the correct thing to do?
-                    ;; we push the new-object into the cache first
-                    ;; even tough we are unsure if the object is persistent or not
-                    ;; because prefetching slots may recursively call load-object from persistent-p
-                    ;; we also want to have non persistent objects in the cache anyway
-                    (cache-object new-object)
-                    (if (or skip-existence-check (persistent-p new-object))
-                        new-object
-                        (object-not-found)))))))
+(defun ensure-oid (object)
+  "Makes sure that the object has a valid oid."
+  (unless (oid-of object)
+    (setf (oid-of object) (make-new-oid (class-name-of object)))))
 
-(defgeneric purge-object (object)
-  (:documentation "Purges the given object without respect to associations and other references.")
-  
-  (:method ((object persistent-object))
-           (dolist (table (data-tables-of (class-of object)))
-             (delete-records (name-of table)
-                             (oid-matcher-where-clause object +id-column-name+)))))
+(defun id-of (object)
+  "Shortcut for the unique identifier number of the object."
+  (oid-id (oid-of object)))
 
-(define-condition object-not-found-error (error)
-  ((oid :accessor oid-of :initarg :oid))
-  (:report (lambda (c stream)
-             (format stream "Object not found for oid ~A" (oid-of c)))))
+(defun (setf class-name-of) (new-value object)
+  "Shortcut for the setter of the class name of the object."
+  (setf (oid-class-name (oid-of object)) new-value))
 
-(defmacro revive-object (place &rest args)
-  "Load object found in PLACE into the current transaction, update PLACE if needed."
-  (with-unique-names (instance)
-    `(bind ((,instance ,place))
-      (when ,instance
-        (assert (or (not (object-in-transaction-p ,instance))
-                    (eq (transaction-of ,instance)
-                        *transaction*)))
-        (setf ,place (load-object ,instance ,@args))))))
+(defun id-value (object)
+  "Returns the RDBMS representation."
+  (id-of object))
+
+(defun class-name-value (object)
+  "Returns the RDBMS representation."
+  (canonical-symbol-name (class-name-of object)))
+
+(defun oid-values (object)
+  "Returns a list representation of the object oid in the order of the corresponding RDBMS columns."
+  (list (id-value object) (class-name-value object)))

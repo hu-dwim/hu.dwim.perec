@@ -8,10 +8,6 @@
     (compute-as nil)
     :type symbol
     :documentation "The name of the RDBMS table.")
-   (owner
-    (compute-as nil)
-    :type t
-    :documentation "The owner to which this table belongs.")
    (columns
     (compute-as nil)
     :type (list column)
@@ -45,6 +41,19 @@
     :type sql-column
     :documentation "SQL AST node"))
   (:documentation "An RDBMS column of a table.")
+  (:metaclass computed-class))
+
+(defclass* class-primary-table (table)
+  ((oid-columns
+    (compute-as nil)
+    :type (list column)
+    :documentation "The list of RDBMS columns corresponding to the oid of this table.")
+   (id-column
+    (compute-as nil)
+    :type column)
+   (class-name-column
+    (compute-as nil)
+    :type column))
   (:metaclass computed-class))
 
 (defclass* trigger ()

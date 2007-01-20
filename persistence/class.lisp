@@ -10,7 +10,10 @@
 ;;; Persistent class and slot meta objects
 
 (defclass* persistent-class (standard-class)
-  ((primary-table
+  ((persistent-slots
+    (compute-as nil)
+    :type (list persistent-effective-slot-definition))
+   (primary-table
     (compute-as nil)
     :type table
     :documentation "The table which holds the oid and the data of the direct slots of this class. If the class is abstract and does not have any direct slots then it will not have a primary table. A primary table if exists also contains one and only one record per instance of its class.")
@@ -22,26 +25,61 @@
     (compute-as nil)
     :type (list table)
     :documentation "All the tables which hold data of an instance of this class.")
-   (prefetched-effective-slots
+   (prefetched-slots
     (compute-as nil)
     :type (list persistent-effective-slot-definition)
     :documentation "List of effective slots which will be loaded and stored at once when loading an instance of this class.")
-   (non-prefetched-effective-slots
+   (non-prefetched-slots
     (compute-as nil)
     :type (list effective-slot)
     :documentation "List of effective slots which will be loaded and stored lazily and separately from other slots."))
   (:metaclass computed-class))
 
 (defclass* persistent-slot-definition (standard-slot-definition)
+  ((prefetched-slot
+    (compute-as nil)
+    :type boolean
+    :documentation "Prefetched slots are loaded from and stored into the database at once. A prefetched slot must be in a table which can be accessed using a where clause matching to the id of the object thus it must be in a data table.")
+   (cached-slot
+    (compute-as nil)
+    :type boolean
+    :documentation "All prefetched slots are cached slots but the opposite may not be true. When a cached slot is loaded it's value will be stored in the CLOS object for fast subsequent read operations. Also whenever a cached slot is set the value will be remembered."))
+  (:metaclass computed-class))
+
+(defclass* accessor ()
+  ((effective-slot
+    :type persistent-effective-slot-definition
+    :documentation "The effective slot meta object to which this accessor belongs.")
+   (where-clause
+    :type function
+    :documentation "This function provides the SQL where clause to access the slot in the RDBMS.")
+   (transformer
+    :type function
+    :documentation "A function which transforms between a lisp object and the corresponding RDBMS data. The direction of the transformation depends on whether the accessor is a reader or a writer.")))
+
+(defclass* persistent-direct-slot-definition
+    (persistent-slot-definition standard-direct-slot-definition)
   ()
   (:metaclass computed-class))
 
-(defclass* persistent-direct-slot-definition (persistent-slot-definition standard-direct-slot-definition)
-  ()
-  (:metaclass computed-class))
-
-(defclass* persistent-effective-slot-definition (persistent-slot-definition standard-effective-slot-definition)
-  ()
+(defclass* persistent-effective-slot-definition
+    (persistent-slot-definition standard-effective-slot-definition)
+  ((table
+    (compute-as nil)
+    :type table
+    :documentation "An RDBMS table object which will be queried or updated to get and set the data of this slot.")
+   (columns
+    (compute-as nil)
+    :type (list column)
+    :documentation "Several RDBMS columns may be mapped to a single effective slot.")
+   (reader
+    (compute-as nil)
+    :type accessor
+    :documentation "An accessor object which describes how to read this slot.")
+   (writer
+    (compute-as nil)
+    :type accessor
+    :documentation "An accessor object which describes how to write this slot."))
   (:metaclass computed-class))
 
 ;;;;;;;;;;;;;
