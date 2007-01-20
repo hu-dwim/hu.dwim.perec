@@ -10,11 +10,23 @@
 ;;; Persistent class and slot meta objects
 
 (defclass* persistent-class (standard-class)
-  ((persistent-slots
-    (compute-as nil)
+  ((abstract
+    (compute-as #f)
+    :type boolean
+    :documentation "An abstract class cannot be instantiated, but still can be used in associations and may have slots.")
+   (persistent-direct-slots
+    (compute-as (remove-if-not #L(typep !1 'persistent-direct-slot-definition) (class-direct-slots -self-)))
+    :type (list persistent-direct-slot-definition))
+   (persistent-effective-slots
+    (compute-as (remove-if-not #L(typep !1 'persistent-effective-slot-definition) (class-slots -self-)))
     :type (list persistent-effective-slot-definition))
    (primary-table
-    (compute-as nil)
+    (compute-as (bind ((primary-table (or -current-value-
+                                          (make-instance 'class-primary-table
+                                                         :name (rdbms-name-for (class-name -self-))))))
+                  (when (or (not (abstract-p -self-))
+                            (mappend #'columns-of (persistent-direct-slots-of -self-)))
+                    primary-table)))
     :type table
     :documentation "The table which holds the oid and the data of the direct slots of this class. If the class is abstract and does not have any direct slots then it will not have a primary table. A primary table if exists also contains one and only one record per instance of its class.")
    (primary-tables
@@ -26,11 +38,11 @@
     :type (list table)
     :documentation "All the tables which hold data of an instance of this class.")
    (prefetched-slots
-    (compute-as nil)
+    (compute-as (remove-if-not #'prefetched-slot-p (persistent-effective-slots-of -self-)))
     :type (list persistent-effective-slot-definition)
     :documentation "List of effective slots which will be loaded and stored at once when loading an instance of this class.")
    (non-prefetched-slots
-    (compute-as nil)
+    (compute-as (remove-if #'prefetched-slot-p (persistent-effective-slots-of -self-)))
     :type (list effective-slot)
     :documentation "List of effective slots which will be loaded and stored lazily and separately from other slots."))
   (:metaclass computed-class))

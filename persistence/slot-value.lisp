@@ -34,7 +34,7 @@
   (:method ((object persistent-object))
            (setf (cached-slots-of object) nil)
            (bind ((class (class-of object)))
-             (iter (for slot in (persistent-slots-of class))
+             (iter (for slot in (persistent-effective-slots-of class))
                    (setf (cached-slot-value-using-class class object slot) nil)))))
 
 (defgeneric invalidate-cached-slot (object slot)
@@ -221,12 +221,12 @@
     (dolist (table (data-tables-of current-class))
       (if (member table (data-tables-of previous-class))
           (update-records (name-of table)
-                          (list (sql-column-of (class-name-column-of table)))
+                          (list (class-name-column-of table))
                           (list (class-name-value current-object))
                           at-current-object)
           ;; TODO: handle initargs
           (insert-records (name-of table)
-                          (mapcar #'sql-column-of (oid-columns-of table))
+                          (oid-columns-of table)
                           (oid-values current-object))))
     (dolist (table (data-tables-of previous-class))
       (unless (member table (data-tables-of current-class))

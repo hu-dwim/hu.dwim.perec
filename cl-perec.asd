@@ -45,6 +45,9 @@
                :computed-class
                :defclass-star
                :trivial-garbage
+               :flexi-streams
+               :local-time
+               :cl-ppcre
                :cl-store
                :cl-containers
                :cl-rdbms)
@@ -66,9 +69,10 @@
              (:file "slot-value")
              (:file "persistent")
              (:file "serialization")
+             (:file "type")
+             (:file "transformer")
+;             (:file "association-end-set")
 ;             (:file "export-model")
-;             (:file "transformer")
-;             (:file "column-type")
 ;             (:file "install-property-accessor")
              ))
    (:module :query

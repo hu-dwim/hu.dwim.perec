@@ -10,14 +10,14 @@
 (defun restore-1-n-association-end-set (object slot)
   "Restores the non lazy list association end value without local side effects from the database."
   (mapcar #L(slot-value-from-rdbms-values object slot !1)
-          (select-records (mapcar #'sql-column-of (oid-columns-of (table-of slot)))
+          (select-records (oid-columns-of (table-of slot))
                           (list (name-of (table-of slot)))
                           (funcall (where-clause-of (reader-of slot)) object))))
 
 (defun restore-m-n-association-end-set (object slot)
   "Restores the non lazy list association end value without local side effects from the database."
   (mapcar #L(slot-value-from-rdbms-values object slot !1)
-          (select-records (mapcar #'sql-column-of (columns-of slot))
+          (select-records (columns-of slot)
                           (list (name-of (table-of slot)))
                           (funcall (where-clause-of (reader-of slot)) object))))
 
@@ -34,7 +34,7 @@
          (t
           (bind ((record
                   (first
-                   (select-records (mapcar #'sql-column-of (columns-of slot))
+                   (select-records (columns-of slot)
                                    (list (name-of (table-of slot)))
                                    (funcall (where-clause-of (reader-of slot)) object)))))
             (slot-value-from-rdbms-values object slot record))))
@@ -85,7 +85,7 @@
 
 (defun delete-1-n-association-end-set (object slot)
   (update-records (name-of (table-of slot))
-		  (mapcar #'sql-column-of (columns-of slot))
+		  (columns-of slot)
 		  '(nil nil)
 		  (oid-matcher-where-clause
                    object
@@ -93,7 +93,7 @@
 
 (defun insert-into-1-n-association-end-set (object slot value)
   (update-records (name-of (table-of slot))
-		  (mapcar #'sql-column-of (columns-of slot))
+		  (columns-of slot)
 		  (rdbms-values-from-slot-value object slot value)
 		  (funcall (where-clause-of (writer-of slot)) object value)))
 
@@ -102,7 +102,7 @@
   (delete-1-n-association-end-set object slot)
   (when value
     (update-records (name-of (table-of slot))
-                    (mapcar #'sql-column-of (columns-of slot))
+                    (columns-of slot)
                     (rdbms-values-from-slot-value object slot value)
                     (list-matcher-writer-where-clause +id-column-name+ object value))))
 
@@ -113,7 +113,7 @@
 (defun insert-into-m-n-association-end-set (object slot value)
   (bind ((other-slot (most-generic-other-effective-association-end-for slot)))
     (insert-records (name-of (table-of slot))
-                    (mapcar #'sql-column-of (append (columns-of other-slot) (columns-of slot)))
+                    (append (columns-of other-slot) (columns-of slot))
                     (append
                      (rdbms-values-from-slot-value object slot value)
                      (rdbms-values-from-slot-value value slot object)))))
@@ -147,7 +147,7 @@
              (store-slot value other-slot object))))
 	(t
          (update-records (name-of (table-of slot))
-                         (mapcar #'sql-column-of (columns-of slot))
+                         (columns-of slot)
                          (rdbms-values-from-slot-value object slot value)
                          (funcall (where-clause-of (writer-of slot)) object value)))))
 
@@ -158,8 +158,8 @@
     (dolist (table tables)
       (bind ((slots (remove-if-not #L(eq (table-of !1) table) prefetched-slots))
              (slot-values (mapcar #L(slot-value-using-class (class-of object) object !1) slots))
-             (oid-columns (mapcar #'sql-column-of (oid-columns-of table)))
-             (columns (mapcar #'sql-column-of (mappend #'columns-of slots)))
+             (oid-columns (oid-columns-of table))
+             (columns (mappend #'columns-of slots))
              (oid-values (oid-values object))
              (rdbms-values (mappend #L(rdbms-values-from-slot-value object !1 !2) slots slot-values)))
         (if (persistent-p object)
@@ -167,7 +167,7 @@
             (insert-records (name-of table) (append oid-columns columns) (append oid-values rdbms-values)))))
     (unless (persistent-p object)
       (dolist (table (set-difference (data-tables-of (class-of object)) tables))
-        (insert-records (name-of table) (mapcar #'sql-column-of (oid-columns-of table)) (oid-values object))))))
+        (insert-records (name-of table) (oid-columns-of table) (oid-values object))))))
 
 (defun store-all-slots (object)
   "Stores all slots wihtout local side effects into the database."

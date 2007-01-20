@@ -79,7 +79,7 @@
     (setf (cached-slots-of object)
           ;; TODO: is there a better place to do this?
           (remove-if-not #'cached-slot-p 
-                         (persistent-slots-of (class-of object))))))
+                         (persistent-effective-slots-of (class-of object))))))
 
 (defgeneric make-persistent (object)
   (:documentation "Makes an object persistent without making its associated objects persistent."))

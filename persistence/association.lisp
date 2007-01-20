@@ -56,5 +56,5 @@
     (persistent-association-end-slot-definition persistent-effective-slot-definition)
   ((id-column
     (compute-as nil)
-    :type column))
+    :type sql-column))
   (:metaclass computed-class))

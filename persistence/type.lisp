@@ -1,0 +1,211 @@
+(in-package :cl-perec)
+
+;;;;;;;;;
+;;; Types
+
+(defgeneric compute-column-type (type)
+  (:documentation "Returns the RDBMS type for the given type.")
+
+  (:method (type)
+           (error "Cannot map type ~A to RDBMS type" type)))
+
+(defgeneric compute-reader (type)
+  (:documentation "Maps types to reader transformers.")
+
+  (:method (type)
+           (error "Cannot map type ~A to a reader" type)))
+
+(defgeneric compute-writer (type)
+  (:documentation "Maps types to writer transformers.")
+
+  (:method (type)
+           (error "Cannot map type ~A to a writer" type))
+
+  (:method ((type cons))
+           (call-next-method (first type))))
+
+(defmacro deftype* (name sql-type reader writer)
+  `(progn
+    (defmethod compute-column-type ((type (eql ',name)))
+      ,sql-type)
+
+    (defmethod compute-reader ((type (eql ',name)))
+      ',reader)
+
+    (defmethod compute-writer ((type (eql ',name)))
+      ',writer)))
+
+;;;;;;;;;;;
+;;; Unbound
+
+(deftype unbound ()
+  nil)
+
+;;;;;;;;;;;
+;;; Boolean
+
+(deftype* boolean (make-instance 'sql-boolean-type)
+  object->boolean-reader
+  identity-writer)
+
+;;;;;;;;;;;;;;
+;;; Integer-16
+
+(deftype integer-16 ()
+  `(integer ,(- (expt 2 15)) ,(1- (expt 2 15))))
+
+(deftype* integer-16 (make-instance 'sql-integer-type :bit-size 16)
+  object->integer-reader
+  identity-writer)
+
+;;;;;;;;;;;;;;
+;;; Integer-32
+
+(deftype integer-32 ()
+  `(integer ,(- (expt 2 31)) ,(1- (expt 2 31))))
+
+(deftype* integer-32 (make-instance 'sql-integer-type :bit-size 32)
+  object->integer-reader
+  identity-writer)
+
+;;;;;;;;;;;;;;
+;;; Integer-64
+
+(deftype integer-64 ()
+  `(integer ,(- (expt 2 63)) ,(1- (expt 2 63))))
+
+(deftype* integer-64 (make-instance 'sql-integer-type :bit-size 64)
+  object->integer-reader
+  identity-writer)
+
+;;;;;;;;;;;
+;;; Integer
+
+(deftype* integer (make-instance 'sql-integer-type)
+  object->integer-reader
+  identity-writer)
+
+;;;;;;;;;;;;
+;;; Float-32
+
+(deftype float-32 ()
+  `float)
+
+(deftype* float-32 (make-instance 'sql-float-type :bit-size 32)
+  object->number-reader
+  identity-writer)
+
+;;;;;;;;;;;;
+;;; Float-64
+
+(deftype float-64 ()
+  `float)
+
+(deftype* float-64 (make-instance 'sql-float-type :bit-size 64)
+  object->number-reader
+  identity-writer)
+
+;;;;;;;;;;
+;;; Number
+
+(deftype* number (make-instance 'sql-numeric-type)
+  object->number-reader
+  identity-writer)
+
+;;;;;;;;;;;;
+;;; String-N
+
+;; TODO: size limited string
+
+;;;;;;;;;;
+;;; String
+
+(deftype* string (make-instance 'sql-character-large-object-type)
+  identity-reader
+  identity-writer)
+
+;;;;;;;;;;;;
+;;; Symbol-N
+
+;; TODO: size limited symbol
+
+;;;;;;;;;;
+;;; Symbol
+
+(deftype* symbol (make-instance 'sql-character-large-object-type)
+  string->symbol-reader
+  symbol->string-writer)
+
+;;;;;
+;;; t
+
+(deftype* t (make-instance 'sql-character-large-object-type)
+  base64->object-reader
+  object->base64-writer)
+
+;;;;;;;;;;;;;;
+;;; Serialized
+
+(deftype serialized ()
+  t)
+
+(deftype* serialized (make-instance 'sql-character-large-object-type)
+  base64->object-reader
+  object->base64-writer)
+
+;;;;;;;;
+;;; Date
+
+(deftype date ()
+  'local-time)
+
+(deftype* date (make-instance 'sql-date-type)
+  integer->local-time-reader
+  local-time->string-writer)
+
+;;;;;;;;
+;;; Time
+
+(deftype time ()
+  'local-time)
+
+(deftype* time (make-instance 'sql-time-type)
+  string->local-time-reader
+  local-time->string-writer)
+
+;;;;;;;;;;;;;
+;;; Timestamp
+
+(deftype timestamp ()
+  'local-time)
+
+(deftype* timestamp (make-instance 'sql-timestamp-type)
+  integer->local-time-reader
+  local-time->string-writer)
+
+;;;;;;;;;;;;
+;;; Duration
+
+(deftype duration ()
+  'string)
+
+(deftype* duration (make-instance 'sql-character-varying-type :size 32)
+  identity-reader
+  identity-writer)
+
+;;;;;;;;
+;;; Form
+
+(deftype form ()
+  'list)
+
+(deftype* form (make-instance 'sql-character-varying-type)
+  string->list-reader
+  list->object-writer)
+
+;;;;;;;;;;
+;;; Member
+
+(deftype* member (make-instance 'sql-integer-type :bit-size 16)
+  integer->enumerated-reader
+  enumerated->integer-writer)

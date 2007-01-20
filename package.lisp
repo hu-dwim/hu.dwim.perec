@@ -18,11 +18,16 @@
         :computed-class
         :defclass-star
         :trivial-garbage
+        :flexi-streams
+        :local-time
+        :cl-ppcre
         :cl-store
         :cl-containers
         :cl-rdbms)
 
   (:shadow #:log
+           #:time
+           #:form
            #:transaction)
 
   (:shadowing-import-from :iterate
