@@ -48,7 +48,7 @@
             (first
              (select-records (mapcan (lambda (slot)
                                        (mapcar (lambda (column)
-                                                 (sql-column-alias :table (name-of (table-of slot)) :column (name-of column)))
+                                                 (sql-column-alias :table (name-of (table-of slot)) :column column))
                                                (columns-of slot)))
                                      slots)
                              (mapcar #L(sql-table-alias :name (name-of !1) :alias (name-of !1)) tables)

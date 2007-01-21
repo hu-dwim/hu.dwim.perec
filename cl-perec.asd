@@ -73,10 +73,7 @@
              (:file "serialization")
              (:file "type")
              (:file "transformer")
-;             (:file "association-end-set")
-;             (:file "export-model")
-;             (:file "install-property-accessor")
-             ))
+             (:file "association-end-set")))
    (:module :query
             :components
             ())))
@@ -87,6 +84,7 @@
                :arnesi
                :metabang-bind
                :defclass-star
+               :local-time
                :stefil
                :cl-rdbms
                :cl-perec)

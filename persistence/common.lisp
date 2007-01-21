@@ -6,8 +6,8 @@
 
 (in-package :cl-perec)
 
-(defmacro defcclass* (name super-classes slots &rest options)
-  `(defclass* ,name ,super-classes , slots
+(defmacro defcclass* (name superclasses slots &rest options)
+  `(defclass* ,name ,superclasses , slots
     ,@(append (unless (find :metaclass options :key 'first)
                 '((:metaclass computed-class)))
               options)))

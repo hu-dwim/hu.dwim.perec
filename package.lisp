@@ -7,7 +7,7 @@
 (in-package :cl-user)
 
 (defpackage :cl-perec
-  (:nicknames :prc)
+    (:nicknames :prc)
 
   (:use :common-lisp
         :closer-mop
@@ -26,31 +26,71 @@
         :cl-rdbms)
 
   (:shadow #:log
+           #:set
            #:time
            #:form
            #:transaction)
 
   (:shadowing-import-from :iterate
-           #:finish)
+                          #:finish)
   
   (:shadowing-import-from :cl-containers
-           #:dequeue
-           #:enqueue
-           #:parent)
+                          #:dequeue
+                          #:enqueue
+                          #:parent)
 
-  (:export #:defpclass
+  (:export ;; defining persistent classes
+           #:defpclass
            #:defpclass*
-           
+           #:defassociation
+           #:defassociation*
+
+           ;; persistent class meta objects
            #:persistent-class
+           #:persistent-association
            #:persistent-object
            #:persistent-slot-definition
            #:persistent-direct-slot-definition
            #:persistent-effective-slot-definition
 
+           ;; types
+           #:unbound
+           #:boolean
+           #:integer-16
+           #:integer-32
+           #:integer-64
+           #:integer
+           #:float-32
+           #:float-64
+           #:number
+           #:string
+           #:symbol
+           #:t
+           #:serialized
+           #:date
+           #:time
+           #:timestamp
+           #:duration
+           #:form
+           #:member
+           #:set
+
+           ;; transaction API can be found in cl-rdbms
+           #:with-database
+           #:with-transaction
+           #:with-transaction*
+
+
+           ;; managing persistent objects
            #:make-persistent
            #:make-transient
+           #:revive-object
 
-           #:revive-object))
+           ;; cache
+           #:with-caching-slot-values
+           #:without-caching-slot-values
+           #:with-bypassing-database-access
+           #:without-bypassing-database-access))
 
 (defpackage :cl-perec-test
   (:nicknames :prct)
@@ -61,9 +101,15 @@
         :arnesi
         :bind
         :defclass-star
+        :local-time
         :stefil
         :cl-rdbms
-        :cl-perec))
+        :cl-perec)
+
+  (:shadowing-import-from :cl-perec
+                          #:time
+                          #:form
+                          #:set))
 
 (in-package :cl-perec)
 

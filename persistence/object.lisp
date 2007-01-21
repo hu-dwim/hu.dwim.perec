@@ -81,6 +81,11 @@
           (remove-if-not #'cached-p 
                          (persistent-effective-slots-of (class-of object))))))
 
+(defmethod make-instance :before ((class persistent-class) &key &allow-other-keys)
+  (ensure-exported class)
+  (when (abstract-p class)
+    (error "Cannot make instances of abstract class ~A" class)))
+
 (defgeneric make-persistent (object)
   (:documentation "Makes an object persistent without making its associated objects persistent."))
 

@@ -15,6 +15,7 @@
   (declare (ignore persistent))
   (apply #'call-next-method slot slot-names args))
 
+;; TODO: inject association ends
 (defmethod initialize-instance :around ((class persistent-class)
                                         &rest args
                                         &key name direct-slots direct-superclasses
@@ -25,8 +26,10 @@
                        :direct-superclasses (ensure-persistent-object-class name direct-superclasses)
                        #+lispworks :optimize-slot-access #+lispworks nil 
                        (remove-keywords args :direct-slots))))
+    (invalidate-computed-slot class 'persistent-direct-slots)
     result))
 
+;; TODO: inject association ends
 (defmethod reinitialize-instance :around ((class persistent-class)
                                           &rest args
                                           &key direct-slots direct-superclasses
@@ -37,6 +40,7 @@
                        :direct-superclasses (ensure-persistent-object-class (class-name class) direct-superclasses)
                        #+lispworks :optimize-slot-access #+lispworks nil
                        (remove-keywords args :direct-slots))))
+    (invalidate-computed-slot class 'persistent-direct-slots)
     result))
 
 (defmethod validate-superclass ((class standard-class)
@@ -72,7 +76,13 @@
                              direct-slot-definitions))
          (effective-slot-definition (call-next-method)))
     (declare (special %persistent%))
+    (when %persistent%
+      (setf (direct-slots-of effective-slot-definition) direct-slot-definitions))
     effective-slot-definition))
+
+(defmethod compute-slots :after ((class persistent-class))
+  "Invalidates the cached slot value of persistent-effective-slots whenever the effective slots are recomputed, so that all dependent computed state will be invalidated and recomputed when requested."
+  (invalidate-computed-slot class 'persistent-effective-slots))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; Helper methods
@@ -108,28 +118,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #+nil(defmethod compute-effective-slot-definition ((class persistent-class) name direct-slot-definitions)
   (bind (((direct-slots non-direct-slots) (partitionx direct-slot-definitions #L(typep !1 'direct-slot) #t))
          (all-direct-slots-are-direct-slots-p (null non-direct-slots)))
@@ -147,7 +135,7 @@
 
 #+nil(defun compute-effective-slot-initargs (class direct-slot-definitions)
   (iter (for slot-option-name in (delete-duplicates
-                                  (collect-if #L(eq (symbol-package !1) (find-package :dwim-meta-model))
+                                  (collect-if #L(eq (symbol-package !1) (find-package :cl-perec))
                                               (mapcan #L(mapcar #'slot-definition-name
                                                                 (class-slots (class-of !1)))
                                                       direct-slot-definitions))))

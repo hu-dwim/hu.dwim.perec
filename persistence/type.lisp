@@ -14,10 +14,10 @@
     (defmethod compute-column-type ((type (eql ',name)))
       ,sql-type)
 
-    (defmethod compute-reader ((type (eql ',name)))
+    (defmethod compute-reader-transformer ((type (eql ',name)))
       ',reader)
 
-    (defmethod compute-writer ((type (eql ',name)))
+    (defmethod compute-writer-transformer ((type (eql ',name)))
       ',writer)))
 
 ;;;;;;;;;;;

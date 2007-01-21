@@ -15,8 +15,10 @@
     `(deftest ,(cl-perec::concatenate-symbol "test/type/" name) ()
       (let ((,value ,test-value))
         (with-transaction
-          (defpclass* type-test ()
-            ((,name :type ,type))))
+          (with-confirmed-descructive-changes
+            (cl-perec::ensure-exported
+             (defpclass* type-test ()
+               ((,name :type ,type))))))
         (with-transaction
           (let ((object (make-instance 'type-test ,(cl-perec::initarg-symbol name) ,value)))
             (is (,test ,value (slot-value object ',name)))))
@@ -71,10 +73,6 @@
 (deftypetest integer/4 integer (expt 2 128))
 (deftypetest integer/5 integer (- (expt 2 128)))
 
-(deftypetest float-16/1 float-16 0)
-(deftypetest float-16/2 float-16 +1.5)
-(deftypetest float-16/3 float-16 -1.5)
-
 (deftypetest float-32/1 float-32 0)
 (deftypetest float-32/2 float-32 +1.5)
 (deftypetest float-32/3 float-32 -1.5)
@@ -93,13 +91,12 @@
 
 (deftypetest string/1 string "")
 (deftypetest string/2 string (random-string 10000))
+(deftypetest string/3 (string 20) "")
+(deftypetest string/4 (string 20) "something")
 
-(deftypetest standard-string/1 standard-string "")
-(deftypetest standard-string/2 standard-string "something")
-
-(deftypetest symbol/1 standard-symbol 'something)
-(deftypetest symbol/2 standard-symbol 'cl-perec-test::something)
-(deftypetest symbol/3 standard-symbol 'cl-user::something)
+(deftypetest symbol/1 symbol 'something)
+(deftypetest symbol/2 symbol 'cl-perec-test::something)
+(deftypetest symbol/3 (symbol 20) 'cl-user::something)
 
 (deftypetest date/1 date (let ((*default-timezone* +utc-zone+)) (parse-timestring "2006-06-06")) :test local-time=)
 
@@ -110,8 +107,9 @@
 (deftypetest duration/1 duration "06:06:06")
 (deftypetest duration/2 duration "1-01-01 06:06:06")
 
-(deftypetest enumerated/1 (enumerated one two three) 'one)
-(deftypetest enumerated/2 (enumerated one two three) 'two)
-(deftypetest enumerated/3 (enumerated one two three) 'three)
+(deftypetest member/1 (member one two three) 'one)
+(deftypetest member/2 (member one two three) 'two)
+(deftypetest member/3 (member one two three) 'three)
 
-(deftypetest form/1 standard-form '(progn 1 (print "Hello") 2))
+(deftypetest form/1 form '(progn 1 (print "Hello") 2))
+(deftypetest form/2 (form 100) '(progn 1 (print "Hello") 2))

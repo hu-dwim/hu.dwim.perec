@@ -41,7 +41,12 @@
    (non-prefetched-slots
     (compute-as (remove-if #'prefetched-p (persistent-effective-slots-of -self-)))
     :type (list effective-slot)
-    :documentation "List of effective slots which will be loaded and stored lazily and separately from other slots.")))
+    :documentation "List of effective slots which will be loaded and stored lazily and separately from other slots.")
+   (ensure-exported
+    (compute-as (export-to-rdbms -self-))
+    :reader ensure-exported
+    :type persistent-class
+    :documentation "An exported persistent class is ready to use.")))
 
 (defcclass* persistent-slot-definition (standard-slot-definition)
   ((table
@@ -78,7 +83,10 @@
 
 (defcclass* persistent-effective-slot-definition
     (persistent-slot-definition standard-effective-slot-definition)
-  ((table
+  ((direct-slots
+    :type (list persistent-direct-slot-definition)
+    :documentation "The list of direct slots definitions used to compute this effective slot.")
+   (table
     :type table
     :documentation "An RDBMS table which will be queried or updated to get and set the data of this slot.")
    (columns
@@ -100,19 +108,19 @@
     (compute-as (data-table-slot-p -self-)))
    (cached
     (compute-as (or (prefetched-p -self-)
-                    (class-or-unspecified-type-p (slot-definition-type -self-)))))))
+                    (persistent-class-type-p (remove-null-and-unbound-if-or-type (slot-definition-type -self-))))))))
 
 ;;;;;;;;;;;;;
 ;;; defpclass
 
-(defmacro defpclass (name super-classes slots &rest options)
-  `(defclass ,name ,super-classes , slots
+(defmacro defpclass (name superclasses slots &rest options)
+  `(defclass ,name ,superclasses , slots
     ,@(append (unless (find :metaclass options :key 'first)
                 '((:metaclass persistent-class)))
               options)))
 
-(defmacro defpclass* (name super-classes slots &rest options)
-  `(defclass* ,name ,super-classes , slots
+(defmacro defpclass* (name superclasses slots &rest options)
+  `(defclass* ,name ,superclasses , slots
     ,@(append (unless (find :metaclass options :key 'first)
                 '((:metaclass persistent-class)))
               options)))
@@ -125,8 +133,8 @@
 ;;; Export
 
 (defmethod export-to-rdbms ((class persistent-class))
-;; TODO: (mapc #'exported-model-element-of (effective-super-generalization-elements-for class))
-;; TODO: (mapc #'exported-model-element-of (associations-of class))
+  ;; TODO: (mapc #'exported-model-element-of (effective-super-generalization-elements-for class))
+  ;; TODO: (mapc #'exported-model-element-of (associations-of class))
   (awhen (primary-table-of class)
     (export-to-rdbms it)))
 
@@ -134,7 +142,27 @@
 ;;; Computed
 
 (defun slot-definition-class (slot)
-  (slot-value slot 'sb-pcl::%class))
+  "Returns the class to which the given slot belongs."
+  #+sbcl(slot-value slot 'sb-pcl::%class)
+  #-sbcl(not-yet-implemented))
+
+(defun remove-null-and-unbound-if-or-type (type)
+  (if (and (listp type)
+           (eq 'or (first type)))
+      (let ((simplified-type (remove 'null (remove 'unbound type))))
+        (if (>= 2 (length simplified-type))
+            (second simplified-type)
+            simplified-type))
+      type))
+
+(defun persistent-class-type-p (type)
+  (subtypep type 'persistent-object))
+
+(defun primitive-type-p (type)
+  "Accept types such as: integer, string, boolean, (or unbound integer), (or null string), (or unbound null boolean)"
+  ;; TODO:
+  (and (symbolp type)
+       (not (subtypep type 'persistent-object))))
 
 (defgeneric compute-column-type (type)
   (:documentation "Returns the RDBMS type for the given type.")
@@ -142,13 +170,13 @@
   (:method (type)
            (error "Cannot map type ~A to RDBMS type" type)))
 
-(defgeneric compute-reader (type)
+(defgeneric compute-reader-transformer (type)
   (:documentation "Maps types to reader transformers.")
 
   (:method (type)
            (error "Cannot map type ~A to a reader" type)))
 
-(defgeneric compute-writer (type)
+(defgeneric compute-writer-transformer (type)
   (:documentation "Maps types to writer transformers.")
 
   (:method (type)
@@ -159,39 +187,52 @@
 
 (defgeneric compute-primary-table (class current-table)
   (:method ((class persistent-class) current-table)
-           (bind ((primary-table (or current-table
-                                     (make-instance 'class-primary-table
-                                                    :name (rdbms-name-for (class-name class))))))
+           (bind ((primary-table
+                   (or current-table
+                       (make-instance 'class-primary-table
+                                      :name (rdbms-name-for (class-name class))
+                                      :columns (compute-as
+                                                 (append
+                                                  (make-oid-columns)
+                                                  (mappend #'columns-of
+                                                           (persistent-direct-slots-of class))))))))
              (when (or (not (abstract-p class))
                        (mappend #'columns-of (persistent-direct-slots-of class)))
                primary-table))))
 
 (defgeneric compute-primary-tables (class)
   (:method ((class persistent-class))
-           #+nil(labels ((primary-entities-for (class)
+           (labels ((primary-classes-for (class)
                       (if (primary-table-of class)
                           (list class)
-                          (iter (for sub-class in (direct-sub-generalization-elements-for class))
-                                (appending (primary-entities-for sub-class))))))
-             (bind ((primary-entities (primary-entities-for class))
-                    (primary-class-sub-entities (mapcar #'effective-sub-generalization-elements-for primary-entities))
-                    (primary-tables (mapcar #'primary-table-of primary-entities)))
-               (when primary-class-sub-entities
-                 (if (eq (length (reduce #'union primary-class-sub-entities))
-                         (length (reduce #'append primary-class-sub-entities)))
+                          (iter (for subclass in (class-direct-subclasses class))
+                                (appending (primary-classes-for subclass)))))
+                    (class-effective-subclasses (class)
+                      (aif (class-direct-subclasses class)
+                           (mappend #'class-effective-subclasses it)
+                           (list class))))
+             (bind ((primary-classes (primary-classes-for class))
+                    (primary-class-sub-classes (mapcar #'class-effective-subclasses primary-classes))
+                    (primary-tables (mapcar #'primary-table-of primary-classes)))
+               (when primary-class-sub-classes
+                 (if (eq (length (reduce #'union primary-class-sub-classes))
+                         (length (reduce #'append primary-class-sub-classes)))
                      (cons 'append primary-tables)
                      (cons 'union primary-tables)))))))
 
 (defgeneric compute-data-tables (class)
   (:method ((class persistent-class))
-           (delete-if #'null (mapcar #'primary-table-of (class-precedence-list class)))))
+           (delete-if #'null
+                      (mapcar #'primary-table-of
+                              (remove-if-not #L(typep !1 'persistent-class)
+                                             (class-precedence-list class))))))
 
 (defgeneric compute-table (slot)
   (:method ((slot persistent-direct-slot-definition))
            (primary-table-of (slot-definition-class slot)))
 
   (:method ((slot persistent-effective-slot-definition))
-           #+nil(primary-table-of (slot-definition-class (most-generic-direct-slot-for slot)))))
+           (primary-table-of (slot-definition-class (last1 (direct-slots-of slot))))))
 
 (defgeneric compute-columns (slot)
   (:method ((slot persistent-direct-slot-definition))
@@ -199,21 +240,20 @@
              (when-bind table (table-of slot)
                (make-columns-for-slot slot))))
 
-  #+nil(:method ((slot persistent-effective-slot-definition))
-                (columns-of (most-generic-direct-slot-for slot))))
+  (:method ((slot persistent-effective-slot-definition))
+           (columns-of (last1 (direct-slots-of slot)))))
 
 (defun make-oid-columns ()
   "Creates a list of RDBMS columns that will be used to store the oid data of the objects in this table."
-  (bind ((*package* (find-package :dwim-meta-model)))
-    (list
-     (make-instance 'sql-column
-                    :name +id-column-name+
-                    :type +oid-id-sql-type+
-                    :constraints (list (make-instance 'sql-not-null-constraint)
-                                       (make-instance 'sql-primary-key-constraint)))
-     (make-instance 'sql-column
-                    :name +class-name-column-name+
-                    :type +oid-class-name-sql-type+))))
+  (list
+   (make-instance 'sql-column
+                  :name +id-column-name+
+                  :type +oid-id-sql-type+
+                  :constraints (list (make-instance 'sql-not-null-constraint)
+                                     (make-instance 'sql-primary-key-constraint)))
+   (make-instance 'sql-column
+                  :name +class-name-column-name+
+                  :type +oid-class-name-sql-type+)))
 
 (defun make-columns-for-reference-slot (slot)
   (list
@@ -227,20 +267,55 @@
 
 (defgeneric make-columns-for-slot (slot)
   (:method ((slot persistent-direct-slot-definition))
-           (awhen (slot-definition-type slot)
-             (list
-              (make-instance 'sql-column
-                             :name (rdbms-name-for (slot-definition-name slot))
-                             :type (compute-column-type it)))))
-
-  #+nil(:method ((slot direct-slot))
-                (when (declared-slot-type-of slot)
-                  (bind ((slot-type (slot-type-of slot)))
-                    (cond ((entity-or-unspecified-type-p slot-type)
-                           (make-columns-for-reference-slot slot))
-                          (t
-                           (error "Unknown slot type ~A" slot-type)))))))
+           (awhen (remove-null-and-unbound-if-or-type (slot-definition-type slot))
+             (cond ((primitive-type-p it)
+                    (list
+                     (make-instance 'sql-column
+                                    :name (rdbms-name-for (slot-definition-name slot))
+                                    :type (compute-column-type it))))
+                   ((persistent-class-type-p it)
+                    (make-columns-for-reference-slot slot))
+                   (t
+                    (error "Unknown slot type ~A" it))))))
 
 (defgeneric compute-data-table-slot-p (slot)
   (:method ((slot persistent-effective-slot-definition))
-           #t))
+           (primitive-type-p (remove-null-and-unbound-if-or-type (slot-definition-type slot)))))
+
+(defgeneric compute-reader (effective-slot)
+  (:method ((slot persistent-effective-slot-definition))
+           (bind ((type (slot-definition-type slot)))
+             (make-instance 'accessor
+                            :where-clause 'oid-matcher-reader-where-clause
+                            :transformer (compute-reader-transformer type)))))
+
+(defgeneric compute-writer (effective-slot)
+  (:method ((slot persistent-effective-slot-definition))
+           (bind ((type (slot-definition-type slot)))
+             (make-instance 'accessor
+                            :where-clause 'oid-matcher-writer-where-clause
+                            :transformer (compute-writer-transformer type)))))
+
+#+nil
+(defmethod .... ((effective-slot effective-slot) accessor-type)
+  (log.dribble "Calculating RDBMS meta data for effective slot ~A in ~A"
+               effective-slot (owner-class-of effective-slot))
+  (cond ((class-or-unspecified-type-p (slot-type-of effective-slot))
+         (compute-class-slot-accessor effective-slot accessor-type))
+        (t
+         (error "Unsupported slot type"))))
+
+#+nil
+(defun compute-class-slot-accessor (effective-slot accessor-type)
+  (ecase accessor-type
+    (reader
+     (make-instance 'rdbms-accessor
+                    :effective-slot effective-slot
+                    :where-clause 'oid-matcher-reader-where-clause
+                    :transformer 'object-reader))
+    ;; update brother set sister-id = (id-of sister) where id = (id-of brother)
+    (writer
+     (make-instance 'rdbms-accessor
+                    :effective-slot effective-slot
+                    :where-clause 'oid-matcher-writer-where-clause
+                    :transformer 'object-writer))))
