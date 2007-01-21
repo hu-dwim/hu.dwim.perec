@@ -46,7 +46,8 @@
     :persistent #f
     :documentation "A list of slots for which the slot values are currently cached in the object in the lisp VM. This list must be updated when database update happens outside of slot access (batch update, trigger, etc."))
   (:default-initargs :persistent #t)
-  (:abstract #t))
+  (:abstract #t)
+  (:documentation "Base class for all persistent classes. If this class is not inherited by a persistent class then it is automatically added to the direct superclasses."))
 
 (defprint-object (self persistent-object)
   "Prints the oid of the object and whether the object is known to be persistent or transient."
@@ -77,7 +78,6 @@
   (when (eq persistent #t)
     (make-persistent object)
     (setf (cached-slots-of object)
-          ;; TODO: is there a better place to do this?
           (remove-if-not #'cached-p 
                          (persistent-effective-slots-of (class-of object))))))
 

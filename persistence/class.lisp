@@ -29,32 +29,32 @@
    (primary-tables
     (compute-as (compute-primary-tables -self-))
     :type (list class-primary-table)
-    :documentation "The smallest set of tables which hold all instances and only the instances of this class by having one and only one record per instance. This list may contain functional nodes such as union, append according to the required SQL operation. For classes which have a primary table this list contains only that table for other classes the list will contain some of the primary tables of the sub persistent classes.")
+    :documentation "The smallest set of tables which hold all instances and only the instances of this class by having one and only one record per instance. This list may contain functional nodes such as union, append according to the required SQL operation. For classes which have a primary table this list contains only that table while for other classes the list will contain some of the primary tables of the sub persistent classes.")
    (data-tables
     (compute-as (compute-data-tables -self-))
     :type (list table)
-    :documentation "All the tables which hold data of an instance of this class. This list contains primary tables of the super persistent classes.")
+    :documentation "All the tables which hold direct data of an instance of this class. This list contains the primary tables of the super persistent classes.")
    (prefetched-slots
     (compute-as (remove-if-not #'prefetched-p (persistent-effective-slots-of -self-)))
     :type (list persistent-effective-slot-definition)
-    :documentation "List of effective slots which will be loaded and stored at once when loading an instance of this class.")
+    :documentation "The list of effective slots which will be loaded from and stored to the database at once when loading an instance of this class. Moreover when a persistent object is revived its prefetched slots will be loaded.")
    (non-prefetched-slots
     (compute-as (remove-if #'prefetched-p (persistent-effective-slots-of -self-)))
     :type (list effective-slot)
-    :documentation "List of effective slots which will be loaded and stored lazily and separately from other slots.")
+    :documentation "The list of effective slots which will be loaded and stored lazily and separately from other slots.")
    (ensure-exported
     (compute-as (export-to-rdbms -self-))
     :reader ensure-exported
     :type persistent-class
-    :documentation "An exported persistent class is ready to use.")))
+    :documentation "The persistent class must be exported before use. This will automatically happen not later than making, reviving or querying the first instance of it.")))
 
 (defcclass* persistent-slot-definition (standard-slot-definition)
   ((table
     (compute-as (compute-table -self-))
-    :documentation "This slots servers different purposes for direct and effective slot meta objects.")
+    :documentation "This slot servers different purposes for direct and effective slot meta objects.")
    (columns
     (compute-as (compute-columns -self-))
-    :documentation "This slots servers different purposes for direct and effective slot meta objects.")
+    :documentation "This slot servers different purposes for direct and effective slot meta objects.")
    (prefetched
     :type boolean
     :computed-in compute-as
@@ -67,59 +67,63 @@
 (defclass* accessor ()
   ((where-clause
     :type function
-    :documentation "This function provides the SQL where clause to access the slot in the RDBMS.")
+    :documentation "This function provides the SQL where clause when accessing the slot in the RDBMS.")
    (transformer
     :type function
-    :documentation "A function which transforms between a lisp object and the corresponding RDBMS data. The direction of the transformation depends on whether the accessor is a reader or a writer. See slot-value-from-rdbms-values and rdbms-values-from-slot-value.")))
+    :documentation "A function which transforms between a lisp object and the corresponding RDBMS data. The direction of the transformation depends on whether the accessor is a reader or a writer. See slot-value-from-rdbms-values and rdbms-values-from-slot-value how they are used.")))
 
 (defcclass* persistent-direct-slot-definition
     (persistent-slot-definition standard-direct-slot-definition)
   ((table
     :type (or null table)
-    :documentation "A table where this direct slot has its columns if any.")
+    :documentation "A table where this direct slot has its columns if any. If the slot does not have a type specification then this is nil.")
    (columns
     :type (or null list)
-    :documentation "A list of RDBMS columns created for this direct slot or nil.")))
+    :documentation "A list of RDBMS columns created for this direct slot or nil. If the slot does not have a type specification then this is nil.")))
 
 (defcclass* persistent-effective-slot-definition
     (persistent-slot-definition standard-effective-slot-definition)
   ((direct-slots
     :type (list persistent-direct-slot-definition)
-    :documentation "The list of direct slots definitions used to compute this effective slot.")
+    :documentation "The list of direct slots definitions used to compute this effective slot during the class finalization procedure.")
    (table
     :type table
-    :documentation "An RDBMS table which will be queried or updated to get and set the data of this slot.")
+    :documentation "The RDBMS table which will be queried or updated to get and set the data of this slot.")
    (columns
     :type (list sql-column)
-    :documentation "A list of RDBMS columns which will be queried or updated to get and set the data of this slot.")
+    :documentation "The list of RDBMS columns which will be queried or updated to get and set the data of this slot.")
    (reader
     (compute-as (compute-reader -self-))
     :type accessor
-    :documentation "An accessor object which describes how to read this slot.")
+    :documentation "The accessor object which describes how to read this slot.")
    (writer
     (compute-as (compute-writer -self-))
     :type accessor
-    :documentation "An accessor object which describes how to write this slot.")
+    :documentation "The accessor object which describes how to write this slot.")
    (data-table-slot
     (compute-as (compute-data-table-slot-p -self-))
     :type boolean
     :documentation "True means the slot can be loaded from one of the data tables of its class.")
    (prefetched
-    (compute-as (data-table-slot-p -self-)))
+    (compute-as (data-table-slot-p -self-))
+    :documentation "The prefetched option is inherited among direct slots according to the class precedence list. If no direct slot has prefetched specification then the default behaviour is to prefetch data tabe slot.")
    (cached
     (compute-as (or (prefetched-p -self-)
-                    (persistent-class-type-p (remove-null-and-unbound-if-or-type (slot-definition-type -self-))))))))
+                    (persistent-class-type-p (remove-null-and-unbound-if-or-type (slot-definition-type -self-)))))
+    :documentation "The cached option is inherited among direct slots according to the class precedence list. If no direct slot has cached specification then the default behaviour is to cache prefetched slots and single object references.")))
 
 ;;;;;;;;;;;;;
 ;;; defpclass
 
 (defmacro defpclass (name superclasses slots &rest options)
+  "Defines a persistent class. Slots may have an additional :persistent slot option which is true by default. For standard options see defclass."
   `(defclass ,name ,superclasses , slots
     ,@(append (unless (find :metaclass options :key 'first)
                 '((:metaclass persistent-class)))
               options)))
 
 (defmacro defpclass* (name superclasses slots &rest options)
+  "Same as defpclass but uses defclass*."
   `(defclass* ,name ,superclasses , slots
     ,@(append (unless (find :metaclass options :key 'first)
                 '((:metaclass persistent-class)))
@@ -133,7 +137,7 @@
 ;;; Export
 
 (defmethod export-to-rdbms ((class persistent-class))
-  ;; TODO: (mapc #'exported-model-element-of (effective-super-generalization-elements-for class))
+  (mapc #'ensure-exported (remove-if-not #L(typep !1 'persistent-class) (cdr (class-precedence-list class))))
   ;; TODO: (mapc #'exported-model-element-of (associations-of class))
   (awhen (primary-table-of class)
     (export-to-rdbms it)))
@@ -284,17 +288,15 @@
 
 (defgeneric compute-reader (effective-slot)
   (:method ((slot persistent-effective-slot-definition))
-           (bind ((type (slot-definition-type slot)))
-             (make-instance 'accessor
-                            :where-clause 'oid-matcher-reader-where-clause
-                            :transformer (compute-reader-transformer type)))))
+           (make-instance 'accessor
+                          :where-clause 'oid-matcher-reader-where-clause
+                          :transformer (compute-reader-transformer (slot-definition-type slot)))))
 
 (defgeneric compute-writer (effective-slot)
   (:method ((slot persistent-effective-slot-definition))
-           (bind ((type (slot-definition-type slot)))
-             (make-instance 'accessor
-                            :where-clause 'oid-matcher-writer-where-clause
-                            :transformer (compute-writer-transformer type)))))
+           (make-instance 'accessor
+                          :where-clause 'oid-matcher-writer-where-clause
+                          :transformer (compute-writer-transformer (slot-definition-type slot)))))
 
 #+nil
 (defmethod .... ((effective-slot effective-slot) accessor-type)

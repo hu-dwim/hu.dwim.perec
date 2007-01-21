@@ -10,8 +10,8 @@
    (columns
     (compute-as nil)
     :type (list sql-column)
-    :documentation "The list of RDBMS columns of this table."))
-  (:documentation "This is an RDBMS table with some related RDBMS definitions. The actual table will be created in the database when export-table is called on it."))
+    :documentation "The list of RDBMS columns of this table. This list uses the sql column type of cl-rdbms."))
+  (:documentation "This is an RDBMS table with some related RDBMS definitions. The actual table will be created in the database when export-to-rdbms is called on it."))
 
 (defcclass* class-primary-table (table)
   ((oid-columns
@@ -20,34 +20,43 @@
     :documentation "The list of RDBMS columns corresponding to the oid of this table.")
    (id-column
     (compute-as (find +id-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
-    :type sql-column)
+    :type sql-column
+    :documentation "The RDBMS column of corresponding oid slot.")
    (class-name-column
     (compute-as (find +class-name-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
-    :type sql-column)))
+    :type sql-column
+    :documentation "The RDBMS column of corresponding oid slot."))
+  (:documenation "This is a special table related to a persistent class."))
 
 ;;;;;;;;;;;;;
 ;;; Constants
 
-(defconstant +oid-id-bit-size+ 64)
+(defconstant +oid-id-bit-size+ 64
+  "Length of the life time unique identifier numbers in bits.")
 
 (defvar +oid-id-sql-type+
-  (make-instance 'sql-integer-type :bit-size +oid-id-bit-size+))
+  (make-instance 'sql-integer-type :bit-size +oid-id-bit-size+)
+  "The RDBMS type for the oid's id slot.")
 
-(defconstant +oid-class-name-maximum-length+ 64)
+(defconstant +oid-class-name-maximum-length+ 64
+  "Maximum length of class names.")
 
 (defvar +oid-class-name-sql-type+
-  (make-instance 'sql-character-varying-type :size +oid-class-name-maximum-length+))
+  (make-instance 'sql-character-varying-type :size +oid-class-name-maximum-length+)
+  "The RDBMS type for the oid's class-name slot")
 
 ;;;;;;;;;;
 ;;; Export
 
 (defmethod export-to-rdbms ((table table))
+  "Updates the RDBMS table definition according to the current state of the given table. This might add, alter or drop existing columns, but all destructive changes are required to signal a continuable condition."
   (update-table (name-of table) (columns-of table)))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; Helper methods
 
 (defun rdbms-name-for (name)
+  "Returns a name which does not conflict with RDBMS keywords."
   ;; TODO: this name mapping is not injective (different lisp names are mapped to the same rdbms name)
   (let ((name-as-string (strcat "_" (regex-replace-all "\\*|-|/" (symbol-name name) "_"))))
     (if (symbol-package name)

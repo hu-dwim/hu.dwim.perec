@@ -6,8 +6,6 @@
 
 (in-package :cl-perec)
 
-;; TODO: this interface is not efficient enough, we should avoid consing in readers/writers if possible
-
 ;;;;;;;;;;;;;;
 ;;; Serialized
 
@@ -223,8 +221,6 @@
   (declare (ignore slot-value))
   (object-writer object slot object))
 
-;; TODO: this is a temporary hack
-;; 1-1 associations are not correctly mapped to RDBMS, see referential-integrity/4
 (defun self-or-nil-writer (object slot slot-value)
   (if slot-value
       (object-writer object slot object)
