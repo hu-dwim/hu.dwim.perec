@@ -10,41 +10,97 @@
 
 (in-suite test/types)
 
-(defmacro deftypetest (name type test-value &key (test 'equalp))
+(defgeneric object-equal-p (object-1 object-2)
+  (:method (object-1 object-2)
+           (equalp object-1 object-2))
+
+  (:method ((object-1 symbol) (object-2 symbol))
+           (or (call-next-method)
+               (and (not (symbol-package object-1))
+                    (not (symbol-package object-2))
+                    (equal (symbol-name object-1)
+                           (symbol-name object-2)))))
+
+  (:method ((object-1 list) (object-2 list))
+           (every #'object-equal-p object-1 object-2))
+
+  (:method ((object-1 structure-object) (object-2 structure-object))
+           (let ((class-1 (class-of object-1))
+                 (class-2 (class-of object-2)))
+             (and (eq class-1 class-2)
+                  (every (lambda (slot)
+                           (object-equal-p
+                            (slot-value-using-class class-1 object-1 slot)
+                            (slot-value-using-class class-2 object-2 slot)))
+                         (class-slots class-1)))))
+
+  (:method ((object-1 standard-object) (object-2 standard-object))
+           (let ((class-1 (class-of object-1))
+                 (class-2 (class-of object-2)))
+             (and (eq class-1 class-2)
+                  (every (lambda (slot)
+                           (or (and (not (slot-boundp-using-class class-1 object-1 slot))
+                                    (not (slot-boundp-using-class class-2 object-2 slot)))
+                               (object-equal-p
+                                (slot-value-using-class class-1 object-1 slot)
+                                (slot-value-using-class class-2 object-2 slot))))
+                         (class-slots class-1)))))
+
+  (:method ((object-1 persistent-object) (object-2 persistent-object))
+           (object-equal-p (cl-perec::oid-of object-1)
+                           (cl-perec::oid-of object-2))))
+
+(defmacro deftypetest (name type test-value &key (test 'object-equal-p))
   (with-unique-names (value)
     `(deftest ,(cl-perec::concatenate-symbol "test/type/" name) ()
-      (let ((,value ,test-value))
+      (let ((,value (with-transaction ,test-value))
+            object)
         (with-transaction
           (with-confirmed-descructive-changes
             (cl-perec::ensure-exported
              (defpclass* type-test ()
                ((,name :type ,type))))))
-        (with-transaction
-          (let ((object (make-instance 'type-test ,(cl-perec::initarg-symbol name) ,value)))
-            (is (,test ,value (slot-value object ',name)))))
-        (let ((object
-               (with-transaction
-                 (make-instance 'type-test ,(cl-perec::initarg-symbol name) ,value))))
+        (flet ((make ()
+                 (setf object (make-instance 'type-test ,(cl-perec::initarg-symbol name) ,value)))
+               (test ()
+                 (is (,test ,value (slot-value object ',name)))))
+          (with-transaction
+            (make)
+            (test))
+          (without-caching-slot-values
+            (with-transaction
+              (make)
+              (test)))
+          (with-transaction
+            (make))
           (with-transaction
             (revive-object object)
-            (is (,test ,value (slot-value object ',name)))))))))
+            (test)))))))
 
-(defclass* class-type-test ()
+(defclass* standard-class-type-test ()
   ((slot 0)))
+
+(defpclass* persistent-class-type-test ()
+  ((slot 0 :type integer)))
 
 (defstruct structure-type-test
   (slot 0 :type integer))
 
 (deftypetest t/1 t nil)
-(deftypetest t/2 t #f)
-(deftypetest t/3 t #t)
-(deftypetest t/4 t 0)
-(deftypetest t/5 t 0.1)
-(deftypetest t/6 t "something")
-(deftypetest t/7 t 'something)
-(deftypetest t/8 t (make-instance 'class-type-test))
-(deftypetest t/9 t (list nil #f #t 0 0.1 "something" 'something
-                         (make-instance 'class-type-test) (make-structure-type-test) (make-instance 'type-test)))
+(deftypetest t/2 t t)
+(deftypetest t/3 t #f)
+(deftypetest t/4 t #t)
+(deftypetest t/5 t 0)
+(deftypetest t/6 t 0.1)
+(deftypetest t/7 t "something")
+(deftypetest t/8 t 'something)
+(deftypetest t/9 t (make-structure-type-test))
+(deftypetest t/10 t (make-instance 'standard-class-type-test))
+(deftypetest t/11 t (make-instance 'persistent-class-type-test))
+(deftypetest t/12 t (list nil #f #t 0 0.1 "something" 'something
+                          (make-structure-type-test)
+                          (make-instance 'standard-class-type-test)
+                          (make-instance 'persistent-class-type-test)))
 
 (deftypetest boolean/1 boolean #t)
 (deftypetest boolean/2 boolean #f)

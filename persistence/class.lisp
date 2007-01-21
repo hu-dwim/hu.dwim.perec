@@ -163,7 +163,7 @@
   (subtypep type 'persistent-object))
 
 (defun primitive-type-p (type)
-  "Accept types such as: integer, string, boolean, (or unbound integer), (or null string), (or unbound null boolean)"
+  "Accept types such as: integer, string, boolean, (or unbound integer), (or null string), (or unbound null boolean), etc."
   ;; TODO:
   (and (symbolp type)
        (not (subtypep type 'persistent-object))))

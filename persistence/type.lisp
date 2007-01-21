@@ -186,7 +186,7 @@
 
 (deftype* form (make-instance 'sql-character-varying-type)
   string->list-reader
-  list->object-writer)
+  list->string-writer)
 
 ;;;;;;;;;;
 ;;; Member

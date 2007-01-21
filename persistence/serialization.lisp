@@ -11,4 +11,4 @@
   (load-object (oid-of (cl-store::restore-type-object stream)) :skip-existence-check #t))
 
 (defmethod serializable-slots-using-class ((object persistent-object) class)
-  (list (find-slot (class-name class) 'oid)))
+  (list (find-slot class 'oid)))
