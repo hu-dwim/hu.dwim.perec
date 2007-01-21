@@ -57,10 +57,12 @@
    (:file "duplicates")
    (:module :persistence
             :components
-            ((:file "oid")
+            ((:file "common")
+             (:file "oid")
              (:file "table")
              (:file "class")
              (:file "association")
+             (:file "mop")
              (:file "object")
              (:file "transaction")
              (:file "where-clause")

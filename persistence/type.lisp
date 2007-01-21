@@ -1,28 +1,13 @@
+;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;;
+;;; Copyright (c) 2006 by the authors.
+;;;
+;;; See LICENCE for details.
+
 (in-package :cl-perec)
 
 ;;;;;;;;;
 ;;; Types
-
-(defgeneric compute-column-type (type)
-  (:documentation "Returns the RDBMS type for the given type.")
-
-  (:method (type)
-           (error "Cannot map type ~A to RDBMS type" type)))
-
-(defgeneric compute-reader (type)
-  (:documentation "Maps types to reader transformers.")
-
-  (:method (type)
-           (error "Cannot map type ~A to a reader" type)))
-
-(defgeneric compute-writer (type)
-  (:documentation "Maps types to writer transformers.")
-
-  (:method (type)
-           (error "Cannot map type ~A to a writer" type))
-
-  (:method ((type cons))
-           (call-next-method (first type))))
 
 (defmacro deftype* (name sql-type reader writer)
   `(progn

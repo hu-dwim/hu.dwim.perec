@@ -1,6 +1,6 @@
 (in-package :cl-perec)
 
-(defclass* persistent-association ()
+(defcclass* persistent-association ()
   ((primary-association-end
     (compute-as nil)
     :type persistent-association-end-direct-slot-definition)
@@ -16,10 +16,9 @@
                         ((equal cardinality-kinds '(:n :n)) :n-n)
                         (t :1-n))))
     :type symbol
-    :documentation "Valid values are :1-1, :1-n or :n-n according to association end cardinalities."))
-  (:metaclass computed-class))
+    :documentation "Valid values are :1-1, :1-n or :n-n according to association end cardinalities.")))
 
-(defclass* persistent-association-end-slot-definition (persistent-slot-definition)
+(defcclass* persistent-association-end-slot-definition (persistent-slot-definition)
   ((association
     (compute-as nil)
     :type persistent-association)
@@ -44,17 +43,76 @@
    (secondary-association-end
     (compute-as (eq (name-of -self-) (name-of (primary-association-end-of (association-of -self-)))))
     :type boolean
-    :documentation "True iff this end is the secondary association end of its association."))
-  (:metaclass computed-class))
+    :documentation "True iff this end is the secondary association end of its association.")))
 
-(defclass* persistent-association-end-direct-slot-definition
+(defcclass* persistent-association-end-direct-slot-definition
     (persistent-association-end-slot-definition persistent-direct-slot-definition)
-  ()
-  (:metaclass computed-class))
+  ())
 
-(defclass* persistent-association-end-effective-slot-definition
+(defcclass* persistent-association-end-effective-slot-definition
     (persistent-association-end-slot-definition persistent-effective-slot-definition)
   ((id-column
     (compute-as nil)
-    :type sql-column))
-  (:metaclass computed-class))
+    :type sql-column)))
+
+;;;;;;;;;;
+;;; Export
+
+(defmethod export-to-rdbms ((association persistent-association))
+  (awhen (primary-table-of association)
+    (export-to-rdbms it)))
+
+;;;;;;;;;;;
+;;; Compute
+
+#+nil
+(defmethod compute-table ((association-end persistent-association-end-direct-slot-definition))
+  (bind ((association (association-of association-end)))
+    (ecase (association-kind-of association)
+      (:1-1 (when (secondary-association-end-p association-end)
+              (primary-table-of (slot-definition-class association-end))))
+      (:1-n (when (eq (cardinality-kind-of association-end) :1)
+              (primary-table-of (slot-definition-class association-end))))
+      (:m-n (primary-table-of association)))))
+
+#+nil
+(defmethod compute-table ((slot persistent-association-end-effective-slot-definition))
+  (bind ((association (association-of slot)))
+    (primary-table-of
+     (ecase (association-kind-of association)
+       (:1-1 (slot-definition-class (secondary-association-end-of association)))
+       (:1-n (slot-definition-class (find :1 (association-ends-of association) :key #'cardinality-kind-of)))
+       (:m-n association)))))
+
+#+nil
+(defmethod compute-columns ((slot persistent-association-end-effective-slot-definition))
+  (bind ((association (association-of slot)))
+    (ecase (association-kind-of association)
+      (:1-1 (if (primary-1-1-binary-effective-association-end-p slot)
+                (oid-columns-for (primary-table-of (association-element-of slot)))
+                (columns-of (secondary-association-end-of association))))
+      (:1-n (columns-of (find :1 (association-ends-of association) :key #'cardinality-kind-of)))
+      (:m-n (columns-of (most-generic-direct-slot-for slot))))))
+
+#+nil
+(defmethod make-columns-for-slot ((association-end direct-association-end))
+  (bind ((association-kind (association-kind-of (association-of association-end))))
+    (when (or (and (eq association-kind :1-1)
+                   (secondary-association-end-p association-end))
+              (and (eq association-kind :1-n)
+                   (eq (cardinality-kind-of association-end) :1)))
+      (make-columns-for-reference-slot association-end))))
+
+#+nil
+(defmethod make-columns-for-slot ((association-end direct-association-end))
+  (when (eq (association-kind-of (association-of association-end)) :m-n)
+    (make-columns-for-reference-slot association-end)))
+
+#+nil
+(defmethod compute-data-table-slot-p ((slot effective-association-end))
+  (let ((association-kind (association-kind-of (association-of slot)))
+        (cardinality-kind (cardinality-kind-of slot)))
+    (or (and (eq association-kind :1-n)
+             (eq cardinality-kind :1))
+        (and (eq association-kind :1-1)
+             (secondary-association-end-p slot)))))

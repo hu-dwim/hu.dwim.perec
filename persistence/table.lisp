@@ -3,7 +3,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS model classes
 
-(defclass* table ()
+(defcclass* table ()
   ((name
     :type symbol
     :documentation "The name of the RDBMS table.")
@@ -11,10 +11,9 @@
     (compute-as nil)
     :type (list sql-column)
     :documentation "The list of RDBMS columns of this table."))
-  (:documentation "This is an RDBMS table with some related RDBMS definitions. The actual table will be created in the database when export-table is called on it.")
-  (:metaclass computed-class))
+  (:documentation "This is an RDBMS table with some related RDBMS definitions. The actual table will be created in the database when export-table is called on it."))
 
-(defclass* class-primary-table (table)
+(defcclass* class-primary-table (table)
   ((oid-columns
     (compute-as (list (id-column-of -self-) (class-name-column-of -self-)))
     :type (list sql-column)
@@ -24,8 +23,10 @@
     :type sql-column)
    (class-name-column
     (compute-as (find +class-name-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
-    :type sql-column))
-  (:metaclass computed-class))
+    :type sql-column)))
+
+;;;;;;;;;;;;;
+;;; Constants
 
 (defconstant +oid-id-bit-size+ 64)
 
@@ -37,11 +38,17 @@
 (defvar +oid-class-name-sql-type+
   (make-instance 'sql-character-varying-type :size +oid-class-name-maximum-length+))
 
+;;;;;;;;;;
+;;; Export
+
+(defmethod export-to-rdbms ((table table))
+  (update-table (name-of table) (columns-of table)))
+
 ;;;;;;;;;;;;;;;;;;
 ;;; Helper methods
 
 (defun rdbms-name-for (name)
-  ;; TODO: this name replacement is not injective (different lisp names are mapped to the same rdbms name)
+  ;; TODO: this name mapping is not injective (different lisp names are mapped to the same rdbms name)
   (let ((name-as-string (strcat "_" (regex-replace-all "\\*|-|/" (symbol-name name) "_"))))
     (if (symbol-package name)
         (intern name-as-string (symbol-package name))

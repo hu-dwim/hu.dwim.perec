@@ -53,6 +53,8 @@
            #:revive-object))
 
 (defpackage :cl-perec-test
+  (:nicknames :prct)
+
   (:use :common-lisp
         :closer-mop
         :iterate
