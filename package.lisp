@@ -54,7 +54,10 @@
            #:persistent-effective-slot-definition
 
            ;; types
+           #:t
+           #:serialized
            #:unbound
+           #:null
            #:boolean
            #:integer-16
            #:integer-32
@@ -65,8 +68,7 @@
            #:number
            #:string
            #:symbol
-           #:t
-           #:serialized
+           #:symbol*
            #:date
            #:time
            #:timestamp

@@ -47,8 +47,9 @@
                          (class-slots class-1)))))
 
   (:method ((object-1 persistent-object) (object-2 persistent-object))
-           (object-equal-p (cl-perec::oid-of object-1)
-                           (cl-perec::oid-of object-2))))
+           (or (eq object-1 object-2)
+               (object-equal-p (cl-perec::oid-of object-1)
+                               (cl-perec::oid-of object-2)))))
 
 (defmacro deftypetest (name type test-value &key (test 'object-equal-p))
   (with-unique-names (value)
@@ -64,9 +65,10 @@
                  (setf object (make-instance 'type-test ,(cl-perec::initarg-symbol name) ,value)))
                (test ()
                  (is (,test ,value (slot-value object ',name)))))
-          (with-transaction
-            (make)
-            (test))
+          (with-caching-slot-values
+            (with-transaction
+              (make)
+              (test)))
           (without-caching-slot-values
             (with-transaction
               (make)
@@ -101,6 +103,12 @@
                           (make-structure-type-test)
                           (make-instance 'standard-class-type-test)
                           (make-instance 'persistent-class-type-test)))
+
+(deftypetest serialized/1 serialized (list nil #f #t 0 0.1 "something" 'something
+                                           (make-structure-type-test)
+                                           (make-instance 'standard-class-type-test)
+                                           (make-instance 'persistent-class-type-test)))
+(deftypetest serialized/2 (serialized 32) t)
 
 (deftypetest boolean/1 boolean #t)
 (deftypetest boolean/2 boolean #f)
@@ -152,7 +160,7 @@
 
 (deftypetest symbol/1 symbol 'something)
 (deftypetest symbol/2 symbol 'cl-perec-test::something)
-(deftypetest symbol/3 (symbol 20) 'cl-user::something)
+(deftypetest symbol/3 (symbol* 30) 'cl-user::something)
 
 (deftypetest date/1 date (let ((*default-timezone* +utc-zone+)) (parse-timestring "2006-06-06")) :test local-time=)
 

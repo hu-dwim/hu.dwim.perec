@@ -11,7 +11,8 @@
 
 (defmacro deftype* (name sql-type reader writer)
   `(progn
-    (defmethod compute-column-type ((type (eql ',name)))
+    (defmethod compute-column-type ((type (eql ',name)) &optional type-specification)
+      (declare (ignorable type-specification))
       ,sql-type)
 
     (defmethod compute-reader-transformer ((type (eql ',name)))
@@ -97,27 +98,29 @@
   object->number-reader
   identity-writer)
 
-;;;;;;;;;;;;
-;;; String-N
-
-;; TODO: size limited string
-
 ;;;;;;;;;;
 ;;; String
 
-(deftype* string (make-instance 'sql-character-large-object-type)
+(deftype* string (if (consp type-specification)
+                     (make-instance 'sql-character-varying-type :size (second type-specification))
+                     (make-instance 'sql-character-large-object-type))
   identity-reader
   identity-writer)
-
-;;;;;;;;;;;;
-;;; Symbol-N
-
-;; TODO: size limited symbol
 
 ;;;;;;;;;;
 ;;; Symbol
 
 (deftype* symbol (make-instance 'sql-character-large-object-type)
+  string->symbol-reader
+  symbol->string-writer)
+
+(deftype symbol* (&optional size)
+  (declare (ignore size))
+  'symbol)
+
+(deftype* symbol* (if (consp type-specification)
+                      (make-instance 'sql-character-varying-type :size (second type-specification))
+                      (make-instance 'sql-character-large-object-type))
   string->symbol-reader
   symbol->string-writer)
 
@@ -131,10 +134,13 @@
 ;;;;;;;;;;;;;;
 ;;; Serialized
 
-(deftype serialized ()
+(deftype serialized (&optional size)
+  (declare (ignore size))
   t)
 
-(deftype* serialized (make-instance 'sql-character-large-object-type)
+(deftype* serialized (if (consp type-specification)
+                         (make-instance 'sql-character-varying-type :size (second type-specification))
+                         (make-instance 'sql-character-large-object-type))
   base64->object-reader
   object->base64-writer)
 
@@ -181,7 +187,8 @@
 ;;;;;;;;
 ;;; Form
 
-(deftype form ()
+(deftype form (&optional size)
+  (declare (ignore size))
   'list)
 
 (deftype* form (make-instance 'sql-character-varying-type)

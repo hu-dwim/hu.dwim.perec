@@ -164,21 +164,31 @@
 
 (defun primitive-type-p (type)
   "Accept types such as: integer, string, boolean, (or unbound integer), (or null string), (or unbound null boolean), etc."
-  ;; TODO:
-  (and (symbolp type)
-       (not (subtypep type 'persistent-object))))
+  (cond ((listp type)
+         (member (first type) '(serialized string symbol symbol* member form)))
+        ((symbolp type)
+         (not (subtypep type 'persistent-object)))
+        (t #f)))
 
-(defgeneric compute-column-type (type)
+(defgeneric compute-column-type (type &optional type-specification)
   (:documentation "Returns the RDBMS type for the given type.")
 
-  (:method (type)
-           (error "Cannot map type ~A to RDBMS type" type)))
+  (:method (type &optional type-specification)
+           (declare (ignore type-specification))
+           (error "Cannot map type ~A to RDBMS type" type))
+
+  (:method ((type list) &optional type-specification)
+           (declare (ignore type-specification))
+           (compute-column-type (first type) type)))
 
 (defgeneric compute-reader-transformer (type)
   (:documentation "Maps types to reader transformers.")
 
   (:method (type)
-           (error "Cannot map type ~A to a reader" type)))
+           (error "Cannot map type ~A to a reader" type))
+
+  (:method ((type list))
+           (compute-reader-transformer (first type))))
 
 (defgeneric compute-writer-transformer (type)
   (:documentation "Maps types to writer transformers.")
@@ -186,8 +196,8 @@
   (:method (type)
            (error "Cannot map type ~A to a writer" type))
 
-  (:method ((type cons))
-           (call-next-method (first type))))
+  (:method ((type list))
+           (compute-writer-transformer (first type))))
 
 (defgeneric compute-primary-table (class current-table)
   (:method ((class persistent-class) current-table)
