@@ -34,6 +34,29 @@
 (defun symbol-from-canonical-name (name)
   (read-from-string name))
 
+(defun concatenate-symbol (&rest args)
+  "Args are processed as parts of the result symbol with an exception: when a package is encountered then it is stored as the target package at intern."
+  (let* ((package nil)
+         (symbol-name (string-upcase
+                       (with-output-to-string (str)
+                         (dolist (arg args)
+                           (typecase arg
+                             (string (write-string arg str))
+                             (package (setf package arg))
+                             (symbol (unless package
+                                       (setf package (symbol-package arg)))
+                                     (write-string (symbol-name arg) str))
+                             (integer (write-string (princ-to-string arg) str))
+                             (character (write-char arg) str)
+                             (t (error "Cannot convert argument ~S to symbol" arg))))))))
+    (if package
+        (intern symbol-name package)
+        (intern symbol-name))))
+
+(defun initarg-symbol (symbol)
+  "Creates a keyword symbol to be used as slot initarg."
+  (intern (symbol-name symbol) (find-package 'keyword)))
+
 (defmacro delete! (object place)
   `(setf ,place
     (delete ,object ,place)))

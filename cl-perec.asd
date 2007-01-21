@@ -91,7 +91,7 @@
   :components
   ((:module :test
 	    :components
-            ())))
+            ((:file "type")))))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
   (in-package :cl-perec-test)

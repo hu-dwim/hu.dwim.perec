@@ -59,6 +59,7 @@
         :arnesi
         :bind
         :defclass-star
+        :stefil
         :cl-rdbms
         :cl-perec))
 
