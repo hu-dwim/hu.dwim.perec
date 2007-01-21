@@ -17,7 +17,7 @@
   "Same as persistent-p except it never prefetches slot values. Use for debug purposes."
   (if (slot-boundp object 'persistent)
       (persistent-p object)
-      (object-exists-in-database-p object)))
+      (setf (persistent-p object) (object-exists-in-database-p object))))
 
 (defun create-object (oid &optional (persistent 'unknown))
   "Creates an object representing the given oid as its identity. The object will not be associated with the current transaction nor will it be stored in the database. The object may or may not be known to be either persistent or transient."

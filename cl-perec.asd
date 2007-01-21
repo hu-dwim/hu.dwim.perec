@@ -91,7 +91,9 @@
   :components
   ((:module :test
 	    :components
-            ((:file "type")))))
+            ((:file "suite")
+             (:file "type")
+             (:file "reference")))))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
   (in-package :cl-perec-test)
@@ -101,13 +103,15 @@
   (operate 'load-op :cl-perec-test)
   (in-package :cl-perec-test)
   (eval (read-from-string
-         "(setf *database*
-                (make-instance 'postgresql-pg
-                               :transaction-mixin 'cl-perec::transaction-mixin
-                               :connection-specification '(:host \"localhost\"
-                                                           :database \"dwim\"
-                                                           :user-name \"root\"
-                                                           :password \"admin123\")))")))
+         "(progn
+            (setf *database*
+                  (make-instance 'postgresql-pg
+                                 :transaction-mixin 'cl-perec::transaction-mixin
+                                 :connection-specification '(:host \"localhost\"
+                                                             :database \"dwim\"
+                                                             :user-name \"root\"
+                                                             :password \"admin123\")))
+            (test))")))
 
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :cl-perec))))
   nil)
