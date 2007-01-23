@@ -2,10 +2,10 @@
 
 (defsuite* test/association/m-n :in test/association)
 
-(defpclass* user ()
+(defpclass* user-test ()
   ())
    
-(defpclass* role ()
+(defpclass* role-test ()
   ())
 
 (defassociation

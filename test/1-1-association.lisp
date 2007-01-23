@@ -4,10 +4,10 @@
 
 (defsuite* test/association/1-1 :in test/association)
 
-(defpclass* brother ()
+(defpclass* brother-test ()
   ())
    
-(defpclass* sister ()
+(defpclass* sister-test ()
   ())
 
 (defassociation*

@@ -2,10 +2,10 @@
 
 (defsuite* test/association/1-n :in test/association)
 
-(defpclass* parent ()
+(defpclass* parent-test ()
   ())
    
-(defpclass* child ()
+(defpclass* child-test ()
   ())
    
 (defassociation*
