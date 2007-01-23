@@ -129,7 +129,7 @@
   (store-m-n-association-end-set (object-of set) (effective-association-end-of set) new-value))
 
 #+nil
-(defmethod iterate-nodes ((set rdbms-association-end-set-container) fn)
+(defmethod iterate-items ((set rdbms-association-end-set-container) fn)
   (mapc fn (list-of set)))
 
 #+nil

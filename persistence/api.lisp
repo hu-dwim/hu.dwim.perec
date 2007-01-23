@@ -65,6 +65,11 @@
 ;;;;;;;;;;;;;;
 ;;; collection
 
+;;; insert-item, delete-item, empty-p, empty!, search-for-item are inherited from cl-containers
+
+(defgeneric iterate-items (persistent-collection fn)
+  (:documentation "Applies function to each item in the persistent container."))
+
 (defgeneric list-of (persistent-collection)
   (:documentation "Returns a non lazy list of items present in the persistent collection."))
 

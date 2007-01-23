@@ -142,10 +142,11 @@
   #-sbcl(not-yet-implemented))
 
 (defun remove-null-and-unbound-if-or-type (type)
+  "If the type is an or type specification then it removes null and unbound from it. Removes the or type combinator from the result if possible."
   (if (and (listp type)
            (eq 'or (first type)))
       (let ((simplified-type (remove 'null (remove 'unbound type))))
-        (if (>= 2 (length simplified-type))
+        (if (<= (length simplified-type) 2)
             (second simplified-type)
             simplified-type))
       type))
@@ -159,9 +160,11 @@
         (t #f)))
 
 (defun persistent-class-type-p (type)
+  "Returns true for persistent class types."
   (subtypep type 'persistent-object))
 
 (defun set-type-p (type)
+  "Returns true for persistent set types."
   (and (listp type)
        (eq 'set (first type))))
 

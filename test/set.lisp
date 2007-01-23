@@ -16,11 +16,37 @@
       (declare (ignorable referred reference-set))
       ,@body)))
 
-(deftest test/set/initial-value ()
+(deftest test/set/initial-value/1 ()
   (with-transaction-for-reference-set
     (is (eq nil (referred-set-of reference-set)))))
+
+(deftest test/set/initial-value/2 ()
+  (with-transaction
+    (bind ((referred (make-instance 'referred-set-test))
+           (reference-set (make-instance 'reference-set-test :referred-set (list referred))))
+      (is (equal (referred-set-of reference-set) (list referred))))))
 
 (deftest test/set/store-value/1 ()
   (with-transaction-for-reference-set
     (setf (referred-set-of reference-set) (list referred))
     (is (equal (list referred) (referred-set-of reference-set)))))
+
+(deftest test/set/collection/1 ()
+  (with-transaction-for-reference-set
+    (bind ((referred-set (referred-set-of* reference-set)))
+      (insert-item referred-set referred)
+      (is (= 1 (size referred-set)))
+      (is (equal (list referred) (referred-set-of reference-set)))
+      (delete-item referred-set referred)
+      (is (= 0 (size referred-set)))
+      (is (null (referred-set-of reference-set))))))
+
+(deftest test/set/collection/2 ()
+  (with-transaction-for-reference-set
+    (bind ((referred-set (referred-set-of* reference-set))
+           (other-referred (make-instance 'referred-set-test)))
+      (insert-item referred-set referred)
+      (insert-item referred-set other-referred)
+      (delete-item referred-set referred)
+      (is (= 1 (size referred-set)))
+      (is (equal (list other-referred) (list-of referred-set))))))

@@ -78,7 +78,7 @@
            #:member
            #:set
 
-           ;; transaction API can be found in cl-rdbms
+           ;; the whole transaction API is inherited from cl-rdbms
            #:with-database
            #:with-transaction
            #:with-transaction*
@@ -88,7 +88,14 @@
            #:make-transient
            #:revive-object
 
-           ;; collections
+           ;; most of the collection API is inherited from cl-containers 
+           #:insert-item
+           #:delete-item
+           #:size
+           #:empty-p
+           #:empty!
+           #:search-for-item
+           #:iterate-items
            #:list-of
 
            ;; cache

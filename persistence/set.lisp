@@ -60,5 +60,5 @@
 (defmethod (setf list-of) (new-value (set persistent-set-container))
   (store-set (object-of set) (slot-of set) new-value))
 
-(defmethod iterate-nodes ((set persistent-set-container) fn)
+(defmethod iterate-items ((set persistent-set-container) fn)
   (mapc fn (list-of set)))
