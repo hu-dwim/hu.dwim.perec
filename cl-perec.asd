@@ -47,6 +47,7 @@
                :trivial-garbage
                :flexi-streams
                :local-time
+               :parse-number
                :cl-ppcre
                :cl-store
                :cl-containers
@@ -77,29 +78,6 @@
    (:module :query
             :components
             ())))
-
-(in-package :cl-user)
-
-(defvar *test-database-connection-specification* '(:host "localhost" :database "dwim" :user-name "root" :password "admin123"))
-
-(in-package :cl-perec-system)
-
-(defsystem :cl-perec-test
-  :description "Tests for cl-perec."
-  :depends-on (:iterate
-               :arnesi
-               :metabang-bind
-               :defclass-star
-               :local-time
-               :stefil
-               :cl-rdbms
-               :cl-perec)
-  :components
-  ((:module :test
-	    :components
-            ((:file "suite")
-             (:file "type")
-             (:file "reference")))))
 
 (defmethod perform ((op test-op) (system (eql (find-system :cl-perec))))
   (operate 'load-op :cl-perec-test)

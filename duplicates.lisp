@@ -75,3 +75,8 @@
 (defun mappend (function &rest lists)
   "Same as mapcar except the results are appended."  
   (apply 'append (apply 'mapcar function lists)))
+
+(defun not-yet-implemented (&optional (datum "Not yet implemented." datum-p) &rest args)
+  (when datum-p
+    (setf datum (strcat "Not yet implemented: " datum)))
+  (apply #'cerror "Ignore and continue" datum args))

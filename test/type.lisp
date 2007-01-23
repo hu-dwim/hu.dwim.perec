@@ -6,6 +6,8 @@
 
 (in-package :cl-perec-test)
 
+(in-suite test)
+
 (defsuite test/types)
 
 (in-suite test/types)

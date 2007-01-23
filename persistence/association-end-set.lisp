@@ -21,7 +21,7 @@
                   (make-instance 'rdbms-1-n-association-end-set-container
                                  :object object
                                  :effective-association-end association-end))
-                 ((eq (association-kind-of (association-of association-end)) :n-n)
+                 ((eq (association-kind-of (association-of association-end)) :m-n)
                   (make-instance 'rdbms-m-n-association-end-set-container
                                  :object object
                                  :effective-association-end association-end))

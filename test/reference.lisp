@@ -6,29 +6,31 @@
 
 (in-package :cl-perec-test)
 
+(in-suite test)
+
 (defsuite test/reference)
 
-(in-suite test/reference)
+(in-suite* test/reference)
 
 (defpclass* referred ()
   ())
 
-(defpclass* referer ()
+(defpclass* reference-test ()
   ((referred :type referred)))
 
-(defmacro with-transaction-for-referring-entities (&body body)
+(defmacro with-transaction-for-reference (&body body)
   `(with-transaction
     (let ((referred (make-instance 'referred))
           ;; TODO: remove this nil
-          (referer (make-instance 'referer :referred nil)))
-      (declare (ignorable referred referer))
+          (reference (make-instance 'reference-test :referred nil)))
+      (declare (ignorable referred reference))
       ,@body)))
 
 (deftest test/reference/initial-value ()
-  (with-transaction-for-referring-entities
-    (is (eq nil (referred-of referer)))))
+  (with-transaction-for-reference
+    (is (eq nil (referred-of reference)))))
 
 (deftest test/reference/store-value/1 ()
-  (with-transaction-for-referring-entities
-    (setf (referred-of referer) referred)
-    (is (eq referred (referred-of referer)))))
+  (with-transaction-for-reference
+    (setf (referred-of reference) referred)
+    (is (eq referred (referred-of reference)))))

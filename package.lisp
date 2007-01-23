@@ -20,6 +20,7 @@
         :trivial-garbage
         :flexi-streams
         :local-time
+        :parse-number
         :cl-ppcre
         :cl-store
         :cl-containers
@@ -107,6 +108,8 @@
         :stefil
         :cl-rdbms
         :cl-perec)
+
+  (:shadow #:parent)
 
   (:shadowing-import-from :cl-perec
                           #:time

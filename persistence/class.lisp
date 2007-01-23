@@ -163,9 +163,6 @@
             simplified-type))
       type))
 
-(defun persistent-class-type-p (type)
-  (subtypep type 'persistent-object))
-
 (defun primitive-type-p (type)
   "Accept types such as: integer, string, boolean, (or unbound integer), (or null string), (or unbound null boolean), etc."
   (cond ((listp type)
@@ -173,6 +170,13 @@
         ((symbolp type)
          (not (subtypep type 'persistent-object)))
         (t #f)))
+
+(defun persistent-class-type-p (type)
+  (subtypep type 'persistent-object))
+
+(defun set-type-p (type)
+  (and (listp type)
+       (eq 'set (first type))))
 
 (defgeneric compute-column-type (type &optional type-specification)
   (:documentation "Returns the RDBMS type for the given type.")
@@ -313,10 +317,10 @@
 
 (defun make-columns-for-reference-slot (slot)
   (list
-   ;; TODO: add an RDBMS index and we may also need to add an RDBMS unique constraint? 
    (make-instance 'sql-column
                   :name (rdbms-name-for (concatenate-symbol (slot-definition-name slot) "-id"))
-                  :type +oid-id-sql-type+)
+                  :type +oid-id-sql-type+
+                  :constraints (list (make-instance 'sql-unique-constraint)))
    (make-instance 'sql-column
                   :name (rdbms-name-for (concatenate-symbol (slot-definition-name slot) "-class-name"))
                   :type +oid-class-name-sql-type+)))

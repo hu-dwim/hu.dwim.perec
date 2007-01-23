@@ -11,3 +11,4 @@
 
 - eliminate dependencies (cl-containers, cl-ppcre)
 - eliminate duplicates
+- ask ati to support (defsuite x :in y)

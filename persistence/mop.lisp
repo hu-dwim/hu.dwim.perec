@@ -58,27 +58,52 @@
       (call-next-method)))
 
 (defmethod effective-slot-definition-class ((class persistent-class)
-                                            &key &allow-other-keys)
-  (declare (special %persistent%))
-  (if %persistent%
+                                            &key persistent &allow-other-keys)
+  (if persistent
       (find-class 'persistent-effective-slot-definition)
       (call-next-method)))
 
 (defmethod compute-effective-slot-definition ((class persistent-class)
                                               slot-name
                                               direct-slot-definitions)
-  ;; the special %persistent% will be passed down to effective-slot-definition-class
-  ;; there's no standard way to call the default slot option merge algorithm, so we
-  ;; cannot extend it with our own in a nice way
-  ;; the persistent flag is t for an effective slot if any of its direct slots is persistent
-  (let* ((%persistent% (some (lambda (slot)
-                               (typep slot 'persistent-direct-slot-definition))
-                             direct-slot-definitions))
-         (effective-slot-definition (call-next-method)))
-    (declare (special %persistent%))
-    (when %persistent%
-      (setf (direct-slots-of effective-slot-definition) direct-slot-definitions))
-    effective-slot-definition))
+  (bind ((persistent (some (lambda (slot)
+                             (typep slot 'persistent-direct-slot-definition))
+                           direct-slot-definitions)))
+    (if persistent
+        (bind ((standard-initargs (compute-standard-effective-slot-definition-initargs class direct-slot-definitions))
+               (slot-initargs (compute-persistent-effective-slot-definition-initargs class direct-slot-definitions))
+               (initargs (append slot-initargs standard-initargs))
+               (class (apply #'effective-slot-definition-class class :persistent #t initargs)))
+          (apply #'make-instance class :direct-slots direct-slot-definitions initargs))
+        (call-next-method))))
+
+(defun compute-standard-effective-slot-definition-initargs (class direct-slot-definitions)
+  #+sbcl(sb-pcl::compute-effective-slot-definition-initargs class direct-slot-definitions)
+  #-sbcl(not-yet-implemented))
+
+(defun compute-persistent-effective-slot-definition-initargs (class direct-slot-definitions)
+  (iter (for slot-option-name in (delete-duplicates
+                                  (remove-if-not #L(eq (symbol-package !1) (find-package :cl-perec))
+                                                 (mapcan #L(mapcar #'slot-definition-name
+                                                                   (class-slots (class-of !1)))
+                                                         direct-slot-definitions))))
+        (bind ((specific-direct-slot-definitions
+                (remove-if-not #L(find slot-option-name (class-slots (class-of !1)) :key 'slot-definition-name)
+                               direct-slot-definitions)))
+          (appending
+           (compute-persistent-effective-slot-definition-option class
+                                                                (first (sort (copy-list specific-direct-slot-definitions)
+                                                                             #L(subtypep (class-of !1) (class-of !2))))
+                                                                slot-option-name
+                                                                specific-direct-slot-definitions)))))
+
+(defgeneric compute-persistent-effective-slot-definition-option (class direct-slot slot-option-name direct-slot-definitions)
+  (:method (class
+            (direct-slot persistent-direct-slot-definition)
+            slot-option-name
+            direct-slot-definitions)
+           (when (member slot-option-name '(cached prefetched))
+             (some #L(slot-initarg-and-value !1 slot-option-name) direct-slot-definitions))))
 
 (defmethod compute-slots :after ((class persistent-class))
   "Invalidates the cached slot value of persistent-effective-slots whenever the effective slots are recomputed, so that all dependent computed state will be invalidated and recomputed when requested."
@@ -109,56 +134,8 @@
                         ;; add default :persistent t
                         (append direct-slot '(:persistent t))))))
 
-
-
-
-
-
-
-
-
-
-#+nil(defmethod compute-effective-slot-definition ((class persistent-class) name direct-slot-definitions)
-  (bind (((direct-slots non-direct-slots) (partitionx direct-slot-definitions #L(typep !1 'direct-slot) #t))
-         (all-direct-slots-are-direct-slots-p (null non-direct-slots)))
-    ;; we do not support mixing persistent and non persistent slots with inheritance
-    (assert (or (null non-direct-slots) (null direct-slots)))
-    (if all-direct-slots-are-direct-slots-p
-        (bind ((standard-initargs (sb-pcl::compute-effective-slot-definition-initargs class direct-slot-definitions))
-               (slot-initargs (compute-effective-slot-initargs class direct-slot-definitions))
-               (initargs (append slot-initargs standard-initargs))
-               (class (apply #'effective-slot-definition-class class :slot all-direct-slots-are-direct-slots-p initargs)))
-          (prog1-bind effective-slot-definition (apply #'make-instance class initargs)
-            (setf (direct-slots-of effective-slot-definition) direct-slot-definitions)
-            (setf (owner-class-of effective-slot-definition) class)))
-        (call-next-method))))
-
-#+nil(defun compute-effective-slot-initargs (class direct-slot-definitions)
-  (iter (for slot-option-name in (delete-duplicates
-                                  (collect-if #L(eq (symbol-package !1) (find-package :cl-perec))
-                                              (mapcan #L(mapcar #'slot-definition-name
-                                                                (class-slots (class-of !1)))
-                                                      direct-slot-definitions))))
-        (bind ((specific-direct-slot-definitions
-                (collect-if #L(find slot-option-name (class-slots (class-of !1)) :key 'slot-definition-name)
-                            direct-slot-definitions)))
-          (appending
-           (compute-effective-slot-slot-option class
-                                               (first (sort (copy-list specific-direct-slot-definitions)
-                                                            #L(subtypep (class-of !1) (class-of !2))))
-                                               slot-option-name
-                                               specific-direct-slot-definitions)))))
-
-#+nil(defun slot-initarg-and-value (object slot-name)
+(defun slot-initarg-and-value (object slot-name)
   (when (and (slot-boundp object slot-name)
              (slot-value object slot-name))
     (list (initarg-symbol slot-name)
           (slot-value object slot-name))))
-
-#+nil(defmethod compute-effective--slot-option (class
-                                           (direct-slot persistent-direct-slot-definition)
-                                           slot-option-name
-                                           direct-slot-definitions)
-  (if (member slot-option-name '(cached prefetched))
-      (some #L(slot-initarg-and-value !1 slot-option-name) direct-slot-definitions)
-      (call-next-method)))

@@ -44,8 +44,18 @@
 	    :components
             ((:file "suite")
              (:file "type")
-             (:file "reference")))))
+             (:file "reference")
+             (:file "set")
+             (:file "1-1-association")
+             (:file "1-n-association")
+             (:file "m-n-association")))))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
   (in-package :cl-perec-test)
-  (pushnew :debug *features*))
+  (pushnew :debug *features*)
+  (eval (read-from-string
+         "(progn
+            (setf *database*
+                  (make-instance 'postgresql-pg
+                                 :transaction-mixin 'cl-perec::transaction-mixin
+                                 :connection-specification cl-user::*test-database-connection-specification*)))")))

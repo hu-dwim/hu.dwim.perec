@@ -202,3 +202,10 @@
 (deftype* member (make-instance 'sql-integer-type :bit-size 16)
   integer->enumerated-reader
   enumerated->integer-writer)
+
+;;;;;;;
+;;; Set
+
+(deftype set (&optional type)
+  (declare (ignore type))
+  t)

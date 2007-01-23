@@ -7,12 +7,16 @@
   "Converts RDBMS values to slot values."
   (funcall (transformer-of (reader-of slot)) object slot values))
 
-(defun restore-1-n-association-end-set (object slot)
-  "Restores the non lazy list association end value without local side effects from the database."
+(defun restore-set (object slot)
+  "Restores the non lazy list without local side effects from the database."
   (mapcar #L(slot-value-from-rdbms-values object slot !1)
           (select-records (oid-columns-of (table-of slot))
                           (list (name-of (table-of slot)))
                           (funcall (where-clause-of (reader-of slot)) object))))
+
+(defun restore-1-n-association-end-set (object slot)
+  "Restores the non lazy list association end value without local side effects from the database."
+  (restore-set object slot))
 
 (defun restore-m-n-association-end-set (object slot)
   "Restores the non lazy list association end value without local side effects from the database."
@@ -29,8 +33,10 @@
                (eq (cardinality-kind-of slot) :n))
           (restore-1-n-association-end-set object slot))
          ((and (typep slot 'persistent-association-end-effective-slot-definition)
-               (eq (association-kind-of (association-of slot)) :n-n))
+               (eq (association-kind-of (association-of slot)) :m-n))
           (restore-m-n-association-end-set object slot))
+         ((set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type slot)))
+          (restore-set object slot))
          (t
           (bind ((record
                   (first
@@ -83,7 +89,7 @@
   "Convert slot values to RDBMS values."
   (funcall (transformer-of (writer-of slot)) object slot value))
 
-(defun delete-1-n-association-end-set (object slot)
+(defun delete-set (object slot)
   (update-records (name-of (table-of slot))
 		  (columns-of slot)
 		  '(nil nil)
@@ -91,20 +97,30 @@
                    object
                    (name-of (id-column-of (most-generic-other-effective-association-end-for slot))))))
 
-(defun insert-into-1-n-association-end-set (object slot value)
+(defun delete-1-n-association-end-set (object slot)
+  (delete-set object slot))
+
+(defun insert-into-set (object slot value)
   (update-records (name-of (table-of slot))
 		  (columns-of slot)
 		  (rdbms-values-from-slot-value object slot value)
 		  (funcall (where-clause-of (writer-of slot)) object value)))
 
-(defun store-1-n-association-end-set (object slot value)
-  "Stores the non lazy list association end value without local side effects into the database."
-  (delete-1-n-association-end-set object slot)
+(defun insert-into-1-n-association-end-set (object slot value)
+  (insert-into-set object slot value))
+
+(defun store-set (object slot value)
+  "Stores the non lazy list without local side effects into the database."
+  (delete-set object slot)
   (when value
     (update-records (name-of (table-of slot))
                     (columns-of slot)
                     (rdbms-values-from-slot-value object slot value)
                     (list-matcher-writer-where-clause +id-column-name+ object value))))
+
+(defun store-1-n-association-end-set (object slot value)
+  "Stores the non lazy list association end value without local side effects into the database."
+  (store-set object slot value))
 
 (defun delete-m-n-association-end-set (object slot)
   (delete-records (name-of (table-of slot))
@@ -133,7 +149,7 @@
                    (persistent-p object))
            (store-1-n-association-end-set object slot value)))
 	((and (typep slot 'persistent-association-end-effective-slot-definition)
-	      (eq (association-kind-of (association-of slot)) :n-n))
+	      (eq (association-kind-of (association-of slot)) :m-n))
 	 (when (or value
                    (persistent-p object))
            (store-m-n-association-end-set object slot value)))
@@ -145,6 +161,8 @@
              (store-slot other-object other-slot nil))
            (when value
              (store-slot value other-slot object))))
+        ((set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type slot)))
+         (store-set object slot value))
 	(t
          (update-records (name-of (table-of slot))
                          (columns-of slot)

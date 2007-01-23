@@ -13,10 +13,10 @@
    (association-kind
     (compute-as (let ((cardinality-kinds (mapcar 'cardinality-kind-of (association-ends-of -self-))))
                   (cond ((equal cardinality-kinds '(:1 :1)) :1-1)
-                        ((equal cardinality-kinds '(:n :n)) :n-n)
+                        ((equal cardinality-kinds '(:n :n)) :m-n)
                         (t :1-n))))
     :type symbol
-    :documentation "Valid values are :1-1, :1-n or :n-n according to association end cardinalities.")))
+    :documentation "Valid values are :1-1, :1-n or :m-n according to association end cardinalities.")))
 
 (defcclass* persistent-association-end-slot-definition (persistent-slot-definition)
   ((association
@@ -54,6 +54,17 @@
   ((id-column
     (compute-as nil)
     :type sql-column)))
+
+;;;;;;;;;;;;;;;;;;
+;;; defassociation
+
+(defmacro defassociation (name &body body)
+  (declare (ignore name body))
+  nil)
+
+(defmacro defassociation* (name &body body)
+  (declare (ignore name body))
+  nil)
 
 ;;;;;;;;;;
 ;;; Export
@@ -125,7 +136,7 @@
            (ecase (association-kind-of (association-of effective-association-end))
              (:1-1 (compute-1-1-binary-association-end-accessor effective-association-end accessor-type))
              (:1-n (compute-1-n-binary-association-end-accessor effective-association-end accessor-type))
-             (:n-n (compute-m-n-binary-association-end-accessor effective-association-end accessor-type))))
+             (:m-n (compute-m-n-binary-association-end-accessor effective-association-end accessor-type))))
 
   (:method ((effective-slot effective-slot) accessor-type)
            (log.dribble "Calculating RDBMS meta data for effective slot ~A in ~A"
