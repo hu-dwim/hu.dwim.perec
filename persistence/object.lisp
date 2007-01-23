@@ -47,7 +47,7 @@
     :documentation "A list of slots for which the slot values are currently cached in the object in the lisp VM. This list must be updated when database update happens outside of slot access (batch update, trigger, etc."))
   (:default-initargs :persistent #t)
   (:abstract #t)
-  (:documentation "Base class for all persistent classes. If this class is not inherited by a persistent class then it is automatically added to the direct superclasses."))
+  (:documentation "Base class for all persistent classes. If this class is not inherited by a persistent class then it is automatically added to the direct superclasses. There is only one persistent object instance in a transaction with a give oid therefore eq will return true iff the oids are equal."))
 
 (defprint-object (self persistent-object)
   "Prints the oid of the object and whether the object is known to be persistent or transient."
@@ -85,12 +85,6 @@
   (ensure-exported class)
   (when (abstract-p class)
     (error "Cannot make instances of abstract class ~A" class)))
-
-(defgeneric make-persistent (object)
-  (:documentation "Makes an object persistent without making its associated objects persistent."))
-
-(defgeneric make-transient (object)
-  (:documentation "Makes an object transient without making its associated objects transient."))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; Helper methods

@@ -1,20 +1,16 @@
 (in-package :cl-perec-test)
 
-(in-suite test)
+(defsuite* test/set :in test)
 
-(defsuite test/set)
-
-(in-suite test/set)
-
-(defpclass* referred ()
+(defpclass* referred-set-test ()
   ())
 
 (defpclass* reference-set-test ()
-  ((referred-set :type (set referred))))
+  ((referred-set :type (set referred-set-test))))
 
 (defmacro with-transaction-for-reference-set (&body body)
   `(with-transaction
-    (let ((referred (make-instance 'referred))
+    (let ((referred (make-instance 'referred-set-test))
           ;; TODO: remove this nil
           (reference-set (make-instance 'reference-set-test :referred-set nil)))
       (declare (ignorable referred reference-set))

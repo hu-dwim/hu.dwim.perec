@@ -6,6 +6,24 @@
 
 (in-package :cl-perec)
 
+;;;;;;;
+;;; Set
+
+(deftype set (&optional type)
+  (declare (ignore type))
+  t)
+
+(defmethod compute-reader-transformer ((type (eql 'set)) &optional type-specification)
+  (declare (ignorable type-specification))
+  'object-reader)
+
+(defmethod compute-writer-transformer ((type (eql 'set)) &optional type-specification)
+  (declare (ignorable type-specification))
+  'self-writer)
+
+;;;;;;;;;;;;;;;;;;
+;;; Lazy container
+
 (defclass* persistent-set-container (set-container)
   ((object)
    (slot)))
@@ -21,7 +39,7 @@
                     '(nil nil)
                     (funcall (where-clause-of (writer-of slot)) (object-of set) item))))
 
-(defmethod search-for-item ((set persistent-set-container) (item persistent-object))
+(defmethod search-for-item ((set persistent-set-container) (item persistent-object) &key &allow-other-keys)
   (not-yet-implemented))
 
 (defmethod size ((set persistent-set-container))
@@ -44,5 +62,3 @@
 
 (defmethod iterate-nodes ((set persistent-set-container) fn)
   (mapc fn (list-of set)))
-
-

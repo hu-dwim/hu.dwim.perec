@@ -58,7 +58,8 @@
    (:file "duplicates")
    (:module :persistence
             :components
-            ((:file "common")
+            ((:file "api")
+             (:file "common")
              (:file "oid")
              (:file "table")
              (:file "class")
@@ -74,6 +75,7 @@
              (:file "serialization")
              (:file "type")
              (:file "transformer")
+             (:file "set")
              (:file "association-end-set")))
    (:module :query
             :components

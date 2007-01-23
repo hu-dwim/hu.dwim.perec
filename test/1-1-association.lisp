@@ -1,20 +1,8 @@
 (in-package :cl-perec-test)
 
-(in-suite test)
+(defsuite* test/association :in test)
 
-(defsuite test/association)
-
-(in-suite test/association)
-
-(defsuite test/association/1-1)
-
-(in-suite test/association/1-1)
-
-(defmacro with-transaction-for-sister-and-brother (&body body)
-  `(with-transaction
-    (bind ((sister (make-instance 'sister))
-           (brother (make-instance 'brother)))
-      ,@body)))
+(defsuite* test/association/1-1 :in test/association)
 
 (defpclass* brother ()
   ())
@@ -26,6 +14,12 @@
   ((brother :0..1)
    (sister :0..1)))
 
+(defmacro with-transaction-for-sister-and-brother (&body body)
+  `(with-transaction
+    (bind ((sister (make-instance 'sister-test))
+           (brother (make-instance 'brother-test)))
+      ,@body)))
+
 (deftest test/association/1-1/initial-value/1 ()
   (with-transaction-for-sister-and-brother
     (is (eq nil (brother-of sister)))
@@ -33,14 +27,14 @@
 
 (deftest test/association/1-1/initial-value/2 ()
   (with-transaction
-    (bind ((sister (make-instance 'sister))
-           (brother (make-instance 'brother :sister sister)))
+    (bind ((sister (make-instance 'sister-test))
+           (brother (make-instance 'brother-test :sister sister)))
       (is (eq (sister-of brother) sister)))))
 
 (deftest test/association/1-1/initial-value/3 ()
   (with-transaction
-    (bind ((brother (make-instance 'brother))
-           (sister (make-instance 'sister :brother brother)))
+    (bind ((brother (make-instance 'brother-test))
+           (sister (make-instance 'sister-test :brother brother)))
       (is (eq (brother-of sister) brother)))))
 
 (deftest test/association/1-1/store-value/1 ()
@@ -80,8 +74,8 @@
 (deftest test/association/1-1/referential-integrity/5 ()
   (with-transaction-for-sister-and-brother
     (setf (sister-of brother) sister)
-    (setf (sister-of brother) (make-instance 'sister))
+    (setf (sister-of brother) (make-instance 'sister-test))
     (is (eq nil (brother-of sister)))
     (setf (brother-of sister) brother)
-    (setf (brother-of sister) (make-instance 'brother))
+    (setf (brother-of sister) (make-instance 'brother-test))
     (is (eq nil (sister-of brother)))))

@@ -7,8 +7,8 @@
 - rename rdbms-object to persistent-object
 - rename (id-column-name) and friends to +id-column-name+, +class-name-column-name+, +oid-column-names+
 - rename owner-entity-of to slot-definition-class
-- ask ati to fix indention in (defgeneric (:method (a b c) ...))
-
 - eliminate dependencies (cl-containers, cl-ppcre)
 - eliminate duplicates
+
+- ask ati to fix indention in (defgeneric (:method (a b c) ...))
 - ask ati to support (defsuite x :in y)

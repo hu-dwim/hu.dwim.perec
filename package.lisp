@@ -83,11 +83,13 @@
            #:with-transaction
            #:with-transaction*
 
-
            ;; managing persistent objects
            #:make-persistent
            #:make-transient
            #:revive-object
+
+           ;; collections
+           #:list-of
 
            ;; cache
            #:with-caching-slot-values

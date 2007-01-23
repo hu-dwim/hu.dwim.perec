@@ -15,11 +15,13 @@
       (declare (ignorable type-specification))
       ,sql-type)
 
-    (defmethod compute-reader-transformer ((type (eql ',name)))
-      ',reader)
+    (defmethod compute-reader-transformer ((type (eql ',name)) &optional type-specification)
+      (declare (ignorable type-specification))
+      ,reader)
 
-    (defmethod compute-writer-transformer ((type (eql ',name)))
-      ',writer)))
+    (defmethod compute-writer-transformer ((type (eql ',name)) &optional type-specification)
+      (declare (ignorable type-specification))
+      ,writer)))
 
 ;;;;;;;;;;;
 ;;; Unbound
@@ -32,8 +34,8 @@
 ;;; Boolean
 
 (deftype* boolean (make-instance 'sql-boolean-type)
-  object->boolean-reader
-  identity-writer)
+  'object->boolean-reader
+  'identity-writer)
 
 ;;;;;;;;;;;;;;
 ;;; Integer-16
@@ -42,8 +44,8 @@
   `(integer ,(- (expt 2 15)) ,(1- (expt 2 15))))
 
 (deftype* integer-16 (make-instance 'sql-integer-type :bit-size 16)
-  object->integer-reader
-  identity-writer)
+  'object->integer-reader
+  'identity-writer)
 
 ;;;;;;;;;;;;;;
 ;;; Integer-32
@@ -52,8 +54,8 @@
   `(integer ,(- (expt 2 31)) ,(1- (expt 2 31))))
 
 (deftype* integer-32 (make-instance 'sql-integer-type :bit-size 32)
-  object->integer-reader
-  identity-writer)
+  'object->integer-reader
+  'identity-writer)
 
 ;;;;;;;;;;;;;;
 ;;; Integer-64
@@ -62,15 +64,15 @@
   `(integer ,(- (expt 2 63)) ,(1- (expt 2 63))))
 
 (deftype* integer-64 (make-instance 'sql-integer-type :bit-size 64)
-  object->integer-reader
-  identity-writer)
+  'object->integer-reader
+  'identity-writer)
 
 ;;;;;;;;;;;
 ;;; Integer
 
 (deftype* integer (make-instance 'sql-integer-type)
-  object->integer-reader
-  identity-writer)
+  'object->integer-reader
+  'identity-writer)
 
 ;;;;;;;;;;;;
 ;;; Float-32
@@ -79,8 +81,8 @@
   `float)
 
 (deftype* float-32 (make-instance 'sql-float-type :bit-size 32)
-  object->number-reader
-  identity-writer)
+  'object->number-reader
+  'identity-writer)
 
 ;;;;;;;;;;;;
 ;;; Float-64
@@ -89,15 +91,15 @@
   `float)
 
 (deftype* float-64 (make-instance 'sql-float-type :bit-size 64)
-  object->number-reader
-  identity-writer)
+  'object->number-reader
+  'identity-writer)
 
 ;;;;;;;;;;
 ;;; Number
 
 (deftype* number (make-instance 'sql-numeric-type)
-  object->number-reader
-  identity-writer)
+  'object->number-reader
+  'identity-writer)
 
 ;;;;;;;;;;
 ;;; String
@@ -105,15 +107,15 @@
 (deftype* string (if (consp type-specification)
                      (make-instance 'sql-character-varying-type :size (second type-specification))
                      (make-instance 'sql-character-large-object-type))
-  identity-reader
-  identity-writer)
+  'identity-reader
+  'identity-writer)
 
 ;;;;;;;;;;
 ;;; Symbol
 
 (deftype* symbol (make-instance 'sql-character-large-object-type)
-  string->symbol-reader
-  symbol->string-writer)
+  'string->symbol-reader
+  'symbol->string-writer)
 
 (deftype symbol* (&optional size)
   (declare (ignore size))
@@ -122,15 +124,15 @@
 (deftype* symbol* (if (consp type-specification)
                       (make-instance 'sql-character-varying-type :size (second type-specification))
                       (make-instance 'sql-character-large-object-type))
-  string->symbol-reader
-  symbol->string-writer)
+  'string->symbol-reader
+  'symbol->string-writer)
 
 ;;;;;
 ;;; t
 
 (deftype* t (make-instance 'sql-character-large-object-type)
-  base64->object-reader
-  object->base64-writer)
+  'base64->object-reader
+  'object->base64-writer)
 
 ;;;;;;;;;;;;;;
 ;;; Serialized
@@ -142,8 +144,8 @@
 (deftype* serialized (if (consp type-specification)
                          (make-instance 'sql-character-varying-type :size (second type-specification))
                          (make-instance 'sql-character-large-object-type))
-  base64->object-reader
-  object->base64-writer)
+  'base64->object-reader
+  'object->base64-writer)
 
 ;;;;;;;;
 ;;; Date
@@ -152,8 +154,8 @@
   'local-time)
 
 (deftype* date (make-instance 'sql-date-type)
-  integer->local-time-reader
-  local-time->string-writer)
+  'integer->local-time-reader
+  'local-time->string-writer)
 
 ;;;;;;;;
 ;;; Time
@@ -162,8 +164,8 @@
   'local-time)
 
 (deftype* time (make-instance 'sql-time-type)
-  string->local-time-reader
-  local-time->string-writer)
+  'string->local-time-reader
+  'local-time->string-writer)
 
 ;;;;;;;;;;;;;
 ;;; Timestamp
@@ -172,8 +174,8 @@
   'local-time)
 
 (deftype* timestamp (make-instance 'sql-timestamp-type)
-  integer->local-time-reader
-  local-time->string-writer)
+  'integer->local-time-reader
+  'local-time->string-writer)
 
 ;;;;;;;;;;;;
 ;;; Duration
@@ -182,8 +184,8 @@
   'string)
 
 (deftype* duration (make-instance 'sql-character-varying-type :size 32)
-  identity-reader
-  identity-writer)
+  'identity-reader
+  'identity-writer)
 
 ;;;;;;;;
 ;;; Form
@@ -193,19 +195,12 @@
   'list)
 
 (deftype* form (make-instance 'sql-character-varying-type)
-  string->list-reader
-  list->string-writer)
+  'string->list-reader
+  'list->string-writer)
 
 ;;;;;;;;;;
 ;;; Member
 
 (deftype* member (make-instance 'sql-integer-type :bit-size 16)
-  integer->enumerated-reader
-  enumerated->integer-writer)
-
-;;;;;;;
-;;; Set
-
-(deftype set (&optional type)
-  (declare (ignore type))
-  t)
+  (integer->member-reader type-specification)
+  (member->integer-writer type-specification))

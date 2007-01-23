@@ -12,22 +12,6 @@
 (defparameter *propagate-cache-changes* #t
   "True means setting the slot of an object in the cache will propagate changes to other objects in the cache according to association end slot integrity rules.")
 
-(defmacro with-caching-slot-values (&body body)
-  `(bind ((*cache-slot-values* #t))
-    ,@body))
-
-(defmacro without-caching-slot-values (&body body)
-  `(bind ((*cache-slot-values* #f))
-    ,@body))
-
-(defmacro with-bypassing-database-access (&body body)
-  `(bind ((*bypass-database-access* #t))
-    ,@body))
-
-(defmacro without-bypassing-database-access (&body body)
-  `(bind ((*bypass-database-access* #f))
-    ,@body))
-
 (defgeneric invalidate-all-cached-slots (object)
   (:documentation "Invalidates all cached slot values from the object.")
 

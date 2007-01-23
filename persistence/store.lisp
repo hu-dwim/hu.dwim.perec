@@ -5,7 +5,7 @@
 
 (defun slot-value-from-rdbms-values (object slot values)
   "Converts RDBMS values to slot values."
-  (funcall (transformer-of (reader-of slot)) object slot values))
+  (funcall (transformer-of (reader-of slot)) object values))
 
 (defun restore-set (object slot)
   "Restores the non lazy list without local side effects from the database."
@@ -69,10 +69,7 @@
         (values
          (iter (for i first 0 then (+ i (length (columns-of slot))))
                (for slot in slots)
-               (collect (slot-value-from-rdbms-values
-                         object
-                         slot
-                         (nthcdr i record))))
+               (collect (slot-value-from-rdbms-values object slot (nthcdr i record))))
          slots)))))
 
 (defun restore-all-slots (object)
@@ -87,15 +84,13 @@
 
 (defun rdbms-values-from-slot-value (object slot value)
   "Convert slot values to RDBMS values."
-  (funcall (transformer-of (writer-of slot)) object slot value))
+  (funcall (transformer-of (writer-of slot)) object value))
 
 (defun delete-set (object slot)
   (update-records (name-of (table-of slot))
 		  (columns-of slot)
 		  '(nil nil)
-		  (oid-matcher-where-clause
-                   object
-                   (name-of (id-column-of (most-generic-other-effective-association-end-for slot))))))
+		  (oid-matcher-where-clause object (first (columns-of slot)))))
 
 (defun delete-1-n-association-end-set (object slot)
   (delete-set object slot))

@@ -8,7 +8,7 @@
 
 (defclass* object-cache ()
   ((objects
-    (make-hash-table :test 'equal)
+    (make-hash-table :test #'eq)
     :type hash-table
     :documentation "A map from oid values to persistent objects used to cache object identities and slot values during a transaction.")
    (created-objects
@@ -33,21 +33,21 @@
 
 (defun cached-object-of (oid &optional (object-cache (current-object-cache)))
   "Returns the object for the given oid from the current transaction's object cachce."
-  (gethash oid (objects-of object-cache)))
+  (gethash (oid-id oid) (objects-of object-cache)))
 
 (defun (setf cached-object-of) (object oid &optional (object-cache (current-object-cache)))
   "Puts an object with the given oid into the current transaction's object cache and attaches it to the current transaction. The object must not be present in the cache before."
   (assert (not (object-in-transaction-p object)))
   (assert (not (cached-object-of oid object-cache)))
   (setf (transaction-of object) *transaction*)
-  (setf (gethash oid (objects-of object-cache)) object))
+  (setf (gethash (oid-id oid) (objects-of object-cache)) object))
 
 (defun remove-cached-object (object &optional (object-cache (current-object-cache)))
   "Removes an object from the current transaction's object cache and detaches it from the transaction."
   (assert (object-in-transaction-p object))
   (assert (cached-object-of (oid-of object) object-cache))
   (setf (transaction-of object) nil)
-  (remhash (oid-of object) (objects-of object-cache)))
+  (remhash (oid-id (oid-of object)) (objects-of object-cache)))
 
 (defun map-cached-objects (function &optional (object-cache (current-object-cache)))
   "Maps the given one parameter function to all objects present in the cache."

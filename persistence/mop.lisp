@@ -16,32 +16,12 @@
   (apply #'call-next-method slot slot-names args))
 
 ;; TODO: inject association ends
-(defmethod initialize-instance :around ((class persistent-class)
-                                        &rest args
-                                        &key name direct-slots direct-superclasses
-                                        &allow-other-keys)
-  (let ((result (apply #'call-next-method
-                       class
-                       :direct-slots (process-direct-slot-definitions direct-slots)
-                       :direct-superclasses (ensure-persistent-object-class name direct-superclasses)
-                       #+lispworks :optimize-slot-access #+lispworks nil 
-                       (remove-keywords args :direct-slots))))
-    (invalidate-computed-slot class 'persistent-direct-slots)
-    result))
+(defmethod initialize-instance :around ((class persistent-class) &rest args)
+  (apply #'shared-ininitialize-persistent-class class #'call-next-method args))
 
 ;; TODO: inject association ends
-(defmethod reinitialize-instance :around ((class persistent-class)
-                                          &rest args
-                                          &key direct-slots direct-superclasses
-                                          &allow-other-keys)
-  (let ((result (apply #'call-next-method
-                       class
-                       :direct-slots (process-direct-slot-definitions direct-slots)
-                       :direct-superclasses (ensure-persistent-object-class (class-name class) direct-superclasses)
-                       #+lispworks :optimize-slot-access #+lispworks nil
-                       (remove-keywords args :direct-slots))))
-    (invalidate-computed-slot class 'persistent-direct-slots)
-    result))
+(defmethod reinitialize-instance :around ((class persistent-class) &rest args)
+  (apply #'shared-ininitialize-persistent-class class #'call-next-method :name (class-name class) args))
 
 (defmethod validate-superclass ((class standard-class)
                                 (superclass persistent-class))
@@ -133,6 +113,29 @@
                         (remove-keywords direct-slot :persistent)
                         ;; add default :persistent t
                         (append direct-slot '(:persistent t))))))
+
+;; this is not the real shared-initialize because portable programs are not allowed to override that
+(defun shared-ininitialize-persistent-class (class call-next-method &rest args
+                                                   &key name direct-slots direct-superclasses &allow-other-keys)
+  (mapc #L(delete! class (depends-on-of !1))
+        (when (slot-boundp class 'depends-on-me)
+          (depends-on-me-of class)))
+  (setf (depends-on-me-of class) nil)
+  ;; call initialize-instance or reinitialize-instance next method
+  (let ((result (apply call-next-method
+                       class
+                       :direct-slots (process-direct-slot-definitions direct-slots)
+                       :direct-superclasses (ensure-persistent-object-class name direct-superclasses)
+                       #+lispworks :optimize-slot-access #+lispworks nil 
+                       (remove-keywords args :direct-slots))))
+    (invalidate-computed-slot class 'persistent-direct-slots)
+    result)
+  ;; update dependencies
+  (mapc #L(let ((type (remove-null-and-unbound-if-or-type (slot-definition-type !1))))
+            (when (set-type-p type)
+              (pushnew class (depends-on-of (find-class (second type))))
+              (pushnew (find-class (second type)) (depends-on-me-of class))))
+        (class-direct-slots class)))
 
 (defun slot-initarg-and-value (object slot-name)
   (when (and (slot-boundp object slot-name)

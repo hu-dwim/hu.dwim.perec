@@ -6,6 +6,15 @@
 
 (in-package :cl-perec-test)
 
-(defsuite test)
+(defsuite* test)
 
-(in-suite test)
+(defun import-cl-perec-symbols ()
+  (import '(cl-perec::primary-table-of
+            cl-perec::primary-tables-of
+            cl-perec::data-tables-of
+            cl-perec::prefetched-p
+            cl-perec::cached-p
+            cl-perec::table-of
+            cl-perec::columns-of
+            cl-perec::depends-on-of
+            cl-perec::depends-on-me-of)))

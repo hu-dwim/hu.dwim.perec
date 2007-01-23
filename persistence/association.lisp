@@ -55,17 +55,6 @@
     (compute-as nil)
     :type sql-column)))
 
-;;;;;;;;;;;;;;;;;;
-;;; defassociation
-
-(defmacro defassociation (name &body body)
-  (declare (ignore name body))
-  nil)
-
-(defmacro defassociation* (name &body body)
-  (declare (ignore name body))
-  nil)
-
 ;;;;;;;;;;
 ;;; Export
 
