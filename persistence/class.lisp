@@ -191,7 +191,11 @@
            (declare (ignore type-specification))
            (if (subtypep type 'persistent-object)
                'object-reader
-               (call-next-method))))
+               (call-next-method)))
+
+  (:method ((type (eql 'or)) &optional type-specification)
+           (let ((type (remove-null-and-unbound-if-or-type type-specification)))
+             (compute-writer-transformer type))))
 
 ;; TODO: maybe eliminate object parameter too
 (defgeneric compute-writer-transformer (type &optional type-specification)
@@ -209,7 +213,11 @@
            (declare (ignore type-specification))
            (if (persistent-class-type-p type)
                'object-writer
-               (call-next-method))))
+               (call-next-method)))
+
+  (:method ((type (eql 'or)) &optional type-specification)
+           (let ((type (remove-null-and-unbound-if-or-type type-specification)))
+             (compute-writer-transformer type))))
 
 (defgeneric compute-reader-where-clause (slot type &optional type-specification)
   (:documentation "Maps a type to a one parameter lambda which will be called with the object")
@@ -222,14 +230,14 @@
            (declare (ignore type-specification))
            (compute-reader-where-clause slot (first type) type))
 
+  (:method ((slot persistent-effective-slot-definition) (type symbol) &optional type-specification)
+           (declare (ignore slot type type-specification))
+           'oid-matcher-reader-where-clause)
+
   (:method ((slot persistent-effective-slot-definition) (type (eql 'set)) &optional type-specification)
            (declare (ignore type-specification))
            (make-association-end-matcher-reader-where-clause
-            (rdbms::name-of (first (columns-of slot)))))
-
-  (:method ((slot persistent-effective-slot-definition) (type symbol) &optional type-specification)
-           (declare (ignore slot type type-specification))
-           'oid-matcher-reader-where-clause))
+            (rdbms::name-of (first (columns-of slot))))))
 
 (defgeneric compute-writer-where-clause (slot type &optional type-specification)
   (:method (slot type &optional type-specification)
@@ -240,13 +248,13 @@
            (declare (ignore type-specification))
            (compute-writer-where-clause slot (first type) type))
 
-  (:method ((slot persistent-effective-slot-definition) (type (eql 'set)) &optional type-specification)
-           (declare (ignore slot type-specification))
-           'value-matcher-writer-where-clause)
-
   (:method ((slot persistent-effective-slot-definition) (type symbol) &optional type-specification)
            (declare (ignore slot type type-specification))
-           'oid-matcher-writer-where-clause))
+           'oid-matcher-writer-where-clause)
+
+  (:method ((slot persistent-effective-slot-definition) (type (eql 'set)) &optional type-specification)
+           (declare (ignore slot type-specification))
+           'value-matcher-writer-where-clause))
 
 (defgeneric compute-reader (slot)
   (:method ((slot persistent-effective-slot-definition))

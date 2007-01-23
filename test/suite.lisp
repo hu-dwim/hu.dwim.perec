@@ -18,3 +18,10 @@
             cl-perec::columns-of
             cl-perec::depends-on-of
             cl-perec::depends-on-me-of)))
+
+(defun drop-all-test-tables ()
+  (with-transaction
+    (mapc #L(drop-table !1)
+          (remove-if-not #L(and (starts-with !1 "_")
+                                (ends-with !1 "test"))
+                         (list-tables)))))
