@@ -46,7 +46,8 @@
     (compute-as (export-to-rdbms -self-))
     :reader ensure-exported
     :type persistent-class
-    :documentation "The persistent class must be exported before use. This will automatically happen not later than making, reviving or querying the first instance of it.")))
+    :documentation "The persistent class must be exported before use. This will automatically happen not later than making, reviving or querying the first instance of it."))
+  (:documenation "Persistent class is a class meta object for classes. Standard defclass forms may be used to define persistent classes. A persistent class will have persistent slots unless marked with :persistent #f. A persistent slot should have type specification to be efficient both in storage and speed. The special type unbound must be used to mark slots which might be unbound."))
 
 (defcclass* persistent-slot-definition (standard-slot-definition)
   ((table
@@ -62,7 +63,8 @@
    (cached
     :type boolean
     :computed-in compute-as
-    :documentation "All prefetched slots are cached slots but the opposite may not be true. When a cached slot is loaded it's value will be stored in the CLOS object for fast subsequent read operations. Also whenever a cached slot is set the value will be remembered. The default cached slot semantics can be overriden on a per direct slot basis.")))
+    :documentation "All prefetched slots are cached slots but the opposite may not be true. When a cached slot is loaded it's value will be stored in the CLOS object for fast subsequent read operations. Also whenever a cached slot is set the value will be remembered. The default cached slot semantics can be overriden on a per direct slot basis."))
+  (:documenation "Base class for both persistent direct and effective slot definitions."))
 
 (defclass* accessor ()
   ((where-clause
@@ -79,7 +81,8 @@
     :documentation "A table where this direct slot has its columns if any. If the slot does not have a type specification then this is nil.")
    (columns
     :type (or null list)
-    :documentation "A list of RDBMS columns created for this direct slot or nil. If the slot does not have a type specification then this is nil.")))
+    :documentation "A list of RDBMS columns created for this direct slot or nil. If the slot does not have a type specification then this is nil."))
+  (:documenation "Class for persistent direct slot definitions."))
 
 (defcclass* persistent-effective-slot-definition
     (persistent-slot-definition standard-effective-slot-definition)
@@ -110,7 +113,8 @@
    (cached
     (compute-as (or (prefetched-p -self-)
                     (persistent-class-type-p (remove-null-and-unbound-if-or-type (slot-definition-type -self-)))))
-    :documentation "The cached option is inherited among direct slots according to the class precedence list. If no direct slot has cached specification then the default behaviour is to cache prefetched slots and single object references.")))
+    :documentation "The cached option is inherited among direct slots according to the class precedence list. If no direct slot has cached specification then the default behaviour is to cache prefetched slots and single object references."))
+  (:documenation "Class for persistent effective slot definitions."))
 
 ;;;;;;;;;;;;;
 ;;; defpclass

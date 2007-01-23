@@ -7,7 +7,7 @@
 (in-package :cl-user)
 
 (defpackage :cl-perec
-    (:nicknames :prc)
+  (:nicknames :prc)
 
   (:use :common-lisp
         :closer-mop

@@ -24,6 +24,7 @@
 ;;;;;;;;;;;
 ;;; Unbound
 
+;; this type must be used to mark slots which might be unbound (e.g. (or unbound null integer))
 (deftype unbound ()
   nil)
 

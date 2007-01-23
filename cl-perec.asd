@@ -78,6 +78,12 @@
             :components
             ())))
 
+(in-package :cl-user)
+
+(defvar *test-database-connection-specification* '(:host "localhost" :database "dwim" :user-name "root" :password "admin123"))
+
+(in-package :cl-perec-system)
+
 (defsystem :cl-perec-test
   :description "Tests for cl-perec."
   :depends-on (:iterate
@@ -95,10 +101,6 @@
              (:file "type")
              (:file "reference")))))
 
-(defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
-  (in-package :cl-perec-test)
-  (pushnew :debug *features*))
-
 (defmethod perform ((op test-op) (system (eql (find-system :cl-perec))))
   (operate 'load-op :cl-perec-test)
   (in-package :cl-perec-test)
@@ -107,10 +109,7 @@
             (setf *database*
                   (make-instance 'postgresql-pg
                                  :transaction-mixin 'cl-perec::transaction-mixin
-                                 :connection-specification '(:host \"localhost\"
-                                                             :database \"dwim\"
-                                                             :user-name \"root\"
-                                                             :password \"admin123\")))
+                                 :connection-specification cl-user::*test-database-connection-specification*))
             (test))")))
 
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :cl-perec))))
