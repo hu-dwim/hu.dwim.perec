@@ -349,7 +349,7 @@
                     (make-columns-for-reference-slot slot))
                    ((primitive-type-p it)
                     (list
-                     (make-instance 'sql-column
+                     (make-instance 'column
                                     :name (rdbms-name-for (slot-definition-name slot))
                                     :type (compute-column-type it))))
                    (t
@@ -361,21 +361,27 @@
 (defun make-oid-columns ()
   "Creates a list of RDBMS columns that will be used to store the oid data of the objects in this table."
   (list
-   (make-instance 'sql-column
+   (make-instance 'column
                   :name +id-column-name+
                   :type +oid-id-sql-type+
                   :constraints (list (make-instance 'sql-not-null-constraint)
                                      (make-instance 'sql-primary-key-constraint)))
-   (make-instance 'sql-column
+   (make-instance 'column
                   :name +class-name-column-name+
                   :type +oid-class-name-sql-type+)))
 
 (defun make-columns-for-reference-slot (slot)
-  (list
-   (make-instance 'sql-column
-                  :name (rdbms-name-for (concatenate-symbol (slot-definition-name slot) "-id"))
-                  :type +oid-id-sql-type+
-                  :constraints (list (make-instance 'sql-unique-constraint)))
-   (make-instance 'sql-column
-                  :name (rdbms-name-for (concatenate-symbol (slot-definition-name slot) "-class-name"))
-                  :type +oid-class-name-sql-type+)))
+  (bind ((slot-name (slot-definition-name slot))
+         (id-column-name (rdbms-name-for (concatenate-symbol slot-name "-id")))
+         (id-index-name (rdbms-name-for (concatenate-symbol id-column-name "-on-"
+                                                            (class-name (slot-definition-class slot))
+                                                            "-idx")))
+         (class-name-column-name (rdbms-name-for (concatenate-symbol slot-name "-class-name"))))
+    (list
+     (make-instance 'column
+                    :name id-column-name
+                    :type +oid-id-sql-type+
+                    :index (make-instance 'sql-index :name id-index-name))
+     (make-instance 'column
+                    :name class-name-column-name
+                    :type +oid-class-name-sql-type+))))

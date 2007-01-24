@@ -1,5 +1,9 @@
 (in-package :cl-perec)
 
+;; TODO: make it possible to switch svuc to return lazy collections by default
+
+;; TODO: see whether destructure-type can be used
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Caching slot values in objects
 

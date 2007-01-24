@@ -3,6 +3,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS model classes
 
+;; TODO: use sql-table
 (defcclass* table ()
   ((name
     :type symbol
@@ -12,6 +13,12 @@
     :type (list sql-column)
     :documentation "The list of RDBMS columns of this table. This list uses the sql column type of cl-rdbms."))
   (:documentation "This is an RDBMS table with some related RDBMS definitions. The actual table will be created in the database when export-to-rdbms is called on it."))
+
+(defcclass* column (sql-column)
+  ((index
+    (compute-as nil)
+    :type (or null sql-index)
+    :documentation "An RDBMS index on this column.")))
 
 (defcclass* class-primary-table (table)
   ((oid-columns
@@ -50,7 +57,10 @@
 
 (defmethod export-to-rdbms ((table table))
   "Updates the RDBMS table definition according to the current state of the given table. This might add, alter or drop existing columns, but all destructive changes are required to signal a continuable condition."
-  (update-table (name-of table) (columns-of table)))
+  (update-table (name-of table) (columns-of table))
+  (mapc #L(awhen (index-of !1)
+            (update-index (rdbms::name-of it) (name-of table) (list !1)))
+        (columns-of table)))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; Helper methods
