@@ -1,5 +1,7 @@
 (in-package :cl-perec)
 
+;; TODO: ensure that 1-1 and 1-n associations store their foreign keys in the primary table of the primary association end
+
 (defcclass* persistent-association ()
   ((primary-association-end
     (compute-as nil)

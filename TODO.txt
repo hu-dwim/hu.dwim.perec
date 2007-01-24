@@ -7,6 +7,7 @@
 - rename rdbms-object to persistent-object
 - rename (id-column-name) and friends to +id-column-name+, +class-name-column-name+, +oid-column-names+
 - rename owner-entity-of to slot-definition-class
+- rename enumerated to member type
 - eliminate dependencies (cl-containers, cl-ppcre)
 - eliminate duplicates
 

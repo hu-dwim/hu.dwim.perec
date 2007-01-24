@@ -58,7 +58,7 @@
            #:persistent-direct-slot-definition
            #:persistent-effective-slot-definition
 
-           ;; types
+           ;; primitve types
            #:t
            #:serialized
            #:unbound
@@ -70,6 +70,7 @@
            #:integer
            #:float-32
            #:float-64
+           #:float
            #:number
            #:string
            #:symbol
@@ -81,6 +82,8 @@
            #:form
            #:member
            #:set
+           #:or
+           ;; all persistent-classes are valid types
 
            ;; the whole transaction API is inherited from cl-rdbms
            #:with-database

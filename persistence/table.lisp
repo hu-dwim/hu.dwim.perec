@@ -3,7 +3,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS model classes
 
-;; TODO: use sql-table
+;; TODO: use sql-table when available
 (defcclass* table ()
   ((name
     :type symbol
@@ -12,13 +12,14 @@
     (compute-as nil)
     :type (list sql-column)
     :documentation "The list of RDBMS columns of this table. This list uses the sql column type of cl-rdbms."))
-  (:documentation "This is an RDBMS table with some related RDBMS definitions. The actual table will be created in the database when export-to-rdbms is called on it."))
+  (:documentation "An RDBMS table with some related RDBMS definitions. The actual table will be created in the database when export-to-rdbms is called on it."))
 
 (defcclass* column (sql-column)
   ((index
     (compute-as nil)
     :type (or null sql-index)
-    :documentation "An RDBMS index on this column.")))
+    :documentation "An RDBMS index on this column."))
+  (:documentation "An RDBMS column with some related RDBMS specific definitions."))
 
 (defcclass* class-primary-table (table)
   ((oid-columns
