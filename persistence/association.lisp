@@ -33,11 +33,7 @@
    (primary-table
     (compute-as (compute-primary-table -self- -current-value-))
     :type table
-    :documentation  "The table which holds the oids of the associated entities.")
-   (ensure-exported
-    (compute-as (export-to-rdbms -self-))
-    :reader ensure-exported
-    :documentation "The persistent association must be exported before use. This will automatically happen not later than making, reviving or querying the first instance related to it.")))
+    :documentation  "The table which holds the oids of the associated entities.")))
 
 (defcclass* persistent-association-end-slot-definition (persistent-slot-definition)
   ((association
@@ -97,6 +93,7 @@
 ;;; Export
 
 (defmethod export-to-rdbms ((association persistent-association))
+  (mapc #'ensure-exported (remove-if #'null (mapcar #'primary-table-of (associated-classes-of association))))
   (awhen (primary-table-of association)
     (export-to-rdbms it)))
 

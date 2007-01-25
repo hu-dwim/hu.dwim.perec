@@ -42,10 +42,6 @@
     (compute-as (remove-if #'prefetched-p (persistent-effective-slots-of -self-)))
     :type (list effective-slot)
     :documentation "The list of effective slots which will be loaded and stored lazily and separately from other slots.")
-   (ensure-exported
-    (compute-as (export-to-rdbms -self-))
-    :reader ensure-exported
-    :documentation "The persistent class must be exported before use. This will automatically happen not later than making, reviving or querying the first instance of it.")
    (depends-on
     (compute-as nil)
     :type (list persistent-class)
@@ -352,9 +348,8 @@
 (defun make-columns-for-reference-slot (slot &optional (infix ""))
   (bind ((slot-name (slot-definition-name slot))
          (id-column-name (rdbms-name-for (concatenate-symbol slot-name infix "-id")))
-         (id-index-name (rdbms-name-for (concatenate-symbol id-column-name "-on-"
-                                                            (class-name (slot-definition-class slot))
-                                                            "-idx")))
+         (id-index-name (rdbms-name-for (concatenate-symbol slot-name infix "-id-on-"
+                                                            (class-name (slot-definition-class slot)) "-idx")))
          (class-name-column-name (rdbms-name-for (concatenate-symbol slot-name infix "-class-name"))))
     (list
      (make-instance 'column
