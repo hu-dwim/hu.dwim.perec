@@ -41,7 +41,7 @@
     (setf (roles-of user) (list role))
     (bind ((users (users-of* role)))
       (is (= 1 (size users)))
-      (is (eq user (first-item users))))))
+      (is (eq user (first (list-of users)))))))
 
 (deftest test/association/m-n/collection/1 ()
   (with-user-and-role-transaction

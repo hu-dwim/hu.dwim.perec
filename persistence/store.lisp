@@ -19,10 +19,11 @@
 
 (defun restore-m-n-association-end-set (object slot)
   "Restores the non lazy list association end value without local side effects from the database."
-  (mapcar #L(object-reader !1)
-          (select-records (columns-of slot)
-                          (list (name-of (table-of slot)))
-                          (id-column-matcher-where-clause object (id-column-of slot)))))
+  (bind ((other-slot (other-association-end-of slot)))
+    (mapcar #L(object-reader !1)
+            (select-records (columns-of slot)
+                            (list (name-of (table-of slot)))
+                            (id-column-matcher-where-clause object (id-column-of other-slot))))))
 
 (defun restore-slot (object slot)
   "Restores a single slot without local side effects from the database."
@@ -113,7 +114,7 @@
 (defun insert-into-m-n-association-end-set (object slot value)
   (bind ((other-slot (other-association-end-of slot)))
     (insert-records (name-of (table-of slot))
-                    (append (columns-of other-slot) (columns-of slot))
+                    (append (columns-of slot) (columns-of other-slot))
                     (append (object-writer value) (object-writer object)))))
 
 (defun store-m-n-association-end-set (object slot value)

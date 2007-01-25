@@ -154,8 +154,12 @@
 ;;; Export
 
 (defmethod export-to-rdbms ((class persistent-class))
-  (mapc #'ensure-exported (remove-if-not #L(typep !1 'persistent-class) (cdr (class-precedence-list class))))
-  (mapc #'ensure-exported (depends-on-of class))
+  (mapc #'ensure-exported
+        (remove-if-not #L(typep !1 'persistent-class)
+                       (cdr (class-precedence-list class))))
+  (mapc #'ensure-exported
+        (remove-if-not #L(typep !1 'persistent-association)
+                       (depends-on-of class)))
   (awhen (primary-table-of class)
     (export-to-rdbms it)))
 
@@ -319,9 +323,13 @@
   (:method ((slot persistent-direct-slot-definition))
            (awhen (remove-null-and-unbound-if-or-type (slot-definition-type slot))
              (cond ((set-type-p it)
-                    (make-columns-for-reference-slot slot (class-name (slot-definition-class slot))))
+                    (make-columns-for-reference-slot (class-name (slot-definition-class slot))
+                                                     (strcat (slot-definition-name slot)
+                                                             "-for-"
+                                                             (class-name (slot-definition-class slot)))))
                    ((persistent-class-type-p it)
-                    (make-columns-for-reference-slot slot))
+                    (make-columns-for-reference-slot (class-name (slot-definition-class slot))
+                                                     (slot-definition-name slot)))
                    ((primitive-type-p it)
                     (list
                      (make-instance 'column
@@ -345,12 +353,10 @@
                   :name +class-name-column-name+
                   :type +oid-class-name-sql-type+)))
 
-(defun make-columns-for-reference-slot (slot &optional (infix ""))
-  (bind ((slot-name (slot-definition-name slot))
-         (id-column-name (rdbms-name-for (concatenate-symbol slot-name infix "-id")))
-         (id-index-name (rdbms-name-for (concatenate-symbol slot-name infix "-id-on-"
-                                                            (class-name (slot-definition-class slot)) "-idx")))
-         (class-name-column-name (rdbms-name-for (concatenate-symbol slot-name infix "-class-name"))))
+(defun make-columns-for-reference-slot (class-name column-name)
+  (bind ((id-column-name (rdbms-name-for (concatenate-symbol column-name "-id")))
+         (id-index-name (rdbms-name-for (concatenate-symbol column-name "-id-on-" class-name "-idx")))
+         (class-name-column-name (rdbms-name-for (concatenate-symbol column-name "-class-name"))))
     (list
      (make-instance 'column
                     :name id-column-name

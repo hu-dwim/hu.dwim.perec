@@ -102,7 +102,10 @@
 
 (defmethod compute-primary-table ((association persistent-association) current-table)
   (when (eq (association-kind-of association) :m-n)
-    (make-instance 'association-primary-table :name (rdbms-name-for (name-of association)))))
+    (make-instance 'association-primary-table
+                   :name (rdbms-name-for (name-of association))
+                   :columns (compute-as
+                              (mappend #'columns-of (association-ends-of association))))))
 
 ;; TODO: refactor these to avoid duplicates
 (defmethod compute-table ((slot persistent-association-end-direct-slot-definition))
@@ -123,7 +126,7 @@
       (:1-n (if (eq :1 (cardinality-kind-of slot))
                 (call-next-method)
                 (table-of (some #'other-association-end-of (direct-slots-of slot)))))
-      (:m-n (some #'primary-table-of (direct-slots-of slot))))))
+      (:m-n (some #L(primary-table-of (association-of !1)) (direct-slots-of slot))))))
 
 (defmethod compute-columns ((slot persistent-association-end-direct-slot-definition))
   (bind ((association (association-of slot)))
@@ -132,7 +135,8 @@
               (call-next-method)))
       (:1-n (when (eq :1 (cardinality-kind-of slot))
               (call-next-method)))
-      (:m-n (error ".....")))))
+      (:m-n (make-columns-for-reference-slot (class-name (slot-definition-class slot))
+                                             (second (slot-definition-type slot)))))))
 
 (defmethod compute-columns ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))
@@ -143,7 +147,7 @@
       (:1-n (if (eq :1 (cardinality-kind-of slot))
                 (call-next-method)
                 (columns-of (some #'other-association-end-of (direct-slots-of slot)))))
-      (:m-n (error ".....")))))
+      (:m-n (call-next-method)))))
 
 (defcclass* association-primary-table (table)
   ()
