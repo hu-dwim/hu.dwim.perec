@@ -15,11 +15,11 @@
       (declare (ignorable type-specification))
       ,sql-type)
 
-    (defmethod compute-reader-transformer ((type (eql ',name)) &optional type-specification)
+    (defmethod compute-reader ((type (eql ',name)) &optional type-specification)
       (declare (ignorable type-specification))
       ,reader)
 
-    (defmethod compute-writer-transformer ((type (eql ',name)) &optional type-specification)
+    (defmethod compute-writer ((type (eql ',name)) &optional type-specification)
       (declare (ignorable type-specification))
       ,writer)))
 
@@ -91,6 +91,13 @@
   `float)
 
 (deftype* float-64 (make-instance 'sql-float-type :bit-size 64)
+  'object->number-reader
+  'identity-writer)
+
+;;;;;;;;;
+;;; Float
+
+(deftype* float (make-instance 'sql-float-type)
   'object->number-reader
   'identity-writer)
 

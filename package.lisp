@@ -137,6 +137,6 @@
 (import-sql-syntax-node-names)
 (import-sql-constructor-names)
 
-(define-computed-universe compute-as :name "cl-perec computed class universe")
+(define-computed-universe compute-as)
 
 (deflogger log ())

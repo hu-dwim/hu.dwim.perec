@@ -34,7 +34,13 @@
     (compute-as (find +class-name-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
     :type sql-column
     :documentation "The RDBMS column of corresponding oid slot."))
-  (:documenation "This is a special table related to a persistent class."))
+  (:documentation "This is a special table related to a persistent class."))
+
+(defprint-object (self table)
+  (princ (name-of self)))
+
+(defprint-object (self column)
+  (princ (rdbms::name-of self)))
 
 ;;;;;;;;;;;;;
 ;;; Constants

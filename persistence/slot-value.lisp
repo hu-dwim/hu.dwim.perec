@@ -204,7 +204,7 @@
   ;; TODO: update foreign key references according to class name
   (bind ((previous-class (class-of previous-object))
          (current-class (class-of current-object))
-         (at-current-object (oid-matcher-writer-where-clause current-object nil)))
+         (at-current-object (id-column-matcher-where-clause current-object)))
     (setf (class-name-of current-object) (name-of current-class))
     (dolist (table (data-tables-of current-class))
       (if (member table (data-tables-of previous-class))

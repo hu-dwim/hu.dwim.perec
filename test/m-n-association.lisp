@@ -8,9 +8,9 @@
 (defpclass* role-test ()
   ())
 
-(defassociation
-  ((user :0..N)
-   (role :0..N)))
+(defassociation*
+  ((:class user-test :slot roles :type (set role-test))
+   (:class role-test :slot users :type (set user-test))))
 
 (defmacro with-transaction-for-user-and-role (&body body)
   `(with-transaction

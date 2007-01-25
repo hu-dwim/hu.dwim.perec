@@ -11,8 +11,8 @@
   ())
 
 (defassociation*
-  ((brother :0..1)
-   (sister :0..1)))
+  ((:class brother-test :slot sister :type (or null sister-test))
+   (:class sister-test :slot brother :type (or null brother-test))))
 
 (defmacro with-transaction-for-sister-and-brother (&body body)
   `(with-transaction

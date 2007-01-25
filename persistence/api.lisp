@@ -30,13 +30,48 @@
 ;;;;;;;;;;;;;;;;;;
 ;;; defassociation
 
-(defmacro defassociation (&body body)
-  (declare (ignore body))
-  nil)
+(defmacro defassociation (&body association-ends)
+  (flet ((process-association-end (association-end)
+           (bind ((accessor (getf association-end :accessor))
+                  (reader (or (getf association-end :reader) accessor))
+                  (writer (or (getf association-end :writer) `(setf ,accessor))))
+             (append `(:readers (,reader)) `(:writers (,writer)) association-end))))
+    (bind ((processed-association-ends (mapcar #'process-association-end (first association-ends)))
+           (primary-association-end (first processed-association-ends))
+           (primary-class (getf primary-association-end :class))
+           (primary-slot (getf primary-association-end :slot))
+           (secondary-association-end (second processed-association-ends))
+           (secondary-class (getf secondary-association-end :class))
+           (secondary-slot (getf secondary-association-end :slot))
+           (association-name (concatenate-symbol primary-class "-" primary-slot "-"
+                                                 secondary-class "-" secondary-slot)))
+      `(progn
+        (eval-when (:compile-toplevel)
+          (ensure-generic-function ',(first (getf primary-association-end :readers)) :lambda-list '(object))
+          (ensure-generic-function ',(first (getf primary-association-end :writers)) :lambda-list '(new-value object))
+          (ensure-generic-function ',(first (getf secondary-association-end :readers)) :lambda-list '(object))
+          (ensure-generic-function ',(first (getf secondary-association-end :writers)) :lambda-list '(new-value object)))
+        (eval-when (:load-toplevel :execute)
+          (flet ((ensure-persistent-class (name)
+                   (ensure-class name
+                                 :metaclass (class-of (find-class name))
+                                 :direct-slots (mapcar
+                                                #L(list :instance !1)
+                                                (remove-if #L(typep !1 'persistent-association-end-direct-slot-definition)
+                                                           (class-direct-slots (find-class name)))))))
+            (prog1
+                (aif (find-association ',association-name)
+                     (reinitialize-instance it :association-end-definitions ',processed-association-ends)
+                     (setf (find-association ',association-name)
+                           (make-instance 'persistent-association :association-end-definitions ',processed-association-ends)))
+              (ensure-persistent-class ',primary-class)
+              (ensure-persistent-class ',secondary-class))))))))
 
-(defmacro defassociation* (&body body)
-  (declare (ignore body))
-  nil)
+(defmacro defassociation* (&body association-ends)
+  `(defassociation
+    ,(mapcar #L(unless (getf !1 :accessor)
+                 (append !1 `(:accessor ,(default-accessor-name-transformer (getf !1 :slot) nil))))
+             (first association-ends))))
 
 ;;;;;;;;;
 ;;; types

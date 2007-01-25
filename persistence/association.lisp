@@ -3,7 +3,11 @@
 ;; TODO: ensure that 1-1 and 1-n associations store their foreign keys in the primary table of the primary association end
 
 (defcclass* persistent-association ()
-  ((primary-association-end
+  ((association-end-definitions
+    (compute-as nil)
+    :type list
+    :documentation "Canonical form of the persistent association end direct slot definitions.")
+   (primary-association-end
     (compute-as nil)
     :type persistent-association-end-direct-slot-definition)
    (secondary-association-end
@@ -12,6 +16,10 @@
    (association-ends
     (compute-as (list (primary-association-end-of -self-) (secondary-association-end-of -self-)))
     :type (list persistent-association-end-direct-slot-definition))
+   (associated-classes
+    (compute-as (list (find-class (getf (first (association-end-definitions-of -self-)) :class))
+                      (find-class (getf (second (association-end-definitions-of -self-)) :class))))
+    :type (list persistent-class))
    (association-kind
     (compute-as (let ((cardinality-kinds (mapcar 'cardinality-kind-of (association-ends-of -self-))))
                   (cond ((equal cardinality-kinds '(:1 :1)) :1-1)
@@ -29,6 +37,9 @@
     :type integer
     :documentation "The minimum number of objects present in an association for this end.")
    (max-cardinality
+    (compute-as (if (set-type-p (slot-definition-type -self-))
+                    :n
+                    1))
     :type integer
     :documentation "The maximum number of objects present in an association for this end. Unbound means the maximum number is not defined.")
    (cardinality-kind
@@ -39,23 +50,29 @@
     :type symbol
     :documentation "Valid values are :1, :n according to min a max cardinality.")
    (primary-association-end
-    (compute-as (eq (name-of -self-) (name-of (primary-association-end-of (association-of -self-)))))
+    (compute-as (eq (slot-definition-name -self-)
+                    (slot-definition-name (primary-association-end-of (association-of -self-)))))
     :type boolean
     :documentation "True iff this end is the primary association end of its association.")
    (secondary-association-end
-    (compute-as (eq (name-of -self-) (name-of (primary-association-end-of (association-of -self-)))))
+    (compute-as (eq (slot-definition-name -self-)
+                    (slot-definition-name (secondary-association-end-of (association-of -self-)))))
     :type boolean
     :documentation "True iff this end is the secondary association end of its association.")))
 
 (defcclass* persistent-association-end-direct-slot-definition
     (persistent-association-end-slot-definition persistent-direct-slot-definition)
-  ())
+  ((other-association-end
+    (compute-as (if (primary-association-end-p -self-)
+                    (secondary-association-end-of (association-of -self-))
+                    (primary-association-end-of (association-of -self-))))
+    :type persistent-association-end-direct-slot-definition))
+  (:metaclass persistent-slot-definition-class))
 
 (defcclass* persistent-association-end-effective-slot-definition
     (persistent-association-end-slot-definition persistent-effective-slot-definition)
-  ((id-column
-    (compute-as nil)
-    :type sql-column)))
+  ()
+  (:metaclass persistent-slot-definition-class))
 
 ;;;;;;;;;;
 ;;; Export
@@ -86,15 +103,42 @@
        (:1-n (slot-definition-class (find :1 (association-ends-of association) :key #'cardinality-kind-of)))
        (:m-n association)))))
 
-#+nil
+;; TODO: refactor these to avoid duplicates
+(defmethod compute-table ((slot persistent-association-end-direct-slot-definition))
+  (bind ((association (association-of slot)))
+    (ecase (association-kind-of association)
+      (:1-1 (when (primary-association-end-p slot)
+              (call-next-method)))
+      (:1-n (when (eq :1 (cardinality-kind-of slot))
+              (call-next-method)))
+      (:m-n (error ".....")))))
+
+(defmethod compute-table ((slot persistent-association-end-effective-slot-definition))
+  (bind ((association (association-of slot)))
+    (ecase (association-kind-of association)
+      (:1-1 (error "....."))
+      (:1-n (if (eq :1 (cardinality-kind-of slot))
+                (call-next-method)
+                (table-of (other-association-end-of (last1 (direct-slots-of slot))))))
+      (:m-n (error ".....")))))
+
+(defmethod compute-columns ((slot persistent-association-end-direct-slot-definition))
+  (bind ((association (association-of slot)))
+    (ecase (association-kind-of association)
+      (:1-1 (when (primary-association-end-p slot)
+              (call-next-method)))
+      (:1-n (when (eq :1 (cardinality-kind-of slot))
+              (call-next-method)))
+      (:m-n (error ".....")))))
+
 (defmethod compute-columns ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))
     (ecase (association-kind-of association)
-      (:1-1 (if (primary-1-1-binary-effective-association-end-p slot)
-                (oid-columns-for (primary-table-of (association-element-of slot)))
-                (columns-of (secondary-association-end-of association))))
-      (:1-n (columns-of (find :1 (association-ends-of association) :key #'cardinality-kind-of)))
-      (:m-n (columns-of (most-generic-direct-slot-for slot))))))
+      (:1-1 (error "....."))
+      (:1-n (if (eq :1 (cardinality-kind-of slot))
+                (call-next-method)
+                (columns-of (other-association-end-of (last1 (direct-slots-of slot))))))
+      (:m-n (error ".....")))))
 
 #+nil
 (defmethod make-columns-for-slot ((association-end direct-association-end))
@@ -237,3 +281,14 @@
                       :where-clause (make-association-end-matcher-writer-where-clause
                                      (id-column-name-for other-direct-association-end))
                       :transformer 'self-writer)))))
+
+;;;;;;;;;;;
+;;; Helpers
+
+(defparameter *associations* (make-hash-table))
+
+(defun find-association (name)
+  (gethash name *associations*))
+
+(defun (setf find-association) (new-value name)
+  (setf (gethash name *associations*) new-value))

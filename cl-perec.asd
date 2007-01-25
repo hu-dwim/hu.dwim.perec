@@ -67,7 +67,6 @@
              (:file "mop")
              (:file "object")
              (:file "transaction")
-             (:file "where-clause")
              (:file "object-cache")
              (:file "store")
              (:file "slot-value")

@@ -55,7 +55,11 @@
     (compute-as nil)
     :type (list persistent-class)
     :documentation "The list of persistent classes which must look at this class when computing RDBMS meta data."))
-  (:documenation "Persistent class is a class meta object for classes. Standard defclass forms may be used to define persistent classes. A persistent class will have persistent slots unless marked with :persistent #f. A persistent slot should have type specification to be efficient both in storage and speed. The special type unbound must be used to mark slots which might be unbound."))
+  (:documentation "Persistent class is a class meta object for classes. Standard defclass forms may be used to define persistent classes. A persistent class will have persistent slots unless marked with :persistent #f. A persistent slot should have type specification to be efficient both in storage and speed. The special type unbound must be used to mark slots which might be unbound."))
+
+(defclass persistent-slot-definition-class (computed-class)
+  ()
+  (:documentation "This class serves a very special purpose, namely being able to return the very same instance in make-instance for slot definition meta objects."))
 
 (defcclass* persistent-slot-definition (standard-slot-definition)
   ((table
@@ -72,15 +76,7 @@
     :type boolean
     :computed-in compute-as
     :documentation "All prefetched slots are cached slots but the opposite may not be true. When a cached slot is loaded it's value will be stored in the CLOS object for fast subsequent read operations. Also whenever a cached slot is set the value will be remembered. The default cached slot semantics can be overriden on a per direct slot basis."))
-  (:documenation "Base class for both persistent direct and effective slot definitions."))
-
-(defclass* accessor ()
-  ((where-clause
-    :type function
-    :documentation "A one parameter function called with the object which provides the SQL where clause when accessing the slot in the RDBMS.")
-   (transformer
-    :type function
-    :documentation "A two parameter function which transforms between a lisp object and the corresponding RDBMS data. The direction of the transformation depends on whether the accessor is a reader or a writer. See slot-value-from-rdbms-values and rdbms-values-from-slot-value how they are used.")))
+  (:documentation "Base class for both persistent direct and effective slot definitions."))
 
 (defcclass* persistent-direct-slot-definition
     (persistent-slot-definition standard-direct-slot-definition)
@@ -90,7 +86,8 @@
    (columns
     :type (or null list)
     :documentation "A list of RDBMS columns created for this direct slot or nil. If the slot does not have a type specification then this is nil."))
-  (:documenation "Class for persistent direct slot definitions."))
+  (:metaclass persistent-slot-definition-class)
+  (:documentation "Class for persistent direct slot definitions."))
 
 (defcclass* persistent-effective-slot-definition
     (persistent-slot-definition standard-effective-slot-definition)
@@ -98,19 +95,24 @@
     :type (list persistent-direct-slot-definition)
     :documentation "The list of direct slots definitions used to compute this effective slot during the class finalization procedure.")
    (table
-    :type table
-    :documentation "The RDBMS table which will be queried or updated to get and set the data of this slot.")
+       :type table
+       :documentation "The RDBMS table which will be queried or updated to get and set the data of this slot.")
    (columns
     :type (list sql-column)
     :documentation "The list of RDBMS columns which will be queried or updated to get and set the data of this slot.")
+   (id-column
+    (compute-as (when (set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type -self-)))
+                  (first (columns-of -self-))))
+    :type sql-column
+    :documentation "This is filled for slots having set type.")
    (reader
-    (compute-as (compute-reader -self-))
-    :type accessor
-    :documentation "The accessor object which describes how to read this slot.")
+    (compute-as (compute-reader (slot-definition-type -self-)))
+    :type (or null function)
+    :documentation "A one parameter function which transforms RDBMS data received as a list to the corresponding lisp object. This is present only for data table slots.")
    (writer
-    (compute-as (compute-writer -self-))
-    :type accessor
-    :documentation "The accessor object which describes how to write this slot.")
+    (compute-as (compute-writer (slot-definition-type -self-)))
+    :type (or null function)
+    :documentation "A one parameter function which transforms a lisp object to the corresponding RDBMS data. This is present only for data table slots.")
    (data-table-slot
     (compute-as (compute-data-table-slot-p -self-))
     :type boolean
@@ -122,7 +124,16 @@
     (compute-as (or (prefetched-p -self-)
                     (persistent-class-type-p (remove-null-and-unbound-if-or-type (slot-definition-type -self-)))))
     :documentation "The cached option is inherited among direct slots according to the class precedence list. If no direct slot has cached specification then the default behaviour is to cache prefetched slots and single object references."))
-  (:documenation "Class for persistent effective slot definitions."))
+  (:metaclass persistent-slot-definition-class)
+  (:documentation "Class for persistent effective slot definitions."))
+
+(defmethod describe-object ((object persistent-class) stream)
+  (call-next-method)
+  (aif (primary-table-of object)
+       (progn
+         (princ "The primary table is the following: ")
+         (describe-object (primary-table-of object) stream))
+       (princ (format nil "The primary tables are: ~A" (primary-tables-of object)) stream)))
 
 ;;;;;;;;;;
 ;;; Export
@@ -141,6 +152,7 @@
   #+sbcl(slot-value slot 'sb-pcl::%class)
   #-sbcl(not-yet-implemented))
 
+;; TODO: refactor type handling, so that this method is not called all the time
 (defun remove-null-and-unbound-if-or-type (type)
   "If the type is an or type specification then it removes null and unbound from it. Removes the or type combinator from the result if possible."
   (if (and (listp type)
@@ -179,7 +191,7 @@
            (declare (ignore type-specification))
            (compute-column-type (first type) type)))
 
-(defgeneric compute-reader-transformer (type &optional type-specification)
+(defgeneric compute-reader (type &optional type-specification)
   (:documentation "Maps a type to a two parameters lambda which will be called with the object and the received RDBMS values.")
 
   (:method (type &optional type-specification)
@@ -188,7 +200,7 @@
 
   (:method ((type list) &optional type-specification)
            (declare (ignore type-specification))
-           (compute-reader-transformer (first type) type))
+           (compute-reader (first type) type))
 
   (:method ((type symbol) &optional type-specification)
            (declare (ignore type-specification))
@@ -198,10 +210,9 @@
 
   (:method ((type (eql 'or)) &optional type-specification)
            (let ((type (remove-null-and-unbound-if-or-type type-specification)))
-             (compute-writer-transformer type))))
+             (compute-reader type))))
 
-;; TODO: maybe eliminate object parameter too
-(defgeneric compute-writer-transformer (type &optional type-specification)
+(defgeneric compute-writer (type &optional type-specification)
   (:documentation "Maps a type to a two parameters lambda which will be called with the object and the slot value.")
 
   (:method (type &optional type-specification)
@@ -210,7 +221,7 @@
 
   (:method ((type list) &optional type-specification)
            (declare (ignore type-specification))
-           (compute-writer-transformer (first type) type))
+           (compute-writer (first type) type))
 
   (:method ((type symbol) &optional type-specification)
            (declare (ignore type-specification))
@@ -220,58 +231,7 @@
 
   (:method ((type (eql 'or)) &optional type-specification)
            (let ((type (remove-null-and-unbound-if-or-type type-specification)))
-             (compute-writer-transformer type))))
-
-(defgeneric compute-reader-where-clause (slot type &optional type-specification)
-  (:documentation "Maps a type to a one parameter lambda which will be called with the object")
-
-  (:method (slot type &optional type-specification)
-           (declare (ignore slot type-specification))
-           (error "Cannot map type ~A to a reader where clause" type))
-
-  (:method (slot (type list) &optional type-specification)
-           (declare (ignore type-specification))
-           (compute-reader-where-clause slot (first type) type))
-
-  (:method ((slot persistent-effective-slot-definition) (type symbol) &optional type-specification)
-           (declare (ignore slot type type-specification))
-           'oid-matcher-reader-where-clause)
-
-  (:method ((slot persistent-effective-slot-definition) (type (eql 'set)) &optional type-specification)
-           (declare (ignore type-specification))
-           (make-association-end-matcher-reader-where-clause
-            (rdbms::name-of (first (columns-of slot))))))
-
-(defgeneric compute-writer-where-clause (slot type &optional type-specification)
-  (:method (slot type &optional type-specification)
-           (declare (ignore slot type-specification))
-           (error "Cannot map type ~A to a writer where clause" type))
-
-  (:method (slot (type list) &optional type-specification)
-           (declare (ignore type-specification))
-           (compute-writer-where-clause slot (first type) type))
-
-  (:method ((slot persistent-effective-slot-definition) (type symbol) &optional type-specification)
-           (declare (ignore slot type type-specification))
-           'oid-matcher-writer-where-clause)
-
-  (:method ((slot persistent-effective-slot-definition) (type (eql 'set)) &optional type-specification)
-           (declare (ignore slot type-specification))
-           'value-matcher-writer-where-clause))
-
-(defgeneric compute-reader (slot)
-  (:method ((slot persistent-effective-slot-definition))
-           (let ((type (slot-definition-type slot)))
-             (make-instance 'accessor
-                            :where-clause (compute-reader-where-clause slot type)
-                            :transformer (compute-reader-transformer type)))))
-
-(defgeneric compute-writer (slot)
-  (:method ((slot persistent-effective-slot-definition))
-           (let ((type (slot-definition-type slot)))
-             (make-instance 'accessor
-                            :where-clause (compute-writer-where-clause slot type)
-                            :transformer (compute-writer-transformer type)))))
+             (compute-writer type))))
 
 (defgeneric compute-primary-table (class current-table)
   (:method ((class persistent-class) current-table)
@@ -279,7 +239,7 @@
                     (mappend #L(mappend #L(when (eq (primary-table-of class) (table-of !1))
                                             (columns-of !1))
                                         (persistent-direct-slots-of !1))
-                             (list* class (depends-on-of class)))))
+                             (list* class (remove-if-not #L(typep !1 'persistent-class) (depends-on-of class))))))
              (when (or (not (abstract-p class))
                        (primary-table-columns-for-class class))
                (or current-table
@@ -344,7 +304,7 @@
   (:method ((slot persistent-direct-slot-definition))
            (awhen (remove-null-and-unbound-if-or-type (slot-definition-type slot))
              (cond ((set-type-p it)
-                    (make-columns-for-reference-slot slot))
+                    (make-columns-for-reference-slot slot (class-name (slot-definition-class slot))))
                    ((persistent-class-type-p it)
                     (make-columns-for-reference-slot slot))
                    ((primitive-type-p it)
@@ -370,13 +330,13 @@
                   :name +class-name-column-name+
                   :type +oid-class-name-sql-type+)))
 
-(defun make-columns-for-reference-slot (slot)
+(defun make-columns-for-reference-slot (slot &optional (infix ""))
   (bind ((slot-name (slot-definition-name slot))
-         (id-column-name (rdbms-name-for (concatenate-symbol slot-name "-id")))
+         (id-column-name (rdbms-name-for (concatenate-symbol slot-name infix "-id")))
          (id-index-name (rdbms-name-for (concatenate-symbol id-column-name "-on-"
                                                             (class-name (slot-definition-class slot))
                                                             "-idx")))
-         (class-name-column-name (rdbms-name-for (concatenate-symbol slot-name "-class-name"))))
+         (class-name-column-name (rdbms-name-for (concatenate-symbol slot-name infix "-class-name"))))
     (list
      (make-instance 'column
                     :name id-column-name

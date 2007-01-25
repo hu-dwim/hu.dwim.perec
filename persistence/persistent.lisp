@@ -11,7 +11,7 @@
   (and (oid-of object)
        (select-records '(1)
                        (list (name-of (primary-table-of (class-of object))))
-                       (oid-matcher-reader-where-clause object))))
+                       (id-column-matcher-where-clause object))))
 
 (defun debug-persistent-p (object)
   "Same as persistent-p except it never prefetches slot values. Use for debug purposes."
@@ -75,7 +75,7 @@
   (:method ((object persistent-object))
            (dolist (table (data-tables-of (class-of object)))
              (delete-records (name-of table)
-                             (oid-matcher-where-clause object +id-column-name+)))))
+                             (id-column-matcher-where-clause object)))))
 
 (define-condition object-not-found-error (error)
   ((oid :accessor oid-of :initarg :oid))

@@ -9,8 +9,8 @@
   ())
    
 (defassociation*
-  ((parent :0..1)
-   (child :0..N)))
+  ((:class child-test :slot parent :type (or null parent-test))
+   (:class parent-test :slot children :type (set child-test))))
 
 (defmacro with-transaction-for-parent-and-child (&body body)
   `(with-transaction
