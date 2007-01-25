@@ -32,10 +32,16 @@
 
 (defmacro defassociation (&body association-ends)
   (flet ((process-association-end (association-end)
-           (bind ((accessor (getf association-end :accessor))
+           (bind ((initarg (getf association-end :initarg))
+                  (initform (getf association-end :initform))
+                  (accessor (getf association-end :accessor))
                   (reader (or (getf association-end :reader) accessor))
                   (writer (or (getf association-end :writer) `(setf ,accessor))))
-             (append `(:readers (,reader)) `(:writers (,writer)) association-end))))
+             (append `(:readers (,reader)
+                       :writers (,writer)
+                       :initargs (,initarg)
+                       :initform ,initform)
+                     association-end))))
     (bind ((processed-association-ends (mapcar #'process-association-end (first association-ends)))
            (primary-association-end (first processed-association-ends))
            (primary-class (getf primary-association-end :class))
@@ -69,8 +75,11 @@
 
 (defmacro defassociation* (&body association-ends)
   `(defassociation
-    ,(mapcar #L(unless (getf !1 :accessor)
-                 (append !1 `(:accessor ,(default-accessor-name-transformer (getf !1 :slot) nil))))
+    ,(mapcar #L(append !1
+                       (unless (getf !1 :accessor)
+                         `(:accessor ,(default-accessor-name-transformer (getf !1 :slot) nil)))
+                       (unless (getf !1 :initarg)
+                         `(:initarg ,(default-initarg-name-transformer (getf !1 :slot) nil))))
              (first association-ends))))
 
 ;;;;;;;;;
@@ -91,11 +100,19 @@
 ;;;;;;;;;;;;;;;
 ;;; persistence
 
-(defgeneric make-persistent (transient-object)
-  (:documentation "Makes an object persistent without making its associated objects persistent."))
+(defgeneric make-persistent (object)
+  (:documentation "Makes an object persistent without making its associated objects persistent.")
 
-(defgeneric make-transient (persistent-object)
-  (:documentation "Makes an object transient without making its associated objects transient."))
+  (:method :around (object)
+           (unless (persistent-p object)
+             (call-next-method))))
+
+(defgeneric make-transient (object)
+  (:documentation "Makes an object transient without making its associated objects transient.")
+
+  (:method :around (object)
+           (when (persistent-p object)
+             (call-next-method))))
 
 ;;;;;;;;;;;;;;
 ;;; collection

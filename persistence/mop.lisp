@@ -161,7 +161,10 @@
       (mapcar #L(let ((association-end-definition
                        (find (class-name class) (association-end-definitions-of !1)
                              :key #L(getf !1 :class))))
-                  (append (list :name (getf association-end-definition :slot) :association !1 :persistent #t)
+                  (append (list :name (getf association-end-definition :slot)
+                                :association !1
+                                :persistent #t
+                                :initfunction (eval `(lambda () ,(getf association-end-definition :initform))))
                           (remove-keywords association-end-definition :slot :class :accessor)))
               depends-on-associations))))
 

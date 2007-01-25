@@ -78,37 +78,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS slot storers
 
-(defun size-of-slot-set (object slot)
-  (caar (execute (sql `(select (count *)
-                        ,(name-of (table-of slot))
-                        ,(id-column-matcher-where-clause object (id-column-of slot)))))))
-
-(defun delete-from-slot-set (slot value)
-  (update-records (name-of (table-of slot))
-                  (columns-of slot)
-                  '(nil nil)
-                  (id-column-matcher-where-clause value)))
-
-(defun delete-from-i-n-association-end-set (slot value)
-  (delete-from-slot-set slot value))
-
 (defun delete-slot-set (object slot)
   (update-records (name-of (table-of slot))
 		  (columns-of slot)
 		  '(nil nil)
 		  (id-column-matcher-where-clause object (id-column-of slot))))
-
-(defun delete-1-n-association-end-set (object slot)
-  (delete-slot-set object slot))
-
-(defun insert-into-slot-set (object slot value)
-  (update-records (name-of (table-of slot))
-		  (columns-of slot)
-		  (object-writer object)
-		  (id-column-matcher-where-clause value)))
-
-(defun insert-into-1-n-association-end-set (object slot value)
-  (insert-into-slot-set object slot value))
 
 (defun store-slot-set (object slot value)
   "Stores the non lazy list without local side effects into the database."
@@ -128,7 +102,7 @@
 		  (id-column-matcher-where-clause object (id-column-of slot))))
 
 (defun insert-into-m-n-association-end-set (object slot value)
-  (bind ((other-slot (most-generic-other-effective-association-end-for slot)))
+  (bind ((other-slot (other-association-end-of slot)))
     (insert-records (name-of (table-of slot))
                     (append (columns-of other-slot) (columns-of slot))
                     (append (object-writer value) (object-writer object)))))
@@ -155,10 +129,11 @@
 	((and (typep slot 'persistent-association-end-effective-slot-definition)
 	      (eq (association-kind-of (association-of slot)) :1-1)
               (primary-association-end-p slot))
-         (bind ((other-slot (most-generic-other-effective-association-end-for slot)))
-           (when-bind other-object (slot-value-using-class (class-of object) object slot)
-             (store-slot other-object other-slot nil))
-           (when value
+         (when-bind other-object (slot-value-using-class (class-of object) object slot)
+           (bind ((other-slot (other-association-end-for (class-of other-object) slot)))
+             (store-slot other-object other-slot nil)))
+         (when value
+           (bind ((other-slot (other-association-end-for (class-of value) slot)))
              (store-slot value other-slot object))))
         ((set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type slot)))
          (store-slot-set object slot value))

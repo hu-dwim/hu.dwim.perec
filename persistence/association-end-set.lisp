@@ -18,7 +18,7 @@
             (association-end effective-binary-association-end))
            (cond ((and (eq (association-kind-of (association-of association-end)) :1-n)
                        (eq (cardinality-kind-of association-end) :n))
-                  (make-instance 'rdbms-1-n-association-end-set-container
+                  (make-instance 'persistent-1-n-association-end-set-container
                                  :object object
                                  :effective-association-end association-end))
                  ((eq (association-kind-of (association-of association-end)) :m-n)
@@ -28,12 +28,11 @@
                  (t
                   (error "Unknown association end type")))))
 
-#+nil
 (defmethod propagate-cache-changes ((class persistent-class)
                                     (object persistent-object)
-                                    (slot effective-association-end) new-value)
+                                    (slot persistent-association-end-effective-slot-definition) new-value)
   (debug-only (assert (debug-persistent-p object)))
-  (bind ((other-slot (most-generic-other-effective-association-end-for slot)))
+  (bind ((other-slot (other-association-end-of slot)))
     (cond ((eq (association-kind-of (association-of slot)) :1-1)
            ;; BEFORE
            ;; object <-> old-other-object
@@ -57,95 +56,73 @@
            ;; invalidate all cached back references 
            (if (eq (cardinality-kind-of slot) :n)
                (invalidate-cached-1-n-association-end-set-slot other-slot))))))
-;;;;;;;;;;;;;;;;;;;
-;;; Lazy containers
 
-#+nil
-(defclass* rdbms-association-end-set-container (set-container)
-  ((object)
-   (effective-association-end)))
-
-#+nil
-(defclass* rdbms-1-n-association-end-set-container (rdbms-association-end-set-container)
-  ())
-
-#+nil
-(defclass* rdbms-m-n-association-end-set-container (rdbms-association-end-set-container)
-  ())
-
-#+nil
-(defmethod insert-item ((set rdbms-1-n-association-end-set-container) item)
-  (bind ((slot (effective-association-end-of set))
-         (other-slot (most-generic-other-effective-association-end-for slot)))
-    (insert-into-1-n-association-end-set (object-of set) slot item)
-    (setf (cached-slot-value-using-class (class-of item) item other-slot) (object-of set))))
-
-#+nil
-(defmethod insert-item ((set rdbms-m-n-association-end-set-container) item)
-  (insert-into-m-n-association-end-set (object-of set) (effective-association-end-of set) item))
-
-#+nil
-(defmethod size ((set rdbms-association-end-set-container))
-  (caar (execute (sql `(select (count *)
-                        ,(name-of (table-of (effective-association-end-of set)))
-                        ,(funcall (where-clause-of (reader-of (effective-association-end-of set))) (object-of set)))))))
-
-#+nil
-(defmethod empty-p ((set rdbms-1-n-association-end-set-container))
-  (= 0 (size set)))
-
-#+nil
 (defun invalidate-cached-1-n-association-end-set-slot (slot)
-  (bind ((class (owner-class-of slot)))
+  (bind ((class (slot-definition-class slot)))
     (iter (for (id object) in-hashtable (current-objects))
           (when (typep object class)
-            (invalidate-cached-slot object (find-effective-slot (class-of object) (name-of slot)))))))
+            (invalidate-cached-slot object (find-slot (class-of object) (slot-definition-name slot)))))))
 
-#+nil
-(defmethod empty! ((set rdbms-1-n-association-end-set-container))
-  (bind ((slot (effective-association-end-of set))
-         (other-slot (most-generic-other-effective-association-end-for slot)))
-    (delete-1-n-association-end-set (object-of set) slot)
-    (invalidate-cached-1-n-association-end-set-slot other-slot)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Lazy association end set containers
 
-#+nil
-(defmethod empty! ((set rdbms-m-n-association-end-set-container))
-  (delete-m-n-association-end-set (object-of set) (effective-association-end-of set)))
+(defclass* persistent-association-end-set-container (persistent-slot-set-container)
+  ())
 
-#+nil
-(defmethod list-of ((set rdbms-1-n-association-end-set-container))
-  (load-1-n-association-end-set (object-of set) (effective-association-end-of set)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; 1-n association end set
 
-#+nil
-(defmethod list-of ((set rdbms-m-n-association-end-set-container))
-  (load-m-n-association-end-set (object-of set) (effective-association-end-of set)))
+(defclass* persistent-1-n-association-end-set-container (persistent-association-end-set-container)
+  ())
 
-#+nil
-(defmethod (setf list-of) (new-value (set rdbms-1-n-association-end-set-container))
-  (store-1-n-association-end-set (object-of set) (effective-association-end-of set) new-value))
+(defmethod insert-item :after ((set persistent-1-n-association-end-set-container) item)
+  (bind ((slot (slot-of set))
+         (class (class-of item))
+         (other-slot (other-association-end-for class slot)))
+    (setf (cached-slot-value-using-class class item other-slot) (object-of set))))
 
-#+nil
-(defmethod (setf list-of) (new-value (set rdbms-m-n-association-end-set-container))
-  (store-m-n-association-end-set (object-of set) (effective-association-end-of set) new-value))
+(defmethod delete-item :after ((set persistent-1-n-association-end-set-container) item)
+  (bind ((class (class-of item))
+         (other-slot (other-association-end-for class (slot-of set))))
+    (setf (cached-slot-value-using-class class item other-slot) nil)))
 
-#+nil
-(defmethod iterate-items ((set rdbms-association-end-set-container) fn)
-  (mapc fn (list-of set)))
+(defmethod empty! :after ((set persistent-1-n-association-end-set-container))
+  (invalidate-cached-1-n-association-end-set-slot (other-association-end-of (slot-of set))))
 
-#+nil
-(defmethod delete-item ((set rdbms-1-n-association-end-set-container) item)
-  (bind ((slot (effective-association-end-of set))
-         (other-slot (most-generic-other-effective-association-end-for slot)))
-    (update-records (name-of (table-of slot))
-                    (columns-of slot)
-                    '(nil nil)
-                    (funcall (where-clause-of (writer-of slot)) (object-of set) item))
-    (setf (cached-slot-value-using-class (class-of item) item other-slot) nil)))
+(defmethod list-of ((set persistent-1-n-association-end-set-container))
+  (restore-1-n-association-end-set (object-of set) (slot-of set)))
 
-#+nil
-(defmethod delete-item ((set rdbms-m-n-association-end-set-container) item)
-  (bind ((slot (effective-association-end-of set))
-         (other-slot (most-generic-other-effective-association-end-for slot)))
-    (delete-records (name-of (table-of (effective-association-end-of set)))
-                    (sql-and (funcall (where-clause-of (writer-of slot)) (object-of set) item)
-                             (funcall (where-clause-of (writer-of other-slot)) item (object-of set))))))
+(defmethod (setf list-of) (new-value (set persistent-1-n-association-end-set-container))
+  (store-1-n-association-end-set (object-of set) (slot-of set) new-value))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; m-n association end set
+
+(defclass* persistent-m-n-association-end-set-container (persistent-association-end-set-container)
+  ())
+
+(defmethod insert-item ((set persistent-m-n-association-end-set-container) item)
+  (insert-into-m-n-association-end-set (object-of set) (slot-of set) item))
+
+(defmethod delete-item ((set persistent-m-n-association-end-set-container) item)
+  (bind ((slot (slot-of set))
+         (other-slot (other-association-end-of slot)))
+    (delete-records (name-of (table-of (slot-of set)))
+                    (sql-and (id-column-matcher-where-clause item (id-column-of slot))
+                             (id-column-matcher-where-clause (object-of set) (id-column-of other-slot))))))
+
+(defmethod size ((set persistent-m-n-association-end-set-container))
+  (caar (execute (sql `(select (count *)
+                        ,(name-of (table-of (slot-of set)))
+                        ,(id-column-matcher-where-clause (object-of set) (id-column-of (slot-of set))))))))
+
+(defmethod empty! ((set persistent-m-n-association-end-set-container))
+  (delete-m-n-association-end-set (object-of set) (slot-of set)))
+
+(defmethod list-of ((set persistent-m-n-association-end-set-container))
+  (restore-m-n-association-end-set (object-of set) (slot-of set)))
+
+(defmethod (setf list-of) (new-value (set persistent-m-n-association-end-set-container))
+  (store-m-n-association-end-set (object-of set) (slot-of set) new-value))
+
+

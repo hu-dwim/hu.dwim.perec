@@ -39,35 +39,35 @@
 
 (deftest test/association/1-1/store-value/1 ()
   (with-transaction-for-sister-and-brother
-    (setf! (brother-of sister) brother)
+    (setf (brother-of sister) brother)
     (is (eq brother (brother-of sister)))))
 
 (deftest test/association/1-1/store-value/2 ()
   (with-transaction-for-sister-and-brother
-    (setf! (sister-of brother) sister)
+    (setf (sister-of brother) sister)
     (is (eq sister (sister-of brother)))))
 
 (deftest test/association/1-1/referential-integrity/1 ()
   (with-transaction-for-sister-and-brother
-    (setf! (brother-of sister) brother)
+    (setf (brother-of sister) brother)
     (is (eq sister (sister-of brother)))))
 
 (deftest test/association/1-1/referential-integrity/2 ()
   (with-transaction-for-sister-and-brother
-    (setf! (sister-of brother) sister)
+    (setf (sister-of brother) sister)
     (is (eq brother (brother-of sister)))))
 
 (deftest test/association/1-1/referential-integrity/3 ()
   (with-transaction-for-sister-and-brother
-    (setf! (sister-of brother) sister)
-    (setf! (sister-of brother) nil)
+    (setf (sister-of brother) sister)
+    (setf (sister-of brother) nil)
     (is (eq nil (sister-of brother)))
     (is (eq nil (brother-of sister)))))
 
 (deftest test/association/1-1/referential-integrity/4 ()
   (with-transaction-for-sister-and-brother
-    (setf! (brother-of sister) brother)
-    (setf! (brother-of sister) nil)
+    (setf (brother-of sister) brother)
+    (setf (brother-of sister) nil)
     (is (eq nil (sister-of brother)))
     (is (eq nil (brother-of sister)))))
    

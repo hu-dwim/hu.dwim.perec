@@ -33,12 +33,12 @@
 
 (deftest test/association/m-n/store-value/1 ()
   (with-transaction-for-user-and-role
-    (setf! (roles-of user) (list role))
+    (setf (roles-of user) (list role))
     (is (equal (list role) (roles-of user)))))
 
 (deftest test/association/m-n/referential-integrity/1 ()
   (with-transaction-for-user-and-role
-    (setf! (roles-of user) (list role))
+    (setf (roles-of user) (list role))
     (bind ((users (users-of* role)))
       (is (= 1 (size users)))
       (is (eq user (first-item users))))))

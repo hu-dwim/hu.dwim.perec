@@ -101,8 +101,10 @@
     :type (list sql-column)
     :documentation "The list of RDBMS columns which will be queried or updated to get and set the data of this slot.")
    (id-column
-    (compute-as (when (set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type -self-)))
-                  (first (columns-of -self-))))
+    (compute-as (bind ((type (remove-null-and-unbound-if-or-type (slot-definition-type -self-))))
+                  (if (or (persistent-class-type-p type)
+                          (set-type-p type))
+                      (first (columns-of -self-)))))
     :type sql-column
     :documentation "This is filled for slots having set type.")
    (reader
@@ -293,7 +295,7 @@
                     (error "Unknown slot type in slot ~A" slot)))))
 
   (:method ((slot persistent-effective-slot-definition))
-           (table-of (last1 (direct-slots-of slot)))))
+           (some #'table-of (direct-slots-of slot))))
 
 (defgeneric compute-columns (slot)
   (:method :around ((slot persistent-direct-slot-definition))
@@ -316,7 +318,7 @@
                     (error "Unknown slot type in slot ~A" slot)))))
 
   (:method ((slot persistent-effective-slot-definition))
-           (columns-of (last1 (direct-slots-of slot)))))
+           (some #'columns-of (direct-slots-of slot))))
 
 (defun make-oid-columns ()
   "Creates a list of RDBMS columns that will be used to store the oid data of the objects in this table."
