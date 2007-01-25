@@ -57,6 +57,7 @@
   ((:file "package")
    (:file "duplicates")
    (:module :persistence
+            :serial t
             :components
             ((:file "api")
              (:file "common")

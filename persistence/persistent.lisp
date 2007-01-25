@@ -39,7 +39,7 @@
                 (setf (cached-object-of oid) (create-object oid #t))))
 
   (:method ((object persistent-object))
-           (assert (debug-persistent-p object))
+           (debug-only (assert (debug-persistent-p object)))
            (setf (cached-object-of (oid-of object)) object)))
 
 (defgeneric load-object (thing &key otherwise prefetch skip-existence-check)

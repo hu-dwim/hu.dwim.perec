@@ -114,48 +114,47 @@
                                    (object persistent-object)
                                    (slot persistent-effective-slot-definition))
   "Reads the slot value from the database or the cache."
-  (debug-only
-    (assert (eq class (class-of object)))
+  (debug-only (assert (eq class (class-of object))))
+  (let ((persistent (persistent-p object)))
     (assert (or *bypass-database-access*
-                (not (debug-persistent-p object))
-                (object-in-current-transaction-p object))))
-  (if (or (not (persistent-p object))
-          *bypass-database-access*
-          (and *cache-slot-values*
-               (slot-value-cached-p object slot)))
-      ;; read the slot value from the cache
-      (call-next-method)
-      ;; restore the slot value from the database and put it in the underlying slot when appropriate
-      (if (and *cache-slot-values*
-               (prefetched-p slot))
-          ;; restore all prefetched slot values at once
-          (bind (((values restored-slot-values restored-slots) (restore-prefetched-slots object))
-                 (slot-value))
-            (iter (for restored-slot-value in restored-slot-values)
-                  (for restored-slot in restored-slots)
-                  (when (eq slot restored-slot)
-                    (setf slot-value restored-slot-value))
-                  (when (cached-p restored-slot)
-                    (setf (cached-slot-value-using-class class object restored-slot) restored-slot-value)))
-            slot-value)
-          ;; only restore the requested slot value
-          (bind (((values restored-slot-value restored-slot) (restore-slot object slot)))
-            (when (and *cache-slot-values*
-                       (cached-p restored-slot))
-              (setf (cached-slot-value-using-class class object restored-slot) restored-slot-value))
-            restored-slot-value))))
+                (not persistent)
+                (object-in-current-transaction-p object)))
+    (if (or (not persistent)
+            *bypass-database-access*
+            (and *cache-slot-values*
+                 (slot-value-cached-p object slot)))
+        ;; read the slot value from the cache
+        (call-next-method)
+        ;; restore the slot value from the database and put it in the underlying slot when appropriate
+        (if (and *cache-slot-values*
+                 (prefetched-p slot))
+            ;; restore all prefetched slot values at once
+            (bind (((values restored-slot-values restored-slots) (restore-prefetched-slots object))
+                   (slot-value))
+              (iter (for restored-slot-value in restored-slot-values)
+                    (for restored-slot in restored-slots)
+                    (when (eq slot restored-slot)
+                      (setf slot-value restored-slot-value))
+                    (when (cached-p restored-slot)
+                      (setf (cached-slot-value-using-class class object restored-slot) restored-slot-value)))
+              slot-value)
+            ;; only restore the requested slot value
+            (bind (((values restored-slot-value restored-slot) (restore-slot object slot)))
+              (when (and *cache-slot-values*
+                         (cached-p restored-slot))
+                (setf (cached-slot-value-using-class class object restored-slot) restored-slot-value))
+              restored-slot-value)))))
 
 (defmethod (setf slot-value-using-class) (new-value
                                           (class persistent-class)
                                           (object persistent-object)
                                           (slot persistent-effective-slot-definition))
   "Writes the new slot value to the database and the cache."
-  (debug-only
-    (assert (eq class (class-of object)))
-    (assert (or *bypass-database-access*
-                (not (debug-persistent-p object))
-                (object-in-current-transaction-p object))))
+  (debug-only (assert (eq class (class-of object))))
   (bind ((persistent (persistent-p object)))
+    (assert (or *bypass-database-access*
+                (not persistent)
+                (object-in-current-transaction-p object)))
     ;; store slot value in the database
     (when (and (not *bypass-database-access*)
                persistent)
@@ -185,13 +184,13 @@
                                     (slot persistent-effective-slot-definition))
   "Slots are always bound, they may or may not be nil though."
   ;; TODO: if we ever want to distinguish between nils and unbound slots we will have to extend the RDBMS mapping for those slots and introduce an extra column
-  (debug-only
-    (assert (eq class (class-of object)))
+  (debug-only (assert (eq class (class-of object))))
+  (bind ((persistent (persistent-p object)))
     (assert (or *bypass-database-access*
-                (not (debug-persistent-p object))
-                (object-in-current-transaction-p object))))
-  (or (persistent-p object)
-      (call-next-method)))
+                (not persistent)
+                (object-in-current-transaction-p object)))
+    (or persistent
+        (call-next-method))))
 
 (defmethod update-instance-for-different-class :after ((previous-object persistent-object)
                                                        (current-object persistent-object)

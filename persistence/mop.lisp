@@ -212,7 +212,6 @@
                    :specializers (list class))))
 
 (defun slot-initarg-and-value (object slot-name)
-  (when (and (slot-boundp object slot-name)
-             (slot-value object slot-name))
-    (list (initarg-symbol slot-name)
+  (when (slot-boundp object slot-name)
+    (list (first (slot-definition-initargs (find-slot (class-of object) slot-name)))
           (slot-value object slot-name))))

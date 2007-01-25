@@ -6,8 +6,6 @@
 
 (in-package :cl-perec-test)
 
-(defsuite* test)
-
 (defun import-cl-perec-symbols ()
   (import '(cl-perec::primary-table-of
             cl-perec::primary-tables-of
@@ -25,3 +23,9 @@
           (remove-if-not #L(and (starts-with !1 "_")
                                 (ends-with !1 "test"))
                          (list-tables)))))
+(defun retest ()
+  (drop-all-test-tables)
+  (clrhash (get 'prc::ensure-exported 'computed-class::memoize-table))
+  (test))
+
+(defsuite* test)

@@ -8,6 +8,9 @@
 - rename (id-column-name) and friends to +id-column-name+, +class-name-column-name+, +oid-column-names+
 - rename owner-entity-of to slot-definition-class
 - rename enumerated to member type
+
+- renamte test persistent class types to *-test
+
 - eliminate dependencies (cl-containers, cl-ppcre)
 - eliminate duplicates
 

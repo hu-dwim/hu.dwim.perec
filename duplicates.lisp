@@ -53,10 +53,6 @@
         (intern symbol-name package)
         (intern symbol-name))))
 
-(defun initarg-symbol (symbol)
-  "Creates a keyword symbol to be used as slot initarg."
-  (intern (symbol-name symbol) (find-package 'keyword)))
-
 (defmacro delete! (object place)
   `(setf ,place
     (delete ,object ,place)))

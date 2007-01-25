@@ -89,7 +89,7 @@
            #:persistent-object
            #:persistent-set
 
-           ;; the whole transaction API is inherited from cl-rdbms
+           ;; most of the transaction API is inherited from cl-rdbms
            #:with-database
            #:with-transaction
            #:with-transaction*

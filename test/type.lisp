@@ -60,7 +60,12 @@
              (defpclass* type-test ()
                ((,name :type ,type))))))
         (flet ((make ()
-                 (setf object (make-instance 'type-test ,(cl-perec::initarg-symbol name) ,value)))
+                 (setf object
+                       (apply #'make-instance
+                              'type-test
+                              (first (slot-definition-initargs (prc::find-slot (find-class 'type-test) ',name)))
+                              ,value
+                              nil)))
                (test ()
                  (is (,test ,value (slot-value object ',name)))))
           (with-caching-slot-values

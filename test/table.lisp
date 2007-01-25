@@ -5,47 +5,47 @@
 (deftest test/table/persistent-object ()
   (is (not (prc::primary-table-of (find-class 'persistent-object)))))
 
-(defpclass t1-test ()
+(defpclass table-t1-test ()
   ((name :type string)))
    
-(defpclass t2-test (t1-test)
+(defpclass table-t2-test (table-t1-test)
   (name))
 
-(deftest test/table/generalization ()
-  (is (not (null (find '_name (prc::columns-of (prc::primary-table-of (find-class 't1-test))) :key #'rdbms::name-of))))
-  (is (null (find '_name (prc::columns-of (prc::primary-table-of (find-class 't2-test))) :key #'rdbms::name-of))))
+(deftest test/table/inheritance ()
+  (is (not (null (find '_name (prc::columns-of (prc::primary-table-of (find-class 'table-t1-test))) :key #'rdbms::name-of))))
+  (is (null (find '_name (prc::columns-of (prc::primary-table-of (find-class 'table-t2-test))) :key #'rdbms::name-of))))
 
-(defpclass a1-test ()
+(defpclass table-a1-test ()
   ()
   (:abstract #t))
    
-(defpclass b1-test (a1-test)
+(defpclass table-b1-test (table-a1-test)
   ())
 
-(defpclass c1-test (a1-test)
+(defpclass table-c1-test (table-a1-test)
   ())
 
-(defpclass a2-test ()
+(defpclass table-a2-test ()
   ()
   (:abstract #t))
 
-(defpclass b2-test (a2-test)
+(defpclass table-b2-test (table-a2-test)
   ())
 
-(defpclass c2-test (a2-test)
+(defpclass table-c2-test (table-a2-test)
   ())
 
-(defpclass d2-test (b2-test c2-test)
+(defpclass table-d2-test (table-b2-test table-c2-test)
   ())
 
 (deftest test/table/primary-table ()
-  (bind ((a1 (find-class 'a1-test))
-         (b1 (find-class 'b1-test))
-         (c1 (find-class 'c1-test))
-         (a2 (find-class 'a2-test))
-         (b2 (find-class 'b2-test))
-         (c2 (find-class 'c2-test))
-         (d2 (find-class 'd2-test)))
+  (bind ((a1 (find-class 'table-a1-test))
+         (b1 (find-class 'table-b1-test))
+         (c1 (find-class 'table-c1-test))
+         (a2 (find-class 'table-a2-test))
+         (b2 (find-class 'table-b2-test))
+         (c2 (find-class 'table-c2-test))
+         (d2 (find-class 'table-d2-test)))
     (mapc #'finalize-inheritance (list a1 b1 c1 a2 b2 c2 d2))
 
     ;; checks for a1

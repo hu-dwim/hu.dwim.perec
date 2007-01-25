@@ -42,10 +42,14 @@
   :serial t
   :components
   ((:module :test
+            :serial t
 	    :components
             ((:file "package")
              (:file "suite")
+             (:file "table")
+             (:file "transaction")
              (:file "type")
+             (:file "inheritance")
              (:file "reference")
              (:file "set")
              (:file "1-1-association")
