@@ -124,9 +124,6 @@
   (:metaclass persistent-slot-definition-class)
   (:documentation "Class for persistent effective slot definitions."))
 
-(lambda ()
-       ())
-
 (defcclass* class-primary-table (table)
   ((oid-columns
     (compute-as (list (id-column-of -self-) (class-name-column-of -self-)))

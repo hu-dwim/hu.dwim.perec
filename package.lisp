@@ -97,6 +97,7 @@
            ;; managing persistent objects
            #:make-persistent
            #:make-transient
+           #:persistent-p
            #:revive-object
 
            ;; most of the collection API is inherited from cl-containers 

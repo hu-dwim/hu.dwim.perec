@@ -15,7 +15,8 @@
 
 (defun (setf transaction-of) (transaction object)
   "Attaches the object to a different transaction."
-  (assert (not (transaction-of object)))
+  (assert (or (not transaction)
+              (not (transaction-of object))))
   (setf (slot-value object 'transaction)
         (awhen transaction
           (make-weak-pointer transaction))))

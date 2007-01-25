@@ -23,9 +23,22 @@
 (in-package :cl-user)
 
 (defpackage :cl-perec-system
-    (:use :cl :asdf))
+  (:use :cl :asdf)
+
+  (:export #:*load-with-debug-p*))
 
 (in-package :cl-perec-system)
+
+(defparameter *load-with-debug-p* nil)
+
+(defclass local-cl-source-file (cl-source-file)
+  ())
+
+(defmethod perform :around ((op operation) (component local-cl-source-file))
+  (let ((*features* *features*))
+    (when *load-with-debug-p*
+      (pushnew :debug *features*))
+    (call-next-method)))
 
 (defsystem :cl-perec
   :name "CL-PEREC"
@@ -38,6 +51,7 @@
 	       "Levente Mészáros <levente.meszaros@gmail.com>")
   :licence "Public Domain"
   :description "Persistent RDBMS based CLOS."
+  :default-component-class local-cl-source-file
   :depends-on (:iterate
                :arnesi
                :metabang-bind

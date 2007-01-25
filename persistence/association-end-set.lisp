@@ -101,5 +101,3 @@
 
 (defmethod (setf list-of) (new-value (set persistent-m-n-association-end-set-container))
   (store-m-n-association-end-set (object-of set) (slot-of set) new-value))
-
-

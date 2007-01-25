@@ -107,7 +107,8 @@
                     (when (and *cache-slot-values*
                                (cached-p restored-slot))
                       (setf (cached-slot-value-using-class class object restored-slot) restored-slot-value)))))
-          (object-exists-in-database-p object))
+          (setf (slot-value-using-class class object slot)
+                (object-exists-in-database-p object)))
       (call-next-method)))
 
 (defmethod slot-value-using-class ((class persistent-class)

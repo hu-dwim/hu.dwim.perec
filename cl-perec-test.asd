@@ -23,7 +23,7 @@
 (in-package :cl-user)
 
 (defpackage :cl-perec-system
-    (:use :cl :asdf))
+  (:use :cl :asdf))
 
 (defvar *test-database-connection-specification* '(:host "localhost" :database "dwim" :user-name "root" :password "admin123"))
 
@@ -48,6 +48,7 @@
              (:file "suite")
              (:file "table")
              (:file "transaction")
+             (:file "persistence")
              (:file "type")
              (:file "inheritance")
              (:file "reference")

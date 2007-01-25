@@ -76,7 +76,7 @@
 
     ;; checks for d2
     (is (not (null (prc::primary-table-of d2))))
-    (is (equal (list (prc::primary-table-of d2) (prc::primary-table-of c2) (prc::primary-table-of b2))
+    (is (equal (list (prc::primary-table-of d2) (prc::primary-table-of b2) (prc::primary-table-of c2))
                (prc::data-tables-of d2)))
     (is (equal (list 'append (prc::primary-table-of d2))
                (prc::primary-tables-of d2)))))
