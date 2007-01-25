@@ -5,14 +5,14 @@
 (defpclass* referred-set-test ()
   ())
 
+;; TODO: remove this nil
 (defpclass* reference-set-test ()
-  ((referred-set :type (set referred-set-test))))
+  ((referred-set nil :type (set referred-set-test))))
 
 (defmacro with-reference-set-transaction (&body body)
   `(with-transaction
     (let ((referred (make-instance 'referred-set-test))
-          ;; TODO: remove this nil
-          (reference-set (make-instance 'reference-set-test :referred-set nil)))
+          (reference-set (make-instance 'reference-set-test)))
       (declare (ignorable referred reference-set))
       ,@body)))
 

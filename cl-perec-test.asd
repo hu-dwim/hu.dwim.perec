@@ -50,7 +50,8 @@
              (:file "set")
              (:file "1-1-association")
              (:file "1-n-association")
-             (:file "m-n-association")))))
+             (:file "m-n-association")
+             (:file "cache")))))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
   (in-package :cl-perec-test)

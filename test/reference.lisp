@@ -11,14 +11,14 @@
 (defpclass* referred-test ()
   ())
 
+;; TODO: remove this nil
 (defpclass* reference-test ()
-  ((referred :type referred-test)))
+  ((referred nil :type referred-test)))
 
 (defmacro with-reference-transaction (&body body)
   `(with-transaction
     (let ((referred (make-instance 'referred-test))
-          ;; TODO: remove this nil
-          (reference (make-instance 'reference-test :referred nil)))
+          (reference (make-instance 'reference-test)))
       (declare (ignorable referred reference))
       ,@body)))
 
