@@ -20,7 +20,8 @@
         :cl-rdbms
         :cl-perec)
 
-  (:shadow #:parent)
+  (:shadow #:name
+           #:parent)
 
   (:shadowing-import-from :cl-perec
                           #:time
