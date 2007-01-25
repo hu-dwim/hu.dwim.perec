@@ -39,10 +39,12 @@
                :stefil
                :cl-rdbms
                :cl-perec)
+  :serial t
   :components
   ((:module :test
 	    :components
-            ((:file "suite")
+            ((:file "package")
+             (:file "suite")
              (:file "type")
              (:file "reference")
              (:file "set")

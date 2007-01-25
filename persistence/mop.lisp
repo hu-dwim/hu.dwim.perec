@@ -126,7 +126,7 @@
 (defmethod finalize-inheritance :after ((class persistent-class))
   (mapc #L(ensure-slot-reader* class !1)
         (remove-if-not #L(set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type !1)))
-                       (persistent-direct-slots-of class))))
+                       (persistent-effective-slots-of class))))
 
 (defmethod compute-slots :after ((class persistent-class))
   "Invalidates the cached slot value of persistent-effective-slots whenever the effective slots are recomputed, so that all dependent computed state will be invalidated and recomputed when requested."
@@ -203,11 +203,12 @@
                          (class-direct-slots class)))))
 
 (defun ensure-slot-reader* (class slot)
-  (bind ((reader (concatenate-symbol (first (slot-definition-readers slot)) "*"))
+  (bind ((reader (concatenate-symbol (first (some #'slot-definition-readers (direct-slots-of slot))) "*"))
          (reader-gf (ensure-generic-function reader :lambda-list '(object))))
     (ensure-method reader-gf
                    `(lambda (object)
-                     (slot-value* object ',(slot-definition-name slot)))
+                     (with-lazy-slot-values
+                       (slot-value-using-class ,class object ,slot)))
                    :specializers (list class))))
 
 (defun slot-initarg-and-value (object slot-name)

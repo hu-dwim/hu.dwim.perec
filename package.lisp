@@ -53,10 +53,12 @@
            ;; persistent class meta objects
            #:persistent-class
            #:persistent-association
-           #:persistent-object
            #:persistent-slot-definition
            #:persistent-direct-slot-definition
            #:persistent-effective-slot-definition
+           #:persistent-association-end-slot-definition
+           #:persistent-association-end-direct-slot-definition
+           #:persistent-association-end-effective-slot-definition
 
            ;; primitve types
            #:t
@@ -83,7 +85,10 @@
            #:member
            #:set
            #:or
-           ;; all persistent-classes are valid types
+
+           ;; persistent classes, all persistent-classes are valid slot types
+           #:persistent-object
+           #:persistent-set
 
            ;; the whole transaction API is inherited from cl-rdbms
            #:with-database
@@ -108,29 +113,14 @@
            ;; cache
            #:with-caching-slot-values
            #:without-caching-slot-values
+
+           ;; laziness
+           #:with-lazy-slot-values
+           #:without-lazy-slot-values
+
+           ;; database access
            #:with-bypassing-database-access
            #:without-bypassing-database-access))
-
-(defpackage :cl-perec-test
-  (:nicknames :prct)
-
-  (:use :common-lisp
-        :closer-mop
-        :iterate
-        :arnesi
-        :bind
-        :defclass-star
-        :local-time
-        :stefil
-        :cl-rdbms
-        :cl-perec)
-
-  (:shadow #:parent)
-
-  (:shadowing-import-from :cl-perec
-                          #:time
-                          #:form
-                          #:set))
 
 (in-package :cl-perec)
 

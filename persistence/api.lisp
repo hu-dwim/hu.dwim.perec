@@ -149,6 +149,20 @@
   `(bind ((*cache-slot-values* #f))
     ,@body))
 
+;;;;;;;;;;;;
+;;; laziness
+
+(defmacro with-lazy-slot-values (&body body)
+  `(bind ((*lazy-slot-values* #t))
+    ,@body))
+
+(defmacro without-lazy-slot-values (&body body)
+  `(bind ((*lazy-slot-values* #f))
+    ,@body))
+
+;;;;;;;;;;;;;;;;;;;
+;;; database access
+
 (defmacro with-bypassing-database-access (&body body)
   `(bind ((*bypass-database-access* #t))
     ,@body))

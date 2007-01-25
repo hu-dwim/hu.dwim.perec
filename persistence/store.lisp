@@ -27,12 +27,18 @@
    (cond ((and (typep slot 'persistent-association-end-effective-slot-definition)
                (eq (association-kind-of (association-of slot)) :1-n)
                (eq (cardinality-kind-of slot) :n))
-          (restore-1-n-association-end-set object slot))
+          (if *lazy-slot-values*
+              (make-instance 'persistent-1-n-association-end-set-container :object object :slot slot)
+              (restore-1-n-association-end-set object slot)))
          ((and (typep slot 'persistent-association-end-effective-slot-definition)
                (eq (association-kind-of (association-of slot)) :m-n))
-          (restore-m-n-association-end-set object slot))
+          (if *lazy-slot-values*
+              (make-instance 'persistent-m-n-association-end-set-container :object object :slot slot)
+              (restore-m-n-association-end-set object slot)))
          ((set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type slot)))
-          (restore-slot-set object slot))
+          (if *lazy-slot-values*
+              (make-instance 'persistent-slot-set-container :object object :slot slot)
+              (restore-slot-set object slot)))
          (t
           (bind ((record
                   (first
