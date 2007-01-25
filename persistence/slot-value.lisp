@@ -97,6 +97,35 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CLOS MOP slot-value-using-class and friends
 
+(defun slot-value* (object slot-name)
+  (bind ((class (class-of object))
+         (slot-name (find-slot class slot-name)))
+    (slot-value-using-class* class object slot-name)))
+
+(defgeneric slot-value-using-class* (class object slot-name)
+  (:documentation "For association ends and slots with set type teturns a lazy collection")
+
+  (:method ((class persistent-class)
+            (object persistent-object)
+            (slot persistent-effective-slot-definition))
+           (cond ((and (typep slot 'persistent-association-end-effective-slot-definition)
+                       (eq (association-kind-of (association-of slot)) :1-n)
+                       (eq (cardinality-kind-of slot) :n))
+                  (make-instance 'persistent-1-n-association-end-set-container
+                                 :object object
+                                 :slot slot))
+                 ((and (typep slot 'persistent-association-end-effective-slot-definition)
+                       (eq (association-kind-of (association-of slot)) :m-n))
+                  (make-instance 'persistent-m-n-association-end-set-container
+                                 :object object
+                                 :slot slot))
+                 ((set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type slot)))
+                  (make-instance 'persistent-slot-set-container
+                                 :object object
+                                 :slot slot))
+                 (t
+                  (slot-value-using-class class object slot)))))
+
 (defmethod slot-value-using-class ((class persistent-class)
                                    (object persistent-object)
                                    (slot standard-effective-slot-definition))

@@ -3,31 +3,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CLOS MOP extension for association ends
 
-#+nil
-(defgeneric association-end-value (object association-end-name)
-  (:method ((object persistent-object)
-            (association-end-name symbol))
-           (bind ((class (class-of object))
-                  (association-end (find-slot class association-end-name)))
-             (association-end-value-using-class class object association-end))))
-
-#+nil
-(defgeneric association-end-value-using-class (class object association-end) 
-  (:method ((class persistent-class)
-            (object persistent-object)
-            (association-end effective-binary-association-end))
-           (cond ((and (eq (association-kind-of (association-of association-end)) :1-n)
-                       (eq (cardinality-kind-of association-end) :n))
-                  (make-instance 'persistent-1-n-association-end-set-container
-                                 :object object
-                                 :effective-association-end association-end))
-                 ((eq (association-kind-of (association-of association-end)) :m-n)
-                  (make-instance 'rdbms-m-n-association-end-set-container
-                                 :object object
-                                 :effective-association-end association-end))
-                 (t
-                  (error "Unknown association end type")))))
-
 (defmethod propagate-cache-changes ((class persistent-class)
                                     (object persistent-object)
                                     (slot persistent-association-end-effective-slot-definition) new-value)
