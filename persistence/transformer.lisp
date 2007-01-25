@@ -20,10 +20,10 @@
   (list
    (when slot-value
      (with-output-to-string (base64)
-                            (encode-base64-bytes
-                             (with-output-to-sequence (stream)
-                               (store slot-value stream))
-                             base64)))))
+       (encode-base64-bytes
+        (with-output-to-sequence (stream)
+          (store slot-value stream))
+        base64)))))
 
 ;;;;;;;;;;;;
 ;;; Identity

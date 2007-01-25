@@ -58,9 +58,13 @@
 ;;; Helper methods
 
 (defun rdbms-name-for (name)
-  "Returns a name which does not conflict with RDBMS keywords."
+  "Returns a name which does not conflict with RDBMS keywords and fits in the maximum size."
   ;; TODO: this name mapping is not injective (different lisp names are mapped to the same rdbms name)
   (let ((name-as-string (strcat "_" (regex-replace-all "\\*|-|/" (symbol-name name) "_"))))
+    (when (> (length name-as-string) 64)
+      (setf name-as-string
+            (strcat (subseq name-as-string 0 60)
+                    (write-to-string (mod (sxhash name-as-string) 1000)))))
     (if (symbol-package name)
         (intern name-as-string (symbol-package name))
         (make-symbol name-as-string))))
