@@ -14,14 +14,14 @@
   ((:class brother-test :slot sister :type (or null sister-test))
    (:class sister-test :slot brother :type (or null brother-test))))
 
-(defmacro with-transaction-for-sister-and-brother (&body body)
+(defmacro with-sister-and-brother-transaction (&body body)
   `(with-transaction
     (bind ((sister (make-instance 'sister-test))
            (brother (make-instance 'brother-test)))
       ,@body)))
 
 (deftest test/association/1-1/initial-value/1 ()
-  (with-transaction-for-sister-and-brother
+  (with-sister-and-brother-transaction
     (is (eq nil (brother-of sister)))
     (is (eq nil (sister-of brother)))))
 
@@ -38,41 +38,41 @@
       (is (eq (brother-of sister) brother)))))
 
 (deftest test/association/1-1/store-value/1 ()
-  (with-transaction-for-sister-and-brother
+  (with-sister-and-brother-transaction
     (setf (brother-of sister) brother)
     (is (eq brother (brother-of sister)))))
 
 (deftest test/association/1-1/store-value/2 ()
-  (with-transaction-for-sister-and-brother
+  (with-sister-and-brother-transaction
     (setf (sister-of brother) sister)
     (is (eq sister (sister-of brother)))))
 
 (deftest test/association/1-1/referential-integrity/1 ()
-  (with-transaction-for-sister-and-brother
+  (with-sister-and-brother-transaction
     (setf (brother-of sister) brother)
     (is (eq sister (sister-of brother)))))
 
 (deftest test/association/1-1/referential-integrity/2 ()
-  (with-transaction-for-sister-and-brother
+  (with-sister-and-brother-transaction
     (setf (sister-of brother) sister)
     (is (eq brother (brother-of sister)))))
 
 (deftest test/association/1-1/referential-integrity/3 ()
-  (with-transaction-for-sister-and-brother
+  (with-sister-and-brother-transaction
     (setf (sister-of brother) sister)
     (setf (sister-of brother) nil)
     (is (eq nil (sister-of brother)))
     (is (eq nil (brother-of sister)))))
 
 (deftest test/association/1-1/referential-integrity/4 ()
-  (with-transaction-for-sister-and-brother
+  (with-sister-and-brother-transaction
     (setf (brother-of sister) brother)
     (setf (brother-of sister) nil)
     (is (eq nil (sister-of brother)))
     (is (eq nil (brother-of sister)))))
    
 (deftest test/association/1-1/referential-integrity/5 ()
-  (with-transaction-for-sister-and-brother
+  (with-sister-and-brother-transaction
     (setf (sister-of brother) sister)
     (setf (sister-of brother) (make-instance 'sister-test))
     (is (eq nil (brother-of sister)))

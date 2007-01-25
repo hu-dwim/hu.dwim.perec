@@ -14,7 +14,7 @@
 (defpclass* reference-test ()
   ((referred :type referred-test)))
 
-(defmacro with-transaction-for-reference (&body body)
+(defmacro with-reference-transaction (&body body)
   `(with-transaction
     (let ((referred (make-instance 'referred-test))
           ;; TODO: remove this nil
@@ -23,10 +23,10 @@
       ,@body)))
 
 (deftest test/reference/initial-value ()
-  (with-transaction-for-reference
+  (with-reference-transaction
     (is (eq nil (referred-of reference)))))
 
 (deftest test/reference/store-value/1 ()
-  (with-transaction-for-reference
+  (with-reference-transaction
     (setf (referred-of reference) referred)
     (is (eq referred (referred-of reference)))))

@@ -45,7 +45,6 @@
    (ensure-exported
     (compute-as (export-to-rdbms -self-))
     :reader ensure-exported
-    :type persistent-class
     :documentation "The persistent class must be exported before use. This will automatically happen not later than making, reviving or querying the first instance of it.")
    (depends-on
     (compute-as nil)
@@ -129,6 +128,24 @@
   (:metaclass persistent-slot-definition-class)
   (:documentation "Class for persistent effective slot definitions."))
 
+(lambda ()
+       ())
+
+(defcclass* class-primary-table (table)
+  ((oid-columns
+    (compute-as (list (id-column-of -self-) (class-name-column-of -self-)))
+    :type (list sql-column)
+    :documentation "The list of RDBMS columns corresponding to the oid of this table.")
+   (id-column
+    (compute-as (find +id-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
+    :type sql-column
+    :documentation "The RDBMS column of corresponding oid slot.")
+   (class-name-column
+    (compute-as (find +class-name-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
+    :type sql-column
+    :documentation "The RDBMS column of corresponding oid slot."))
+  (:documentation "This is a special table related to a persistent class."))
+
 (defmethod describe-object ((object persistent-class) stream)
   (call-next-method)
   (aif (primary-table-of object)
@@ -142,7 +159,7 @@
 
 (defmethod export-to-rdbms ((class persistent-class))
   (mapc #'ensure-exported (remove-if-not #L(typep !1 'persistent-class) (cdr (class-precedence-list class))))
-  ;; TODO: (mapc #'exported-model-element-of (associations-of class))
+  (mapc #'ensure-exported (depends-on-of class))
   (awhen (primary-table-of class)
     (export-to-rdbms it)))
 

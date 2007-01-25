@@ -1,9 +1,12 @@
 (in-package :cl-perec)
 
-;; TODO: ensure that 1-1 and 1-n associations store their foreign keys in the primary table of the primary association end
+;; TODO: ensure that 1-1 and 1-n associations store their foreign keys in the primary table of the primary association end, switch association ends if necessary
 
 (defcclass* persistent-association ()
-  ((association-end-definitions
+  ((name
+    :type symbol
+    :documentation "Unique name of the association. This name can be used to find the association using find-association.")
+   (association-end-definitions
     (compute-as nil)
     :type list
     :documentation "Canonical form of the persistent association end direct slot definitions.")
@@ -26,7 +29,15 @@
                         ((equal cardinality-kinds '(:n :n)) :m-n)
                         (t :1-n))))
     :type symbol
-    :documentation "Valid values are :1-1, :1-n or :m-n according to association end cardinalities.")))
+    :documentation "Valid values are :1-1, :1-n or :m-n according to association end cardinalities.")
+   (primary-table
+    (compute-as (compute-primary-table -self- -current-value-))
+    :type table
+    :documentation  "The table which holds the oids of the associated entities.")
+   (ensure-exported
+    (compute-as (export-to-rdbms -self-))
+    :reader ensure-exported
+    :documentation "The persistent association must be exported before use. This will automatically happen not later than making, reviving or querying the first instance related to it.")))
 
 (defcclass* persistent-association-end-slot-definition (persistent-slot-definition)
   ((association
@@ -92,6 +103,10 @@
 ;;;;;;;;;;;
 ;;; Compute
 
+(defmethod compute-primary-table ((association persistent-association) current-table)
+  (when (eq (association-kind-of association) :m-n)
+    (make-instance 'association-primary-table :name (rdbms-name-for (name-of association)))))
+
 ;; TODO: refactor these to avoid duplicates
 (defmethod compute-table ((slot persistent-association-end-direct-slot-definition))
   (bind ((association (association-of slot)))
@@ -105,11 +120,13 @@
 (defmethod compute-table ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))
     (ecase (association-kind-of association)
-      (:1-1 (error "....."))
+      (:1-1 (if (primary-association-end-p slot)
+                (call-next-method)
+                (table-of (some #'other-association-end-of (direct-slots-of slot)))))
       (:1-n (if (eq :1 (cardinality-kind-of slot))
                 (call-next-method)
                 (table-of (some #'other-association-end-of (direct-slots-of slot)))))
-      (:m-n (error ".....")))))
+      (:m-n (some #'primary-table-of (direct-slots-of slot))))))
 
 (defmethod compute-columns ((slot persistent-association-end-direct-slot-definition))
   (bind ((association (association-of slot)))
@@ -123,11 +140,17 @@
 (defmethod compute-columns ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))
     (ecase (association-kind-of association)
-      (:1-1 (error "....."))
+      (:1-1 (if (primary-association-end-p slot)
+                (call-next-method)
+                (columns-of (some #'other-association-end-of (direct-slots-of slot)))))
       (:1-n (if (eq :1 (cardinality-kind-of slot))
                 (call-next-method)
                 (columns-of (some #'other-association-end-of (direct-slots-of slot)))))
       (:m-n (error ".....")))))
+
+(defcclass* association-primary-table (table)
+  ()
+  (:documentation "This is a special table related to a persistent association."))
 
 ;;;;;;;;;;;
 ;;; Helpers

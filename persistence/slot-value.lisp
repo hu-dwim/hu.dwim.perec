@@ -12,10 +12,6 @@
 (defparameter *propagate-cache-changes* #t
   "True means setting the slot of an object in the cache will propagate changes to other objects in the cache according to association end slot integrity rules.")
 
-;; TODO: use this special variable in svuc
-(defparameter *lazy-slot-values* #f
-  "True means slot-value-using-class will by default return lazy collections.")
-
 (defgeneric invalidate-all-cached-slots (object)
   (:documentation "Invalidates all cached slot values from the object.")
 

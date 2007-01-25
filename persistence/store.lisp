@@ -3,6 +3,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS slot restorers
 
+(defparameter *lazy-slot-values* #f
+  "True means slot-value-using-class will by default return lazy collections.")
+
 (defun restore-slot-set (object slot)
   "Restores the non lazy list without local side effects from the database."
   (mapcar #L(object-reader !1)

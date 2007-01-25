@@ -21,21 +21,6 @@
     :documentation "An RDBMS index on this column."))
   (:documentation "An RDBMS column with some related RDBMS specific definitions."))
 
-(defcclass* class-primary-table (table)
-  ((oid-columns
-    (compute-as (list (id-column-of -self-) (class-name-column-of -self-)))
-    :type (list sql-column)
-    :documentation "The list of RDBMS columns corresponding to the oid of this table.")
-   (id-column
-    (compute-as (find +id-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
-    :type sql-column
-    :documentation "The RDBMS column of corresponding oid slot.")
-   (class-name-column
-    (compute-as (find +class-name-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
-    :type sql-column
-    :documentation "The RDBMS column of corresponding oid slot."))
-  (:documentation "This is a special table related to a persistent class."))
-
 (defprint-object (self table)
   (princ (name-of self)))
 

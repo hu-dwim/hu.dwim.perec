@@ -35,7 +35,6 @@
   (:shadowing-import-from :iterate
                           #:finish)
 
-  ;; TODO: do not use cl-containers?
   (:shadowing-import-from :cl-containers
                           #:dequeue
                           #:enqueue

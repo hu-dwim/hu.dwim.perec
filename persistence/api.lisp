@@ -79,7 +79,9 @@
                 (aif (find-association ',association-name)
                      (reinitialize-instance it :association-end-definitions ',processed-association-ends)
                      (setf (find-association ',association-name)
-                           (make-instance 'persistent-association :association-end-definitions ',processed-association-ends)))
+                           (make-instance 'persistent-association
+                                          :name ',association-name
+                                          :association-end-definitions ',processed-association-ends)))
               (ensure-persistent-class ',primary-class)
               (ensure-persistent-class ',secondary-class))))))))
 

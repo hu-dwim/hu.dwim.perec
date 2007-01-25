@@ -8,7 +8,7 @@
 (defpclass* reference-set-test ()
   ((referred-set :type (set referred-set-test))))
 
-(defmacro with-transaction-for-reference-set (&body body)
+(defmacro with-reference-set-transaction (&body body)
   `(with-transaction
     (let ((referred (make-instance 'referred-set-test))
           ;; TODO: remove this nil
@@ -17,7 +17,7 @@
       ,@body)))
 
 (deftest test/set/initial-value/1 ()
-  (with-transaction-for-reference-set
+  (with-reference-set-transaction
     (is (eq nil (referred-set-of reference-set)))))
 
 (deftest test/set/initial-value/2 ()
@@ -27,12 +27,12 @@
       (is (equal (referred-set-of reference-set) (list referred))))))
 
 (deftest test/set/store-value/1 ()
-  (with-transaction-for-reference-set
+  (with-reference-set-transaction
     (setf (referred-set-of reference-set) (list referred))
     (is (equal (list referred) (referred-set-of reference-set)))))
 
 (deftest test/set/collection/1 ()
-  (with-transaction-for-reference-set
+  (with-reference-set-transaction
     (bind ((referred-set (referred-set-of* reference-set)))
       (insert-item referred-set referred)
       (is (= 1 (size referred-set)))
@@ -42,7 +42,7 @@
       (is (null (referred-set-of reference-set))))))
 
 (deftest test/set/collection/2 ()
-  (with-transaction-for-reference-set
+  (with-reference-set-transaction
     (bind ((referred-set (referred-set-of* reference-set))
            (other-referred (make-instance 'referred-set-test)))
       (insert-item referred-set referred)
