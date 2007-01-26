@@ -459,4 +459,7 @@
         (awhen (find name (persistent-direct-slots-of class)
                      :key #'slot-definition-readers
                      :test #'member)
-          (collect (find-slot class (slot-definition-name it))))))
+          (unless (class-finalized-p class)
+            (finalize-inheritance class))
+          (collect (prog1 (find-slot class (slot-definition-name it))
+                     (assert it))))))
