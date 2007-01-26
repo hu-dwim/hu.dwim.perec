@@ -405,9 +405,9 @@
   (and (symbolp name)
        (direct-slots-for-accessor name)))
 
-(defun direct-slots-for-accessor (name)
+(defun effective-slots-for-accessor (name)
   (iter (for (class-name class) in-hashtable *persistent-classes*)
         (awhen (find name (persistent-direct-slots-of class)
                      :key #'slot-definition-readers
                      :test #'member)
-          (collect it))))
+          (collect (find-slot class (slot-definition-name it))))))
