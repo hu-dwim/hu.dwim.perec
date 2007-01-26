@@ -101,6 +101,7 @@
              (:file "scroll")
              (:file "result-set" :depends-on ("scroll"))
              (:file "api")
+             (:file "cache")
              (:file "query" :depends-on ("syntax" "api"))
              (:file "sql" :depends-on ("query"))
              (:file "type" :depends-on ("syntax" "query"))

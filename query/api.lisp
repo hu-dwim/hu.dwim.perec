@@ -115,8 +115,7 @@
 ;;; Execute and compile
 
 (defgeneric execute-query (query &rest lexical-variable-values)
-  ;; PORT:
-  (:documentation "TODO:"))
+  (:documentation "Executes the query with the given variable values, compiles the query when needed."))
 
 (defgeneric compile-query (query)
   (:documentation "Compiles the query to lisp code that executes the query."))
