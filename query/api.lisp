@@ -85,11 +85,13 @@
       (first (aref (element scroll) 0)))))
 
 (defun select-similar-assert-for (type rest)
-  ;; PORT:
-  (declare (ignore type rest))
-  #+nil(bind ((class (find-class type)))
-         (iter (for (initarg value) on rest by 'cddr)
-               (collect `(equal (,(accessor-name-of (effective-property-for-initarg class initarg)) -object-) ,value)))))
+  (bind ((class (find-class type)))
+    (iter (for (initarg value) on rest by 'cddr)
+          (collect `(equal (,(first
+                              (slot-definition-readers
+                               (find initarg (class-slots class)
+                                     :key #L(first (slot-definition-initargs !1))))) -object-)
+                     ,value)))))
 
 (defmacro select-similar-object (type &rest rest &key &allow-other-keys)
   `(select-object (-object- ,type)
