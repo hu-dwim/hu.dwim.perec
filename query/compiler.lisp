@@ -177,7 +177,7 @@ wraps the compiled code with a runtime check of the result."))
         (bind (((values deletes cleanup) (sql-deletes-for-query query)))
           `(lambda ,lexical-variables
             (declare (ignorable ,@lexical-variables))
-            (invalidate-persistent-flag-of-cached-objects (find-class ,type))
+            (invalidate-persistent-flag-of-cached-objects (find-persistent-class* ,type))
             ,(if cleanup
                  `(unwind-protect (mapc 'execute ,deletes) (execute ,cleanup))
                  `(mapc 'execute ,deletes)))))))
@@ -714,3 +714,8 @@ forms with joined variables.")
 (defun generate-joined-variable-name (type)
   "Generates a name for a joined variable of type TYPE."
   (gensym (symbol-name (class-name type))))
+
+(defun find-persistent-class* (name-or-class)
+  (etypecase name-or-class
+    (symbol (find-persistent-class name-or-class))
+    (persistent-class name-or-class)))

@@ -133,7 +133,20 @@
            #:avg
            #:sum
            #:purge
+
+           ;; scroll
            #:scroll
+           #:elements
+           #:page
+           #:first-page!
+           #:previous-page!
+           #:next-page!
+           #:last-page!
+           #:page-count
+           #:page-size
+           #:element-count
+           #:fixed-size-scroll
+           #:simple-scroll
 
            ;; cache
            #:with-caching-slot-values

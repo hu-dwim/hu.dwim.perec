@@ -131,3 +131,35 @@
           `(let ((,l ,lst))
             ,(generate variables l)))
         nil)))
+
+(defmacro surround-body-when (test surround-with &body body)
+  `(flet ((body () (progn ,@body)))
+    (declare (inline body))
+    (if ,test
+        (,@surround-with)
+        (body))))
+
+(defun lessp (obj1 obj2)
+  (typecase obj1
+    (real (< obj1 obj2))
+    (string (string< obj1 obj2))
+    (character (char< obj1 obj2))))
+
+(defun less-or-equal-p (obj1 obj2)
+  (typecase obj1
+    (real (<= obj1 obj2))
+    (string (string<= obj1 obj2))
+    (character (char<= obj1 obj2))))
+
+(defun greaterp (obj1 obj2)
+  (typecase obj1
+    (real (> obj1 obj2))
+    (string (string> obj1 obj2))
+    (character (char> obj1 obj2))))
+
+(defun greater-or-equal-p (obj1 obj2)
+  (typecase obj1
+    (real (>= obj1 obj2))
+    (string (string>= obj1 obj2))
+    (character (char>= obj1 obj2))))
+

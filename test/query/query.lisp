@@ -39,9 +39,24 @@
 
 (defsuite* test/query/select :in test/query)
 
-(defmacro test-query ((&key (select-count 1) (record-count nil)) &body forms)
-  `(finishes
-    (with-fixture fill-data-1
+(defmacro test-query ((&key (select-count 1) (record-count nil) (fixture nil)) &body forms)
+  (if fixture
+      `(finishes
+        (with-fixture ,fixture
+          (run-queries
+            ,(when select-count
+                   `(progn
+                     (let ((counter-start (prc::select-counter-of (command-counter-of *transaction*))))
+                       (let ((prc::*test-query-compiler* #f))
+                         ,@forms)
+                       (is (= (- (prc::select-counter-of (command-counter-of *transaction*))
+                                 counter-start)
+                              ,select-count)))))
+            (bind ((result (let ((prc::*test-query-compiler* #t)) ,@forms)))
+              ,(if record-count
+                   `(is (= (length result) ,record-count))
+                   `(is (not (null result))))))))
+      `(finishes
         (run-queries
           ,(when select-count
                  `(progn
@@ -77,7 +92,7 @@
 (defpclass* user (owner)
   ((password :type (string 50))
    (birthday :type date)
-   (age 17 :persistent #f :type integer-32)))
+   (age 32 :persistent #f :type integer-32)))
 
 (defassociation*
   ((:class topic :slot messages :type (set message))
@@ -93,58 +108,51 @@
     (purge-objects 'owner)
     (purge-objects 'topic)
     (purge-objects 'message)
-    (let ((user1 (make-instance 'user
-                                :name "user1"
-                                :birthday (encode-local-time 0 0 0 0 22 4 1984 :timezone +utc-zone+)
-                                :password "secret"))
-          (user2 (make-instance 'user
-                                :name "user2"
-                                :birthday (encode-local-time 0 0 0 0 2 7 1975 :timezone +utc-zone+)
-                                :password "sglF$%3D"))
-          (topic1 (make-instance 'topic :title "topic1"))
-          (topic2 (make-instance 'topic :title "topic2"))
-          (message1 (make-instance 'message :subject "subject1" :content "content1"))
-          (message2 (make-instance 'message :subject "subject2" :content "content2"))
-          (ad1 (make-instance 'ad :subject "ad1" :content "content3"))
-          (spam1 (make-instance 'spam :subject "spam1" :content "content4" :score 10 :spam-type 'viagra)))
-      (declare (ignore user2))
-      (setf (owner-of topic1) user1
-            (owner-of topic2) user1
-            (topic-of message1) topic1
-            (topic-of message2) topic1
-            (topic-of ad1) topic1
-            (topic-of spam1) topic1))))
+    (bind ((user1 (make-instance 'user
+                                 :name "user1"
+                                 :birthday (encode-local-time 0 0 0 0 22 4 1984 :timezone +utc-zone+)
+                                 :password "secret"))
+           (topic1 (make-instance 'topic :title "topic1" :owner user1)))
+      (make-instance 'user
+                     :name "user2"
+                     :birthday (encode-local-time 0 0 0 0 2 7 1975 :timezone +utc-zone+)
+                     :password "sglF$%3D")
+      (make-instance 'topic :title "topic2" :owner user1)
+      (make-instance 'message :subject "subject1" :content "content1" :topic topic1)
+      (make-instance 'message :subject "subject2" :content "content2" :topic topic1)
+      (make-instance 'ad :subject "ad1" :content "content3" :topic topic1)
+      (make-instance 'spam :subject "spam1" :content "content4" :topic topic1 :score 10 :spam-type 'viagra))))
 
 (deftest test/query/select/simple ()
-  (test-query (:record-count 4)
+  (test-query (:record-count 4 :fixture fill-data-1)
     (select (o)
       (assert (typep o 'message))
       (collect o))))
 
 (deftest test/query/select/short ()
-  (test-query (:record-count 4)
+  (test-query (:record-count 4 :fixture fill-data-1)
     (select ((o message))
       (collect o))))
 
 (deftest test/query/select/all ()
-  (test-query ()
+  (test-query (:fixture fill-data-1)
     (select (o)
       (collect o))))
 
 (deftest test/query/select/symbol-enum ()
-  (test-query (:select-count 1 :record-count 1)
+  (test-query (:select-count 1 :record-count 1 :fixture fill-data-1)
     (select ((s spam))
       (assert (eq (spam-type-of s) 'viagra))
       (collect s))))
 
 (deftest test/query/select/nested-ands ()
-  (test-query (:record-count 4)
+  (test-query (:record-count 4 :fixture fill-data-1)
     (select (object)
       (assert (and t (and t (typep object 'message))))
       (collect object))))
 
 (deftest test/query/select/<= ()
-  (test-query (:select-count 1 :record-count 0)
+  (test-query (:select-count 1 :record-count 0 :fixture fill-data-1)
     (select ((s spam))
       (assert (<= 50 (score-of s) 100))
       (collect s)))
@@ -154,57 +162,58 @@
       (collect s))))
 
 (deftest test/query/select/multiple-objects ()
-  (test-query (:record-count (* 2 4 2))
+  (test-query (:record-count (* 2 4 2) :fixture fill-data-1)
     (select ((user user) (message message) (topic topic))
       (collect user message topic))))
 
 (deftest test/query/select/with-lexical-variables-1 ()
-  (test-query (:record-count 1)
+  (test-query (:record-count 1 :fixture fill-data-1)
     (let ((user-name "user1"))
       (select ((user user))
         (assert (equal (name-of user) user-name))
         (collect user)))))
 
 (deftest test/query/select/with-lexical-variables-2 ()
-  (test-query (:record-count 4)
+  (test-query (:record-count 4 :fixture fill-data-1)
     (let ((class (find-class 'message)))
       (select (o)
         (assert (typep o (class-name class)))
         (collect o)))))
 
 (deftest test/query/select/with-dynamic-variables ()
-  (let ((user (with-transaction (select-first-matching user))))
-    (test-query (:select-count nil :record-count 2)
-      (revive-object user)             ; for eq
-      (select ((o topic))
-        (assert (eq (owner-of o) user))
-        (collect o)))))
+  (with-fixture fill-data-1
+      (let ((user (with-transaction (select-first-matching user))))
+        (test-query (:select-count nil :record-count 2)
+          (revive-object user)          ; for eq
+          (select ((o topic))
+            (assert (eq (owner-of o) user))
+            (collect o))))))
 
 (deftest test/query/select/polimorph-association-end ()
-  (test-query (:select-count (+ 2 1) :record-count 2)
+  (test-query (:select-count (+ 2 1) :record-count 2 :fixture fill-data-1)
     (let ((topic (select-first-matching topic)))
       (select ((o ad))
         (assert (eq (topic-of o) topic))
         (collect o)))))
 
 (deftest test/query/select/slot ()
-  (test-query (:record-count 2)
+  (test-query (:record-count 2 :fixture fill-data-1)
     (select ((user user))
       (collect (name-of user)))))
 
 (deftest test/query/select/association ()
-  (test-query (:select-count nil :record-count 2)
+  (test-query (:select-count nil :record-count 2 :fixture fill-data-1)
     (select ((topic topic))
       (collect (owner-of topic)))))
 
 (deftest test/query/select/or ()
-  (test-query (:record-count (+ 4 2))
+  (test-query (:record-count (+ 4 2) :fixture fill-data-1)
     (select (o)
       (assert (or (typep o 'message) (typep o 'topic)))
       (collect o))))
 
 (deftest test/query/select/builder ()
-  (test-query (:record-count 4)
+  (test-query (:record-count 4 :fixture fill-data-1)
     (let ((query (make-query nil)))
       (add-query-variable query 'm)
       (add-assert query '(typep m 'message))
@@ -212,20 +221,20 @@
       (execute-query query))))
 
 (deftest test/query/select/join-1 ()
-  (test-query (:record-count 4)
+  (test-query (:record-count 4 :fixture fill-data-1)
     (select ((message message))
       (assert (equal (title-of (topic-of message)) "topic1"))
       (collect message))))
 
 (deftest test/query/select/join-n/collect-child ()
-  (test-query (:record-count 4)
+  (test-query (:record-count 4 :fixture fill-data-1)
     (select ((topic topic) (message message))
       (assert (equal (title-of topic) "topic1"))
       (assert (member message (messages-of topic)))
       (collect message))))
 
 (deftest test/query/select/join-n/collect-parent ()
-  (test-query (:record-count 1)
+  (test-query (:record-count 1 :fixture fill-data-1)
     (select ((topic topic) (message message))
       (assert (equal (title-of topic) "topic1"))
       (assert (member message (messages-of topic)))
@@ -233,26 +242,26 @@
       (collect topic))))
 
 (deftest test/query/select/join-n-in-collect ()
-  (test-query (:select-count nil :record-count 1)
+  (test-query (:select-count nil :record-count 1 :fixture fill-data-1)
     (select ((topic topic))
       (assert (equal (title-of topic) "topic1"))
       (collect (messages-of topic)))))
 
 (deftest test/query/select/general ()
-  (test-query (:select-count nil :record-count 1)
+  (test-query (:select-count nil :record-count 1 :fixture fill-data-1)
     (select ((topic topic))
       (when (equal (title-of topic) "topic1")
         (collect topic)))))
 
 (deftest test/query/select/with-lisp-filter ()
-  (test-query (:select-count nil :record-count 1)
+  (test-query (:select-count nil :record-count 1 :fixture fill-data-1)
     (let ((predicate (lambda (message) (equal (subject-of message) "subject1"))))
       (select ((message message))
         (assert (funcall predicate message))
         (collect message)))))
 
 (deftest test/query/select/cnf ()
-  (test-query (:record-count 1)
+  (test-query (:record-count 1 :fixture fill-data-1)
     (select ((m message))
       (assert (or (not (equal (title-of (topic-of m)) "topic1"))
                   (and (equal (subject-of m) "subject1")
@@ -260,7 +269,7 @@
       (collect m))))
 
 (deftest test/query/select/typep ()
-  (test-query (:record-count 2)
+  (test-query (:record-count 2 :fixture fill-data-1)
     (let ((subject "subject1"))
       (select ((m message))
         (assert (and (or (typep m 'ad)
@@ -271,72 +280,72 @@
 (deftest test/query/select/macro ()
   (define-query-macro s-of (message)
     `(subject-of ,message))
-  (test-query (:record-count 1)
+  (test-query (:record-count 1 :fixture fill-data-1)
     (select ((m message))
       (assert (equal (s-of m) "subject1"))
       (collect m))))
 
 (deftest test/query/select/count ()
-  (test-query (:record-count 1)
+  (test-query (:record-count 1 :fixture fill-data-1)
     (select ((topic topic))
       (assert (>= (length (messages-of topic)) 2))
       (collect topic))))
 
 (deftest test/query/select/member-1 ()
-  (test-query (:select-count 2 :record-count 3)
+  (test-query (:select-count 2 :record-count 3 :fixture fill-data-1)
     (let ((messages (cdr (prc::select-objects message))))
       (select ((m message))
         (assert (member m messages))
         (collect m)))))
 
 (deftest test/query/select/member-2 ()
-  (test-query (:record-count 1)
+  (test-query (:record-count 1 :fixture fill-data-1)
     (select ((m message))
       (assert (member (subject-of m) '("subject1" "no-such-subject") :test 'equal))
       (collect m))))
 
 (deftest test/query/select/member-3 ()
-  (test-query (:select-count 0 :record-count 0)
+  (test-query (:select-count 0 :record-count 0 :fixture fill-data-1)
     (select ((m message))
       (assert (member (subject-of m) nil))
       (collect m))))
 
 (deftest test/query/select/lisp-expr ()
-  (test-query (:record-count 1)
+  (test-query (:record-count 1 :fixture fill-data-1)
     (let ((num "1"))
       (select ((topic topic))
         (assert (equal (title-of topic) (strcat "topic" num)))
         (collect topic)))))
 
 (deftest test/query/select/regex-1 ()
-  (test-query (:select-count 1 :record-count 1)
+  (test-query (:select-count 1 :record-count 1 :fixture fill-data-1)
     (select ((topic topic))
       (assert (scan "t.*picx?1" (title-of topic)))
       (collect topic))))
 
 (deftest test/query/select/regex-2 ()
-  (test-query (:select-count 1 :record-count 1)
+  (test-query (:select-count 1 :record-count 1 :fixture fill-data-1)
     (select ((topic topic))
       (assert (scan "picx?1" (title-of topic) :start 2 :end 6))
       (collect topic))))
 
 (deftest test/query/select/like ()
-  (test-query (:select-count 1 :record-count 1)
+  (test-query (:select-count 1 :record-count 1 :fixture fill-data-1)
     (select ((topic topic))
       (assert (like (title-of topic) "t%pi_1"))
       (collect topic))))
 
 (deftest test/query/select/strcat ()
-  (test-query (:select-count 1 :record-count 1)
+  (test-query (:select-count 1 :record-count 1 :fixture fill-data-1)
     (select ((tc topic) (m message) (u user))
       (assert (string= (strcat (title-of tc) ":" (subject-of m) ":" (name-of u))
                        "topic1:subject1:user1"))
       (collect tc m u))))
 
 (deftest test/query/select/non-persistent-slot ()
-  (test-query (:record-count 1)
+  (test-query (:record-count 2 :fixture fill-data-1) ; TODO: should select 1
     (select ((u user))
-      (assert (= (age-of u) 17))
+      (assert (> (age-of u) 30))
       (collect u))))
 
 (defpclass* person ()
@@ -383,23 +392,23 @@
             (wife-of brad-pitt) angelina-jolie))))
 
 (deftest test/query/select/association-n-m ()
-  (test-query (:select-count 1 :record-count 4)
+  (test-query (:select-count 1 :record-count 4 :fixture fill-data-2)
     (select ((m movie) (p performer))
       (assert (member p (performers-of m)))
       (collect (title-of m) (first-name-of p) (last-name-of p)))))
 
 (deftest test/query/select/association-1-1 ()
-  (test-query (:select-count 1 :record-count 1)
+  (test-query (:select-count 1 :record-count 1 :fixture fill-data-2)
     (select ((m man) (w woman))
       (assert (eq (wife-of m) w))
       (collect m w)))
-  (test-query (:select-count 1 :record-count 1)
+  (test-query (:select-count 1 :record-count 1 :fixture fill-data-2)
     (select ((m man) (w woman))
       (assert (eq (husband-of w) m))
       (collect m w))))
 
 (deftest test/query/select/association-chain ()
-  (test-query (:select-count 1 :record-count 1)
+  (test-query (:select-count 1 :record-count 1 :fixture fill-data-2)
     (select ((m man))
       (assert (typep (husband-of (wife-of m)) 'performer))
       (assert (> (length (movies-of (husband-of (wife-of m)))) 0))
@@ -417,27 +426,27 @@
       (symbol-macrolet ((counter prc::*compile-query-counter*))
         ,@body))))
 
-(defpclass* class-1 ()
+(defpclass* query-cache-test ()
   ((attr-1 :type integer-32)))
 
 ;; PORT:
 (defixture fill-data-3
   (with-transaction
-    (purge-objects 'class-1)
-    (make-instance 'class-1 :attr-1 1)
-    (make-instance 'class-1 :attr-1 2)))
+    (purge-objects 'query-cache-test)
+    (make-instance 'query-cache-test :attr-1 1)
+    (make-instance 'query-cache-test :attr-1 2)))
 
 (deftest test/query/cache-1 ()
   (run-cache-test
     (is (= counter 0))
-    (select ((o class-1)) (collect o))
+    (select ((o query-cache-test)) (collect o))
     (is (= counter 1))
-    (select ((o class-1)) (collect o))
+    (select ((o query-cache-test)) (collect o))
     (is (= counter 1))))
 
 (deftest test/query/cache-2 ()
   (run-cache-test
-    (bind ((query (make-query `(select ((o class-1)) (collect o)))))
+    (bind ((query (make-query `(select ((o query-cache-test)) (collect o)))))
       (is (= counter 0))
       (execute-query query)
       (is (= counter 1))
@@ -447,64 +456,66 @@
    
 (deftest test/query/cache-3 ()
   (run-cache-test
-    (bind ((query (make-query `(select ((o class-1)) (collect o))))
+    (bind ((query (make-query `(select ((o query-cache-test)) (collect o))))
            (result (execute-query query)))
       (add-assert query `(equal (attr-1-of o) 1))
       (is (not (equal result (execute-query query)))))))
 
 (deftest test/query/cache-4 ()
   (run-cache-test
-    (bind ((query (make-query '(select ((o class-1)) (collect o)))))
+    (bind ((query (make-query '(select ((o query-cache-test)) (collect o)))))
       (is (= counter 0))
       (execute-query query)
       (is (= counter 1))
-      (undefine-class 'class-1)
+      (undefine-class 'query-cache-test)
       (signals error (execute-query query))
       (is (= counter 2)))))
 
 ;------------------------------------------------------------------------------
 
-(in-suite test/query/select)
+(defsuite* test/query/options :in test/query)
 
-(defpclass* class-1 ()
+
+(defpclass* options-1-test ()
   ((attr-1 :type  integer-32)))
 
-(defpclass* class-2 ()
+(defpclass* options-2-test ()
   ((attr-2 :type integer-32)))
 
 (defixture fill-data-4
   (with-transaction
-    (purge-objects 'class-1)
-    (purge-objects 'class-2)
-    (make-instance 'class-1 :attr-1 1)
-    (make-instance 'class-1 :attr-1 1)
-    (make-instance 'class-2 :attr-2 1)))
+    (purge-objects 'options-1-test)
+    (purge-objects 'options-2-test)
+    (make-instance 'options-1-test :attr-1 1)
+    (make-instance 'options-1-test :attr-1 1)
+    (make-instance 'options-2-test :attr-2 1)))
 
 (deftest test/query/select/unique-negative ()
-  (test-query (:select-count nil :record-count 2)
-    (select ((o class-1))
+  (test-query (:select-count nil :record-count 2 :fixture fill-data-4)
+    (select ((o options-1-test))
       (collect (attr-1-of o)))))
 
 (deftest test/query/select/unique-positive ()
-  (test-query (:select-count nil :record-count 1)
-    (select (:uniquep t) ((o class-1))
+  (test-query (:select-count nil :record-count 1 :fixture fill-data-4)
+    (select (:uniquep t) ((o options-1-test))
             (collect (attr-1-of o)))))
 
 (deftest test/query/select/flatp-negative ()
-  (test-query (:record-count 2)
-    (select ((o1 class-1) (o2 class-2))
+  (test-query (:record-count 2 :fixture fill-data-4)
+    (select ((o1 options-1-test) (o2 options-2-test))
       (collect o1 o2))))
 
 (deftest test/query/select/flatp-positive ()
-  (test-query (:record-count 4)
-    (select (:flatp #t) ((o1 class-1) (o2 class-2))
+  (test-query (:record-count 4 :fixture fill-data-4)
+    (select (:flatp #t) ((o1 options-1-test) (o2 options-2-test))
             (collect o1 o2))))
 
 (deftest test/query/select/scroll-positive ()
-  (finishes
-    (run-queries
-      (bind ((scroll (select (:result-type scroll) ((o class-1)) (collect o))))
-        (is (typep scroll 'scroll))))))
+  (with-fixture fill-data-4
+      (finishes
+        (run-queries
+          (bind ((scroll (select (:result-type scroll) ((o options-1-test)) (collect o))))
+            (is (typep scroll 'scroll)))))))
 
 ;------------------------------------------------------------------------------
 
@@ -518,18 +529,23 @@
               (for v from start below end)
               (always (= (first (aref page i)) v))))))
 
-(defpclass* class-1 ()
+(defpclass* scroll-test ()
   ((attr-1 :type integer-32)))
 
 (defixture fill-data-5
   (with-transaction
-    (purge-objects 'class-1)
+    (purge-objects 'scroll-test)
     (iter (for i from 0 below 10)
-          (make-instance 'class-1 :attr-1 i))))
+          (make-instance 'scroll-test :attr-1 i))))
+
+(defmacro run-scroll-test (&body body)
+  `(with-fixture fill-data-5
+    (run-queries
+      ,@body)))
 
 (deftest test/query/select/scroll/counts ()
-  (run-queries
-    (bind ((scroll (select (:result-type scroll) ((o class-1)) (collect (attr-1-of o)))))
+  (run-scroll-test
+    (bind ((scroll (select (:result-type scroll) ((o scroll-test)) (collect (attr-1-of o)))))
       (is (= (element-count scroll) 10))
       (setf (page-size scroll) 3)
       (is (= (page-count scroll) 4))
@@ -539,8 +555,8 @@
       (is (= (page-count scroll) 1)))))
    
 (deftest test/query/select/scroll/forward ()
-  (run-queries
-    (bind ((scroll (select (:result-type scroll) ((o class-1)) (collect (attr-1-of o)))))
+  (run-scroll-test
+    (bind ((scroll (select (:result-type scroll) ((o scroll-test)) (collect (attr-1-of o)))))
       (setf (page-size scroll) 3)
       (first-page! scroll)
       (iter (for i from 0 below 10 by 3)
@@ -548,8 +564,8 @@
             (next-page! scroll)))))
 
 (deftest test/query/select/scroll/backward ()
-  (run-queries
-    (bind ((scroll (select (:result-type scroll) ((o class-1)) (collect (attr-1-of o)))))
+  (run-scroll-test
+    (bind ((scroll (select (:result-type scroll) ((o scroll-test)) (collect (attr-1-of o)))))
       (setf (page-size scroll) 3)
       (last-page! scroll)
       (iter (for i from 9 downto 0 by 3)
@@ -557,8 +573,8 @@
             (previous-page! scroll)))))
 
 (deftest test/query/select/scroll/random ()
-  (run-queries
-    (bind ((scroll (select (:result-type scroll) ((o class-1)) (collect (attr-1-of o)))))
+  (run-scroll-test
+    (bind ((scroll (select (:result-type scroll) ((o scroll-test)) (collect (attr-1-of o)))))
       (setf (page-size scroll) 3)
       (setf (page scroll) 1)
       (check-page (elements scroll) 3 6)
@@ -570,21 +586,22 @@
       (check-page (elements scroll) 0 3))))
 
 (deftest test/query/select/scroll/transactions ()
-  (bind ((scroll (with-transaction
-                   (select (:result-type scroll) ((o class-1)) (collect (attr-1-of o))))))
-    (setf (page-size scroll) 3)
-    (run-queries
-      (first-page! scroll)
-      (check-page (elements scroll) 0 3)
-      (last-page! scroll)
-      (check-page (elements scroll) 9 10))))
+  (with-fixture fill-data-5
+      (bind ((scroll (with-transaction
+                       (select (:result-type scroll) ((o scroll-test)) (collect (attr-1-of o))))))
+        (setf (page-size scroll) 3)
+        (run-queries
+          (first-page! scroll)
+          (check-page (elements scroll) 0 3)
+          (last-page! scroll)
+          (check-page (elements scroll) 9 10)))))
 
 (deftest test/query/select/scroll/modify ()
-  (run-queries
-    (bind ((scroll (select (:result-type scroll) ((o class-1)) (collect (attr-1-of o)))))
+  (run-scroll-test
+    (bind ((scroll (select (:result-type scroll) ((o scroll-test)) (collect (attr-1-of o)))))
       (setf (page-size scroll) 3)
       (check-page (elements scroll) 0 3)
-      (purge-object (select-first-matching class-1))
+      (purge-object (select-first-matching scroll-test))
       (check-page (elements scroll) 1 4))))
 
 ;------------------------------------------------------------------------------
@@ -607,20 +624,25 @@
     (iter (for (dir attr) on order-spec by 'cddr)
           (for attr-value-1 = (slot-value class1 attr))
           (for attr-value-2 = (slot-value class2 attr))
-          (for compare-fn = (ecase dir (:asc 'less-or-equal-p) (:desc 'greater-or-equal-p)))
+          (for compare-fn = (ecase dir (:asc 'prc::less-or-equal-p) (:desc 'prc::greater-or-equal-p)))
           (cond
             ((funcall compare-fn attr-value-1 attr-value-2) (return #t))
             ((not (equal attr-value-1 attr-value-2)) (return #f)))
           (finally (return #t)))))
 
-(defpclass* class-1 ()
+(defmacro run-order-by-test (&body body)
+  `(with-fixture fill-data-6
+    (run-queries
+      ,@body)))
+
+(defpclass* order-by-test ()
   ((int-attr :type integer-32)
    (str-attr :type (string 10))))
 
 (defixture fill-data-6
   (with-transaction
     ;; PORT:
-    (purge-objects 'class-1)
+    (purge-objects 'order-by-test)
     (bind ((count 10)
            (int-values (iter (for i from 0 below count) (collect i)))
            (str-values (iter (for i from 0 below count) (collect (string (digit-char i))))))
@@ -630,62 +652,62 @@
                        (setf ,list (remove ,element ,list))
                        ,element))))
         (iter (for i from 0 below count)
-              (make-instance 'class-1
+              (make-instance 'order-by-test
                              :int-attr (random-element int-values)
                              :str-attr (random-element str-values)))))))
 
 (deftest test/query/select/order-by/integer/asc ()
-  (run-queries
+  (run-order-by-test
     (check-ordered
-     (select ((o class-1))
+     (select ((o order-by-test))
        (collect o)
        (prc::order-by :asc (int-attr-of o)))
      (list :asc 'int-attr))))
 
 (deftest test/query/select/order-by/integer/desc ()
-  (run-queries
+  (run-order-by-test
     (check-ordered
-     (select ((o class-1))
+     (select ((o order-by-test))
        (collect o)
        (prc::order-by :desc (int-attr-of o)))
      (list :desc 'int-attr))))
 
 (deftest test/query/select/order-by/string/asc ()
-  (run-queries
+  (run-order-by-test
     (check-ordered
-     (select ((o class-1))
+     (select ((o order-by-test))
        (collect o)
        (prc::order-by :asc (str-attr-of o)))
      (list :asc 'str-attr))))
 
 (deftest test/query/select/order-by/string/desc ()
-  (run-queries
+  (run-order-by-test
     (check-ordered
-     (select ((o class-1))
+     (select ((o order-by-test))
        (collect o)
        (prc::order-by :desc (str-attr-of o)))
      (list :desc 'str-attr))))
 
 (deftest test/query/select/order-by/all ()
-  (run-queries
+  (run-order-by-test
     (check-ordered
-     (select ((o class-1))
+     (select ((o order-by-test))
        (collect o)
        (prc::order-by :asc (int-attr-of o) :desc (str-attr-of o)))
      (list :asc 'int-attr :desc 'str-attr))))
 
 (deftest test/query/select/order-by/expression ()
-  (run-queries
+  (run-order-by-test
     (check-ordered
-     (select ((o class-1))
+     (select ((o order-by-test))
        (collect o)
        (prc::order-by :asc (- (int-attr-of o))))
      (list :desc 'int-attr))))
 
 (deftest test/query/select/order-by/error ()
-  (run-queries
+  (run-order-by-test
     (signals error
-      (select ((o class-1))
+      (select ((o order-by-test))
         (collect o)
         (prc::order-by :asc (int-attr-of 'o))))))
 
@@ -694,7 +716,7 @@
 (defsuite* test/query/purge :in test/query)
 
 (defun check-existing-records (table-id expected)
-  (bind ((table (format nil "_class_~d" table-id))
+  (bind ((table (format nil "_purge_~d_test" table-id))
          (column (make-symbol (format nil "_int_attr_~d" table-id))))
     (is (equal (sort (apply 'nconc (execute (sql `(select (,column) (,table))))) #'<=)
                expected))))
@@ -710,49 +732,49 @@
         (format t "~{~&~A~}" ',body))
       ,@body)))
 
-(defpclass* class-1 ()
+(defpclass* purge-1-test ()
   ((int-attr-1 :type integer-32)))
 
-(defpclass* class-2 (class-1)
+(defpclass* purge-2-test (purge-1-test)
   ((int-attr-2 :type integer-32)))
 
-(defpclass* class-3 ()
+(defpclass* purge-3-test ()
   ((int-attr-3 :type integer-32)))
 
 (defixture fill-data-7
   (with-transaction
-    (purge-objects 'class-1)
-    (purge-objects 'class-2)
-    (purge-objects 'class-3)
+    (purge-objects 'purge-1-test)
+    (purge-objects 'purge-2-test)
+    (purge-objects 'purge-3-test)
     (iter (for i from 0 below 5)
-          (make-instance 'class-1 :int-attr-1 i)
-          (make-instance 'class-3 :int-attr-3 i))
+          (make-instance 'purge-1-test :int-attr-1 i)
+          (make-instance 'purge-3-test :int-attr-3 i))
     (iter (for i from 5 below 10)
-          (make-instance 'class-2 :int-attr-1 i :int-attr-2 i))))
+          (make-instance 'purge-2-test :int-attr-1 i :int-attr-2 i))))
 
 (deftest test/query/purge/simple/all ()
   (run-purge-test
-    (select ((o class-3))
+    (select ((o purge-3-test))
       (purge o))
     (check-existing-records 3 nil)))
 
 (deftest test/query/purge/simple/one ()
   (run-purge-test
-    (select ((o class-3))
+    (select ((o purge-3-test))
       (assert (= (int-attr-3-of o) 0))
       (purge o))
     (check-existing-records 3 (int-list 1 5))))
    
 (deftest test/query/purge/polymorph/all ()
   (run-purge-test
-    (select ((o class-1))
+    (select ((o purge-1-test))
       (purge o))
     (check-existing-records 1 nil)
     (check-existing-records 2 nil)))
 
 (deftest test/query/purge/polymorph/one ()
   (run-purge-test
-    (select ((o class-1))
+    (select ((o purge-1-test))
       (assert (= (int-attr-1-of o) 0))
       (purge o))
     (check-existing-records 1 (int-list 1 10))
@@ -760,14 +782,14 @@
 
 (deftest test/query/purge/polymorph/sub ()
   (run-purge-test
-    (select ((o class-2))
+    (select ((o purge-2-test))
       (purge o))
     (check-existing-records 1 (int-list 0 5))
     (check-existing-records 2 nil)))
 
 (deftest test/query/purge/polymorph/super ()
   (run-purge-test
-    (select ((o class-1))
+    (select ((o purge-1-test))
       (assert (= (int-attr-1-of o) 9))
       (purge o))
     (check-existing-records 1 (int-list 0 9))

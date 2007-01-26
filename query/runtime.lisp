@@ -73,6 +73,9 @@
   (:method ((value string) (type null)) ; TODO
            (value->sql-literal value 'string))
 
+  (:method ((value number) (type null)) ; TODO BIT
+           (value->sql-literal value 'number))
+
   (:method ((value list) type)
            (sql-literal :value (mapcar #L(value->sql-literal !1 nil) value))))
 
