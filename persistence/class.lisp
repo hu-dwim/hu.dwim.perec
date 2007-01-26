@@ -151,6 +151,8 @@
 ;;; Export
 
 (defmethod export-to-rdbms ((class persistent-class))
+  (unless (class-finalized-p class)
+    (finalize-inheritance class))
   (mapc #'ensure-exported
         (collect-if #L(typep !1 'persistent-class)
                     (cdr (class-precedence-list class))))

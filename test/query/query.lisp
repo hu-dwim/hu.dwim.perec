@@ -174,7 +174,7 @@
         (assert (eq (topic-of o) topic))
         (collect o)))))
 
-(deftest test/query/select/attribute ()
+(deftest test/query/select/slot ()
   (test-query (:record-count 2)
     (select ((user user))
       (collect (name-of user)))))
