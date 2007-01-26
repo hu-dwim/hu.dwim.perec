@@ -73,9 +73,28 @@
   (:documentation "Purges the given object without respect to associations and other references.")
   
   (:method ((object persistent-object))
+           (ensure-exported (class-of object))
            (dolist (table (data-tables-of (class-of object)))
              (delete-records (name-of table)
                              (id-column-matcher-where-clause object)))))
+
+(defgeneric purge-objects (class)
+  (:documentation "Purges all instances of the given class.")
+
+  (:method ((class-name symbol))
+           (purge-objects (find-class class-name)))
+
+  (:method ((class persistent-class))
+           (bind ((sub-classes (effective-persistent-sub-classes-for class #t)))
+             (mapc #'ensure-exported sub-classes)
+             (dolist (table (delete-duplicates (mappend 'data-tables-of sub-classes)))
+               (delete-records (name-of table)
+                               (sql-in (sql-identifier :name +id-column-name+)
+                                       (sql-subquery :query
+                                                     (apply #'sql-union
+                                                            (mapcar #L(sql-select :columns (list +id-column-name+)
+                                                                                  :tables (list (name-of !1)))
+                                                                    (cdr (primary-tables-of class)))))))))))
 
 (define-condition object-not-found-error (error)
   ((oid :accessor oid-of :initarg :oid))

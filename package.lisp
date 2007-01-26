@@ -101,6 +101,7 @@
            #:make-transient
            #:persistent-p
            #:purge-object
+           #:purge-objects
            #:revive-object
 
            ;; most of the collection API is inherited from cl-containers 

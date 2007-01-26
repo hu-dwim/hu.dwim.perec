@@ -330,16 +330,16 @@
 (defun persistent-slot-p (slot)
   (typep slot 'persistent-slot-definition))
 
-(defun effective-persistent-super-classes-for (class &optional (include-self-p #f))
-  (collect-if #L(and (or include-self-p
+(defun effective-persistent-super-classes-for (class &optional (include-self #f))
+  (collect-if #L(and (or include-self
                          (not (eq class !1)))
                      (typep !1 'persistent-class))
               (class-precedence-list class)))
 
-(defun effective-persistent-sub-classes-for (class &optional (include-self-p #f))
+(defun effective-persistent-sub-classes-for (class &optional (include-self #f))
   (delete-duplicates
    (append
-    (when include-self-p (list class))
+    (when include-self (list class))
     (iter (for sub-class in (class-direct-subclasses class))
           (appending (effective-persistent-sub-classes-for sub-class #t))))))
 
