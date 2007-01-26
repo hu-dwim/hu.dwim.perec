@@ -16,7 +16,7 @@
 if it was fully evaluated.")
 
   (:method (syntax query static-vars)
-           (%partial-eval-syntax (parse-query-form syntax query) query static-vars))
+           (%partial-eval-syntax (parse-query-form syntax (get-variables query)) query static-vars))
 
   (:method ((syntax syntax-object) query static-vars)
            (error "Unknown syntax: ~S~%" syntax))

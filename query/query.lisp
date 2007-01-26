@@ -109,6 +109,9 @@
 (defun add-joined-variable (query variable)
   (push variable (query-variables-of query)))
 
+(defun get-variables (query)
+  (append (lexical-variables-of query) (query-variables-of query)))
+
 ;;;
 ;;; Simple query
 ;;;
