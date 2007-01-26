@@ -1,6 +1,6 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/persistency :in test)
+(defsuite* test/persistency :in test/persistence)
 
 (defpclass* persistency-test ()
   ((name :type (string 20))))

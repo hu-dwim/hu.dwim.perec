@@ -35,7 +35,7 @@
 
 (deftype* boolean (make-instance 'sql-boolean-type)
   'object->boolean-reader
-  'identity-writer)
+  'boolean->integer-writer)
 
 ;;;;;;;;;;;;;;
 ;;; Integer-16
@@ -45,7 +45,7 @@
 
 (deftype* integer-16 (make-instance 'sql-integer-type :bit-size 16)
   'object->integer-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;;;;;
 ;;; Integer-32
@@ -55,7 +55,7 @@
 
 (deftype* integer-32 (make-instance 'sql-integer-type :bit-size 32)
   'object->integer-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;;;;;
 ;;; Integer-64
@@ -65,14 +65,14 @@
 
 (deftype* integer-64 (make-instance 'sql-integer-type :bit-size 64)
   'object->integer-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;;
 ;;; Integer
 
 (deftype* integer (make-instance 'sql-integer-type)
   'object->integer-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;;;
 ;;; Float-32
@@ -82,7 +82,7 @@
 
 (deftype* float-32 (make-instance 'sql-float-type :bit-size 32)
   'object->number-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;;;
 ;;; Float-64
@@ -92,21 +92,21 @@
 
 (deftype* float-64 (make-instance 'sql-float-type :bit-size 64)
   'object->number-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;
 ;;; Float
 
 (deftype* float (make-instance 'sql-float-type)
   'object->number-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;
 ;;; Number
 
 (deftype* number (make-instance 'sql-numeric-type)
   'object->number-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;
 ;;; String
@@ -114,8 +114,8 @@
 (deftype* string (if (consp type-specification)
                      (make-instance 'sql-character-varying-type :size (second type-specification))
                      (make-instance 'sql-character-large-object-type))
-  'identity-reader
-  'identity-writer)
+  (identity-reader type)
+  (identity-writer type))
 
 ;;;;;;;;;;
 ;;; Symbol
@@ -191,8 +191,8 @@
   'string)
 
 (deftype* duration (make-instance 'sql-character-varying-type :size 32)
-  'identity-reader
-  'identity-writer)
+  (identity-reader type)
+  (identity-writer type))
 
 ;;;;;;;;
 ;;; Form

@@ -29,3 +29,5 @@
   (test))
 
 (defsuite* test)
+
+(defsuite* test/persistence :in test)

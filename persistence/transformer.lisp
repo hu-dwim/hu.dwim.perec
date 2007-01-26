@@ -11,62 +11,91 @@
 
 (defun unbound-reader (function)
   (lambda (rdbms-values)
-    (aif (first rdbms-values)
-         (funcall function it)
-         +the-unbound-slot-value+)))
+    (if (every #'null rdbms-values)
+        +the-unbound-slot-value+
+        (funcall function rdbms-values))))
 
-(defun unbound-writer (function)
-  (lambda (slot-value)
-    (if (eq +the-unbound-slot-value+ slot-value)
-        '(nil)
-        (funcall function it))))
+(defun unbound-writer (function column-number)
+  (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil))))
+    (lambda (slot-value)
+      (if (eq +the-unbound-slot-value+ slot-value)
+          unbound-rdbms-value
+          (funcall function slot-value)))))
 
 ;;;;;;;;
 ;;; Null
 
 (defun null-reader (function)
   (lambda (rdbms-values)
-    (awhen (first rdbms-values)
-      (funcall function it))))
+    (if (every #'null rdbms-values)
+        nil
+        (funcall function rdbms-values))))
 
-(defun null-writer (function)
+(defun null-writer (function column-number)
+  (bind ((nil-rdbms-value (iter (repeat column-number) (collect nil))))
+    (lambda (slot-value)
+      (if slot-value
+          (funcall function slot-value)
+          nil-rdbms-value))))
+
+;;;;;;;;;;;;;;;;;;;
+;;; Unbound or null
+
+(defun unbound-or-null-reader (function)
   (lambda (rdbms-values)
-    (awhen (first rdbms-values)
-      (funcall function it))))
+    (cond ((every #'null rdbms-values)
+           +the-unbound-slot-value+)
+          ((every #'null (cdr rdbms-values))
+           nil)
+          (t (funcall function (cdr rdbms-values))))))
+
+(defun unbound-or-null-writer (function column-number)
+  (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil)))
+         (nil-rdbms-value (list* #t (cdr unbound-rdbms-value))))
+    (lambda (slot-value)
+      (cond ((eq +the-unbound-slot-value+ slot-value)
+             unbound-rdbms-value)
+            ((null slot-value)
+             nil-rdbms-value)
+            (t (list* #t (funcall function slot-value)))))))
 
 ;;;;;;;;;;;;;;
 ;;; Serialized
 
 (defun base64->object-reader (rdbms-values)
-  (when-bind rdbms-value (first rdbms-values)
-    (with-input-from-sequence (stream
-                               (with-input-from-string (base64 rdbms-value)
-                                 (decode-base64-bytes base64)))
-      (restore stream))))
+  (with-input-from-sequence (stream
+    (with-input-from-string (base64 (first rdbms-values))
+      (decode-base64-bytes base64)))
+    (restore stream)))
 
 (defun object->base64-writer (slot-value)
   (list
-   (when slot-value
-     (with-output-to-string (base64)
-       (encode-base64-bytes
-        (with-output-to-sequence (stream)
-          (store slot-value stream))
-        base64)))))
+   (with-output-to-string (base64)
+     (encode-base64-bytes
+      (with-output-to-sequence (stream)
+        (store slot-value stream))
+      base64))))
 
 ;;;;;;;;;;;;
 ;;; Identity
 
-(defun identity-reader (rdbms-values)
-  (first rdbms-values))
+(defun identity-reader (type)
+  (lambda (rdbms-values)
+    (aif (first rdbms-values)
+         it
+         (error "Nil is not allowed in the type ~A" type))))
 
-(defun identity-writer (slot-value)
-  (list slot-value))
+(defun identity-writer (type)
+  (lambda (slot-value)
+    (if slot-value
+       (list slot-value)
+       (error "Nil is not allowed in the type ~A" type))))
 
 ;;;;;;;;;;
 ;;; Number
 
 (defun object->number-reader (rdbms-values)
-  (when-bind value (first rdbms-values)
+  (bind ((value (first rdbms-values)))
     (if (typep value 'number)
         value
         (parse-number value))))
@@ -75,7 +104,7 @@
 ;;; Integer
 
 (defun object->integer-reader (rdbms-values)
-  (when-bind value (first rdbms-values)
+  (bind ((value (first rdbms-values)))
     (if (typep value 'number)
         value
         (parse-integer value))))
@@ -93,9 +122,7 @@
 ;;; List
 
 (defun string->list-reader (rdbms-values)
-  (aif (first rdbms-values)
-       (read-from-string it)
-       it))
+  (read-from-string (first rdbms-values)))
 
 (defun list->string-writer (slot-value)
   (list (write-to-string slot-value)))
@@ -143,9 +170,9 @@
           ((eq #\t value) #t)
           ((eq #\f value) #f)
           ((and (typep value 'integer)
-                (= 0 value)) #t)
+                (= 0 value)) #f)
           ((and (typep value 'integer)
-                (= 1 value)) #f)
+                (= 1 value)) #t)
           ((equal "t" value) #t)
           ((equal "f" value) #f)
           (t (error "Unknown boolean value")))))
@@ -161,62 +188,59 @@
                           (first !1))))))
 
 (defun integer->member-reader (type)
-  (lambda (rdbms-values)
-    (awhen (first rdbms-values)
-      (nth it (slot-definition-type-member-elements type)))))
+  (bind ((member-elements (slot-definition-type-member-elements type)))
+    (lambda (rdbms-values)
+      (bind ((value (first rdbms-values)))
+        (aif (nth value member-elements)
+             it
+             (error "Cannot found value ~A in type ~A" value type))))))
 
 (defun member->integer-writer (type)
-  (lambda (slot-value)
-    (list
-     (loop for i from 0
-           for value in (slot-definition-type-member-elements type)
-           when (eq value slot-value)
-           do (return i)))))
+  (bind ((member-elements (slot-definition-type-member-elements type)))
+    (lambda (slot-value)
+      (block found
+        (loop for i from 0
+              for value in member-elements
+              when (eq value slot-value)
+              do (return-from found (list i)))
+        (error "Cannot found value ~A in type ~A" slot-value type)))))
 
 (defun string->member-reader (type)
-  (lambda (rdbms-values)
-    (awhen (first rdbms-values)
-      (nth it (slot-definition-type-member-elements type)))))
+  (bind ((member-elements (slot-definition-type-member-elements type)))
+    (lambda (rdbms-values)
+      (aprog1 (string->symbol-reader rdbms-values)
+        (assert (member it member-elements))))))
 
 (defun member->string-writer (type)
-  (lambda (slot-value)
-    (list
-     (loop for i from 0
-           for value in (slot-definition-type-member-elements type)
-           when (eq value slot-value)
-           do (return i)))))
+  (bind ((member-elements (slot-definition-type-member-elements type)))
+    (lambda (slot-value)
+      (assert (member slot-value member-elements))
+      (symbol->string-writer slot-value))))
 
 ;;;;;;;;;;;;;;;;;
 ;;; Date and time
 
 (defun string->local-time-reader (rdbms-values)
-  (awhen (first rdbms-values)
-    (let ((*default-timezone* +utc-zone+))
-      (parse-timestring it :date-time-separator #\Space))))
+  (bind ((*default-timezone* +utc-zone+))
+    (parse-timestring (first rdbms-values) :date-time-separator #\Space)))
 
 (defun local-time->string-writer (slot-value)
   (list
-   (when slot-value
-     (format-timestring slot-value :date-time-separator #\Space :use-zulu-p #f))))
+   (format-timestring slot-value :date-time-separator #\Space :use-zulu-p #f)))
 
 (defun integer->local-time-reader (rdbms-values)
-  (awhen (first rdbms-values)
-    (local-time :universal it :timezone +utc-zone+)))
+  (local-time :universal (first rdbms-values) :timezone +utc-zone+))
 
 (defun local-time->integer-writer (slot-value)
   (list
-   (when slot-value
-     (universal-time slot-value))))
+   (universal-time slot-value)))
 
 ;;;;;;;;;;
 ;;; Object
 
 (defun object-reader (rdbms-values)
-  (when (and (first rdbms-values) (second rdbms-values))
-    (load-object (make-oid :id (first rdbms-values) :class-name (symbol-from-canonical-name (second rdbms-values)))
-                 :skip-existence-check #t)))
+  (load-object (make-oid :id (first rdbms-values) :class-name (symbol-from-canonical-name (second rdbms-values)))
+               :skip-existence-check #t))
 
 (defun object-writer (slot-value)
-  (if slot-value
-      (oid-values slot-value)
-      '(nil nil)))
+  (oid-values slot-value))

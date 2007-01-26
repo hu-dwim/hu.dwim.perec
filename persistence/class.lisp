@@ -194,8 +194,18 @@
                (call-next-method)))
 
   (:method ((type (eql 'or)) &optional type-specification)
-           (let ((type (remove-null-and-unbound-if-or-type type-specification)))
-             (compute-reader type))))
+           (bind ((or-unbound-type-p (or-unbound-type-p type-specification))
+                  (or-null-type-p (or-null-type-p type-specification))
+                  (wrapper (cond ((and or-unbound-type-p
+                                       or-null-type-p)
+                                  'unbound-or-null-reader)
+                                 (or-unbound-type-p
+                                  'unbound-reader)
+                                 (or-null-type-p
+                                  'null-reader)
+                                 (t
+                                  'identity))))
+             (funcall wrapper (compute-reader (remove-null-and-unbound-if-or-type type-specification))))))
 
 (defgeneric compute-writer (type &optional type-specification)
   (:documentation "Maps a type to a one parameter lambda which will be called with the slot value.")
@@ -215,8 +225,28 @@
                (call-next-method)))
 
   (:method ((type (eql 'or)) &optional type-specification)
-           (let ((type (remove-null-and-unbound-if-or-type type-specification)))
-             (compute-writer type))))
+           (bind ((type (remove-null-and-unbound-if-or-type type-specification))
+                  (or-unbound-type-p (or-unbound-type-p type-specification))
+                  (or-null-type-p (or-null-type-p type-specification))
+                  (or-unbound-and-null-type-p (and or-unbound-type-p
+                                                   or-null-type-p))
+                  (wrapper (cond (or-unbound-and-null-type-p
+                                  'unbound-or-null-writer)
+                                 (or-unbound-type-p
+                                  'unbound-writer)
+                                 (or-null-type-p
+                                  'null-writer)
+                                 (t
+                                  'identity))))
+             (funcall wrapper (compute-writer type)
+                      (+ (cond ((persistent-class-type-p type)
+                                2)
+                               ((primitive-type-p type)
+                                1)
+                               (t (error "Cannot map type ~A to a writer" type)))
+                         (if or-unbound-and-null-type-p
+                             1
+                             0))))))
 
 (defgeneric compute-primary-table (class current-table)
   (:method ((class persistent-class) current-table)
@@ -307,6 +337,48 @@
   (:method ((slot persistent-effective-slot-definition))
            (some #'columns-of (direct-slots-of slot))))
 
+;;;;;;;;
+;;; Type
+
+(defun remove-null-and-unbound-if-or-type (type)
+  "If the type is an or type specification then it removes null and unbound from it. Removes the or type combinator from the result if possible."
+  (if (and (listp type)
+           (eq 'or (first type)))
+      (let ((simplified-type (remove 'null (remove 'unbound type))))
+        (if (<= (length simplified-type) 2)
+            (second simplified-type)
+            simplified-type))
+      type))
+
+(defun primitive-type-p (type)
+  "Accept types such as: integer, string, boolean, (or unbound integer), (or null string), (or unbound null boolean), etc."
+  (cond ((listp type)
+         (member (first type) '(serialized string symbol symbol* member form)))
+        ((symbolp type)
+         (not (subtypep type 'persistent-object)))
+        (t #f)))
+
+(defun persistent-class-type-p (type)
+  "Returns true for persistent class types."
+  (subtypep type 'persistent-object))
+
+(defun set-type-p (type)
+  "Returns true for persistent set types."
+  (and (listp type)
+       (eq 'set (first type))))
+
+(defun or-type-p (type &optional member)
+  (and (listp type)
+       (eq 'or (first type))
+       (or (not member)
+           (member member (cdr type)))))
+
+(defun or-unbound-type-p (type)
+  (or-type-p type 'unbound))
+
+(defun or-null-type-p (type)
+  (or-type-p type 'null))
+
 ;;;;;;;;;;;
 ;;; Utility
 
@@ -348,34 +420,6 @@
   #+sbcl(slot-value slot 'sb-pcl::%class)
   #-sbcl(not-yet-implemented))
 
-;; TODO: refactor type handling, so that this method is not called all the time
-(defun remove-null-and-unbound-if-or-type (type)
-  "If the type is an or type specification then it removes null and unbound from it. Removes the or type combinator from the result if possible."
-  (if (and (listp type)
-           (eq 'or (first type)))
-      (let ((simplified-type (remove 'null (remove 'unbound type))))
-        (if (<= (length simplified-type) 2)
-            (second simplified-type)
-            simplified-type))
-      type))
-
-(defun primitive-type-p (type)
-  "Accept types such as: integer, string, boolean, (or unbound integer), (or null string), (or unbound null boolean), etc."
-  (cond ((listp type)
-         (member (first type) '(serialized string symbol symbol* member form)))
-        ((symbolp type)
-         (not (subtypep type 'persistent-object)))
-        (t #f)))
-
-(defun persistent-class-type-p (type)
-  "Returns true for persistent class types."
-  (subtypep type 'persistent-object))
-
-(defun set-type-p (type)
-  "Returns true for persistent set types."
-  (and (listp type)
-       (eq 'set (first type))))
-
 (defun make-oid-columns ()
   "Creates a list of RDBMS columns that will be used to store the oid data of the objects in this table."
   (list
@@ -405,9 +449,11 @@
   (and (symbolp name)
        (direct-slots-for-accessor name)))
 
+;; TODO: fix mop to append direct slots readers and store it in effective slots
 (defun effective-slots-for-accessor (name)
   (iter (for (class-name class) in-hashtable *persistent-classes*)
         (awhen (find name (persistent-direct-slots-of class)
                      :key #'slot-definition-readers
                      :test #'member)
-          (collect (find-slot class (slot-definition-name it))))))
+          (collect (prog1 (find-slot class (slot-definition-name it))
+                     (assert it))))))

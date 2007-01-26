@@ -45,11 +45,12 @@
             :serial t
 	    :components
             ((:file "package")
+             (:file "suite")
              (:module :persistence
                       :serial t
                       :components
-                      ((:file "suite")
-                       (:file "table")
+                      ((:file "table")
+                       (:file "transformer")
                        (:file "transaction")
                        (:file "persistence")
                        (:file "type")

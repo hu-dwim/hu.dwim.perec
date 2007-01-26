@@ -1,6 +1,6 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/table :in test)
+(defsuite* test/table :in test/persistence)
 
 (deftest test/table/persistent-object ()
   (is (not (prc::primary-table-of (find-class 'persistent-object)))))

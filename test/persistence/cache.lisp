@@ -1,6 +1,6 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/cache :in test)
+(defsuite* test/cache :in test/persistence)
 
 (deftest test/cache/with-caching-slot-values ()
   (with-caching-slot-values

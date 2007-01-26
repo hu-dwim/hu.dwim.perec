@@ -1,6 +1,6 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/association :in test)
+(defsuite* test/association :in test/persistence)
 
 (defsuite* test/association/1-1 :in test/association)
 
