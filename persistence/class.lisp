@@ -208,7 +208,7 @@
            (compute-column-type (first type) type)))
 
 (defgeneric compute-reader (type &optional type-specification)
-  (:documentation "Maps a type to a two parameters lambda which will be called with the object and the received RDBMS values.")
+  (:documentation "Maps a type to a one parameter lambda which will be called with the received RDBMS values.")
 
   (:method (type &optional type-specification)
            (declare (ignore type-specification))
@@ -229,7 +229,7 @@
              (compute-reader type))))
 
 (defgeneric compute-writer (type &optional type-specification)
-  (:documentation "Maps a type to a two parameters lambda which will be called with the object and the slot value.")
+  (:documentation "Maps a type to a one parameter lambda which will be called with the slot value.")
 
   (:method (type &optional type-specification)
            (declare (ignore type-specification))
