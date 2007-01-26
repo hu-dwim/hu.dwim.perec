@@ -18,7 +18,8 @@
         :local-time
         :stefil
         :cl-rdbms
-        :cl-perec)
+        :cl-perec
+        :cl-ppcre)
 
   (:shadow #:name
            #:parent)

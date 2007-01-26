@@ -484,7 +484,7 @@ forms with joined variables.")
            (literal-to-sql (value-of literal) (xtype-of literal) literal))
 
   (:method ((variable lexical-variable))
-           `(value->sql-literal ,(name-of variable) ,(xtype-of variable)))
+           `(value->sql-literal ,(name-of variable) ',(xtype-of variable)))
 
   (:method ((variable query-variable))
            (sql-id-column-reference-for variable))
@@ -661,7 +661,7 @@ forms with joined variables.")
              ((sql-operator-p macro)
               `(funcall ',(sql-operator-for macro) ,@(mapcar 'syntax-to-sql (args-of call))))
              ((every 'free-of-query-variables-p (args-of call))
-              `(value->sql-literal ,call ,(xtype-of call)))
+              `(value->sql-literal ,call ',(xtype-of call)))
              (t
               (sql-map-failed)))))
 

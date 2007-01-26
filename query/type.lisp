@@ -57,7 +57,9 @@
              (setf (property-of access) (property-for-property-access access)))
            (when (property-of access)
              (setf (xtype-of access)
-                   (slot-definition-type (property-of access)))))
+                   (if (attribute-access-p access)
+                       (slot-definition-type (property-of access))
+                       (associated-class-of (property-of access))))))
 
   (:method ((call function-call) query &optional toplevel)
            (call-next-method)
@@ -86,10 +88,10 @@
 (defgeneric property-for-property-access (access)
   (:method ((access attribute-access))
            (find-property-by-owner-type (arg-of access)
-                                        (direct-slots-for-accessor (accessor-of access))))
+                                        (effective-slots-for-accessor (accessor-of access))))
   (:method ((access association-end-access))
            (find-property-by-owner-type (arg-of access)
-                                        (direct-association-ends-for-accessor (accessor-of access)))))
+                                        (effective-association-ends-for-accessor (accessor-of access)))))
 
 (defun find-property-by-owner-type (owner properties)
   (bind ((owner-type (xtype-of owner)))

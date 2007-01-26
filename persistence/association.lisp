@@ -176,7 +176,7 @@
 
 (defun association-end-accessor-p (name)
   (and (symbolp name)
-       (direct-association-ends-for-accessor name)))
+       (effective-association-ends-for-accessor name)))
 
 (defun effective-association-ends-for-accessor (name)
   (collect-if #L(typep !1 'persistent-association-end-effective-slot-definition)

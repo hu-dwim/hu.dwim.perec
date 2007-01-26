@@ -224,6 +224,10 @@
                'object-writer
                (call-next-method)))
 
+  (:method ((type persistent-class) &optional type-specification)
+           (declare (ignore type-specification))
+           'object-writer)
+
   (:method ((type (eql 'or)) &optional type-specification)
            (bind ((type (remove-null-and-unbound-if-or-type type-specification))
                   (or-unbound-type-p (or-unbound-type-p type-specification))
@@ -447,7 +451,7 @@
 
 (defun slot-accessor-p (name)
   (and (symbolp name)
-       (direct-slots-for-accessor name)))
+       (effective-slots-for-accessor name)))
 
 ;; TODO: fix mop to append direct slots readers and store it in effective slots
 (defun effective-slots-for-accessor (name)
@@ -455,5 +459,4 @@
         (awhen (find name (persistent-direct-slots-of class)
                      :key #'slot-definition-readers
                      :test #'member)
-          (collect (prog1 (find-slot class (slot-definition-name it))
-                     (assert it))))))
+          (collect (find-slot class (slot-definition-name it))))))

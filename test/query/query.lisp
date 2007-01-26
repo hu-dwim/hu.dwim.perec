@@ -41,19 +41,20 @@
 
 (defmacro test-query ((&key (select-count 1) (record-count nil)) &body forms)
   `(finishes
-    (run-queries
-      ,(when select-count
-             `(progn
-               (let ((counter-start (prc::select-counter-of (command-counter-of *transaction*))))
-                 (let ((prc::*test-query-compiler* #f))
-                 ,@forms)
-               (is (= (- (prc::select-counter-of (command-counter-of *transaction*))
-                         counter-start)
-                    ,select-count)))))
-      (bind ((result (let ((prc::*test-query-compiler* #t)) ,@forms)))
-        ,(if record-count
-             `(is (= (length result) ,record-count))
-             `(is (not (null result))))))))
+    (with-fixture fill-data-1
+        (run-queries
+          ,(when select-count
+                 `(progn
+                   (let ((counter-start (prc::select-counter-of (command-counter-of *transaction*))))
+                     (let ((prc::*test-query-compiler* #f))
+                       ,@forms)
+                     (is (= (- (prc::select-counter-of (command-counter-of *transaction*))
+                               counter-start)
+                            ,select-count)))))
+          (bind ((result (let ((prc::*test-query-compiler* #t)) ,@forms)))
+            ,(if record-count
+                 `(is (= (length result) ,record-count))
+                 `(is (not (null result)))))))))
 
 (defpclass* topic ()
   ((title :type (string 50))))
@@ -87,7 +88,7 @@
    (:class topic :slot owner :type owner)))
 
 ;; PORT:
-(defun fill-data-1 ()
+(defixture fill-data-1
   (with-transaction
     (purge-objects 'owner)
     (purge-objects 'topic)
@@ -283,7 +284,7 @@
 
 (deftest test/query/select/member-1 ()
   (test-query (:select-count 2 :record-count 3)
-    (let ((messages (cdr (select-objects message))))
+    (let ((messages (cdr (prc::select-objects message))))
       (select ((m message))
         (assert (member m messages))
         (collect m)))))
@@ -368,8 +369,10 @@
   ((:class movie :slot performers :type (set performer))
    (:class performer :slot movies :type (set movie))))
 
-(defun fill-data-2 ()
+(defixture fill-data-2
   (with-transaction
+    (purge-objects 'movie)
+    (purge-objects 'person)
     (let ((oceans-twelwe (make-instance 'movie :title "Ocean's Twelwe"))
           (mr&mrs-smith (make-instance 'movie :title "Mr. & Mrs. Smith"))
           (george-clooney (make-instance 'actor :first-name "George" :last-name "Clooney"))
@@ -407,18 +410,20 @@
 (defsuite* test/query/cache :in test/query)
 
 (defmacro run-cache-test (&body body)
-  `(with-transaction
-    (prc::clear-compiled-query-cache)
-    (prc::reset-compile-query-counter)
-    (symbol-macrolet ((counter prc::*compile-query-counter*))
-      ,@body)))
+  `(with-fixture fill-data-3
+    (with-transaction
+      (prc::clear-compiled-query-cache)
+      (prc::reset-compile-query-counter)
+      (symbol-macrolet ((counter prc::*compile-query-counter*))
+        ,@body))))
 
 (defpclass* class-1 ()
   ((attr-1 :type integer-32)))
 
 ;; PORT:
-(defun fill-data-3 ()
+(defixture fill-data-3
   (with-transaction
+    (purge-objects 'class-1)
     (make-instance 'class-1 :attr-1 1)
     (make-instance 'class-1 :attr-1 2)))
 
@@ -467,8 +472,10 @@
 (defpclass* class-2 ()
   ((attr-2 :type integer-32)))
 
-(defun fill-data-4 ()
+(defixture fill-data-4
   (with-transaction
+    (purge-objects 'class-1)
+    (purge-objects 'class-2)
     (make-instance 'class-1 :attr-1 1)
     (make-instance 'class-1 :attr-1 1)
     (make-instance 'class-2 :attr-2 1)))
@@ -514,9 +521,9 @@
 (defpclass* class-1 ()
   ((attr-1 :type integer-32)))
 
-(defun fill-data-5 ()
+(defixture fill-data-5
   (with-transaction
-    #+nil(purge-objects 'class-1)
+    (purge-objects 'class-1)
     (iter (for i from 0 below 10)
           (make-instance 'class-1 :attr-1 i))))
 
@@ -610,10 +617,10 @@
   ((int-attr :type integer-32)
    (str-attr :type (string 10))))
 
-(defun fill-data-6 ()
+(defixture fill-data-6
   (with-transaction
     ;; PORT:
-    #+nil(purge-objects 'class-1)
+    (purge-objects 'class-1)
     (bind ((count 10)
            (int-values (iter (for i from 0 below count) (collect i)))
            (str-values (iter (for i from 0 below count) (collect (string (digit-char i))))))
@@ -697,10 +704,11 @@
         (collect i)))
 
 (defmacro run-purge-test (&body body)
-  `(with-transaction* (:default-terminal-action :rollback)
-    (when *show-query*
-      (format t "~{~&~A~}" ',body))
-    ,@body))
+  `(with-fixture fill-data-7
+    (with-transaction* (:default-terminal-action :rollback)
+      (when *show-query*
+        (format t "~{~&~A~}" ',body))
+      ,@body)))
 
 (defpclass* class-1 ()
   ((int-attr-1 :type integer-32)))
@@ -711,10 +719,11 @@
 (defpclass* class-3 ()
   ((int-attr-3 :type integer-32)))
 
-(defun fill-data-7 ()
+(defixture fill-data-7
   (with-transaction
-    ;; PORT:
-    #+nil(purge-all-objects-from-model)
+    (purge-objects 'class-1)
+    (purge-objects 'class-2)
+    (purge-objects 'class-3)
     (iter (for i from 0 below 5)
           (make-instance 'class-1 :int-attr-1 i)
           (make-instance 'class-3 :int-attr-3 i))
