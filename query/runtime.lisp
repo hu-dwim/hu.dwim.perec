@@ -41,12 +41,10 @@
 
 (defun cache-object* (oid slots rdbms-values)
   "Caches the objects whose oid and slots are contained by ROW starting at START."
-  ;; PORT: remove it
-  (declare (ignore slots rdbms-values))
   (bind ((object (cache-object oid)))
-    ;; PORT: port it
-    #+nil(mapc #L(setf (cached-slot-value object (name-of !1))
-                  (slot-value-from-rdbms-values object !1 !2))
+    (mapc (lambda (slot rdbms-value)
+            (setf (cached-slot-value object (slot-definition-name slot))
+                  (funcall (reader-of slot) rdbms-value)))
           slots rdbms-values)
     object))
 
@@ -65,52 +63,7 @@
 ;;;
 ;;; Conversion between lisp and sql values
 ;;;
-
 (defgeneric value->sql-literal (value type)
   (:method (value type)
-           (error "Don't know how to map ~A to an SQL literal.~%" value))
-
-  (:method ((value persistent-object) type)
-           (sql-literal :value (id-of value)))
-
-  (:method ((value string) type)
-           (sql-literal :value value))
-
-  (:method ((value number) type)
-           (sql-literal :value value))
-
-  (:method ((value list) type)
-           (sql-literal :value (mapcar #L(value->sql-literal !1 nil) value)))
-
-  (:method ((value (eql nil)) type)
-           (sql-literal :value nil))
-
-  (:method ((value (eql t)) type)
-           (sql-literal :value t))
-
-  (:method ((value symbol) type)
-           (sql-literal :value (canonical-symbol-name value)))
-
-  (:method ((value local-time) type)
-           (sql-literal :value (local-time->string value)))
-
-  ;; PORT:
-  #+nil(:method ((value symbol) (type enumerated-type))
-           (sql-literal :value (enum->integer value type)))
-
-  )
-
-;;; TODO: eliminate duplication with transformer.lisp
-
-(defun local-time->string (value)
-  (format-timestring value :date-time-separator #\Space :use-zulu-p #f))
-
-;; PORT:
-#+nil
-(defun enum->integer (value enum-type)
-  (loop for i from 0
-        for member in (enumeration-members-of enum-type)
-        when (eq value member)
-        do (return i)))
-
+           (funcall (compute-writer type) value)))
 

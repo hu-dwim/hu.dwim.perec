@@ -85,15 +85,13 @@
     :table ,(sql-table-reference-for table nil)
     :where ,where))
 
-(defun tables-for (entity)
+(defun tables-for (class)
   (delete nil
-          (delete-duplicates
-           (mapcar #'primary-table-of
-                   (append
-                    (list entity)
-                    ;; PORT:
-                    #+nil(effective-super-generalization-elements-for entity)
-                    #+nil(effective-sub-generalization-elements-for entity))))))
+          (mapcar #'primary-table-of
+                  (append
+                   (list class)
+                   (effective-persistent-super-classes-for class)
+                   (effective-persistent-sub-classes-for class)))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Alias names
