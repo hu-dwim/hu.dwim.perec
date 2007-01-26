@@ -21,6 +21,7 @@
         :flexi-streams
         :local-time
         :parse-number
+        :metacopy-with-contextl
         :cl-ppcre
         :cl-store
         :cl-containers
@@ -30,6 +31,7 @@
            #:set
            #:time
            #:form
+           #:variable
            #:transaction)
 
   (:shadowing-import-from :iterate
@@ -109,6 +111,23 @@
            #:search-for-item
            #:iterate-items
            #:list-of
+
+           ;; query
+           #:select
+           #:make-query
+           #:add-lexical-variable
+           #:add-query-variable
+           #:add-assert
+           #:add-collect
+           #:execute-query
+           #:unique
+           #:flat
+           #:result-set
+           #:define-query-macro
+           #:like
+           #:avg
+           #:sum
+           #:purge
 
            ;; cache
            #:with-caching-slot-values

@@ -68,9 +68,51 @@
     ,@body
     ,var))
 
+(defun collect-if (predicate sequence)
+  "Collect elements from SEQUENCE for which the PREDICATE is true."
+  (remove-if-not predicate sequence))
+
+(defun length=1 (list)
+  "Returns t if the length of the LIST is 1. (Faster than (eq (length list) 1))"
+  (and (consp list)
+       (null (rest list))))
+
 (defun mappend (function &rest lists)
   "Same as mapcar except the results are appended."  
   (apply 'append (apply 'mapcar function lists)))
+
+(defmacro appendf (place &rest lists)
+  "Like append, but setfs back the result"
+  `(setf ,place (append ,place ,@lists)))
+
+(defmacro nconcf (place &rest lists)
+  `(setf ,place (nconc ,place ,@lists)))
+
+(defun rcons (car cdr cons)
+  "Returns a cons having CAR as car and CDR as cdr reusing CONS if possible."
+  (if (and (eq car (car cons)) (eq cdr (cdr cons)))
+      cons
+      (cons car cdr)))
+
+(defun tree-substitute (new old list
+                            &key from-end (test #'eql) (test-not nil)
+                            (end nil) (count nil) (key nil) (start 0))
+  "Starting from LIST non-destructively replaces OLD with NEW."
+  (if (consp list)
+      (prog1-bind result
+        (iter (for newitem in (ensure-list new))
+              (for olditem in (ensure-list old))
+              (setf list (substitute newitem olditem list :from-end from-end :test test :test-not test-not
+                                     :end end :count count :key key :start start))
+              (finally (return list)))
+        (iter (for node first result then (cdr node))
+              (until (null node))
+              (for el = (car node))
+              (setf (car node) (tree-substitute new old el :from-end from-end :test test :test-not test-not
+                                                :end end :count count :key key :start start))))
+      (if (funcall test list old)
+          new
+          list)))
 
 (defun not-yet-implemented (&optional (datum "Not yet implemented." datum-p) &rest args)
   (when datum-p

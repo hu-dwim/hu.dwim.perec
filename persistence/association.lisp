@@ -167,3 +167,13 @@
 
 (defun other-association-end-for (class slot)
   (find-slot class (slot-definition-name (some #'other-association-end-of (direct-slots-of slot)))))
+
+;; TODO:
+(defun association-end-accessor-p (name)
+  (declare (ignore name)))
+(defun direct-association-ends-for-accessor (name)
+  (declare (ignore name)))
+(defun to-one-association-end-p (association-end)
+  (eq (cardinality-kind-of association-end) :1))
+(defun to-many-association-end-p (association-end)
+  (eq (cardinality-kind-of association-end) :n))

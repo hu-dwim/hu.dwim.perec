@@ -62,6 +62,7 @@
                :flexi-streams
                :local-time
                :parse-number
+               :metacopy
                :cl-ppcre
                :cl-store
                :cl-containers
@@ -93,7 +94,18 @@
              (:file "association-end-set")))
    (:module :query
             :components
-            ())))
+            ((:file "copy")
+             (:file "macro")
+             (:file "runtime")
+             (:file "syntax")
+             (:file "scroll")
+             (:file "result-set" :depends-on ("scroll"))
+             (:file "api")
+             (:file "query" :depends-on ("syntax" "api"))
+             (:file "sql" :depends-on ("query"))
+             (:file "type" :depends-on ("syntax" "query"))
+             (:file "partial-eval" :depends-on ("query"))
+             (:file "compiler" :depends-on ("query" "copy" "result-set" "sql" "macro" "partial-eval" "runtime"))))))
 
 (defmethod perform ((op test-op) (system (eql (find-system :cl-perec))))
   (operate 'load-op :cl-perec-test)

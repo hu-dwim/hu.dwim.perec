@@ -15,11 +15,11 @@
     :type boolean
     :documentation "An abstract persistent class cannot be instantiated but still can be used in associations and may have slots. Calling make-instance on an abstract persistent class will signal an error. On the other hand abstract classes might not have a primary table and thus handling the instances may require simpler or less SQL statements.")
    (persistent-direct-slots
-    (compute-as (remove-if-not #L(typep !1 'persistent-direct-slot-definition) (class-direct-slots -self-)))
+    (compute-as (collect-if #L(typep !1 'persistent-direct-slot-definition) (class-direct-slots -self-)))
     :type (list persistent-direct-slot-definition)
     :documentation "The list of direct slots which are defined to be persistent in this class.")
    (persistent-effective-slots
-    (compute-as (remove-if-not #L(typep !1 'persistent-effective-slot-definition) (class-slots -self-)))
+    (compute-as (collect-if #L(typep !1 'persistent-effective-slot-definition) (class-slots -self-)))
     :type (list persistent-effective-slot-definition)
     :documentation "The list of effective slots which are turned out to be persistent in this class.")
    (primary-table
@@ -35,7 +35,7 @@
     :type (list table)
     :documentation "All the tables which hold direct data of an instance of this class. This list contains the primary tables of the super persistent classes.")
    (prefetched-slots
-    (compute-as (remove-if-not #'prefetched-p (persistent-effective-slots-of -self-)))
+    (compute-as (collect-if #'prefetched-p (persistent-effective-slots-of -self-)))
     :type (list persistent-effective-slot-definition)
     :documentation "The list of effective slots which will be loaded from and stored to the database at once when loading an instance of this class. Moreover when a persistent object is revived its prefetched slots will be loaded.")
    (non-prefetched-slots
@@ -152,11 +152,11 @@
 
 (defmethod export-to-rdbms ((class persistent-class))
   (mapc #'ensure-exported
-        (remove-if-not #L(typep !1 'persistent-class)
-                       (cdr (class-precedence-list class))))
+        (collect-if #L(typep !1 'persistent-class)
+                    (cdr (class-precedence-list class))))
   (mapc #'ensure-exported
-        (remove-if-not #L(typep !1 'persistent-association)
-                       (depends-on-of class)))
+        (collect-if #L(typep !1 'persistent-association)
+                    (depends-on-of class)))
   (awhen (primary-table-of class)
     (export-to-rdbms it)))
 
@@ -255,7 +255,7 @@
                     (mappend #L(mappend #L(when (eq (primary-table-of class) (table-of !1))
                                             (columns-of !1))
                                         (persistent-direct-slots-of !1))
-                             (list* class (remove-if-not #L(typep !1 'persistent-class) (depends-on-of class))))))
+                             (list* class (collect-if #L(typep !1 'persistent-class) (depends-on-of class))))))
              (when (or (not (abstract-p class))
                        (primary-table-columns-for-class class))
                (or current-table
@@ -290,8 +290,8 @@
   (:method ((class persistent-class))
            (delete-if #'null
                       (mapcar #'primary-table-of
-                              (remove-if-not #L(typep !1 'persistent-class)
-                                             (class-precedence-list class))))))
+                              (collect-if #L(typep !1 'persistent-class)
+                                          (class-precedence-list class))))))
 
 (defgeneric compute-data-table-slot-p (slot)
   (:method ((slot persistent-effective-slot-definition))
@@ -362,3 +362,17 @@
      (make-instance 'column
                     :name class-name-column-name
                     :type +oid-class-name-sql-type+))))
+
+;; TODO:
+(defun slot-accessor-p (name)
+  (declare (ignore name)))
+(defun direct-slots-for-accessor (name)
+  (declare (ignore name)))
+(defun persistent-class-p (class)
+  (typep class 'persistent-class))
+(defun persistent-class-name-p (name)
+  (and name
+       (symbolp name)
+       (persistent-class-p (find-class name #f))))
+(defun persistent-slot-p (slot)
+  (typep slot 'persistent-slot-definition))

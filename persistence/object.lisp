@@ -78,8 +78,7 @@
   (when (eq persistent #t)
     (make-persistent object)
     (setf (cached-slots-of object)
-          (remove-if-not #'cached-p 
-                         (persistent-effective-slots-of (class-of object))))))
+          (collect-if #'cached-p (persistent-effective-slots-of (class-of object))))))
 
 (defmethod make-instance :before ((class persistent-class) &key &allow-other-keys)
   (ensure-exported class)
@@ -113,3 +112,8 @@
 (defun oid-values (object)
   "Returns a list representation of the object oid in the order of the corresponding RDBMS columns."
   (list (id-value object) (class-name-value object)))
+
+;; TODO:
+(defvar +the-persistent-object-class+ (find-class 'persistent-object))
+(defun persistent-object-p (object)
+  (typep object 'persistent-object))

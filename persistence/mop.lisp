@@ -93,13 +93,13 @@
 
 (defun compute-persistent-effective-slot-definition-initargs (class direct-slot-definitions)
   (iter (for slot-option-name in (delete-duplicates
-                                  (remove-if-not #L(eq (symbol-package !1) (find-package :cl-perec))
-                                                 (mapcan #L(mapcar #'slot-definition-name
-                                                                   (class-slots (class-of !1)))
-                                                         direct-slot-definitions))))
+                                  (collect-if #L(eq (symbol-package !1) (find-package :cl-perec))
+                                              (mapcan #L(mapcar #'slot-definition-name
+                                                                (class-slots (class-of !1)))
+                                                      direct-slot-definitions))))
         (bind ((specific-direct-slot-definitions
-                (remove-if-not #L(find slot-option-name (class-slots (class-of !1)) :key 'slot-definition-name)
-                               direct-slot-definitions)))
+                (collect-if #L(find slot-option-name (class-slots (class-of !1)) :key 'slot-definition-name)
+                            direct-slot-definitions)))
           (appending
            (compute-persistent-effective-slot-definition-option class
                                                                 (first (sort (copy-list specific-direct-slot-definitions)
@@ -125,8 +125,8 @@
 
 (defmethod finalize-inheritance :after ((class persistent-class))
   (mapc #L(ensure-slot-reader* class !1)
-        (remove-if-not #L(set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type !1)))
-                       (persistent-effective-slots-of class))))
+        (collect-if #L(set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type !1)))
+                    (persistent-effective-slots-of class))))
 
 (defmethod compute-slots :after ((class persistent-class))
   "Invalidates the cached slot value of persistent-effective-slots whenever the effective slots are recomputed, so that all dependent computed state will be invalidated and recomputed when requested."
@@ -161,8 +161,8 @@
 (defun association-direct-slot-definitions (class)
   (when (slot-boundp class 'depends-on)
     (let ((depends-on-associations
-           (remove-if-not #L(typep !1 'persistent-association)
-                          (depends-on-of class))))
+           (collect-if #L(typep !1 'persistent-association)
+                       (depends-on-of class))))
       (mapcar #L(let ((association-end-definition
                        (find (class-name class) (association-end-definitions-of !1)
                              :key #L(getf !1 :class))))
@@ -199,8 +199,8 @@
                                  :key #L(getf !1 :slot)))
                   (setf (primary-association-end-of association) !1)
                   (setf (secondary-association-end-of association) !1)))
-          (remove-if-not #L (typep !1 'persistent-association-end-direct-slot-definition)
-                         (class-direct-slots class)))))
+          (collect-if #L (typep !1 'persistent-association-end-direct-slot-definition)
+                      (class-direct-slots class)))))
 
 (defun ensure-slot-reader* (class slot)
   (bind ((reader (concatenate-symbol (first (some #'slot-definition-readers (direct-slots-of slot))) "*"))

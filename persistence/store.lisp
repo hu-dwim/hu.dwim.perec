@@ -158,7 +158,7 @@
   (bind ((prefetched-slots (prefetched-slots-of (class-of object)))
          (tables (delete-duplicates (mapcar #L(table-of !1) prefetched-slots))))    
     (dolist (table tables)
-      (bind ((slots (remove-if-not #L(eq (table-of !1) table) prefetched-slots))
+      (bind ((slots (collect-if #L(eq (table-of !1) table) prefetched-slots))
              (slot-values (mapcar #L(slot-value-using-class (class-of object) object !1) slots))
              (oid-columns (oid-columns-of table))
              (columns (mappend #'columns-of slots))
