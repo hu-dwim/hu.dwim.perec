@@ -76,9 +76,9 @@
                                                 (remove-if #L(typep !1 'persistent-association-end-direct-slot-definition)
                                                            (class-direct-slots (find-class name)))))))
             (prog1
-                (aif (find-association ',association-name)
+                (aif (find-persistent-association ',association-name)
                      (reinitialize-instance it :association-end-definitions ',processed-association-ends)
-                     (setf (find-association ',association-name)
+                     (setf (find-persistent-association ',association-name)
                            (make-instance 'persistent-association
                                           :name ',association-name
                                           :association-end-definitions ',processed-association-ends)))

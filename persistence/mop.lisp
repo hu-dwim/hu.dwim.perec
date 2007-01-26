@@ -132,8 +132,8 @@
   "Invalidates the cached slot value of persistent-effective-slots whenever the effective slots are recomputed, so that all dependent computed state will be invalidated and recomputed when requested."
   (invalidate-computed-slot class 'persistent-effective-slots))
 
-;;;;;;;;;;;;;;;;;;
-;;; Helper methods
+;;;;;;;;;;;
+;;; Utility
 
 (defun ensure-persistent-object-class (name direct-superclasses)
   (unless (eq 'persistent-object name)
@@ -187,6 +187,7 @@
              :abstract (first (getf args :abstract))
              #+lispworks :optimize-slot-access #+lispworks nil 
              (remove-keywords args :direct-slots))
+    (setf (find-persistent-class name) class)
     (invalidate-computed-slot class 'persistent-direct-slots)
     ;; update type specific class dependencies
     (mapc #L(let ((type (remove-null-and-unbound-if-or-type (slot-definition-type !1))))

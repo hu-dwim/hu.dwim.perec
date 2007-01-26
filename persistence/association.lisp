@@ -5,7 +5,7 @@
 (defcclass* persistent-association ()
   ((name
     :type symbol
-    :documentation "Unique name of the association. This name can be used to find the association using find-association.")
+    :documentation "Unique name of the association. This name can be used to find the association using find-persistent-association.")
    (association-end-definitions
     (compute-as nil)
     :type list
@@ -154,26 +154,30 @@
   (:documentation "This is a special table related to a persistent association."))
 
 ;;;;;;;;;;;
-;;; Helpers
+;;; Utility
 
-(defparameter *associations* (make-hash-table)
+(defparameter *persistent-associations* (make-hash-table)
   "A mapping from association names to association objects.")
 
-(defun find-association (name)
-  (gethash name *associations*))
+(defun find-persistent-association (name)
+  (gethash name *persistent-associations*))
 
-(defun (setf find-association) (new-value name)
-  (setf (gethash name *associations*) new-value))
+(defun (setf find-persistent-association) (new-value name)
+  (setf (gethash name *persistent-associations*) new-value))
+
+(defun to-one-association-end-p (association-end)
+  (eq (cardinality-kind-of association-end) :1))
+
+(defun to-many-association-end-p (association-end)
+  (eq (cardinality-kind-of association-end) :n))
 
 (defun other-association-end-for (class slot)
   (find-slot class (slot-definition-name (some #'other-association-end-of (direct-slots-of slot)))))
 
-;; TODO:
 (defun association-end-accessor-p (name)
-  (declare (ignore name)))
+  (and (symbolp name)
+       (direct-association-ends-for-accessor name)))
+
 (defun direct-association-ends-for-accessor (name)
-  (declare (ignore name)))
-(defun to-one-association-end-p (association-end)
-  (eq (cardinality-kind-of association-end) :1))
-(defun to-many-association-end-p (association-end)
-  (eq (cardinality-kind-of association-end) :n))
+  (collect-if #L(typep !1 'persistent-association-end-direct-slot-definition)
+              (direct-slots-for-accessor name)))

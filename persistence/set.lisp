@@ -13,14 +13,6 @@
   (declare (ignore type))
   t)
 
-(defmethod compute-reader ((type (eql 'set)) &optional type-specification)
-  (declare (ignorable type-specification))
-  'object-reader)
-
-(defmethod compute-writer ((type (eql 'set)) &optional type-specification)
-  (declare (ignorable type-specification))
-  'self-writer)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lazy slot set container
 

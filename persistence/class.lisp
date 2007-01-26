@@ -163,39 +163,6 @@
 ;;;;;;;;;;;;
 ;;; Computed
 
-(defun slot-definition-class (slot)
-  "Returns the class to which the given slot belongs."
-  #+sbcl(slot-value slot 'sb-pcl::%class)
-  #-sbcl(not-yet-implemented))
-
-;; TODO: refactor type handling, so that this method is not called all the time
-(defun remove-null-and-unbound-if-or-type (type)
-  "If the type is an or type specification then it removes null and unbound from it. Removes the or type combinator from the result if possible."
-  (if (and (listp type)
-           (eq 'or (first type)))
-      (let ((simplified-type (remove 'null (remove 'unbound type))))
-        (if (<= (length simplified-type) 2)
-            (second simplified-type)
-            simplified-type))
-      type))
-
-(defun primitive-type-p (type)
-  "Accept types such as: integer, string, boolean, (or unbound integer), (or null string), (or unbound null boolean), etc."
-  (cond ((listp type)
-         (member (first type) '(serialized string symbol symbol* member form)))
-        ((symbolp type)
-         (not (subtypep type 'persistent-object)))
-        (t #f)))
-
-(defun persistent-class-type-p (type)
-  "Returns true for persistent class types."
-  (subtypep type 'persistent-object))
-
-(defun set-type-p (type)
-  "Returns true for persistent set types."
-  (and (listp type)
-       (eq 'set (first type))))
-
 (defgeneric compute-column-type (type &optional type-specification)
   (:documentation "Returns the RDBMS type for the given type.")
 
@@ -338,6 +305,75 @@
   (:method ((slot persistent-effective-slot-definition))
            (some #'columns-of (direct-slots-of slot))))
 
+;;;;;;;;;;;
+;;; Utility
+
+(defparameter *persistent-classes* (make-hash-table)
+  "A mapping from persistent class names to persistent objects.")
+
+(defun find-persistent-class (name)
+  (gethash name *persistent-classes*))
+
+(defun (setf find-persistent-class) (new-value name)
+  (setf (gethash name *persistent-classes*) new-value))
+
+(defun persistent-class-p (class)
+  (typep class 'persistent-class))
+
+(defun persistent-class-name-p (name)
+  (and name
+       (symbolp name)
+       (persistent-class-p (find-class name #f))))
+
+(defun persistent-slot-p (slot)
+  (typep slot 'persistent-slot-definition))
+
+(defun effective-persistent-super-classes-for (class &optional (include-self-p #f))
+  (collect-if #L(and (or include-self-p
+                         (not (eq class !1)))
+                     (typep !1 'persistent-class))
+              (class-precedence-list class)))
+
+(defun effective-persistent-sub-classes-for (class &optional (include-self-p #f))
+  (delete-duplicates
+   (append
+    (when include-self-p (list class))
+    (iter (for sub-class in (class-direct-subclasses class))
+          (appending (effective-persistent-sub-classes-for sub-class #t))))))
+
+(defun slot-definition-class (slot)
+  "Returns the class to which the given slot belongs."
+  #+sbcl(slot-value slot 'sb-pcl::%class)
+  #-sbcl(not-yet-implemented))
+
+;; TODO: refactor type handling, so that this method is not called all the time
+(defun remove-null-and-unbound-if-or-type (type)
+  "If the type is an or type specification then it removes null and unbound from it. Removes the or type combinator from the result if possible."
+  (if (and (listp type)
+           (eq 'or (first type)))
+      (let ((simplified-type (remove 'null (remove 'unbound type))))
+        (if (<= (length simplified-type) 2)
+            (second simplified-type)
+            simplified-type))
+      type))
+
+(defun primitive-type-p (type)
+  "Accept types such as: integer, string, boolean, (or unbound integer), (or null string), (or unbound null boolean), etc."
+  (cond ((listp type)
+         (member (first type) '(serialized string symbol symbol* member form)))
+        ((symbolp type)
+         (not (subtypep type 'persistent-object)))
+        (t #f)))
+
+(defun persistent-class-type-p (type)
+  "Returns true for persistent class types."
+  (subtypep type 'persistent-object))
+
+(defun set-type-p (type)
+  "Returns true for persistent set types."
+  (and (listp type)
+       (eq 'set (first type))))
+
 (defun make-oid-columns ()
   "Creates a list of RDBMS columns that will be used to store the oid data of the objects in this table."
   (list
@@ -363,16 +399,13 @@
                     :name class-name-column-name
                     :type +oid-class-name-sql-type+))))
 
-;; TODO:
 (defun slot-accessor-p (name)
-  (declare (ignore name)))
+  (and (symbolp name)
+       (direct-slots-for-accessor name)))
+
 (defun direct-slots-for-accessor (name)
-  (declare (ignore name)))
-(defun persistent-class-p (class)
-  (typep class 'persistent-class))
-(defun persistent-class-name-p (name)
-  (and name
-       (symbolp name)
-       (persistent-class-p (find-class name #f))))
-(defun persistent-slot-p (slot)
-  (typep slot 'persistent-slot-definition))
+  (iter (for (class-name class) in-hashtable *persistent-classes*)
+        (awhen (find name (persistent-direct-slots-of class)
+                     :key #'slot-definition-readers
+                     :test #'member)
+          (collect it))))

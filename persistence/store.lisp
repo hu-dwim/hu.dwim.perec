@@ -177,8 +177,8 @@
   (mapc #L(store-slot object !1 (slot-value-using-class (class-of object) object !1))
         (non-prefetched-slots-of (class-of object))))
 
-;;;;;;;;;;;;;;;;;;
-;;; Helper methods
+;;;;;;;;;;;
+;;; Utility
 
 (defun id-column-matcher-where-clause (object &optional (id-name +id-column-name+))
   (make-instance 'sql-binary-operator

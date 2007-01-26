@@ -49,19 +49,6 @@
   (:abstract #t)
   (:documentation "Base class for all persistent classes. If this class is not inherited by a persistent class then it is automatically added to the direct superclasses. There is only one persistent object instance in a transaction with a give oid therefore eq will return true iff the oids are equal."))
 
-(defprint-object (self persistent-object)
-  "Prints the oid of the object and whether the object is known to be persistent or transient."
-  (princ ":persistent ")
-  (princ (cond ((not (slot-boundp self 'persistent))
-                "#? ")
-               ((persistent-p self)
-                "#t ")
-               (t "#f ")))
-  (if (and (slot-boundp self 'oid)
-           (oid-of self))
-      (princ (id-of self))
-      (princ "nil")))
-
 ;;;;;;;;;;;;;;;
 ;;; MOP methods
 
@@ -85,8 +72,26 @@
   (when (abstract-p class)
     (error "Cannot make instances of abstract class ~A" class)))
 
-;;;;;;;;;;;;;;;;;;
-;;; Helper methods
+;;;;;;;;;;;
+;;; Utility
+
+(defvar +the-persistent-object-class+ (find-class 'persistent-object))
+
+(defun persistent-object-p (object)
+  (typep object 'persistent-object))
+
+(defprint-object (self persistent-object)
+  "Prints the oid of the object and whether the object is known to be persistent or transient."
+  (princ ":persistent ")
+  (princ (cond ((not (slot-boundp self 'persistent))
+                "#? ")
+               ((persistent-p self)
+                "#t ")
+               (t "#f ")))
+  (if (and (slot-boundp self 'oid)
+           (oid-of self))
+      (princ (id-of self))
+      (princ "nil")))
 
 (defun ensure-oid (object)
   "Makes sure that the object has a valid oid."
@@ -112,8 +117,3 @@
 (defun oid-values (object)
   "Returns a list representation of the object oid in the order of the corresponding RDBMS columns."
   (list (id-value object) (class-name-value object)))
-
-;; TODO:
-(defvar +the-persistent-object-class+ (find-class 'persistent-object))
-(defun persistent-object-p (object)
-  (typep object 'persistent-object))

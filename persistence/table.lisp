@@ -54,8 +54,8 @@
             (update-index (rdbms::name-of it) (name-of table) (list !1)))
         (columns-of table)))
 
-;;;;;;;;;;;;;;;;;;
-;;; Helper methods
+;;;;;;;;;;;
+;;; Utility
 
 (defun rdbms-name-for (name)
   "Returns a name which does not conflict with RDBMS keywords and fits in the maximum size."
