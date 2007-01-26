@@ -6,11 +6,11 @@
 - rename rdbms-object to persistent-object
 - rename owner-entity-of to slot-definition-class
 - rename enumerated to member type
+- remove reader-of, writer-of
 
 - renamte test persistent class types to *-test
 
-- eliminate dependencies (cl-containers, cl-ppcre)
+- eliminate superfluous dependencies (cl-containers, cl-ppcre)
 - eliminate duplicates
 
 - ask ati to fix indention in (defgeneric (:method (a b c) ...))
-- ask ati to support (defsuite x :in y)

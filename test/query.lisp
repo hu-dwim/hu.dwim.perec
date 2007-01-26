@@ -86,7 +86,7 @@
                                 :password "secret"))
           (user2 (make-instance 'user
                                 :name "user2"
-                                :birthday (encode-local-time 0 0 0 0 2 7 1975  :timezone +utc-zone+)
+                                :birthday (encode-local-time 0 0 0 0 2 7 1975 :timezone +utc-zone+)
                                 :password "sglF$%3D"))
           (topic1 (make-instance 'topic :title "topic1"))
           (topic2 (make-instance 'topic :title "topic2"))

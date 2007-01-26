@@ -137,7 +137,7 @@
     (bind ((type (xtype-of variable)))
       (setf (prefetched-properties-of variable)
             (when (persistent-class-p type)
-              (collect-if #L(prefetched-property-p !1)
+              (collect-if #L(prefetched-property-p type !1)
                           (persistent-effective-slots-of type))))))
   (prefetched-properties-of variable))
 

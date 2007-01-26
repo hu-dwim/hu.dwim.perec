@@ -50,8 +50,8 @@
           slots rdbms-values)
     object))
 
-(defun column-count-of (property)
-  (length (columns-of (reader-of property))))
+(defun column-count-of (slot)
+  (length (columns-of slot)))
 
 (defun invalidate-persistent-flag-of-cached-objects (class)
   "Sets the persistent slot to unbound for instances of class in the transaction cache."
