@@ -118,3 +118,16 @@
   (when datum-p
     (setf datum (strcat "Not yet implemented: " datum)))
   (apply #'cerror "Ignore and continue" datum args))
+
+(defmacro bind-cartesian-product (((&rest variables) lst) &body body)
+  (labels ((generate (variables l)
+             (if (cdr variables) 
+                 `(dolist (,(car variables) ,l)
+                   ,(generate (cdr variables) l))
+                 `(dolist (,(car variables) ,l)
+                   ,@body))))
+    (if variables
+        (with-unique-names (l)
+          `(let ((,l ,lst))
+            ,(generate variables l)))
+        nil)))

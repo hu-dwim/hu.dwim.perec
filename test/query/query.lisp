@@ -44,9 +44,12 @@
     (run-queries
       ,(when select-count
              `(progn
-               (let ((prc::*test-query-compiler* #f))
+               (let ((counter-start (prc::select-counter-of (command-counter-of *transaction*))))
+                 (let ((prc::*test-query-compiler* #f))
                  ,@forms)
-               (is (= (prc::select-counter-of (command-counter-of *transaction*)) ,select-count))))
+               (is (= (- (prc::select-counter-of (command-counter-of *transaction*))
+                         counter-start)
+                    ,select-count)))))
       (bind ((result (let ((prc::*test-query-compiler* #t)) ,@forms)))
         ,(if record-count
              `(is (= (length result) ,record-count))
