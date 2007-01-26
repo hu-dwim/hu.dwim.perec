@@ -32,32 +32,38 @@
 (defsystem :cl-perec-test
   :description "Tests for cl-perec."
   :depends-on (:iterate
-               :arnesi
-               :metabang-bind
-               :defclass-star
-               :local-time
-               :stefil
-               :cl-rdbms
-               :cl-perec)
+                :arnesi
+                :metabang-bind
+                :defclass-star
+                :local-time
+                :stefil
+                :cl-rdbms
+                :cl-perec)
   :serial t
   :components
   ((:module :test
             :serial t
 	    :components
             ((:file "package")
-             (:file "suite")
-             (:file "table")
-             (:file "transaction")
-             (:file "persistence")
-             (:file "type")
-             (:file "inheritance")
-             (:file "reference")
-             (:file "set")
-             (:file "1-1-association")
-             (:file "1-n-association")
-             (:file "m-n-association")
-             (:file "cache")
-             (:file "query")))))
+             (:module :persistence
+                      :serial t
+                      :components
+                      ((:file "suite")
+                       (:file "table")
+                       (:file "transaction")
+                       (:file "persistence")
+                       (:file "type")
+                       (:file "inheritance")
+                       (:file "reference")
+                       (:file "set")
+                       (:file "1-1-association")
+                       (:file "1-n-association")
+                       (:file "m-n-association")
+                       (:file "cache")))
+             (:module :query
+                      :serial t
+                      :components
+                      ((:file "query")))))))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
   (in-package :cl-perec-test)

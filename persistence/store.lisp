@@ -3,6 +3,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS slot restorers
 
+(defconstant +the-unbound-slot-value+
+  '+the-unbound-slot-value+
+  "This value is used to signal unbound slot value returned from database.")
+
 (defparameter *lazy-slot-values* #f
   "True means slot-value-using-class will by default return lazy collections.")
 

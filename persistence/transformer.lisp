@@ -6,6 +6,34 @@
 
 (in-package :cl-perec)
 
+;;;;;;;;;;;
+;;; Unbound
+
+(defun unbound-reader (function)
+  (lambda (rdbms-values)
+    (aif (first rdbms-values)
+         (funcall function it)
+         +the-unbound-slot-value+)))
+
+(defun unbound-writer (function)
+  (lambda (slot-value)
+    (if (eq +the-unbound-slot-value+ slot-value)
+        '(nil)
+        (funcall function it))))
+
+;;;;;;;;
+;;; Null
+
+(defun null-reader (function)
+  (lambda (rdbms-values)
+    (awhen (first rdbms-values)
+      (funcall function it))))
+
+(defun null-writer (function)
+  (lambda (rdbms-values)
+    (awhen (first rdbms-values)
+      (funcall function it))))
+
 ;;;;;;;;;;;;;;
 ;;; Serialized
 
