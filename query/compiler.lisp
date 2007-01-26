@@ -408,10 +408,9 @@ forms with joined variables.")
 
 
 (defun contradictory-p (query)
-  (with-copy-protocol copy-query
-      (is-false-literal
-       (partial-eval (make-macro-call :macro 'and :args (copy-thing (asserts-of query)))
-                     query))))
+  (is-false-literal
+   (partial-eval (make-macro-call :macro 'and :args (copy-query (asserts-of query)))
+                 query)))
 
 (defun build-sql (query)
   "Converts assert conditions and order by specifications to SQL."
