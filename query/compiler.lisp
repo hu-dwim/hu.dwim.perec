@@ -509,7 +509,7 @@ forms with joined variables.")
   (:documentation "Maps a literal value to SQL.")
   
   (:method (value type literal)
-           `(value->sql-literal ,literal ,type))
+           `(value->sql-literal ,literal ',type))
 
   (:method ((value string) type literal)
            (value->sql-literal value type))
@@ -580,7 +580,7 @@ forms with joined variables.")
              ;; evaluate it at runtime and insert its value into the SQL query.
              ;; The persistent-objects in the value are converted to object ids.
              ((every 'free-of-query-variables-p (args-of call))
-              `(value->sql-literal ,call ,(xtype-of call)))
+              `(value->sql-literal ,call ',(xtype-of call)))
              ;; Otherwise the assert containing the function call cannot be mapped to SQL.
              (t
               (sql-map-failed))))
@@ -713,4 +713,4 @@ forms with joined variables.")
 
 (defun generate-joined-variable-name (type)
   "Generates a name for a joined variable of type TYPE."
-  (gensym (symbol-name (name-of type))))
+  (gensym (symbol-name (class-name type))))

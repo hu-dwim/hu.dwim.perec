@@ -65,5 +65,16 @@
 ;;;
 (defgeneric value->sql-literal (value type)
   (:method (value type)
-           (funcall (compute-writer type) value)))
+           (sql-literal
+            :value (first ; TODO
+                    (funcall (compute-writer (or type (type-of value)))
+                             value))))
+
+  (:method ((value string) (type null)) ; TODO
+           (value->sql-literal value 'string))
+
+  (:method ((value list) type)
+           (sql-literal :value (mapcar #L(value->sql-literal !1 nil) value))))
+
+  
 

@@ -104,8 +104,8 @@
              (rdbms-name-for name)))
   (:method ((variable query-variable))
            (sql-alias-for (name-of variable)))
-  (:method ((entity persistent-class))
-           (sql-alias-for (name-of entity)))
+  (:method ((class persistent-class))
+           (sql-alias-for (class-name class)))
   (:method ((table table))
            (unless *suppress-alias-names*
              (name-of table))))
@@ -252,7 +252,7 @@
 (defun sql-aggregate-subselect-for-variable (aggregate-function n-association-end 1-var)
   (bind ((1-association-end (other-association-end-of n-association-end))
          (n-entity (slot-definition-class 1-association-end))
-         (n-var (make-query-variable :name (gensym (symbol-name (name-of n-entity)))
+         (n-var (make-query-variable :name (gensym (symbol-name (class-name n-entity)))
                                      :xtype n-entity)))
     `(sql-subquery
       :query

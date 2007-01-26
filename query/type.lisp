@@ -107,4 +107,4 @@ Chosing property ~A randomly from ~A."
        (first properties)))))
 
 (defun property-qualified-name (slot)
-  (concatenate-symbol (name-of (slot-definition-class slot)) ":" (slot-definition-name slot)))
+  (concatenate-symbol (class-name (slot-definition-class slot)) ":" (slot-definition-name slot)))

@@ -116,6 +116,9 @@
 
            ;; query
            #:select
+           #:select-first-matching
+           #:select-last-matching
+           #:select-object
            #:make-query
            #:add-lexical-variable
            #:add-query-variable
@@ -130,6 +133,7 @@
            #:avg
            #:sum
            #:purge
+           #:scroll
 
            ;; cache
            #:with-caching-slot-values

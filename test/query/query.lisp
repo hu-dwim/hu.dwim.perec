@@ -89,6 +89,9 @@
 ;; PORT:
 (defun fill-data-1 ()
   (with-transaction
+    (purge-objects 'owner)
+    (purge-objects 'topic)
+    (purge-objects 'message)
     (let ((user1 (make-instance 'user
                                 :name "user1"
                                 :birthday (encode-local-time 0 0 0 0 22 4 1984 :timezone +utc-zone+)
@@ -165,20 +168,20 @@
   (test-query (:record-count 4)
     (let ((class (find-class 'message)))
       (select (o)
-        (assert (typep o (name-of class)))
+        (assert (typep o (class-name class)))
         (collect o)))))
 
 (deftest test/query/select/with-dynamic-variables ()
-  (let ((user (with-transaction (select-first-object user))))
+  (let ((user (with-transaction (select-first-matching user))))
     (test-query (:select-count nil :record-count 2)
-      (revive-object! user)             ; for eq
+      (revive-object user)             ; for eq
       (select ((o topic))
         (assert (eq (owner-of o) user))
         (collect o)))))
 
 (deftest test/query/select/polimorph-association-end ()
   (test-query (:select-count (+ 2 1) :record-count 2)
-    (let ((topic (select-first-object topic)))
+    (let ((topic (select-first-matching topic)))
       (select ((o ad))
         (assert (eq (topic-of o) topic))
         (collect o)))))
@@ -574,7 +577,7 @@
     (bind ((scroll (select (:result-type scroll) ((o class-1)) (collect (attr-1-of o)))))
       (setf (page-size scroll) 3)
       (check-page (elements scroll) 0 3)
-      (purge-object (select-first-object class-1))
+      (purge-object (select-first-matching class-1))
       (check-page (elements scroll) 1 4))))
 
 ;------------------------------------------------------------------------------
