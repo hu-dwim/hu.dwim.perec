@@ -20,9 +20,9 @@
 (defun drop-all-test-tables ()
   (with-transaction
     (mapc #L(drop-table !1)
-          (collect-if #L(and (starts-with !1 "_")
-                             (ends-with !1 "test"))
-                      (list-tables)))))
+          (prc::collect-if #L(and (starts-with !1 "_")
+                                  (ends-with !1 "test"))
+                           (list-tables)))))
 (defun retest ()
   (drop-all-test-tables)
   (clrhash (get 'prc::ensure-exported 'computed-class::memoize-table))

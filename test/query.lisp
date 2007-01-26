@@ -1,29 +1,29 @@
-(in-package :dwim-test)
+(in-package :cl-perec-test)
 
-;;;; Tests for the query compiler
-;;;;
 ;;;; TODO: specify expected result in tests
 
-(in-suite query)
+(defsuite* test/query :in test)
 
 (defvar *show-query* nil)
 
 (defmacro with-sql-recording (&body body)
   `(unwind-protect
-       (progn
-         (start-sql-recording)
-         ,@body)
+    (progn
+      (start-sql-recording)
+      ,@body)
     (stop-sql-recording)))
 
 (defun run-query-tests ()
   (with-sql-recording
-         (let ((*show-query* #t))
-           (run! 'query))))
+    (let ((*show-query* #t)
+          (*debug-on-assertion-failure* #f)
+          (*debug-on-unexpected-error* #f))
+      (test/query))))
 
 (defun debug-query-test (test)
   (with-sql-recording
-      (let ((*show-query* #t))
-        (debug! test))))
+    (let ((*show-query* #t))
+      (funcall test))))
 
 (defmacro run-queries (&body queries)
   `(with-transaction
@@ -34,635 +34,638 @@
 (defmacro test-query ((&key (select-count 1) (record-count nil)) &body forms)
   `(finishes
     (run-queries
-     ,(when select-count
-            `(progn
-              (let ((dmm::*test-query-compiler* #f))
-                ,@forms)
-              (is-true (= (dmm::select-counter-of (command-counter-of *transaction*)) ,select-count))))
-     (bind ((result (let ((dmm::*test-query-compiler* #t)) ,@forms)))
-       ,(if record-count
-            `(is-true (= (length result) ,record-count))
-            `(is-true (not (null result))))))))
+      ,(when select-count
+             `(progn
+               (let ((prc::*test-query-compiler* #f))
+                 ,@forms)
+               (is (= (prc::select-counter-of (command-counter-of *transaction*)) ,select-count))))
+      (bind ((result (let ((prc::*test-query-compiler* #t)) ,@forms)))
+        ,(if record-count
+             `(is (= (length result) ,record-count))
+             `(is (not (null result))))))))
 
-(define-test-model query
-    (:model
-     (defentity topic ()
-       ((title :type (string 50))))
+(defpclass* topic ()
+  ((title :type (string 50))))
 
-     (defentity message ()
-       ((subject :type (string 50))
-        (content :type (string 50))))
+(defpclass* message ()
+  ((subject :type (string 50))
+   (content :type (string 50))))
 
-     (defentity ad (message)
-       ())
+(defpclass* ad (message)
+  ())
 
-     (define-enumerated-type 'spam-type :enumeration-members '(phishing money-from-africa viagra))
+(defpclass* spam (ad)
+  ((score :type integer-32)
+   (spam-type :type (member phishing money-from-africa viagra))))
 
-     (defentity spam (ad)
-       ((score :type (integer 32))
-        (spam-type :type spam-type :required t)))
+(defpclass* owner ()
+  ((name :type (string 50)))
+  (:abstract #t))
 
-     (defentity owner ()
-       ((name :type (string 50)))
-       (:abstract #t))
+(defpclass* user (owner)
+  ((password :type (string 50))
+   (birthday :type date)
+   (age 17 :persistent #f :type integer-32)))
 
-     (defentity user (owner)
-       ((password :type (string 50))
-        (birthday :type date)
-        (age :type (integer 32)
-             :compute-as (lambda (user)
-                           (when-bind birthday (and (slot-boundp user 'birthday)
-                                                    (birthday-of user))
-                             (local-time-whole-year-difference (now) birthday))))))
+(defassociation*
+  ((:class topic :slot messages :type (set message))
+   (:class message :slot topic :type topic)))
 
-     (define-x-y-association 'topic :1..1 'message :0..N)
-     (define-x-y-association 'owner :1..1 'topic :0..N))
-  
+(defassociation*
+  ((:class owner :slot topics :type (set topic))
+   (:class topic :slot owner :type owner)))
 
-  (:data
-   (with-transaction
-     (let ((user1 (make-instance 'user :name "user1" :birthday (encode-local-time 0 0 0 0 22 4 1984 :timezone +utc-zone+) :password "secret"))
-           (user2 (make-instance 'user :name "user2" :birthday (encode-local-time 0 0 0 0 2 7 1975  :timezone +utc-zone+) :password "sglF$%3D"))
-           (topic1 (make-instance 'topic :title "topic1"))
-           (topic2 (make-instance 'topic :title "topic2"))
-           (message1 (make-instance 'message :subject "subject1" :content "content1"))
-           (message2 (make-instance 'message :subject "subject2" :content "content2"))
-           (ad1 (make-instance 'ad :subject "ad1" :content "content3"))
-           (spam1 (make-instance 'spam :subject "spam1" :content "content4" :score 10 :spam-type 'viagra)))
-       (declare (ignore user2))
-       (setf (owner-of topic1) user1
-             (owner-of topic2) user1
-             (topic-of message1) topic1
-             (topic-of message2) topic1
-             (topic-of ad1) topic1
-             (topic-of spam1) topic1))))
+;; PORT:
+(defun fill-data-1 ()
+  (with-transaction
+    (let ((user1 (make-instance 'user
+                                :name "user1"
+                                :birthday (encode-local-time 0 0 0 0 22 4 1984 :timezone +utc-zone+)
+                                :password "secret"))
+          (user2 (make-instance 'user
+                                :name "user2"
+                                :birthday (encode-local-time 0 0 0 0 2 7 1975  :timezone +utc-zone+)
+                                :password "sglF$%3D"))
+          (topic1 (make-instance 'topic :title "topic1"))
+          (topic2 (make-instance 'topic :title "topic2"))
+          (message1 (make-instance 'message :subject "subject1" :content "content1"))
+          (message2 (make-instance 'message :subject "subject2" :content "content2"))
+          (ad1 (make-instance 'ad :subject "ad1" :content "content3"))
+          (spam1 (make-instance 'spam :subject "spam1" :content "content4" :score 10 :spam-type 'viagra)))
+      (declare (ignore user2))
+      (setf (owner-of topic1) user1
+            (owner-of topic2) user1
+            (topic-of message1) topic1
+            (topic-of message2) topic1
+            (topic-of ad1) topic1
+            (topic-of spam1) topic1))))
 
-  (:tests
+(deftest test/query/select ()
+  (test-query (:record-count 4)
+    (select (o)
+      (assert (typep o 'message))
+      (collect o))))
 
-   (meta-model/query/select
-    (test-query (:record-count 4)
-      (select (o)
-        (assert (typep o 'message))
-        (collect o))))
+(deftest test/query/select/short ()
+  (test-query (:record-count 4)
+    (select ((o message))
+      (collect o))))
 
-   (meta-model/query/select/short
-    (test-query (:record-count 4)
-      (select ((o message))
-        (collect o))))
+(deftest test/query/select/all ()
+  (test-query ()
+    (select (o)
+      (collect o))))
 
-   (meta-model/query/select/all
-    (test-query ()
-      (select (o)
-        (collect o))))
+(deftest test/query/select/symbol-enum ()
+  (test-query (:select-count 1 :record-count 1)
+    (select ((s spam))
+      (assert (eq (spam-type-of s) 'viagra))
+      (collect s))))
 
-   (meta-model/query/select/symbol-enum
-    (test-query (:select-count 1 :record-count 1)
-      (select ((s spam))
-        (assert (eq (spam-type-of s) 'viagra))
-        (collect s))))
+(deftest test/query/select/nested-ands ()
+  (test-query (:record-count 4)
+    (select (object)
+      (assert (and t (and t (typep object 'message))))
+      (collect object))))
 
-   (meta-model/query/select/nested-ands
-    (test-query (:record-count 4)
-      (select (object)
-        (assert (and t (and t (typep object 'message))))
-        (collect object))))
+(deftest test/query/select/<= ()
+  (test-query (:select-count 1 :record-count 0)
+    (select ((s spam))
+      (assert (<= 50 (score-of s) 100))
+      (collect s)))
+  (test-query (:select-count 1 :record-count 1)
+    (select ((s spam))
+      (assert (not (<= 50 (score-of s) 100)))
+      (collect s))))
 
-   (meta-model/query/select/<=
-    (test-query (:select-count 1 :record-count 0)
-      (select ((s spam))
-        (assert (<= 50 (score-of s) 100))
-        (collect s)))
-    (test-query (:select-count 1 :record-count 1)
-      (select ((s spam))
-        (assert (not (<= 50 (score-of s) 100)))
-        (collect s))))
+(deftest test/query/select/multiple-objects ()
+  (test-query (:record-count (* 2 4 2))
+    (select ((user user) (message message) (topic topic))
+      (collect user message topic))))
 
-   (meta-model/query/select/multiple-objects
-    (test-query (:record-count (* 2 4 2))
-      (select ((user user) (message message) (topic topic))
-        (collect user message topic))))
-
-   (meta-model/query/select/with-lexical-variables-1
-    (test-query (:record-count 1)
-      (let ((user-name "user1"))
-        (select ((user user))
-          (assert (equal (name-of user) user-name))
-          (collect user)))))
-
-   (meta-model/query/select/with-lexical-variables-2
-    (test-query (:record-count 4)
-      (let ((entity (find-entity 'message)))
-        (select (o)
-          (assert (typep o (name-of entity)))
-          (collect o)))))
-
-   (meta-model/query/select/with-dynamic-variables
-    (let ((user (with-transaction (select-first-object user))))
-      (test-query (:select-count nil :record-count 2)
-        (revive-object! user)           ; for eq
-        (select ((o topic))
-          (assert (eq (owner-of o) user))
-          (collect o)))))
-
-   (meta-model/query/select/polimorph-association-end
-    (test-query (:select-count (+ 2 1) :record-count 2)
-      (let ((topic (select-first-object topic)))
-        (select ((o ad))
-          (assert (eq (topic-of o) topic))
-          (collect o)))))
-
-   (meta-model/query/select/attribute
-    (test-query (:record-count 2)
+(deftest test/query/select/with-lexical-variables-1 ()
+  (test-query (:record-count 1)
+    (let ((user-name "user1"))
       (select ((user user))
-        (collect (name-of user)))))
+        (assert (equal (name-of user) user-name))
+        (collect user)))))
 
-   (meta-model/query/select/association
-    (test-query (:select-count nil :record-count 2)
-      (select ((topic topic))
-        (collect (owner-of topic)))))
-
-   (meta-model/query/select/or
-    (test-query (:record-count (+ 4 2))
+(deftest test/query/select/with-lexical-variables-2 ()
+  (test-query (:record-count 4)
+    (let ((class (find-class 'message)))
       (select (o)
-        (assert (or (typep o 'message) (typep o 'topic)))
-        (collect o))))
+        (assert (typep o (name-of class)))
+        (collect o)))))
 
-   (meta-model/query/select/builder
-    (test-query (:record-count 4)
-      (let ((query (make-query nil)))
-        (add-query-variable query 'm)
-        (add-assert query '(typep m 'message))
-        (add-collect query 'm)
-        (execute-query query))))
+(deftest test/query/select/with-dynamic-variables ()
+  (let ((user (with-transaction (select-first-object user))))
+    (test-query (:select-count nil :record-count 2)
+      (revive-object! user)             ; for eq
+      (select ((o topic))
+        (assert (eq (owner-of o) user))
+        (collect o)))))
 
-   (meta-model/query/select/join-1
-    (test-query (:record-count 4)
+(deftest test/query/select/polimorph-association-end ()
+  (test-query (:select-count (+ 2 1) :record-count 2)
+    (let ((topic (select-first-object topic)))
+      (select ((o ad))
+        (assert (eq (topic-of o) topic))
+        (collect o)))))
+
+(deftest test/query/select/attribute ()
+  (test-query (:record-count 2)
+    (select ((user user))
+      (collect (name-of user)))))
+
+(deftest test/query/select/association ()
+  (test-query (:select-count nil :record-count 2)
+    (select ((topic topic))
+      (collect (owner-of topic)))))
+
+(deftest test/query/select/or ()
+  (test-query (:record-count (+ 4 2))
+    (select (o)
+      (assert (or (typep o 'message) (typep o 'topic)))
+      (collect o))))
+
+(deftest test/query/select/builder ()
+  (test-query (:record-count 4)
+    (let ((query (make-query nil)))
+      (add-query-variable query 'm)
+      (add-assert query '(typep m 'message))
+      (add-collect query 'm)
+      (execute-query query))))
+
+(deftest test/query/select/join-1 ()
+  (test-query (:record-count 4)
+    (select ((message message))
+      (assert (equal (title-of (topic-of message)) "topic1"))
+      (collect message))))
+
+(deftest test/query/select/join-n/collect-child ()
+  (test-query (:record-count 4)
+    (select ((topic topic) (message message))
+      (assert (equal (title-of topic) "topic1"))
+      (assert (member message (messages-of topic)))
+      (collect message))))
+
+(deftest test/query/select/join-n/collect-parent ()
+  (test-query (:record-count 1)
+    (select ((topic topic) (message message))
+      (assert (equal (title-of topic) "topic1"))
+      (assert (member message (messages-of topic)))
+      (assert (equal (subject-of message) "subject1"))
+      (collect topic))))
+
+(deftest test/query/select/join-n-in-collect ()
+  (test-query (:select-count nil :record-count 1)
+    (select ((topic topic))
+      (assert (equal (title-of topic) "topic1"))
+      (collect (messages-of topic)))))
+
+(deftest test/query/select/general ()
+  (test-query (:select-count nil :record-count 1)
+    (select ((topic topic))
+      (when (equal (title-of topic) "topic1")
+        (collect topic)))))
+
+(deftest test/query/select/with-lisp-filter ()
+  (test-query (:select-count nil :record-count 1)
+    (let ((predicate (lambda (message) (equal (subject-of message) "subject1"))))
       (select ((message message))
-        (assert (equal (title-of (topic-of message)) "topic1"))
-        (collect message))))
+        (assert (funcall predicate message))
+        (collect message)))))
 
-   (meta-model/query/select/join-n/collect-child
-    (test-query (:record-count 4)
-      (select ((topic topic) (message message))
-        (assert (equal (title-of topic) "topic1"))
-        (assert (member message (messages-of topic)))
-        (collect message))))
+(deftest test/query/select/cnf ()
+  (test-query (:record-count 1)
+    (select ((m message))
+      (assert (or (not (equal (title-of (topic-of m)) "topic1"))
+                  (and (equal (subject-of m) "subject1")
+                       (equal (content-of m) "content1"))))
+      (collect m))))
 
-   (meta-model/query/select/join-n/collect-parent
-    (test-query (:record-count 1)
-      (select ((topic topic) (message message))
-        (assert (equal (title-of topic) "topic1"))
-        (assert (member message (messages-of topic)))
-        (assert (equal (subject-of message) "subject1"))
-        (collect topic))))
-
-   (meta-model/query/select/join-n-in-collect
-    (test-query (:select-count nil :record-count 1)
-      (select ((topic topic))
-        (assert (equal (title-of topic) "topic1"))
-        (collect (messages-of topic)))))
-
-   (meta-model/query/select/general
-    (test-query (:select-count nil :record-count 1)
-      (select ((topic topic))
-        (when (equal (title-of topic) "topic1")
-          (collect topic)))))
-
-   (meta-model/query/select/with-lisp-filter
-    (test-query (:select-count nil :record-count 1)
-      (let ((predicate (lambda (message) (equal (subject-of message) "subject1"))))
-        (select ((message message))
-          (assert (funcall predicate message))
-          (collect message)))))
-
-   (meta-model/query/select/cnf
-    (test-query (:record-count 1)
+(deftest test/query/select/typep ()
+  (test-query (:record-count 2)
+    (let ((subject "subject1"))
       (select ((m message))
-        (assert (or (not (equal (title-of (topic-of m)) "topic1"))
-                    (and (equal (subject-of m) "subject1")
-                         (equal (content-of m) "content1"))))
-        (collect m))))
+        (assert (and (or (typep m 'ad)
+                         (equal (subject-of m) subject))
+                     (not (typep m 'spam))))
+        (collect m)))))
 
-   (meta-model/query/select/typep
-    (test-query (:record-count 2)
-      (let ((subject "subject1"))
-        (select ((m message))
-          (assert (and (or (typep m 'ad)
-                           (equal (subject-of m) subject))
-                       (not (typep m 'spam))))
-          (collect m)))))
+(deftest test/query/select/macro ()
+  (define-query-macro s-of (message)
+    `(subject-of ,message))
+  (test-query (:record-count 1)
+    (select ((m message))
+      (assert (equal (s-of m) "subject1"))
+      (collect m))))
 
-   (meta-model/query/select/macro
-    (define-query-macro s-of (message)
-      `(subject-of ,message))
-    (test-query (:record-count 1)
+(deftest test/query/select/count ()
+  (test-query (:record-count 1)
+    (select ((topic topic))
+      (assert (>= (length (messages-of topic)) 2))
+      (collect topic))))
+
+(deftest test/query/select/member-1 ()
+  (test-query (:select-count 2 :record-count 3)
+    (let ((messages (cdr (select-objects message))))
       (select ((m message))
-        (assert (equal (s-of m) "subject1"))
-        (collect m))))
+        (assert (member m messages))
+        (collect m)))))
 
-   (meta-model/query/select/count
-    (test-query (:record-count 1)
+(deftest test/query/select/member-2 ()
+  (test-query (:record-count 1)
+    (select ((m message))
+      (assert (member (subject-of m) '("subject1" "no-such-subject") :test 'equal))
+      (collect m))))
+
+(deftest test/query/select/member-3 ()
+  (test-query (:select-count 0 :record-count 0)
+    (select ((m message))
+      (assert (member (subject-of m) nil))
+      (collect m))))
+
+(deftest test/query/select/lisp-expr ()
+  (test-query (:record-count 1)
+    (let ((num "1"))
       (select ((topic topic))
-        (assert (>= (length (messages-of topic)) 2))
-        (collect topic))))
+        (assert (equal (title-of topic) (strcat "topic" num)))
+        (collect topic)))))
 
-   (meta-model/query/select/member-1
-    (test-query (:select-count 2 :record-count 3)
-      (let ((messages (cdr (select-objects message))))
-        (select ((m message))
-          (assert (member m messages))
-          (collect m)))))
+(deftest test/query/select/regex-1 ()
+  (test-query (:select-count 1 :record-count 1)
+    (select ((topic topic))
+      (assert (scan "t.*picx?1" (title-of topic)))
+      (collect topic))))
 
-   (meta-model/query/select/member-2
-    (test-query (:record-count 1)
-      (select ((m message))
-        (assert (member (subject-of m) '("subject1" "no-such-subject") :test 'equal))
-        (collect m))))
+(deftest test/query/select/regex-2 ()
+  (test-query (:select-count 1 :record-count 1)
+    (select ((topic topic))
+      (assert (scan "picx?1" (title-of topic) :start 2 :end 6))
+      (collect topic))))
 
-   (meta-model/query/select/member-3
-    (test-query (:select-count 0 :record-count 0)
-      (select ((m message))
-        (assert (member (subject-of m) nil))
-        (collect m))))
+(deftest test/query/select/like ()
+  (test-query (:select-count 1 :record-count 1)
+    (select ((topic topic))
+      (assert (like (title-of topic) "t%pi_1"))
+      (collect topic))))
 
-   (meta-model/query/select/lisp-expr
-    (test-query (:record-count 1)
-      (let ((num "1"))
-        (select ((topic topic))
-          (assert (equal (title-of topic) (strcat "topic" num)))
-          (collect topic)))))
+(deftest test/query/select/strcat ()
+  (test-query (:select-count 1 :record-count 1)
+    (select ((tc topic) (m message) (u user))
+      (assert (string= (strcat (title-of tc) ":" (subject-of m) ":" (name-of u))
+                       "topic1:subject1:user1"))
+      (collect tc m u))))
 
-   (meta-model/query/select/regex-1
-    (test-query (:select-count 1 :record-count 1)
-      (select ((topic topic))
-        (assert (scan "t.*picx?1" (title-of topic)))
-        (collect topic))))
+(deftest test/query/select/non-persistent-slot ()
+  (test-query (:record-count 1)
+    (select ((u user))
+      (assert (= (age-of u) 17))
+      (collect u))))
 
-   (meta-model/query/select/regex-2
-    (test-query (:select-count 1 :record-count 1)
-      (select ((topic topic))
-        (assert (scan "picx?1" (title-of topic) :start 2 :end 6))
-        (collect topic))))
+(defpclass* person ()
+  ((first-name :type (string 50))
+   (last-name :type (string 50))))
 
-   (meta-model/query/select/like
-    (test-query (:select-count 1 :record-count 1)
-      (select ((topic topic))
-        (assert (like (title-of topic) "t%pi_1"))
-        (collect topic))))
+(defpclass* movie ()
+  ((title :type (string 50))))
 
-   (meta-model/query/select/strcat
-    (test-query (:select-count 1 :record-count 1)
-      (select ((tc topic) (m message) (u user))
-        (assert (string= (strcat (title-of tc) ":" (subject-of m) ":" (name-of u))
-                         "topic1:subject1:user1"))
-        (collect tc m u))))
+(defpclass* man (person)
+  ())
 
-   (meta-model/query/select/computed-attribute
-    (test-query (:record-count 1)
-      (select ((u user))
-        (assert (> (age-of u) 30))
-        (collect u))))
-   
-    ))
+(defpclass* woman (person)
+  ())
 
-(define-test-model query-association
-    (:model
-     (require-model-fragment person)
-     
-     (defentity movie ()
-       ((title :type (string 50))))
-     (defentity man (person)
-       ())
-     (defentity woman (person)
-       ())
-     (defentity performer (person)
-       ())
-     (defentity actor (performer man)
-       ())
-     (defentity actress (performer woman)
-       ())
-     (define-1-1-association 'man 'woman 'husband 'wife)
-     (define-m-n-association 'movie 'performer))
-  (:data
-   (with-transaction
-     (let ((oceans-twelwe (make-instance 'movie :title "Ocean's Twelwe"))
-           (mr&mrs-smith (make-instance 'movie :title "Mr. & Mrs. Smith"))
-           (george-clooney (make-instance 'actor :first-name "George" :last-name "Clooney"))
-           (brad-pitt (make-instance 'actor :first-name "Brad" :last-name "Pitt"))
-           (angelina-jolie (make-instance 'actress :first-name "Angelina" :last-name "Jolie")))
-       (setf (performers-of oceans-twelwe) (list george-clooney brad-pitt)
-             (performers-of mr&mrs-smith) (list brad-pitt angelina-jolie)
-             (wife-of brad-pitt) angelina-jolie))))
-  (:tests
-   (meta-model/query/select/association-n-m
-    (test-query (:select-count 1 :record-count 4)
-      (select ((m movie) (p performer))
-        (assert (member p (performers-of m)))
-        (collect (title-of m) (first-name-of p) (last-name-of p)))))
+(defpclass* performer (person)
+  ())
 
-   (meta-model/query/select/association-1-1
-    (test-query (:select-count 1 :record-count 1)
-      (select ((m man) (w woman))
-        (assert (eq (wife-of m) w))
-        (collect m w)))
-    (test-query (:select-count 1 :record-count 1)
-      (select ((m man) (w woman))
-        (assert (eq (husband-of w) m))
-        (collect m w))))
+(defpclass* actor (performer man)
+  ())
 
-   (meta-model/query/select/association-chain
-    (test-query (:select-count 1 :record-count 1)
-      (select ((m man))
-        (assert (typep (husband-of (wife-of m)) 'performer))
-        (assert (> (length (movies-of (husband-of (wife-of m)))) 0))
-        (collect m))))
+(defpclass* actress (performer woman)
+  ())
 
-   ))
+(defassociation*
+  ((:class man :slot wife :type (or null woman))
+   (:class woman :slot husband :type (or null man))))
 
+(defassociation*
+  ((:class movie :slot performers :type (set performer))
+   (:class performer :slot movies :type (set movie))))
+
+(defun fill-data-2 ()
+  (with-transaction
+    (let ((oceans-twelwe (make-instance 'movie :title "Ocean's Twelwe"))
+          (mr&mrs-smith (make-instance 'movie :title "Mr. & Mrs. Smith"))
+          (george-clooney (make-instance 'actor :first-name "George" :last-name "Clooney"))
+          (brad-pitt (make-instance 'actor :first-name "Brad" :last-name "Pitt"))
+          (angelina-jolie (make-instance 'actress :first-name "Angelina" :last-name "Jolie")))
+      (setf (performers-of oceans-twelwe) (list george-clooney brad-pitt)
+            (performers-of mr&mrs-smith) (list brad-pitt angelina-jolie)
+            (wife-of brad-pitt) angelina-jolie))))
+
+(deftest test/query/select/association-n-m ()
+  (test-query (:select-count 1 :record-count 4)
+    (select ((m movie) (p performer))
+      (assert (member p (performers-of m)))
+      (collect (title-of m) (first-name-of p) (last-name-of p)))))
+
+(deftest test/query/select/association-1-1 ()
+  (test-query (:select-count 1 :record-count 1)
+    (select ((m man) (w woman))
+      (assert (eq (wife-of m) w))
+      (collect m w)))
+  (test-query (:select-count 1 :record-count 1)
+    (select ((m man) (w woman))
+      (assert (eq (husband-of w) m))
+      (collect m w))))
+
+(deftest test/query/select/association-chain ()
+  (test-query (:select-count 1 :record-count 1)
+    (select ((m man))
+      (assert (typep (husband-of (wife-of m)) 'performer))
+      (assert (> (length (movies-of (husband-of (wife-of m)))) 0))
+      (collect m))))
 
 ;------------------------------------------------------------------------------
 
 (defmacro run-cache-test (&body body)
   `(with-transaction
-    (dmm::clear-compiled-query-cache)
-    (dmm::reset-compile-query-counter)
-    (symbol-macrolet ((counter dmm::*compile-query-counter*))
+    (prc::clear-compiled-query-cache)
+    (prc::reset-compile-query-counter)
+    (symbol-macrolet ((counter prc::*compile-query-counter*))
       ,@body)))
 
-(define-test-model query-cache
-    (:model
-     (defentity entity-1 ()
-       ((attr-1 :type (integer 32)))))
-  (:data
-   (with-transaction
-     (make-instance 'entity-1 :attr-1 1)
-     (make-instance 'entity-1 :attr-1 2)))
-  (:tests
-   (meta-model/query/cache-1
-    (run-cache-test
+(defpclass* class-1 ()
+  ((attr-1 :type integer-32)))
+
+;; PORT:
+(defun fill-data-3 ()
+  (with-transaction
+    (make-instance 'class-1 :attr-1 1)
+    (make-instance 'class-1 :attr-1 2)))
+
+(deftest test/query/cache-1 ()
+  (run-cache-test
+    (is (= counter 0))
+    (select ((o class-1)) (collect o))
+    (is (= counter 1))
+    (select ((o class-1)) (collect o))
+    (is (= counter 1))))
+
+(deftest test/query/cache-2 ()
+  (run-cache-test
+    (bind ((query (make-query `(select ((o class-1)) (collect o)))))
       (is (= counter 0))
-      (select ((o entity-1)) (collect o))
+      (execute-query query)
       (is (= counter 1))
-      (select ((o entity-1)) (collect o))
-      (is (= counter 1))))
-
-   (meta-model/query/cache-2
-    (run-cache-test
-      (bind ((query (make-query `(select ((o entity-1)) (collect o)))))
-        (is (= counter 0))
-        (execute-query query)
-        (is (= counter 1))
-        (add-assert query `(equal (attr-1-of o) 1))
-        (execute-query query)
-        (is (= counter 2)))))
+      (add-assert query `(equal (attr-1-of o) 1))
+      (execute-query query)
+      (is (= counter 2)))))
    
-   (meta-model/query/cache-3
-    (run-cache-test
-      (bind ((query (make-query `(select ((o entity-1)) (collect o))))
-             (result (execute-query query)))
-        (add-assert query `(equal (attr-1-of o) 1))
-        (is (not (equal result (execute-query query)))))))
+(deftest test/query/cache-3 ()
+  (run-cache-test
+    (bind ((query (make-query `(select ((o class-1)) (collect o))))
+           (result (execute-query query)))
+      (add-assert query `(equal (attr-1-of o) 1))
+      (is (not (equal result (execute-query query)))))))
 
-   (meta-model/query/cache-4
-    (run-cache-test
-      (bind ((query (make-query '(select ((o entity-1)) (collect o)))))
-        (is (= counter 0))
-        (execute-query query)
-        (is (= counter 1))
-        (undefine-entity 'entity-1)
-        (signals error (execute-query query))
-        (is (= counter 2)))))
-   ))
+(deftest test/query/cache-4 ()
+  (run-cache-test
+    (bind ((query (make-query '(select ((o class-1)) (collect o)))))
+      (is (= counter 0))
+      (execute-query query)
+      (is (= counter 1))
+      (undefine-class 'class-1)
+      (signals error (execute-query query))
+      (is (= counter 2)))))
 
 ;------------------------------------------------------------------------------
 
-(define-test-model query-options
-    (:model
-     (defentity entity-1 ()
-       ((attr-1 :type  (integer 32))))
-     (defentity entity-2 ()
-       ((attr-2 :type (integer 32)))))
-  (:data
-   (with-transaction
-     (make-instance 'entity-1 :attr-1 1)
-     (make-instance 'entity-1 :attr-1 1)
-     (make-instance 'entity-2 :attr-2 1)))
-  (:tests
-   
-   (meta-model/query/select/unique-negative
-    (test-query (:select-count nil :record-count 2)
-      (select ((o entity-1))
-        (collect (attr-1-of o)))))
+(defpclass* class-1 ()
+  ((attr-1 :type  integer-32)))
 
-   (meta-model/query/select/unique-positive
-    (test-query (:select-count nil :record-count 1)
-      (select (:uniquep t) ((o entity-1))
-              (collect (attr-1-of o)))))
+(defpclass* class-2 ()
+  ((attr-2 :type integer-32)))
 
-   (meta-model/query/select/flatp-negative
-    (test-query (:record-count 2)
-      (select ((o1 entity-1) (o2 entity-2))
-        (collect o1 o2))))
+(defun fill-data-4 ()
+  (with-transaction
+    (make-instance 'class-1 :attr-1 1)
+    (make-instance 'class-1 :attr-1 1)
+    (make-instance 'class-2 :attr-2 1)))
 
-   (meta-model/query/select/flatp-positive
-    (test-query (:record-count 4)
-      (select (:flatp #t) ((o1 entity-1) (o2 entity-2))
-              (collect o1 o2))))
+(deftest test/query/select/unique-negative ()
+  (test-query (:select-count nil :record-count 2)
+    (select ((o class-1))
+      (collect (attr-1-of o)))))
 
-   (meta-model/query/select/scroll-positive
-    (finishes
-      (run-queries
-       (bind ((scroll (select (:result-type scroll) ((o entity-1)) (collect o))))
-         (is-true (typep scroll 'scroll))))))
-   ))
+(deftest test/query/select/unique-positive ()
+  (test-query (:select-count nil :record-count 1)
+    (select (:uniquep t) ((o class-1))
+            (collect (attr-1-of o)))))
+
+(deftest test/query/select/flatp-negative ()
+  (test-query (:record-count 2)
+    (select ((o1 class-1) (o2 class-2))
+      (collect o1 o2))))
+
+(deftest test/query/select/flatp-positive ()
+  (test-query (:record-count 4)
+    (select (:flatp #t) ((o1 class-1) (o2 class-2))
+            (collect o1 o2))))
+
+(deftest test/query/select/scroll-positive ()
+  (finishes
+    (run-queries
+      (bind ((scroll (select (:result-type scroll) ((o class-1)) (collect o))))
+        (is (typep scroll 'scroll))))))
 
 ;------------------------------------------------------------------------------
 
 (defun check-page (page start end)
   "Checks if PAGE contains the integers from START (inclusive) to END (exclusive)."
-  (is-true
+  (is
    (and (= (length page) (- end start))
         (iter (for i index-of-vector page)
               (for v from start below end)
               (always (= (first (aref page i)) v))))))
 
-(define-test-model query-scroll
-    (:model
-     (defentity entity-1 ()
-       ((attr-1 :type (integer 32)))))
-  (:data
-   (with-transaction
-     (delete-objects 'entity-1)
-     (iter (for i from 0 below 10)
-           (make-instance 'entity-1 :attr-1 i))))
-  (:tests
-   (meta-model/query/select/scroll/counts
-    (run-queries
-      (bind ((scroll (select (:result-type scroll) ((o entity-1)) (collect (attr-1-of o)))))
-        (is-true (= (element-count scroll) 10))
-        (setf (page-size scroll) 3)
-        (is-true (= (page-count scroll) 4))
-        (setf (page-size scroll) 10)
-        (is-true (= (page-count scroll) 1))
-        (setf (page-size scroll) 11)
-        (is-true (= (page-count scroll) 1)))))
-   
-   (meta-model/query/select/scroll/forward
-    (run-queries
-      (bind ((scroll (select (:result-type scroll) ((o entity-1)) (collect (attr-1-of o)))))
-        (setf (page-size scroll) 3)
-        (first-page! scroll)
-        (iter (for i from 0 below 10 by 3)
-              (check-page (elements scroll) i (min (+ i 3) 10))
-              (next-page! scroll)))))
+(defpclass* class-1 ()
+  ((attr-1 :type integer-32)))
 
-   (meta-model/query/select/scroll/backward
-    (run-queries
-      (bind ((scroll (select (:result-type scroll) ((o entity-1)) (collect (attr-1-of o)))))
-        (setf (page-size scroll) 3)
-        (last-page! scroll)
-        (iter (for i from 9 downto 0 by 3)
-              (check-page (elements scroll) i (min (+ i 3) 10))
-              (previous-page! scroll)))))
+(defun fill-data-5 ()
+  (with-transaction
+    #+nil(purge-objects 'class-1)
+    (iter (for i from 0 below 10)
+          (make-instance 'class-1 :attr-1 i))))
 
-   (meta-model/query/select/scroll/random
-    (run-queries
-      (bind ((scroll (select (:result-type scroll) ((o entity-1)) (collect (attr-1-of o)))))
-        (setf (page-size scroll) 3)
-        (setf (page scroll) 1)
-        (check-page (elements scroll) 3 6)
-        (setf (page scroll) 3)
-        (check-page (elements scroll) 9 10)
-        (setf (page scroll) 2)
-        (check-page (elements scroll) 6 9)
-        (setf (page scroll) 0)
-        (check-page (elements scroll) 0 3))))
-
-   (meta-model/query/select/scroll/transactions
-    (bind ((scroll (with-transaction
-                     (select (:result-type scroll) ((o entity-1)) (collect (attr-1-of o))))))
+(deftest test/query/select/scroll/counts ()
+  (run-queries
+    (bind ((scroll (select (:result-type scroll) ((o class-1)) (collect (attr-1-of o)))))
+      (is (= (element-count scroll) 10))
       (setf (page-size scroll) 3)
-      (run-queries
-        (first-page! scroll)
-        (check-page (elements scroll) 0 3)
-        (last-page! scroll)
-        (check-page (elements scroll) 9 10))))
+      (is (= (page-count scroll) 4))
+      (setf (page-size scroll) 10)
+      (is (= (page-count scroll) 1))
+      (setf (page-size scroll) 11)
+      (is (= (page-count scroll) 1)))))
+   
+(deftest test/query/select/scroll/forward ()
+  (run-queries
+    (bind ((scroll (select (:result-type scroll) ((o class-1)) (collect (attr-1-of o)))))
+      (setf (page-size scroll) 3)
+      (first-page! scroll)
+      (iter (for i from 0 below 10 by 3)
+            (check-page (elements scroll) i (min (+ i 3) 10))
+            (next-page! scroll)))))
 
-   (meta-model/query/select/scroll/modify
+(deftest test/query/select/scroll/backward ()
+  (run-queries
+    (bind ((scroll (select (:result-type scroll) ((o class-1)) (collect (attr-1-of o)))))
+      (setf (page-size scroll) 3)
+      (last-page! scroll)
+      (iter (for i from 9 downto 0 by 3)
+            (check-page (elements scroll) i (min (+ i 3) 10))
+            (previous-page! scroll)))))
+
+(deftest test/query/select/scroll/random ()
+  (run-queries
+    (bind ((scroll (select (:result-type scroll) ((o class-1)) (collect (attr-1-of o)))))
+      (setf (page-size scroll) 3)
+      (setf (page scroll) 1)
+      (check-page (elements scroll) 3 6)
+      (setf (page scroll) 3)
+      (check-page (elements scroll) 9 10)
+      (setf (page scroll) 2)
+      (check-page (elements scroll) 6 9)
+      (setf (page scroll) 0)
+      (check-page (elements scroll) 0 3))))
+
+(deftest test/query/select/scroll/transactions ()
+  (bind ((scroll (with-transaction
+                   (select (:result-type scroll) ((o class-1)) (collect (attr-1-of o))))))
+    (setf (page-size scroll) 3)
     (run-queries
-      (bind ((scroll (select (:result-type scroll) ((o entity-1)) (collect (attr-1-of o)))))
-        (setf (page-size scroll) 3)
-        (check-page (elements scroll) 0 3)
-        (delete-object (select-first-object entity-1))
-        (check-page (elements scroll) 1 4))))
+      (first-page! scroll)
+      (check-page (elements scroll) 0 3)
+      (last-page! scroll)
+      (check-page (elements scroll) 9 10))))
 
-  ))
+(deftest test/query/select/scroll/modify ()
+  (run-queries
+    (bind ((scroll (select (:result-type scroll) ((o class-1)) (collect (attr-1-of o)))))
+      (setf (page-size scroll) 3)
+      (check-page (elements scroll) 0 3)
+      (purge-object (select-first-object class-1))
+      (check-page (elements scroll) 1 4))))
 
 ;------------------------------------------------------------------------------
 
-(defun check-ordered (entities order-spec)
-  (bind ((compare-fn (generate-compare-fn order-spec)))
-    (is-true
-     (iter (for entity in entities)
-           (for prev previous entity)
-           (always (or (null prev) (funcall compare-fn prev entity))))
-     "Ordering of ~a by ~a failed." entities order-spec)))
+(defun check-ordered (classes order-spec)
+  (bind ((compare-fn (generate-compare-fn order-spec))
+;; PORT: is does not support macros inside, yet to come
+         (pass (iter (for class in classes)
+                     (for prev previous class)
+                     (always (or (null prev)
+                                 (funcall compare-fn prev class))))))
+;; PORT:
+;;"Ordering of ~a by ~a failed." classes order-spec)))
+    (is pass)))
 
 (defun generate-compare-fn (order-spec)
-  (lambda (entity1 entity2)
+  (lambda (class1 class2)
     (iter (for (dir attr) on order-spec by 'cddr)
-          (for attr-value-1 = (slot-value entity1 attr))
-          (for attr-value-2 = (slot-value entity2 attr))
+          (for attr-value-1 = (slot-value class1 attr))
+          (for attr-value-2 = (slot-value class2 attr))
           (for compare-fn = (ecase dir (:asc 'less-or-equal-p) (:desc 'greater-or-equal-p)))
           (cond
             ((funcall compare-fn attr-value-1 attr-value-2) (return #t))
             ((not (equal attr-value-1 attr-value-2)) (return #f)))
           (finally (return #t)))))
 
-(define-test-model query-order
-    (:model
-     (defentity entity-1 ()
-       ((int-attr :type (integer 32))
-        (str-attr :type (string 10)))))
-  (:data
-   (with-transaction ()
-     (delete-objects 'entity-1)
-     (bind ((count 10)
-            (int-values (iter (for i from 0 below count) (collect i)))
-            (str-values (iter (for i from 0 below count) (collect (string (digit-char i))))))
-       (macrolet ((random-element (list)
-                    (with-variables (element)
-                      `(let ((,element (nth (random (length ,list)) ,list)))
-                        (setf ,list (remove ,element ,list))
-                        ,element))))
-         (iter (for i from 0 below count)
-               (make-instance 'entity-1
-                              :int-attr (random-element int-values)
-                              :str-attr (random-element str-values)))))))
-  (:tests
+(defpclass* class-1 ()
+  ((int-attr :type integer-32)
+   (str-attr :type (string 10))))
 
-   (meta-model/query/select/order-by/integer/asc
-    (run-queries
-      (check-ordered
-       (select ((o entity-1))
-         (collect o)
-         (dmm::order-by :asc (int-attr-of o)))
-       (list :asc 'int-attr))))
+(defun fill-data-6 ()
+  (with-transaction
+    ;; PORT:
+    #+nil(purge-objects 'class-1)
+    (bind ((count 10)
+           (int-values (iter (for i from 0 below count) (collect i)))
+           (str-values (iter (for i from 0 below count) (collect (string (digit-char i))))))
+      (macrolet ((random-element (list)
+                   (with-unique-names (element)
+                     `(let ((,element (nth (random (length ,list)) ,list)))
+                       (setf ,list (remove ,element ,list))
+                       ,element))))
+        (iter (for i from 0 below count)
+              (make-instance 'class-1
+                             :int-attr (random-element int-values)
+                             :str-attr (random-element str-values)))))))
 
-   (meta-model/query/select/order-by/integer/desc
-    (run-queries
-      (check-ordered
-       (select ((o entity-1))
-         (collect o)
-         (dmm::order-by :desc (int-attr-of o)))
-       (list :desc 'int-attr))))
+(deftest test/query/select/order-by/integer/asc ()
+  (run-queries
+    (check-ordered
+     (select ((o class-1))
+       (collect o)
+       (prc::order-by :asc (int-attr-of o)))
+     (list :asc 'int-attr))))
 
-   (meta-model/query/select/order-by/string/asc
-    (run-queries
-      (check-ordered
-       (select ((o entity-1))
-         (collect o)
-         (dmm::order-by :asc (str-attr-of o)))
-       (list :asc 'str-attr))))
+(deftest test/query/select/order-by/integer/desc ()
+  (run-queries
+    (check-ordered
+     (select ((o class-1))
+       (collect o)
+       (prc::order-by :desc (int-attr-of o)))
+     (list :desc 'int-attr))))
 
-   (meta-model/query/select/order-by/string/desc
-    (run-queries
-      (check-ordered
-       (select ((o entity-1))
-         (collect o)
-         (dmm::order-by :desc (str-attr-of o)))
-       (list :desc 'str-attr))))
+(deftest test/query/select/order-by/string/asc ()
+  (run-queries
+    (check-ordered
+     (select ((o class-1))
+       (collect o)
+       (prc::order-by :asc (str-attr-of o)))
+     (list :asc 'str-attr))))
 
-   (meta-model/query/select/order-by/all
-    (run-queries
-      (check-ordered
-       (select ((o entity-1))
-         (collect o)
-         (dmm::order-by :asc (int-attr-of o) :desc (str-attr-of o)))
-       (list :asc 'int-attr :desc 'str-attr))))
+(deftest test/query/select/order-by/string/desc ()
+  (run-queries
+    (check-ordered
+     (select ((o class-1))
+       (collect o)
+       (prc::order-by :desc (str-attr-of o)))
+     (list :desc 'str-attr))))
 
-   (meta-model/query/select/order-by/expression
-    (run-queries
-      (check-ordered
-       (select ((o entity-1))
-         (collect o)
-         (dmm::order-by :asc (- (int-attr-of o))))
-       (list :desc 'int-attr))))
+(deftest test/query/select/order-by/all ()
+  (run-queries
+    (check-ordered
+     (select ((o class-1))
+       (collect o)
+       (prc::order-by :asc (int-attr-of o) :desc (str-attr-of o)))
+     (list :asc 'int-attr :desc 'str-attr))))
 
-   (meta-model/query/select/order-by/error
-    (run-queries
-      (signals error
-        (select ((o entity-1))
-          (collect o)
-          (dmm::order-by :asc (int-attr-of 'o))))))
-   ))
+(deftest test/query/select/order-by/expression ()
+  (run-queries
+    (check-ordered
+     (select ((o class-1))
+       (collect o)
+       (prc::order-by :asc (- (int-attr-of o))))
+     (list :desc 'int-attr))))
+
+(deftest test/query/select/order-by/error ()
+  (run-queries
+    (signals error
+      (select ((o class-1))
+        (collect o)
+        (prc::order-by :asc (int-attr-of 'o))))))
 
 ;------------------------------------------------------------------------------
 (defun check-existing-records (table-id expected)
-  (bind ((table (format nil "_entity_~d" table-id))
+  (bind ((table (format nil "_class_~d" table-id))
          (column (make-symbol (format nil "_int_attr_~d" table-id))))
     (is (equal (sort (apply 'nconc (execute (sql `(select (,column) (,table))))) #'<=)
-              expected))))
+               expected))))
 
 (defun int-list (from below)
   (iter (for i from from below below)
@@ -674,66 +677,64 @@
       (format t "~{~&~A~}" ',body))
     ,@body))
 
-(define-test-model query-purge
-    (:model
-     (defentity entity-1 ()
-       ((int-attr-1 :type (integer 32))))
-     (defentity entity-2 (entity-1)
-       ((int-attr-2 :type (integer 32))))
-     (defentity entity-3 ()
-       ((int-attr-3 :type (integer 32)))))
-  (:data
-   (with-transaction
-     (delete-all-objects-from-model)
-     (iter (for i from 0 below 5)
-           (make-instance 'entity-1 :int-attr-1 i)
-           (make-instance 'entity-3 :int-attr-3 i))
-     (iter (for i from 5 below 10)
-           (make-instance 'entity-2 :int-attr-1 i :int-attr-2 i))))
+(defpclass* class-1 ()
+  ((int-attr-1 :type integer-32)))
 
-  (:tests
+(defpclass* class-2 (class-1)
+  ((int-attr-2 :type integer-32)))
 
-   (meta-model/query/purge/simple/all
-    (run-purge-test
-      (select ((o entity-3))
-        (purge o))
-      (check-existing-records 3 nil)))
+(defpclass* class-3 ()
+  ((int-attr-3 :type integer-32)))
 
-   (meta-model/query/purge/simple/one
-    (run-purge-test
-      (select ((o entity-3))
-        (assert (= (int-attr-3-of o) 0))
-        (purge o))
-      (check-existing-records 3 (int-list 1 5))))
+(defun fill-data-7 ()
+  (with-transaction
+    ;; PORT:
+    #+nil(purge-all-objects-from-model)
+    (iter (for i from 0 below 5)
+          (make-instance 'class-1 :int-attr-1 i)
+          (make-instance 'class-3 :int-attr-3 i))
+    (iter (for i from 5 below 10)
+          (make-instance 'class-2 :int-attr-1 i :int-attr-2 i))))
+
+(deftest test/query/purge/simple/all ()
+  (run-purge-test
+    (select ((o class-3))
+      (purge o))
+    (check-existing-records 3 nil)))
+
+(deftest test/query/purge/simple/one ()
+  (run-purge-test
+    (select ((o class-3))
+      (assert (= (int-attr-3-of o) 0))
+      (purge o))
+    (check-existing-records 3 (int-list 1 5))))
    
-   (meta-model/query/purge/polymorph/all
-    (run-purge-test
-      (select ((o entity-1))
-        (purge o))
-      (check-existing-records 1 nil)
-      (check-existing-records 2 nil)))
+(deftest test/query/purge/polymorph/all ()
+  (run-purge-test
+    (select ((o class-1))
+      (purge o))
+    (check-existing-records 1 nil)
+    (check-existing-records 2 nil)))
 
-   (meta-model/query/purge/polymorph/one
-    (run-purge-test
-      (select ((o entity-1))
-        (assert (= (int-attr-1-of o) 0))
-        (purge o))
-      (check-existing-records 1 (int-list 1 10))
-      (check-existing-records 2 (int-list 5 10))))
+(deftest test/query/purge/polymorph/one ()
+  (run-purge-test
+    (select ((o class-1))
+      (assert (= (int-attr-1-of o) 0))
+      (purge o))
+    (check-existing-records 1 (int-list 1 10))
+    (check-existing-records 2 (int-list 5 10))))
 
-   (meta-model/query/purge/polymorph/sub
-    (run-purge-test
-      (select ((o entity-2))
-        (purge o))
-      (check-existing-records 1 (int-list 0 5))
-      (check-existing-records 2 nil)))
+(deftest test/query/purge/polymorph/sub ()
+  (run-purge-test
+    (select ((o class-2))
+      (purge o))
+    (check-existing-records 1 (int-list 0 5))
+    (check-existing-records 2 nil)))
 
-   (meta-model/query/purge/polymorph/super
-    (run-purge-test
-      (select ((o entity-1))
-        (assert (= (int-attr-1-of o) 9))
-        (purge o))
-      (check-existing-records 1 (int-list 0 9))
-      (check-existing-records 2 (int-list 5 9))))
-
-   ))
+(deftest test/query/purge/polymorph/super ()
+  (run-purge-test
+    (select ((o class-1))
+      (assert (= (int-attr-1-of o) 9))
+      (purge o))
+    (check-existing-records 1 (int-list 0 9))
+    (check-existing-records 2 (int-list 5 9))))
