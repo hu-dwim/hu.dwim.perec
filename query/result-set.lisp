@@ -1,4 +1,11 @@
+;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;;
+;;; Copyright (c) 2006 by the authors.
+;;;
+;;; See LICENCE for details.
+
 (in-package :cl-perec)
+
 (declaim (optimize (debug 3) (safety 3) (speed 0)))
 
 ;;;; This file contains classes and methods for storing, filtering, mapping

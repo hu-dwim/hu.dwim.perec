@@ -45,7 +45,7 @@
    (depends-on
     (compute-as nil)
     :type (list persistent-class)
-    :documentation "The list of persistent classes which must be look at by this class when computing RDBMS meta data. This used to generate columns into other classes' primary tables.")
+    :documentation "The list of persistent classes which must be looked at by this class when computing RDBMS meta data. This used to generate columns into other classes' primary tables.")
    (depends-on-me
     (compute-as nil)
     :type (list persistent-class)
