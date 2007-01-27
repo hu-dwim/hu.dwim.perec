@@ -25,7 +25,6 @@
                            (list-tables)))))
 (defun retest ()
   (drop-all-test-tables)
-  (clrhash (get 'prc::ensure-exported 'computed-class::memoize-table))
   (test))
 
 (defsuite* test)
