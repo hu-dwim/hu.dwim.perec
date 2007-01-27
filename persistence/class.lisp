@@ -9,7 +9,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Persistent class and slot meta objects
 
-(defcclass* persistent-class (standard-class)
+(defcclass* persistent-class (standard-class exportable)
   ((abstract
     (compute-as #f)
     :type boolean
@@ -160,7 +160,7 @@
         (collect-if #L(typep !1 'persistent-association)
                     (depends-on-of class)))
   (awhen (primary-table-of class)
-    (export-to-rdbms it)))
+    (ensure-exported it)))
 
 ;;;;;;;;;;;;
 ;;; Computed

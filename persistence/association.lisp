@@ -2,7 +2,7 @@
 
 ;; TODO: ensure that 1-1 and 1-n associations store their foreign keys in the primary table of the primary association end, switch association ends if necessary
 
-(defcclass* persistent-association ()
+(defcclass* persistent-association (exportable)
   ((name
     :type symbol
     :documentation "Unique name of the association. This name can be used to find the association using find-persistent-association.")
@@ -95,7 +95,7 @@
 (defmethod export-to-rdbms ((association persistent-association))
   (mapc #'ensure-exported (remove-if #'null (mapcar #'primary-table-of (associated-classes-of association))))
   (awhen (primary-table-of association)
-    (export-to-rdbms it)))
+    (ensure-exported it)))
 
 ;;;;;;;;;;;
 ;;; Compute

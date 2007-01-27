@@ -4,7 +4,7 @@
 ;;; RDBMS model classes
 
 ;; TODO: use sql-table when available
-(defcclass* table ()
+(defcclass* table (exportable)
   ((name
     :type symbol
     :documentation "The name of the RDBMS table.")
