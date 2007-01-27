@@ -180,3 +180,17 @@
 
 (deftypetest form/1 form '(progn 1 (print "Hello") 2))
 (deftypetest form/2 (form 100) '(progn 1 (print "Hello") 2))
+
+#|
+
+(deftypetest or-null-string/1 (or null string) nil)
+(deftypetest or-null-string/2 (or null string) "something")
+
+(deftypetest or-unbound-string/1 (or unbound string) prc::+unbound-slot-value+)
+(deftypetest or-unbound-string/2 (or unbound string) "something")
+
+(deftypetest or-unbound-null-string/1 (or unbound null string) prc::+unbound-slot-value+)
+(deftypetest or-unbound-null-string/2 (or unbound null string) nil)
+(deftypetest or-unbound-null-string/3 (or unbound null string) "something")
+
+|#
