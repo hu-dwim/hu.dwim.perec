@@ -1,8 +1,8 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/association :in test/persistence)
+(defsuite* test/persistence/association :in test/persistence)
 
-(defsuite* test/association/1-1 :in test/association)
+(defsuite* test/persistence/association/1-1 :in test/persistence/association)
 
 (defpclass* brother-test ()
   ())
@@ -20,58 +20,58 @@
            (brother (make-instance 'brother-test)))
       ,@body)))
 
-(deftest test/association/1-1/initial-value/1 ()
+(deftest test/persistence/association/1-1/initial-value/1 ()
   (with-sister-and-brother-transaction
     (is (eq nil (brother-of sister)))
     (is (eq nil (sister-of brother)))))
 
-(deftest test/association/1-1/initial-value/2 ()
+(deftest test/persistence/association/1-1/initial-value/2 ()
   (with-transaction
     (bind ((sister (make-instance 'sister-test))
            (brother (make-instance 'brother-test :sister sister)))
       (is (eq (sister-of brother) sister)))))
 
-(deftest test/association/1-1/initial-value/3 ()
+(deftest test/persistence/association/1-1/initial-value/3 ()
   (with-transaction
     (bind ((brother (make-instance 'brother-test))
            (sister (make-instance 'sister-test :brother brother)))
       (is (eq (brother-of sister) brother)))))
 
-(deftest test/association/1-1/store-value/1 ()
+(deftest test/persistence/association/1-1/store-value/1 ()
   (with-sister-and-brother-transaction
     (setf (brother-of sister) brother)
     (is (eq brother (brother-of sister)))))
 
-(deftest test/association/1-1/store-value/2 ()
+(deftest test/persistence/association/1-1/store-value/2 ()
   (with-sister-and-brother-transaction
     (setf (sister-of brother) sister)
     (is (eq sister (sister-of brother)))))
 
-(deftest test/association/1-1/referential-integrity/1 ()
+(deftest test/persistence/association/1-1/referential-integrity/1 ()
   (with-sister-and-brother-transaction
     (setf (brother-of sister) brother)
     (is (eq sister (sister-of brother)))))
 
-(deftest test/association/1-1/referential-integrity/2 ()
+(deftest test/persistence/association/1-1/referential-integrity/2 ()
   (with-sister-and-brother-transaction
     (setf (sister-of brother) sister)
     (is (eq brother (brother-of sister)))))
 
-(deftest test/association/1-1/referential-integrity/3 ()
+(deftest test/persistence/association/1-1/referential-integrity/3 ()
   (with-sister-and-brother-transaction
     (setf (sister-of brother) sister)
     (setf (sister-of brother) nil)
     (is (eq nil (sister-of brother)))
     (is (eq nil (brother-of sister)))))
 
-(deftest test/association/1-1/referential-integrity/4 ()
+(deftest test/persistence/association/1-1/referential-integrity/4 ()
   (with-sister-and-brother-transaction
     (setf (brother-of sister) brother)
     (setf (brother-of sister) nil)
     (is (eq nil (sister-of brother)))
     (is (eq nil (brother-of sister)))))
    
-(deftest test/association/1-1/referential-integrity/5 ()
+(deftest test/persistence/association/1-1/referential-integrity/5 ()
   (with-sister-and-brother-transaction
     (setf (sister-of brother) sister)
     (setf (sister-of brother) (make-instance 'sister-test))

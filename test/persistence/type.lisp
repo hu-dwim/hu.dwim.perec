@@ -6,7 +6,7 @@
 
 (in-package :cl-perec-test)
 
-(defsuite* test/type :in test/persistence)
+(defsuite* test/persistence/type :in test/persistence)
 
 (defgeneric object-equal-p (object-1 object-2)
   (:method (object-1 object-2)
@@ -51,7 +51,7 @@
 
 (defmacro deftypetest (name type test-value &key (test 'object-equal-p))
   (with-unique-names (value)
-    `(deftest ,(cl-perec::concatenate-symbol "test/type/" name) ()
+    `(deftest ,(cl-perec::concatenate-symbol "test/persistence/type/" name) ()
       (let ((,value (with-transaction ,test-value))
             object)
         (with-transaction

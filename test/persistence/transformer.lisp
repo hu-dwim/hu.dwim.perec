@@ -6,7 +6,7 @@
 
 (in-package :cl-perec-test)
 
-(defsuite* test/transformer :in test/persistence)
+(defsuite* test/persistence/transformer :in test/persistence)
 
 (defparameter +transformer-test-value+ "value")
 
@@ -17,44 +17,44 @@
 ;;;;;;;;;;
 ;;; Writer
 
-(defsuite* test/transformer/writer :in test/transformer)
+(defsuite* test/persistence/transformer/writer :in test/persistence/transformer)
 
-(deftest test/transformer/writer/string ()
+(deftest test/persistence/transformer/writer/string ()
   (is-equal-using-writer 'string
                          +transformer-test-value+
                          (list +transformer-test-value+)))
 
-(deftest test/transformer/writer/or-null-string/nil ()
+(deftest test/persistence/transformer/writer/or-null-string/nil ()
   (is-equal-using-writer '(or null string)
                          nil
                          (list nil)))
 
-(deftest test/transformer/writer/or-null-string/string ()
+(deftest test/persistence/transformer/writer/or-null-string/string ()
   (is-equal-using-writer '(or null string)
                          +transformer-test-value+
                          (list +transformer-test-value+)))
 
-(deftest test/transformer/writer/or-unbound-string/unbound ()
+(deftest test/persistence/transformer/writer/or-unbound-string/unbound ()
   (is-equal-using-writer '(or unbound string)
                          prc::+unbound-slot-value+
                          (list nil)))
 
-(deftest test/transformer/writer/or-unbound-string/string ()
+(deftest test/persistence/transformer/writer/or-unbound-string/string ()
   (is-equal-using-writer '(or unbound string)
                          +transformer-test-value+
                          (list +transformer-test-value+)))
 
-(deftest test/transformer/writer/or-unbound-null-string/unbound ()
+(deftest test/persistence/transformer/writer/or-unbound-null-string/unbound ()
   (is-equal-using-writer '(or unbound null string)
                          prc::+unbound-slot-value+
                          (list nil nil)))
 
-(deftest test/transformer/writer/or-unbound-null-string/null ()
+(deftest test/persistence/transformer/writer/or-unbound-null-string/null ()
   (is-equal-using-writer '(or unbound null string)
                          nil
                          (list t nil)))
 
-(deftest test/transformer/writer/or-unbound-null-string/string ()
+(deftest test/persistence/transformer/writer/or-unbound-null-string/string ()
   (is-equal-using-writer '(or unbound null string)
                          +transformer-test-value+
                          (list t +transformer-test-value+)))
@@ -62,48 +62,48 @@
 ;;;;;;;;;;
 ;;; Reader
 
-(defsuite* test/transformer/reader :in test/transformer)
+(defsuite* test/persistence/transformer/reader :in test/persistence/transformer)
 
 (defun is-equal-using-reader (type slot-value rdbms-values)
   (is (equal slot-value
              (funcall (prc::compute-reader type) rdbms-values))))
 
-(deftest test/transformer/reader/string ()
+(deftest test/persistence/transformer/reader/string ()
   (is-equal-using-reader 'string
                          +transformer-test-value+
                          (list +transformer-test-value+)))
 
-(deftest test/transformer/reader/or-null-string/nil ()
+(deftest test/persistence/transformer/reader/or-null-string/nil ()
   (is-equal-using-reader '(or null string)
                          nil
                          (list nil)))
 
-(deftest test/transformer/reader/or-null-string/string ()
+(deftest test/persistence/transformer/reader/or-null-string/string ()
   (is-equal-using-reader '(or null string)
                            +transformer-test-value+
                            (list +transformer-test-value+)))
 
-(deftest test/transformer/reader/or-unbound-string/unbound ()
+(deftest test/persistence/transformer/reader/or-unbound-string/unbound ()
   (is-equal-using-reader '(or unbound string)
                          prc::+unbound-slot-value+
                          (list nil)))
 
-(deftest test/transformer/reader/or-unbound-string/string ()
+(deftest test/persistence/transformer/reader/or-unbound-string/string ()
   (is-equal-using-reader '(or unbound string)
                          +transformer-test-value+
                          (list +transformer-test-value+)))
 
-(deftest test/transformer/reader/or-unbound-null-string/unbound ()
+(deftest test/persistence/transformer/reader/or-unbound-null-string/unbound ()
   (is-equal-using-reader '(or unbound null string)
                          prc::+unbound-slot-value+
                          (list nil nil)))
 
-(deftest test/transformer/reader/or-unbound-null-string/null ()
+(deftest test/persistence/transformer/reader/or-unbound-null-string/null ()
   (is-equal-using-reader '(or unbound null string)
                          nil
                          (list t nil)))
 
-(deftest test/transformer/reader/or-unbound-null-string/string ()
+(deftest test/persistence/transformer/reader/or-unbound-null-string/string ()
   (is-equal-using-reader '(or unbound null string)
                          +transformer-test-value+
                          (list t +transformer-test-value+)))

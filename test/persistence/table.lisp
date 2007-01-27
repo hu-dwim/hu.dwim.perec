@@ -1,8 +1,8 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/table :in test/persistence)
+(defsuite* test/persistence/table :in test/persistence)
 
-(deftest test/table/persistent-object ()
+(deftest test/persistence/table/persistent-object ()
   (is (not (prc::primary-table-of (find-class 'persistent-object)))))
 
 (defpclass table-t1-test ()
@@ -11,7 +11,7 @@
 (defpclass table-t2-test (table-t1-test)
   (name))
 
-(deftest test/table/inheritance ()
+(deftest test/persistence/table/inheritance ()
   (is (not (null (find '_name (prc::columns-of (prc::primary-table-of (find-class 'table-t1-test))) :key #'rdbms::name-of))))
   (is (null (find '_name (prc::columns-of (prc::primary-table-of (find-class 'table-t2-test))) :key #'rdbms::name-of))))
 
@@ -38,7 +38,7 @@
 (defpclass table-d2-test (table-b2-test table-c2-test)
   ())
 
-(deftest test/table/primary-table ()
+(deftest test/persistence/table/primary-table ()
   (bind ((a1 (find-class 'table-a1-test))
          (b1 (find-class 'table-b1-test))
          (c1 (find-class 'table-c1-test))
