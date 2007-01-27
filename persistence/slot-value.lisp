@@ -43,7 +43,7 @@
            (values)))
 
 (defgeneric slot-value-cached-p (object slot)
-  (:documentation "Specifies if the given slot is cached in the ")
+  (:documentation "Specifies if the given slot is cached in the object.")
   
   (:method ((object persistent-object)
             (slot persistent-effective-slot-definition))

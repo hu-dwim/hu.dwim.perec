@@ -1,7 +1,5 @@
 (in-package :cl-perec)
 
-;; TODO: ensure that 1-1 and 1-n associations store their foreign keys in the primary table of the primary association end, switch association ends if necessary
-
 (defcclass* persistent-association (exportable)
   ((name
     :type symbol
@@ -46,7 +44,7 @@
                       (find-class it))))
     :type persistent-class)
    (min-cardinality
-    0
+    (compute-as 0)
     :type integer
     :documentation "The minimum number of objects present in an association for this end.")
    (max-cardinality
@@ -107,7 +105,6 @@
                    :columns (compute-as
                               (mappend #'columns-of (association-ends-of association))))))
 
-;; TODO: refactor these to avoid duplicates
 (defmethod compute-table ((slot persistent-association-end-direct-slot-definition))
   (bind ((association (association-of slot)))
     (ecase (association-kind-of association)

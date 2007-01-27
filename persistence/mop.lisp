@@ -180,14 +180,16 @@
                   (append (list :name (getf association-end-definition :slot)
                                 :association !1
                                 :persistent #t
-                                :initfunction (eval `(lambda () ,(getf association-end-definition :initform))))
+                                :initfunction (let ((initform (getf association-end-definition :initform)))
+                                                (when initform
+                                                  (lambda () initform))))
                           (remove-keywords association-end-definition :slot :class :accessor)))
               depends-on-associations))))
 
 ;; this is not the real shared-initialize because portable programs are not allowed to override that
 ;; so we are somewhat emulating it by calling this function from both initialize-instance and reinitialize-instance
 (defun shared-ininitialize-around-persistent-class (class call-next-method &rest args
-                                                    &key name direct-slots direct-superclasses &allow-other-keys)
+                                                          &key name direct-slots direct-superclasses &allow-other-keys)
   ;; call initialize-instance or reinitialize-instance next method
   (prog1
       (apply call-next-method
@@ -201,14 +203,16 @@
     (setf (find-persistent-class name) class)
     (invalidate-computed-slot class 'persistent-direct-slots)
     ;; update type specific class dependencies
-    (mapc #L(let ((type (remove-null-and-unbound-if-or-type (slot-definition-type !1))))
+    (mapc #L(bind ((type (remove-null-and-unbound-if-or-type (slot-definition-type !1))))
               (when (set-type-p type)
                 (pushnew class (depends-on-of (find-class (second type))))
                 (pushnew (find-class (second type)) (depends-on-me-of class))))
           (class-direct-slots class))
-    (mapc #L(let ((association (association-of !1)))
-              (if (= 0 (position (slot-definition-name !1) (association-end-definitions-of association)
-                                 :key #L(getf !1 :slot)))
+    (mapc #L(bind ((association (association-of !1))
+                   (association-end-position
+                    (position (slot-definition-name !1) (association-end-definitions-of association)
+                              :key #L(getf !1 :slot))))
+              (if (= 0 association-end-position)
                   (setf (primary-association-end-of association) !1)
                   (setf (secondary-association-end-of association) !1)))
           (collect-if #L (typep !1 'persistent-association-end-direct-slot-definition)
