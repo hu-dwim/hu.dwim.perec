@@ -83,8 +83,19 @@
       (bind ((standard-initargs (compute-standard-effective-slot-definition-initargs class direct-slot-definitions))
              (slot-initargs (compute-persistent-effective-slot-definition-initargs class direct-slot-definitions))
              (initargs (append slot-initargs standard-initargs))
-             (class (apply #'effective-slot-definition-class class :persistent #t initargs)))
-        (apply #'make-instance class :direct-slots direct-slot-definitions initargs))
+             (effective-slot-class (apply #'effective-slot-definition-class class :persistent #t initargs)))
+        (prog1-bind effective-slot-definition
+            (apply #'make-instance effective-slot-class :direct-slots direct-slot-definitions initargs)
+          (bind ((type (slot-definition-type effective-slot-definition))
+                 (or-unbound-type-p (or-unbound-type-p type))
+                 (or-null-type-p (or-null-type-p type))
+                 (initfunction (slot-definition-initfunction effective-slot-definition)))
+            (when (and (or or-null-type-p
+                           (set-type-p type))
+                       (not or-unbound-type-p)
+                       (not initfunction))
+              (setf (slot-definition-initfunction effective-slot-definition)
+                    (constantly nil))))))
       (call-next-method)))
 
 (defun compute-standard-effective-slot-definition-initargs (class direct-slot-definitions)

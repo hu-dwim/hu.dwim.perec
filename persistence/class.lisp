@@ -241,7 +241,9 @@
                                  (or-null-type-p
                                   'null-writer)
                                  (t
-                                  'identity))))
+                                  (lambda (function column-number)
+                                    (declare (ignore column-number))
+                                    function)))))
              (funcall wrapper (compute-writer type)
                       (+ (cond ((persistent-class-type-p type)
                                 2)
@@ -321,22 +323,30 @@
                (call-next-method))))
 
   (:method ((slot persistent-direct-slot-definition))
-           (awhen (remove-null-and-unbound-if-or-type (slot-definition-type slot))
-             (cond ((set-type-p it)
-                    (make-columns-for-reference-slot (class-name (slot-definition-class slot))
-                                                     (strcat (slot-definition-name slot)
-                                                             "-for-"
-                                                             (class-name (slot-definition-class slot)))))
-                   ((persistent-class-type-p it)
-                    (make-columns-for-reference-slot (class-name (slot-definition-class slot))
-                                                     (slot-definition-name slot)))
-                   ((primitive-type-p it)
-                    (list
-                     (make-instance 'column
-                                    :name (rdbms-name-for (slot-definition-name slot))
-                                    :type (compute-column-type it))))
-                   (t
-                    (error "Unknown slot type in slot ~A" slot)))))
+           (bind ((name (slot-definition-name slot))
+                  (type (slot-definition-type slot))
+                  (class (slot-definition-class slot)))
+             (awhen (remove-null-and-unbound-if-or-type type)
+               (cond ((set-type-p it)
+                      (make-columns-for-reference-slot (class-name class)
+                                                       (strcat name "-for-" (class-name class))))
+                     ((persistent-class-type-p it)
+                      (make-columns-for-reference-slot (class-name class) name))
+                     ((primitive-type-p it)
+                      (append
+                       (when (and (or-null-type-p type)
+                                  (or-unbound-type-p type))
+                         #+nil
+                         (list
+                          (make-instance 'column
+                                         :name (rdbms-name-for (concatenate-symbol name "-bound"))
+                                         :type (make-instance 'sql-boolean-type))))
+                       (list
+                        (make-instance 'column
+                                       :name (rdbms-name-for name)
+                                       :type (compute-column-type it)))))
+                     (t
+                      (error "Unknown slot type in slot ~A" slot))))))
 
   (:method ((slot persistent-effective-slot-definition))
            (some #'columns-of (direct-slots-of slot))))
@@ -371,17 +381,11 @@
   (and (listp type)
        (eq 'set (first type))))
 
-(defun or-type-p (type &optional member)
-  (and (listp type)
-       (eq 'or (first type))
-       (or (not member)
-           (member member (cdr type)))))
-
 (defun or-unbound-type-p (type)
-  (or-type-p type 'unbound))
+  (subtypep 'unbound type))
 
 (defun or-null-type-p (type)
-  (or-type-p type 'null))
+  (subtypep 'null type))
 
 ;;;;;;;;;;;
 ;;; Utility

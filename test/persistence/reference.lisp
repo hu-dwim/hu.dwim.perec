@@ -11,9 +11,8 @@
 (defpclass* referred-test ()
   ())
 
-;; TODO: remove this nil
 (defpclass* reference-test ()
-  ((referred nil :type referred-test)))
+  ((referred :type (or null referred-test))))
 
 (defmacro with-reference-transaction (&body body)
   `(with-transaction

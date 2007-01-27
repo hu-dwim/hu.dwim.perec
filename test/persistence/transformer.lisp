@@ -36,7 +36,7 @@
 
 (deftest test/transformer/writer/or-unbound-string/unbound ()
   (is-equal-using-writer '(or unbound string)
-                         prc::+the-unbound-slot-value+
+                         prc::+unbound-slot-value+
                          (list nil)))
 
 (deftest test/transformer/writer/or-unbound-string/string ()
@@ -46,7 +46,7 @@
 
 (deftest test/transformer/writer/or-unbound-null-string/unbound ()
   (is-equal-using-writer '(or unbound null string)
-                         prc::+the-unbound-slot-value+
+                         prc::+unbound-slot-value+
                          (list nil nil)))
 
 (deftest test/transformer/writer/or-unbound-null-string/null ()
@@ -85,7 +85,7 @@
 
 (deftest test/transformer/reader/or-unbound-string/unbound ()
   (is-equal-using-reader '(or unbound string)
-                         prc::+the-unbound-slot-value+
+                         prc::+unbound-slot-value+
                          (list nil)))
 
 (deftest test/transformer/reader/or-unbound-string/string ()
@@ -95,7 +95,7 @@
 
 (deftest test/transformer/reader/or-unbound-null-string/unbound ()
   (is-equal-using-reader '(or unbound null string)
-                         prc::+the-unbound-slot-value+
+                         prc::+unbound-slot-value+
                          (list nil nil)))
 
 (deftest test/transformer/reader/or-unbound-null-string/null ()

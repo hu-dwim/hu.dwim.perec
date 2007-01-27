@@ -5,9 +5,8 @@
 (defpclass* referred-set-test ()
   ())
 
-;; TODO: remove this nil
 (defpclass* reference-set-test ()
-  ((referred-set nil :type (set referred-set-test))))
+  ((referred-set :type (set referred-set-test))))
 
 (defmacro with-reference-set-transaction (&body body)
   `(with-transaction

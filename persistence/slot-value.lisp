@@ -50,24 +50,15 @@
            (debug-only (assert (debug-persistent-p object)))
            (member slot (cached-slots-of object))))
 
-(defgeneric cached-slot-value (object slot-name)
-  (:documentation "Returns the cached value of the object's slot similar to slot-value.")
-  
-  (:method ((object persistent-object)
-            (slot-name symbol))
-           (debug-only (assert (debug-persistent-p object)))
-           (with-bypassing-database-access
-               (slot-value object slot-name))))
+(defun cached-slot-value (object slot-name)
+  (debug-only (assert (debug-persistent-p object)))
+  (with-bypassing-database-access
+    (slot-value object slot-name)))
 
-(defgeneric (setf cached-slot-value) (new-value object slot-name)
-  (:documentation "Sets the cached value of the object's slot similar to (setf slot-value).")
-
-  (:method (new-value
-            (object persistent-object)
-            (slot-name symbol))
-           (debug-only (assert (debug-persistent-p object)))
-           (with-bypassing-database-access
-               (setf (slot-value object slot-name) new-value))))
+(defun (setf cached-slot-value) (new-value object slot-name)
+  (debug-only (assert (debug-persistent-p object)))
+  (with-bypassing-database-access
+    (setf (slot-value object slot-name) new-value)))
 
 (defgeneric cached-slot-value-using-class (class object slot)
   (:documentation "Returns the cached value of the object's slot similar to slot-value-using-class.")
@@ -77,7 +68,7 @@
             (slot persistent-effective-slot-definition))
            (debug-only (assert (debug-persistent-p object)))
            (with-bypassing-database-access
-               (slot-value-using-class class object slot))))
+             (slot-value-using-class class object slot))))
 
 (defgeneric (setf cached-slot-value-using-class) (new-value class object slot)
   (:documentation "Sets the cached value of the object's slot similar to (setf slot-value-using-class).")
@@ -88,7 +79,7 @@
             (slot persistent-effective-slot-definition))
            (debug-only (assert (debug-persistent-p object)))
            (with-bypassing-database-access
-               (setf (slot-value-using-class class object slot) new-value))))
+             (setf (slot-value-using-class class object slot) new-value))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CLOS MOP slot-value-using-class and friends
@@ -97,10 +88,14 @@
                                    (object persistent-object)
                                    (slot standard-effective-slot-definition))
   "Prefetches slot values when accessing the persistent slot of the object."
+  (debug-only
+    (assert (eq class (class-of object)))
+    (assert (eq class (slot-definition-class slot))))
   (if (and (eq (slot-definition-name slot) 'persistent)
            (not (slot-boundp-using-class class object slot)))
       (if (prefetched-slots-of class)
           (bind (((values restored-slot-values restored-slots) (restore-prefetched-slots object #t)))
+            ;; the persistent flag must be stored prior to caching any slot value
             (prog1 (setf (slot-value-using-class class object slot) (not (null restored-slots)))
               (iter (for restored-slot-value in restored-slot-values)
                     (for restored-slot in restored-slots)
@@ -115,7 +110,9 @@
                                    (object persistent-object)
                                    (slot persistent-effective-slot-definition))
   "Reads the slot value from the database or the cache."
-  (debug-only (assert (eq class (class-of object))))
+  (debug-only
+    (assert (eq class (class-of object)))
+    (assert (eq class (slot-definition-class slot))))
   (let ((persistent (persistent-p object)))
     (assert (or *bypass-database-access*
                 (not persistent)
@@ -151,7 +148,9 @@
                                           (object persistent-object)
                                           (slot persistent-effective-slot-definition))
   "Writes the new slot value to the database and the cache."
-  (debug-only (assert (eq class (class-of object))))
+  (debug-only
+    (assert (eq class (class-of object)))
+    (assert (eq class (slot-definition-class slot))))
   (bind ((persistent (persistent-p object)))
     (assert (or *bypass-database-access*
                 (not persistent)
@@ -184,8 +183,9 @@
                                     (object persistent-object)
                                     (slot persistent-effective-slot-definition))
   "Slots are always bound, they may or may not be nil though."
-  ;; TODO: if we ever want to distinguish between nils and unbound slots we will have to extend the RDBMS mapping for those slots and introduce an extra column
-  (debug-only (assert (eq class (class-of object))))
+  (debug-only
+    (assert (eq class (class-of object)))
+    (assert (eq class (slot-definition-class slot))))
   (bind ((persistent (persistent-p object)))
     (assert (or *bypass-database-access*
                 (not persistent)

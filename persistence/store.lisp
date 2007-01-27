@@ -3,8 +3,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS slot restorers
 
-(defconstant +the-unbound-slot-value+
-  '+the-unbound-slot-value+
+(defconstant +unbound-slot-value+
+  '+unbound-slot-value+
   "This value is used to signal unbound slot value returned from database.")
 
 (defparameter *lazy-slot-values* #f

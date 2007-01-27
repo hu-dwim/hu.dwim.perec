@@ -74,6 +74,7 @@
            #:float-32
            #:float-64
            #:float
+           #:double
            #:number
            #:string
            #:symbol
@@ -119,6 +120,7 @@
            #:select-first-matching
            #:select-last-matching
            #:select-object
+           #:select-objects
            #:make-query
            #:add-lexical-variable
            #:add-query-variable

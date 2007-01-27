@@ -75,7 +75,7 @@
 ;;;;;;;;;;;
 ;;; Utility
 
-(defvar +the-persistent-object-class+ (find-class 'persistent-object))
+(defvar +persistent-object-class+ (find-class 'persistent-object))
 
 (defun persistent-object-p (object)
   (typep object 'persistent-object))

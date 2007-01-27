@@ -87,7 +87,7 @@
 (defun restrict-variable-type (variable type)
   (let ((orig-type (xtype-of variable)))
     (cond
-      ((eq orig-type +the-persistent-object-class+) (setf (xtype-of variable) type))
+      ((eq orig-type +persistent-object-class+) (setf (xtype-of variable) type))
       ((and (listp orig-type) (eq (first orig-type) 'and)) (appendf (xtype-of variable) type))
       (t (setf (xtype-of variable) (list 'and orig-type type))))))
 

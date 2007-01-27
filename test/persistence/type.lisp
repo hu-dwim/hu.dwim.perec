@@ -6,7 +6,7 @@
 
 (in-package :cl-perec-test)
 
-(defsuite* test/types :in test/persistence)
+(defsuite* test/type :in test/persistence)
 
 (defgeneric object-equal-p (object-1 object-2)
   (:method (object-1 object-2)

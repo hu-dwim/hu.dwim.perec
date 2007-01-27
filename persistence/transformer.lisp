@@ -12,13 +12,13 @@
 (defun unbound-reader (function)
   (lambda (rdbms-values)
     (if (every #'null rdbms-values)
-        +the-unbound-slot-value+
+        +unbound-slot-value+
         (funcall function rdbms-values))))
 
 (defun unbound-writer (function column-number)
   (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil))))
     (lambda (slot-value)
-      (if (eq +the-unbound-slot-value+ slot-value)
+      (if (eq +unbound-slot-value+ slot-value)
           unbound-rdbms-value
           (funcall function slot-value)))))
 
@@ -44,7 +44,7 @@
 (defun unbound-or-null-reader (function)
   (lambda (rdbms-values)
     (cond ((every #'null rdbms-values)
-           +the-unbound-slot-value+)
+           +unbound-slot-value+)
           ((every #'null (cdr rdbms-values))
            nil)
           (t (funcall function (cdr rdbms-values))))))
@@ -53,7 +53,7 @@
   (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil)))
          (nil-rdbms-value (list* #t (cdr unbound-rdbms-value))))
     (lambda (slot-value)
-      (cond ((eq +the-unbound-slot-value+ slot-value)
+      (cond ((eq +unbound-slot-value+ slot-value)
              unbound-rdbms-value)
             ((null slot-value)
              nil-rdbms-value)
@@ -79,17 +79,26 @@
 ;;;;;;;;;;;;
 ;;; Identity
 
-(defun identity-reader (type)
+(defun identity-reader (rdbms-values)
+  (first rdbms-values))
+
+(defun identity-writer (slot-value)
+  (list slot-value))
+
+;;;;;;;;;;;;;;;;;;;;;
+;;; Non nil identity
+
+(defun non-nil-identity-reader (type)
   (lambda (rdbms-values)
     (aif (first rdbms-values)
          it
-         (error "Nil is not allowed in the type ~A" type))))
+         (error 'type-error :datum it :expected-type type))))
 
-(defun identity-writer (type)
+(defun non-nil-identity-writer (type)
   (lambda (slot-value)
     (if slot-value
        (list slot-value)
-       (error "Nil is not allowed in the type ~A" type))))
+       (error 'type-error :datum slot-value :expected-type type))))
 
 ;;;;;;;;;;
 ;;; Number
@@ -134,7 +143,7 @@
   (bind ((value (first rdbms-values)))
     (cond ((eq #\t value) #t)
           ((eq #\f value) #f)
-          (t (error "Unknown boolean value")))))
+          (t (error 'type-error :datum value :expected-type 'boolean)))))
 
 (defun boolean->char-writer (slot-value)
   (if slot-value
@@ -145,7 +154,7 @@
   (bind ((value (first rdbms-values)))
     (cond ((= 0 value) #t)
           ((= 1 value) #f)
-          (t (error "Unknown boolean value")))))
+          (t (error 'type-error :datum value :expected-type 'boolean)))))
 
 (defun boolean->integer-writer (slot-value)
   (if slot-value
@@ -156,7 +165,7 @@
   (bind ((value (first rdbms-values)))
     (cond ((equal "t" value) #t)
           ((equal "f" value) #f)
-          (t (error "Unknown boolean value")))))
+          (t (error 'type-error :datum value :expected-type 'boolean)))))
 
 (defun boolean->string-writer (slot-value)
   (if slot-value
@@ -175,7 +184,7 @@
                 (= 1 value)) #t)
           ((equal "t" value) #t)
           ((equal "f" value) #f)
-          (t (error "Unknown boolean value")))))
+          (t (error 'type-error :datum value :expected-type 'boolean)))))
 
 ;;;;;;;;;;
 ;;; Member
@@ -193,7 +202,7 @@
       (bind ((value (first rdbms-values)))
         (aif (nth value member-elements)
              it
-             (error "Cannot found value ~A in type ~A" value type))))))
+             (error 'type-error :datum value :expected-type type))))))
 
 (defun member->integer-writer (type)
   (bind ((member-elements (slot-definition-type-member-elements type)))
@@ -203,7 +212,7 @@
               for value in member-elements
               when (eq value slot-value)
               do (return-from found (list i)))
-        (error "Cannot found value ~A in type ~A" slot-value type)))))
+        (error 'type-error :datum slot-value :expected-type type)))))
 
 (defun string->member-reader (type)
   (bind ((member-elements (slot-definition-type-member-elements type)))
@@ -244,3 +253,4 @@
 
 (defun object-writer (slot-value)
   (oid-values slot-value))
+

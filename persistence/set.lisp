@@ -11,7 +11,8 @@
 
 (deftype set (&optional type)
   (declare (ignore type))
-  t)
+  '(and (not unbound)
+        (not null)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lazy slot set container

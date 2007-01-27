@@ -72,35 +72,35 @@
                  `(is (not (null result)))))))))
 
 (defpclass* topic ()
-  ((title :type (string 50))))
+  ((title :type (or null (string 50)))))
 
 (defpclass* message ()
-  ((subject :type (string 50))
-   (content :type (string 50))))
+  ((subject :type (or null (string 50)))
+   (content :type (or null (string 50)))))
 
 (defpclass* ad (message)
   ())
 
 (defpclass* spam (ad)
-  ((score :type integer-32)
-   (spam-type :type (member phishing money-from-africa viagra))))
+  ((score :type (or null integer-32))
+   (spam-type :type (or null (member phishing money-from-africa viagra)))))
 
 (defpclass* owner ()
-  ((name :type (string 50)))
+  ((name :type (or null (string 50))))
   (:abstract #t))
 
 (defpclass* user (owner)
   ((password :type (string 50))
    (birthday :type date)
-   (age 32 :persistent #f :type integer-32)))
+   (age 17 :persistent #f :type integer-32)))
 
 (defassociation*
   ((:class topic :slot messages :type (set message))
-   (:class message :slot topic :type topic)))
+   (:class message :slot topic :type (or null topic))))
 
 (defassociation*
   ((:class owner :slot topics :type (set topic))
-   (:class topic :slot owner :type owner)))
+   (:class topic :slot owner :type (or null owner))))
 
 ;; PORT:
 (defixture fill-data-1
@@ -349,11 +349,11 @@
       (collect u))))
 
 (defpclass* person ()
-  ((first-name :type (string 50))
-   (last-name :type (string 50))))
+  ((first-name :type (or null (string 50)))
+   (last-name :type (or null (string 50)))))
 
 (defpclass* movie ()
-  ((title :type (string 50))))
+  ((title :type (or null (string 50)))))
 
 (defpclass* man (person)
   ())
@@ -427,7 +427,7 @@
         ,@body))))
 
 (defpclass* query-cache-test ()
-  ((attr-1 :type integer-32)))
+  ((attr-1 :type (or null integer-32))))
 
 ;; PORT:
 (defixture fill-data-3
@@ -477,10 +477,10 @@
 
 
 (defpclass* options-1-test ()
-  ((attr-1 :type  integer-32)))
+  ((attr-1 :type (or null integer-32))))
 
 (defpclass* options-2-test ()
-  ((attr-2 :type integer-32)))
+  ((attr-2 :type (or null integer-32))))
 
 (defixture fill-data-4
   (with-transaction
@@ -530,7 +530,7 @@
               (always (= (first (aref page i)) v))))))
 
 (defpclass* scroll-test ()
-  ((attr-1 :type integer-32)))
+  ((attr-1 :type (or null integer-32))))
 
 (defixture fill-data-5
   (with-transaction
@@ -636,8 +636,8 @@
       ,@body)))
 
 (defpclass* order-by-test ()
-  ((int-attr :type integer-32)
-   (str-attr :type (string 10))))
+  ((int-attr :type (or null integer-32))
+   (str-attr :type (or null (string 10)))))
 
 (defixture fill-data-6
   (with-transaction
@@ -733,13 +733,13 @@
       ,@body)))
 
 (defpclass* purge-1-test ()
-  ((int-attr-1 :type integer-32)))
+  ((int-attr-1 :type (or null integer-32))))
 
 (defpclass* purge-2-test (purge-1-test)
-  ((int-attr-2 :type integer-32)))
+  ((int-attr-2 :type (or null integer-32))))
 
 (defpclass* purge-3-test ()
-  ((int-attr-3 :type integer-32)))
+  ((int-attr-3 :type (or null integer-32))))
 
 (defixture fill-data-7
   (with-transaction

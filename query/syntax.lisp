@@ -109,7 +109,7 @@ Be careful when using in different situations, because it modifies *readtable*."
   ())
 
 (define-syntax-node query-variable (variable)
-  ((xtype +the-persistent-object-class+)
+  ((xtype +persistent-object-class+)
    (prefetched-properties)))
 
 (define-syntax-node joined-variable (query-variable)
