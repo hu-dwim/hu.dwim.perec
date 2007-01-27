@@ -57,13 +57,7 @@
   (:documentation "This class serves a very special purpose, namely being able to return the very same instance in make-instance for slot definition meta objects."))
 
 (defcclass* persistent-slot-definition (standard-slot-definition)
-  ((table
-    (compute-as (compute-table -self-))
-    :documentation "This slot servers different purposes for direct and effective slot meta objects.")
-   (columns
-    (compute-as (compute-columns -self-))
-    :documentation "This slot servers different purposes for direct and effective slot meta objects.")
-   (prefetched
+  ((prefetched
     :type boolean
     :computed-in compute-as
     :documentation "Prefetched slots are loaded from and stored into the database at once. A prefetched slot must be in a table which can be accessed using a where clause matching to the id of the object thus it must be in a data table. The default prefetched slot semantics can be overriden on a per direct slot basis.")
@@ -75,12 +69,7 @@
 
 (defcclass* persistent-direct-slot-definition
     (persistent-slot-definition standard-direct-slot-definition)
-  ((table
-    :type (or null table)
-    :documentation "A table where this direct slot has its columns if any. If the slot does not have a type specification then this is nil.")
-   (columns
-    :type (or null list)
-    :documentation "A list of RDBMS columns created for this direct slot or nil. If the slot does not have a type specification then this is nil."))
+  ()
   (:metaclass persistent-slot-definition-class)
   (:documentation "Class for persistent direct slot definitions."))
 
@@ -90,9 +79,11 @@
     :type (list persistent-direct-slot-definition)
     :documentation "The list of direct slots definitions used to compute this effective slot during the class finalization procedure.")
    (table
-       :type table
-       :documentation "The RDBMS table which will be queried or updated to get and set the data of this slot.")
+    (compute-as (compute-table -self-))
+    :type table
+    :documentation "The RDBMS table which will be queried or updated to get and set the data of this slot.")
    (columns
+    (compute-as (compute-columns -self-))
     :type (list sql-column)
     :documentation "The list of RDBMS columns which will be queried or updated to get and set the data of this slot.")
    (id-column
@@ -101,7 +92,7 @@
                           (set-type-p type))
                       (first (columns-of -self-)))))
     :type sql-column
-    :documentation "This is filled for slots having set type.")
+    :documentation "This is the id column of the oid reference when appropriarte for the slot type.")
    (reader
     (compute-as (compute-reader (slot-definition-type -self-)))
     :type (or null function)
@@ -144,15 +135,14 @@
   (aif (primary-table-of object)
        (progn
          (princ "The primary table is the following: ")
-         (describe-object (primary-table-of object) stream))
+         (describe-object it stream))
        (princ (format nil "The primary tables are: ~A" (primary-tables-of object)) stream)))
 
 ;;;;;;;;;;
 ;;; Export
 
 (defmethod export-to-rdbms ((class persistent-class))
-  (unless (class-finalized-p class)
-    (finalize-inheritance class))
+  (ensure-finalized class)
   (mapc #'ensure-exported
         (collect-if #L(typep !1 'persistent-class)
                     (cdr (class-precedence-list class))))
@@ -256,11 +246,13 @@
 
 (defgeneric compute-primary-table (class current-table)
   (:method ((class persistent-class) current-table)
+           (ensure-finalized class)
            (flet ((primary-table-columns-for-class (class)
-                    (mappend #L(mappend #L(when (eq (primary-table-of class) (table-of !1))
-                                            (columns-of !1))
-                                        (persistent-direct-slots-of !1))
-                             (list* class (collect-if #L(typep !1 'persistent-class) (depends-on-of class))))))
+                    (delete-duplicates
+                     (mappend #L(mappend #L(when (eq (primary-table-of class) (table-of !1))
+                                             (columns-of !1))
+                                         (persistent-effective-slots-of !1))
+                              (list* class (collect-if #L(typep !1 'persistent-class) (depends-on-of class)))))))
              (when (or (not (abstract-p class))
                        (primary-table-columns-for-class class))
                (or current-table
@@ -303,53 +295,45 @@
            (primitive-type-p (remove-null-and-unbound-if-or-type (slot-definition-type slot)))))
 
 (defgeneric compute-table (slot)
-  (:method ((slot persistent-direct-slot-definition))
-           (awhen (remove-null-and-unbound-if-or-type (slot-definition-type slot))
-             (cond ((set-type-p it)
-                    (primary-table-of (find-class (second it))))
-                   ((or (primitive-type-p it)
-                        (persistent-class-type-p it))
-                    (primary-table-of (slot-definition-class slot)))
-                   (t
-                    (error "Unknown slot type in slot ~A" slot)))))
-
   (:method ((slot persistent-effective-slot-definition))
-           (some #'table-of (direct-slots-of slot))))
+           (or (some #'table-of (persistent-effective-super-slot-precedence-list-of slot))
+               (bind ((type (slot-definition-type slot)))
+                 (awhen (remove-null-and-unbound-if-or-type type)
+                   (cond ((set-type-p it)
+                          (primary-table-of (find-class (second it))))
+                         ((or (primitive-type-p it)
+                              (persistent-class-type-p it))
+                          (primary-table-of (slot-definition-class slot)))
+                         (t
+                          (error "Unknown type ~A in slot ~A" type slot))))))))
 
 (defgeneric compute-columns (slot)
-  (:method :around ((slot persistent-direct-slot-definition))
-           (when (slot-definition-type slot)
-             (when-bind table (table-of slot)
-               (call-next-method))))
-
-  (:method ((slot persistent-direct-slot-definition))
-           (bind ((name (slot-definition-name slot))
-                  (type (slot-definition-type slot))
-                  (class (slot-definition-class slot)))
-             (awhen (remove-null-and-unbound-if-or-type type)
-               (cond ((set-type-p it)
-                      (make-columns-for-reference-slot (class-name class)
-                                                       (strcat name "-for-" (class-name class))))
-                     ((persistent-class-type-p it)
-                      (make-columns-for-reference-slot (class-name class) name))
-                     ((primitive-type-p it)
-                      (append
-                       (when (and (or-null-type-p type)
-                                  (or-unbound-type-p type))
-                         #+nil
-                         (list
-                          (make-instance 'column
-                                         :name (rdbms-name-for (concatenate-symbol name "-bound"))
-                                         :type (make-instance 'sql-boolean-type))))
-                       (list
-                        (make-instance 'column
-                                       :name (rdbms-name-for name)
-                                       :type (compute-column-type it)))))
-                     (t
-                      (error "Unknown slot type in slot ~A" slot))))))
-
   (:method ((slot persistent-effective-slot-definition))
-           (some #'columns-of (direct-slots-of slot))))
+           (or (some #'columns-of (persistent-effective-super-slot-precedence-list-of slot))
+               (bind ((name (slot-definition-name slot))
+                      (type (slot-definition-type slot))
+                      (class (slot-definition-class slot)))
+                 (awhen (remove-null-and-unbound-if-or-type type)
+                   (cond ((set-type-p it)
+                          (make-columns-for-reference-slot (class-name class)
+                                                           (strcat name "-for-" (class-name class))))
+                         ((persistent-class-type-p it)
+                          (make-columns-for-reference-slot (class-name class) name))
+                         ((primitive-type-p it)
+                          (append
+                           (when (and (or-null-type-p type)
+                                      (or-unbound-type-p type))
+                             #+nil
+                             (list
+                              (make-instance 'column
+                                             :name (rdbms-name-for (concatenate-symbol name "-bound"))
+                                             :type (make-instance 'sql-boolean-type))))
+                           (list
+                            (make-instance 'column
+                                           :name (rdbms-name-for name)
+                                           :type (compute-column-type it)))))
+                         (t
+                          (error "Unknown type ~A in slot ~A" type slot))))))))
 
 ;;;;;;;;
 ;;; Type
@@ -428,6 +412,28 @@
   #+sbcl(slot-value slot 'sb-pcl::%class)
   #-sbcl(not-yet-implemented))
 
+(defun persistent-effective-super-slot-precedence-list-of (slot)
+  (bind ((slot-name (slot-definition-name slot))
+         (slot-class (slot-definition-class slot)))
+    (ensure-finalized slot-class)
+    (iter (for class in (effective-persistent-super-classes-for slot-class))
+          (ensure-finalized class)
+          (aif (find slot-name (persistent-effective-slots-of class) :key #'slot-definition-name)
+               (collect it)))))
+
+(defun slot-accessor-p (name)
+  (and (symbolp name)
+       (effective-slots-for-accessor name)))
+
+(defun effective-slots-for-accessor (name)
+  (iter (for (class-name class) in-hashtable *persistent-classes*)
+        (awhen (find name (persistent-direct-slots-of class)
+                     :key #'slot-definition-readers
+                     :test #'member)
+          (ensure-finalized class)
+          (collect (prog1 (find-slot class (slot-definition-name it))
+                     (assert it))))))
+
 (defun make-oid-columns ()
   "Creates a list of RDBMS columns that will be used to store the oid data of the objects in this table."
   (list
@@ -452,18 +458,3 @@
      (make-instance 'column
                     :name class-name-column-name
                     :type +oid-class-name-sql-type+))))
-
-(defun slot-accessor-p (name)
-  (and (symbolp name)
-       (effective-slots-for-accessor name)))
-
-;; TODO: fix mop to append direct slots readers and store it in effective slots
-(defun effective-slots-for-accessor (name)
-  (iter (for (class-name class) in-hashtable *persistent-classes*)
-        (awhen (find name (persistent-direct-slots-of class)
-                     :key #'slot-definition-readers
-                     :test #'member)
-          (unless (class-finalized-p class)
-            (finalize-inheritance class))
-          (collect (prog1 (find-slot class (slot-definition-name it))
-                     (assert it))))))

@@ -83,7 +83,7 @@
 (defcclass* persistent-association-end-effective-slot-definition
     (persistent-association-end-slot-definition persistent-effective-slot-definition)
   ((other-association-end
-    (compute-as (other-association-end-for (associated-class-of (first (direct-slots-of -self-))) -self-))
+    (compute-as (other-effective-association-end-for (associated-class-of (first (direct-slots-of -self-))) -self-))
     :type persistent-association-end-direct-slot-definition))
   (:metaclass persistent-slot-definition-class))
 
@@ -103,48 +103,31 @@
     (make-instance 'association-primary-table
                    :name (rdbms-name-for (name-of association))
                    :columns (compute-as
-                              (mappend #'columns-of (association-ends-of association))))))
-
-(defmethod compute-table ((slot persistent-association-end-direct-slot-definition))
-  (bind ((association (association-of slot)))
-    (ecase (association-kind-of association)
-      (:1-1 (when (primary-association-end-p slot)
-              (call-next-method)))
-      (:1-n (when (eq :1 (cardinality-kind-of slot))
-              (call-next-method)))
-      (:m-n (primary-table-of association)))))
+                              (mappend #'columns-of
+                                       (mapcar #'effective-association-end-for (association-ends-of association)))))))
 
 (defmethod compute-table ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))
     (ecase (association-kind-of association)
       (:1-1 (if (primary-association-end-p slot)
                 (call-next-method)
-                (table-of (some #'other-association-end-of (direct-slots-of slot)))))
+                (table-of (other-association-end-of slot))))
       (:1-n (if (eq :1 (cardinality-kind-of slot))
                 (call-next-method)
-                (table-of (some #'other-association-end-of (direct-slots-of slot)))))
-      (:m-n (some #L(primary-table-of (association-of !1)) (direct-slots-of slot))))))
-
-(defmethod compute-columns ((slot persistent-association-end-direct-slot-definition))
-  (bind ((association (association-of slot)))
-    (ecase (association-kind-of association)
-      (:1-1 (when (primary-association-end-p slot)
-              (call-next-method)))
-      (:1-n (when (eq :1 (cardinality-kind-of slot))
-              (call-next-method)))
-      (:m-n (make-columns-for-reference-slot (class-name (slot-definition-class slot))
-                                             (second (slot-definition-type slot)))))))
+                (table-of (other-association-end-of slot))))
+      (:m-n (primary-table-of (association-of slot))))))
 
 (defmethod compute-columns ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))
     (ecase (association-kind-of association)
       (:1-1 (if (primary-association-end-p slot)
                 (call-next-method)
-                (columns-of (some #'other-association-end-of (direct-slots-of slot)))))
+                (columns-of (other-association-end-of slot))))
       (:1-n (if (eq :1 (cardinality-kind-of slot))
                 (call-next-method)
-                (columns-of (some #'other-association-end-of (direct-slots-of slot)))))
-      (:m-n (call-next-method)))))
+                (columns-of (other-association-end-of slot))))
+      (:m-n (make-columns-for-reference-slot (class-name (slot-definition-class slot))
+                                             (second (slot-definition-type slot)))))))
 
 (defcclass* association-primary-table (table)
   ()
@@ -168,7 +151,10 @@
 (defun to-many-association-end-p (association-end)
   (eq (cardinality-kind-of association-end) :n))
 
-(defun other-association-end-for (class slot)
+(defun effective-association-end-for (direct-association-end)
+  (find-slot (slot-definition-class direct-association-end) (slot-definition-name direct-association-end)))
+
+(defun other-effective-association-end-for (class slot)
   (find-slot class (slot-definition-name (some #'other-association-end-of (direct-slots-of slot)))))
 
 (defun association-end-accessor-p (name)

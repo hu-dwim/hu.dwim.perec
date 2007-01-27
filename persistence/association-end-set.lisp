@@ -53,12 +53,12 @@
 (defmethod insert-item :after ((set persistent-1-n-association-end-set-container) item)
   (bind ((slot (slot-of set))
          (class (class-of item))
-         (other-slot (other-association-end-for class slot)))
+         (other-slot (other-effective-association-end-for class slot)))
     (setf (cached-slot-value-using-class class item other-slot) (object-of set))))
 
 (defmethod delete-item :after ((set persistent-1-n-association-end-set-container) item)
   (bind ((class (class-of item))
-         (other-slot (other-association-end-for class (slot-of set))))
+         (other-slot (other-effective-association-end-for class (slot-of set))))
     (setf (cached-slot-value-using-class class item other-slot) nil)))
 
 (defmethod empty! :after ((set persistent-1-n-association-end-set-container))

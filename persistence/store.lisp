@@ -144,10 +144,10 @@
 	      (eq (association-kind-of (association-of slot)) :1-1)
               (primary-association-end-p slot))
          (when-bind other-object (slot-value-using-class (class-of object) object slot)
-           (bind ((other-slot (other-association-end-for (class-of other-object) slot)))
+           (bind ((other-slot (other-effective-association-end-for (class-of other-object) slot)))
              (store-slot other-object other-slot nil)))
          (when value
-           (bind ((other-slot (other-association-end-for (class-of value) slot)))
+           (bind ((other-slot (other-effective-association-end-for (class-of value) slot)))
              (store-slot value other-slot object))))
         ((set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type slot)))
          (store-slot-set object slot value))

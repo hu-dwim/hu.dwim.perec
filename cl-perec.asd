@@ -117,7 +117,7 @@
                   (make-instance 'postgresql-pg
                                  :transaction-mixin 'cl-perec::transaction-mixin
                                  :connection-specification cl-user::*test-database-connection-specification*))
-            (test))")))
+            (retest))")))
 
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :cl-perec))))
   nil)
