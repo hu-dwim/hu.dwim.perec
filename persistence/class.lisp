@@ -318,7 +318,15 @@
                           (make-columns-for-reference-slot (class-name class)
                                                            (strcat name "-for-" (class-name class))))
                          ((persistent-class-type-p it)
-                          (make-columns-for-reference-slot (class-name class) name))
+                          (append
+                           (when (and (or-null-type-p type)
+                                      (or-unbound-type-p type)
+                                      (not (subtypep type 'symbol)))
+                             (list
+                              (make-instance 'column
+                                             :name (rdbms-name-for (concatenate-symbol name "-bound"))
+                                             :type (make-instance 'sql-boolean-type))))
+                           (make-columns-for-reference-slot (class-name class) name)))
                          ((primitive-type-p it)
                           (append
                            (when (and (or-null-type-p type)
