@@ -23,6 +23,29 @@
           (prc::collect-if #L(and (starts-with !1 "_")
                                   (ends-with !1 "test"))
                            (list-tables)))))
+
+(defmacro with-and-without-caching-slot-values (&body forms)
+  `(progn
+    (without-caching-slot-values
+      ,@forms)
+    (with-caching-slot-values
+      ,@forms)))
+
+(defmacro with-two-transactions (form-1 &body forms-2)
+  `(let ((-object-
+          (with-transaction
+            ,form-1)))
+    (with-transaction
+      (revive-object -object-)
+      ,@forms-2)))
+
+(defmacro with-one-and-two-transactions (form-1 &body forms-2)
+  `(progn
+    (with-transaction
+      (let ((-object- ,form-1))
+        ,@forms-2))
+    (with-two-transactions ,form-1 ,@forms-2)))
+
 (defun retest ()
   (drop-all-test-tables)
   (test))

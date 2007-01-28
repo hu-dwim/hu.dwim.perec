@@ -63,34 +63,21 @@
             (cl-perec::ensure-exported
              (defpclass* type-test ()
                ((,name :type ,type))))))
-        (labels ((make-object ()
-                   (setf object
-                         (apply #'make-instance
-                                'type-test
-                                ,(when test-value-p
-                                       `(list
-                                         (first (slot-definition-initargs (prc::find-slot (find-class 'type-test) ',name)))
-                                         ,value)))))
-                 (test-object ()
-                   (is ,(if test-value-p
-                            `(object-equal-p ,value (slot-value object ',name))
-                            `(not (slot-boundp object ',name)))))
-                 (test-in-one-transaction ()
-                   (with-transaction
-                     (make-object)
-                     (test-object)))
-                 (test-in-two-transactions ()
-                   (with-transaction
-                     (make-object))
-                   (with-transaction
-                     (revive-object object)
-                     (test-object))))
-          (without-caching-slot-values
-            (test-in-one-transaction)
-            (test-in-two-transactions))
-          (with-caching-slot-values
-            (test-in-one-transaction)
-            (test-in-two-transactions)))))))
+        (flet ((make-object ()
+                 (setf object
+                       (apply #'make-instance
+                              'type-test
+                              ,(when test-value-p
+                                     `(list
+                                       (first (slot-definition-initargs (prc::find-slot (find-class 'type-test) ',name)))
+                                       ,value)))))
+               (test-object (object)
+                 (is ,(if test-value-p
+                          `(object-equal-p ,value (slot-value object ',name))
+                          `(not (slot-boundp object ',name))))))
+          (with-and-without-caching-slot-values
+            (with-one-and-two-transactions (make-object)
+              (test-object -object-))))))))
 
 (defclass* standard-class-type-test ()
   ((slot 0)))
@@ -101,18 +88,19 @@
 (defstruct structure-type-test
   (slot 0 :type integer))
 
-(deftypetest t/1 t nil)
-(deftypetest t/2 t t)
-(deftypetest t/3 t #f)
-(deftypetest t/4 t #t)
-(deftypetest t/5 t 0)
-(deftypetest t/6 t 0.1)
-(deftypetest t/7 t "something")
-(deftypetest t/8 t 'something)
-(deftypetest t/9 t (make-structure-type-test))
-(deftypetest t/10 t (make-instance 'standard-class-type-test))
-(deftypetest t/11 t (make-instance 'persistent-class-type-test))
-(deftypetest t/12 t (list nil #f #t 0 0.1 "something" 'something
+(deftypetest t/1 t)
+(deftypetest t/2 t nil)
+(deftypetest t/3 t t)
+(deftypetest t/4 t #f)
+(deftypetest t/5 t #t)
+(deftypetest t/6 t 0)
+(deftypetest t/7 t 0.1)
+(deftypetest t/8 t "something")
+(deftypetest t/9 t 'something)
+(deftypetest t/10 t (make-structure-type-test))
+(deftypetest t/11 t (make-instance 'standard-class-type-test))
+(deftypetest t/12 t (make-instance 'persistent-class-type-test))
+(deftypetest t/13 t (list nil #f #t 0 0.1 "something" 'something
                           (make-structure-type-test)
                           (make-instance 'standard-class-type-test)
                           (make-instance 'persistent-class-type-test)))
@@ -200,3 +188,17 @@
 (deftypetest or-unbound-null-string/1 (or unbound null string))
 (deftypetest or-unbound-null-string/2 (or unbound null string) nil)
 (deftypetest or-unbound-null-string/3 (or unbound null string) "something")
+
+(defpclass* slot-initial-value-test ()
+  ((slot :type (or null string))))
+
+(deftest test/persistence/type/initial-value ()
+  (flet ((test-object ()
+           (with-transaction
+             (let ((object (make-instance 'slot-initial-value-test)))
+               (is (slot-boundp object 'slot))
+               (is (not (slot-of object)))))))
+    (without-caching-slot-values
+      (test-object))
+    (with-caching-slot-values
+      (test-object))))
