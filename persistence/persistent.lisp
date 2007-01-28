@@ -42,6 +42,11 @@
            (debug-only (assert (debug-persistent-p object)))
            (setf (cached-object-of (oid-of object)) object)))
 
+(define-condition object-not-found-error (error)
+  ((oid :accessor oid-of :initarg :oid))
+  (:report (lambda (c stream)
+             (format stream "Object not found for oid ~A" (oid-of c)))))
+
 (defgeneric load-object (thing &key otherwise prefetch skip-existence-check)
   (:documentation "Loads an object with the given oid and attaches it with the current transaction if not yet attached. If no such object exists in the database then one of two things may happen. If the value of otherwise is a lambda function with one parameter then it is called with the given object. Otherwise the value of otherwise is returned. If prefetch is false then only the identity of the object is loaded, otherwise all attributes are loaded. Note that the object may not yet be committed into the database and therefore may not be seen by other transactions. Also objects not yet committed by other transactions are not returned according to transaction isolation rules. The object returned will be kept for the duration of the transaction and any subsequent calls to load, select, etc. will return the exact same object for which eq is required to return #t.")
 
@@ -95,11 +100,6 @@
                                                             (mapcar #L(sql-select :columns (list +id-column-name+)
                                                                                   :tables (list (name-of !1)))
                                                                     (cdr (primary-tables-of class)))))))))))
-
-(define-condition object-not-found-error (error)
-  ((oid :accessor oid-of :initarg :oid))
-  (:report (lambda (c stream)
-             (format stream "Object not found for oid ~A" (oid-of c)))))
 
 (defmacro revive-object (place &rest args)
   "Load object found in PLACE into the current transaction, update PLACE if needed."

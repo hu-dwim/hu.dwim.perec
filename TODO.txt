@@ -1,8 +1,6 @@
 - change entity name to class name
 - change property/properties/attribute/attributes names to slot/slots names
 
-- renamte test persistent class types to *-test
-
 - eliminate superfluous dependencies (cl-containers, cl-ppcre)
 - eliminate duplicates
 

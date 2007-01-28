@@ -163,7 +163,7 @@
          (tables (delete-duplicates (mapcar #L(table-of !1) prefetched-slots))))    
     (dolist (table tables)
       (bind ((slots (collect-if #L(eq (table-of !1) table) prefetched-slots))
-             (slot-values (mapcar #L(slot-value-using-class (class-of object) object !1) slots))
+             (slot-values (mapcar #L(cached-slot-boundp-or-value-using-class (class-of object) object !1) slots))
              (oid-columns (oid-columns-of table))
              (columns (mappend #'columns-of slots))
              (oid-values (oid-values object))
@@ -178,7 +178,7 @@
 (defun store-all-slots (object)
   "Stores all slots wihtout local side effects into the database."
   (store-prefetched-slots object)
-  (mapc #L(store-slot object !1 (slot-value-using-class (class-of object) object !1))
+  (mapc #L(store-slot object !1 (cached-slot-boundp-or-value-using-class (class-of object) object !1))
         (non-prefetched-slots-of (class-of object))))
 
 ;;;;;;;;;;;

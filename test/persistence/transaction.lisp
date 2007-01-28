@@ -10,10 +10,10 @@
     
 (deftest test/persistence/transaction/in-transaction/1 ()
   (with-transaction
-    (is (prc::object-in-transaction-p (make-instance 'transaction-test)))))
+    (is (object-in-transaction-p (make-instance 'transaction-test)))))
 
 (deftest test/persistence/transaction/in-transaction/2 ()
-  (is (not (prc::object-in-transaction-p
+  (is (not (object-in-transaction-p
             (with-transaction
               (make-instance 'transaction-test))))))
 

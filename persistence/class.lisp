@@ -322,8 +322,8 @@
                          ((primitive-type-p it)
                           (append
                            (when (and (or-null-type-p type)
-                                      (or-unbound-type-p type))
-                             #+nil
+                                      (or-unbound-type-p type)
+                                      (not (subtypep type 'symbol)))
                              (list
                               (make-instance 'column
                                              :name (rdbms-name-for (concatenate-symbol name "-bound"))

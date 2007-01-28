@@ -80,6 +80,12 @@
 (defun persistent-object-p (object)
   (typep object 'persistent-object))
 
+(defun p-eq (object-1 object-2)
+  "Tests if two object references the same persistent object. Normally there at most one persistent object for each oid in a transaction so eq may be safely used. On the other hand huge transactions may require to throw away objects form the object cache which results in several instances for the same oid within the same transaction."
+  (or (eq object-1 object-2)
+      (= (id-of object-1)
+         (id-of object-2))))
+
 (defprint-object (self persistent-object)
   "Prints the oid of the object and whether the object is known to be persistent or transient."
   (princ ":persistent ")

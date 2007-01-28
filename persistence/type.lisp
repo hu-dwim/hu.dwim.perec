@@ -47,16 +47,25 @@
   (null-reader #L(error 'type-error :datum (first !1) :expected-type type))
   (null-writer #L(error 'type-error :datum !1 :expected-type type)))
 
+;;;;;;;
+;;; Nil
+;;;
+;;; other -> (type-error)
+
+(deftype* nil nil
+  #L(error 'type-error :datum (first !1) :expected-type nil)
+  #L(error 'type-error :datum !1 :expected-type nil))
+
 ;;;;;
 ;;; t
 ;;; 
-;;; unbound -> NULL
-;;; nil -> 'NIL'
-;;; other -> (base64)
+;;; unbound -> NULL, NULL
+;;; nil -> true, NULL
+;;; other -> true, (base64)
 
 (deftype* t (make-instance 'sql-character-large-object-type)
-  'base64->object-reader
-  'object->base64-writer)
+  (unbound-or-null-reader 'base64->object-reader)
+  (unbound-or-null-writer 'object->base64-writer 2))
 
 ;;;;;;;;;;;;;;
 ;;; Serialized
@@ -97,7 +106,7 @@
 
 (deftype* integer-16 (make-instance 'sql-integer-type :bit-size 16)
   'object->integer-reader
-  (non-nil-identity-writer type))
+  (non-null-identity-writer type))
 
 ;;;;;;;;;;;;;;
 ;;; Integer-32
@@ -109,7 +118,7 @@
 
 (deftype* integer-32 (make-instance 'sql-integer-type :bit-size 32)
   'object->integer-reader
-  (non-nil-identity-writer type))
+  (non-null-identity-writer type))
 
 ;;;;;;;;;;;;;;
 ;;; Integer-64
@@ -121,7 +130,7 @@
 
 (deftype* integer-64 (make-instance 'sql-integer-type :bit-size 64)
   'object->integer-reader
-  (non-nil-identity-writer type))
+  (non-null-identity-writer type))
 
 ;;;;;;;;;;;
 ;;; Integer
@@ -130,7 +139,7 @@
 
 (deftype* integer (make-instance 'sql-integer-type)
   'object->integer-reader
-  (non-nil-identity-writer type))
+  (non-null-identity-writer type))
 
 ;;;;;;;;;;;;
 ;;; Float-32
@@ -142,7 +151,7 @@
 
 (deftype* float-32 (make-instance 'sql-float-type :bit-size 32)
   'object->number-reader
-  (non-nil-identity-writer type))
+  (non-null-identity-writer type))
 
 ;;;;;;;;;;;;
 ;;; Float-64
@@ -154,7 +163,7 @@
 
 (deftype* float-64 (make-instance 'sql-float-type :bit-size 64)
   'object->number-reader
-  (non-nil-identity-writer type))
+  (non-null-identity-writer type))
 
 ;;;;;;;;;
 ;;; Float
@@ -163,7 +172,7 @@
 
 (deftype* float (make-instance 'sql-float-type)
   'object->number-reader
-  (non-nil-identity-writer type))
+  (non-null-identity-writer type))
 
 ;;;;;;;;;;
 ;;; Double
@@ -172,7 +181,7 @@
 
 (deftype* double (make-instance 'sql-float-type)
   'object->number-reader
-  (non-nil-identity-writer type))
+  (non-null-identity-writer type))
 
 ;;;;;;;;;;
 ;;; Number
@@ -181,7 +190,7 @@
 
 (deftype* number (make-instance 'sql-numeric-type)
   'object->number-reader
-  (non-nil-identity-writer type))
+  (non-null-identity-writer type))
 
 ;;;;;;;;;;
 ;;; String
@@ -191,8 +200,8 @@
 (deftype* string (if (consp type-specification)
                      (make-instance 'sql-character-varying-type :size (second type-specification))
                      (make-instance 'sql-character-large-object-type))
-  (non-nil-identity-reader type)
-  (non-nil-identity-writer type))
+  (non-null-identity-reader type)
+  (non-null-identity-writer type))
 
 ;;;;;;;;;;
 ;;; Symbol
@@ -258,8 +267,8 @@
   'string)
 
 (deftype* duration (make-instance 'sql-character-varying-type :size 32)
-  (non-nil-identity-reader type)
-  (non-nil-identity-writer type))
+  (non-null-identity-reader type)
+  (non-null-identity-writer type))
 
 ;;;;;;;;
 ;;; Form
@@ -282,3 +291,9 @@
 (deftype* member (make-instance 'sql-integer-type :bit-size 16)
   (integer->member-reader type-specification)
   (member->integer-writer type-specification))
+
+;;;;;;
+;;; Or
+;;;
+;;; May combine null and unbound with a primitive type and may generate an extra column
+;;; See compute-reader and compute-writer generic function definitions

@@ -88,13 +88,13 @@
 ;;;;;;;;;;;;;;;;;;;;;
 ;;; Non nil identity
 
-(defun non-nil-identity-reader (type)
+(defun non-null-identity-reader (type)
   (lambda (rdbms-values)
     (aif (first rdbms-values)
          it
          (error 'type-error :datum it :expected-type type))))
 
-(defun non-nil-identity-writer (type)
+(defun non-null-identity-writer (type)
   (lambda (slot-value)
     (if slot-value
        (list slot-value)

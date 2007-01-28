@@ -32,6 +32,9 @@
                             (slot-value-using-class class-2 object-2 slot)))
                          (class-slots class-1)))))
 
+  (:method ((object-1 local-time) (object-2 local-time))
+           (local-time= object-1 object-2))
+
   (:method ((object-1 standard-object) (object-2 standard-object))
            (let ((class-1 (class-of object-1))
                  (class-2 (class-of object-2)))
@@ -45,42 +48,49 @@
                          (class-slots class-1)))))
 
   (:method ((object-1 persistent-object) (object-2 persistent-object))
-           (or (eq object-1 object-2)
-               (object-equal-p (cl-perec::oid-of object-1)
-                               (cl-perec::oid-of object-2)))))
+           (p-eq object-1 object-2)))
 
-(defmacro deftypetest (name type test-value &key (test 'object-equal-p))
+(defmacro deftypetest (name type &optional (test-value nil test-value-p))
   (with-unique-names (value)
     `(deftest ,(cl-perec::concatenate-symbol "test/persistence/type/" name) ()
-      (let ((,value (with-transaction ,test-value))
+      (let ((,value
+             ,(when test-value-p
+                    `(with-transaction ,test-value)))
             object)
+        (declare (ignorable ,value))
         (with-transaction
           (with-confirmed-descructive-changes
             (cl-perec::ensure-exported
              (defpclass* type-test ()
                ((,name :type ,type))))))
-        (flet ((make ()
-                 (setf object
-                       (apply #'make-instance
-                              'type-test
-                              (first (slot-definition-initargs (prc::find-slot (find-class 'type-test) ',name)))
-                              ,value
-                              nil)))
-               (test ()
-                 (is (,test ,value (slot-value object ',name)))))
-          (with-caching-slot-values
-            (with-transaction
-              (make)
-              (test)))
+        (labels ((make-object ()
+                   (setf object
+                         (apply #'make-instance
+                                'type-test
+                                ,(when test-value-p
+                                       `(list
+                                         (first (slot-definition-initargs (prc::find-slot (find-class 'type-test) ',name)))
+                                         ,value)))))
+                 (test-object ()
+                   (is ,(if test-value-p
+                            `(object-equal-p ,value (slot-value object ',name))
+                            `(not (slot-boundp object ',name)))))
+                 (test-in-one-transaction ()
+                   (with-transaction
+                     (make-object)
+                     (test-object)))
+                 (test-in-two-transactions ()
+                   (with-transaction
+                     (make-object))
+                   (with-transaction
+                     (revive-object object)
+                     (test-object))))
           (without-caching-slot-values
-            (with-transaction
-              (make)
-              (test)))
-          (with-transaction
-            (make))
-          (with-transaction
-            (revive-object object)
-            (test)))))))
+            (test-in-one-transaction)
+            (test-in-two-transactions))
+          (with-caching-slot-values
+            (test-in-one-transaction)
+            (test-in-two-transactions)))))))
 
 (defclass* standard-class-type-test ()
   ((slot 0)))
@@ -165,11 +175,11 @@
 (deftypetest symbol/2 symbol 'cl-perec-test::something)
 (deftypetest symbol/3 (symbol* 30) 'cl-user::something)
 
-(deftypetest date/1 date (let ((*default-timezone* +utc-zone+)) (parse-timestring "2006-06-06")) :test local-time=)
+(deftypetest date/1 date (let ((*default-timezone* +utc-zone+)) (parse-timestring "2006-06-06")))
 
-(deftypetest time/1 time (let ((*default-timezone* +utc-zone+)) (parse-timestring "06:06:06")) :test local-time=)
+(deftypetest time/1 time (let ((*default-timezone* +utc-zone+)) (parse-timestring "06:06:06")))
 
-(deftypetest timestamp/1 timestamp (parse-timestring "2006-06-06T06:06:06Z") :test local-time=)
+(deftypetest timestamp/1 timestamp (parse-timestring "2006-06-06T06:06:06Z"))
 
 (deftypetest duration/1 duration "06:06:06")
 (deftypetest duration/2 duration "1-01-01 06:06:06")
@@ -181,16 +191,12 @@
 (deftypetest form/1 form '(progn 1 (print "Hello") 2))
 (deftypetest form/2 (form 100) '(progn 1 (print "Hello") 2))
 
-#|
-
 (deftypetest or-null-string/1 (or null string) nil)
 (deftypetest or-null-string/2 (or null string) "something")
 
-(deftypetest or-unbound-string/1 (or unbound string) prc::+unbound-slot-value+)
+(deftypetest or-unbound-string/1 (or unbound string))
 (deftypetest or-unbound-string/2 (or unbound string) "something")
 
-(deftypetest or-unbound-null-string/1 (or unbound null string) prc::+unbound-slot-value+)
+(deftypetest or-unbound-null-string/1 (or unbound null string))
 (deftypetest or-unbound-null-string/2 (or unbound null string) nil)
 (deftypetest or-unbound-null-string/3 (or unbound null string) "something")
-
-|#
