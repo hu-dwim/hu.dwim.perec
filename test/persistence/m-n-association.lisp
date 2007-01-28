@@ -2,63 +2,63 @@
 
 (defsuite* test/association/m-n :in test/association)
 
-(defpclass* user-test ()
+(defpclass* student-test ()
   ())
    
-(defpclass* role-test ()
+(defpclass* course-test ()
   ())
 
 (defassociation*
-  ((:class user-test :slot roles :type (set role-test))
-   (:class role-test :slot users :type (set user-test))))
+  ((:class student-test :slot courses :type (set course-test))
+   (:class course-test :slot students :type (set student-test))))
 
-(defmacro with-user-and-role-transaction (&body body)
+(defmacro with-student-and-course-transaction (&body body)
   `(with-transaction
-    (bind ((user (make-instance 'user-test))
-           (role (make-instance 'role-test)))
+    (bind ((student (make-instance 'student-test))
+           (course (make-instance 'course-test)))
       ,@body)))
 
 (deftest test/association/m-n/initial-value/1 ()
-  (with-user-and-role-transaction
-    (is (null (roles-of user)))
-    (is (null (users-of role)))
-    (is (= 0 (size (roles-of* user))))
-    (is (= 0 (size (users-of* role))))))
+  (with-student-and-course-transaction
+    (is (null (courses-of student)))
+    (is (null (students-of course)))
+    (is (= 0 (size (courses-of* student))))
+    (is (= 0 (size (students-of* course))))))
 
 (deftest test/association/m-n/initial-value/2 ()
   (with-transaction
-    (bind ((role (make-instance 'role-test))
-           (user (make-instance 'user-test :roles (list role))))
-      (is (equal (roles-of user) (list role))))))
+    (bind ((course (make-instance 'course-test))
+           (student (make-instance 'student-test :courses (list course))))
+      (is (equal (courses-of student) (list course))))))
 
 (deftest test/association/m-n/store-value/1 ()
-  (with-user-and-role-transaction
-    (setf (roles-of user) (list role))
-    (is (equal (list role) (roles-of user)))))
+  (with-student-and-course-transaction
+    (setf (courses-of student) (list course))
+    (is (equal (list course) (courses-of student)))))
 
 (deftest test/association/m-n/referential-integrity/1 ()
-  (with-user-and-role-transaction
-    (setf (roles-of user) (list role))
-    (bind ((users (users-of* role)))
-      (is (= 1 (size users)))
-      (is (eq user (first (list-of users)))))))
+  (with-student-and-course-transaction
+    (setf (courses-of student) (list course))
+    (bind ((students (students-of* course)))
+      (is (= 1 (size students)))
+      (is (eq student (first (list-of students)))))))
 
 (deftest test/association/m-n/collection/1 ()
-  (with-user-and-role-transaction
-    (bind ((roles (roles-of* user)))
-      (insert-item roles role)
-      (is (= 1 (size roles)))
-      (is (equal (list role) (roles-of user)))
-      (delete-item roles role)
-      (is (= 0 (size roles)))
-      (is (null (roles-of user))))))
+  (with-student-and-course-transaction
+    (bind ((courses (courses-of* student)))
+      (insert-item courses course)
+      (is (= 1 (size courses)))
+      (is (equal (list course) (courses-of student)))
+      (delete-item courses course)
+      (is (= 0 (size courses)))
+      (is (null (courses-of student))))))
 
 (deftest test/association/m-n/collection/2 ()
-  (with-user-and-role-transaction
-    (bind ((roles (roles-of* user))
-           (other-role (make-instance 'role-test)))
-      (insert-item roles role)
-      (insert-item roles other-role)
-      (delete-item roles role)
-      (is (= 1 (size roles)))
-      (is (equal (list other-role) (list-of roles))))))
+  (with-student-and-course-transaction
+    (bind ((courses (courses-of* student))
+           (other-course (make-instance 'course-test)))
+      (insert-item courses course)
+      (insert-item courses other-course)
+      (delete-item courses course)
+      (is (= 1 (size courses)))
+      (is (equal (list other-course) (list-of courses))))))
