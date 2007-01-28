@@ -67,7 +67,7 @@
 
 (deftest test/persistence/cache/reference/write-and-read ()
   (with-transaction
-    (bind ((object (make-instance 'reference-test))
+    (bind ((object (make-instance 'reference-or-null-test))
            (select-counter))
       (setf (referred-of object) (make-instance 'referred-test))
       (setf select-counter (current-select-counter))
