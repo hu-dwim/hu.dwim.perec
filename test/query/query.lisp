@@ -7,6 +7,7 @@
 (in-package :cl-perec-test)
 
 ;;;; TODO: specify expected result in tests
+;;;; TODO: rename classes to includ -test in their names
 
 (defsuite* test/query :in test)
 
