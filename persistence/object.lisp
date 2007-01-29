@@ -64,6 +64,7 @@
 (defmethod initialize-instance :after ((object persistent-object) &key persistent &allow-other-keys)
   (when (eq persistent #t)
     (make-persistent object)
+    (setf (created-p object) #t)
     (setf (cached-slots-of object)
           (collect-if #'cached-p (persistent-effective-slots-of (class-of object))))))
 
