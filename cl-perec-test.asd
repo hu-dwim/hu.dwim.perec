@@ -64,7 +64,13 @@
              (:module :query
                       :serial t
                       :components
-                      ((:file "query")))))))
+                      ((:file "suite")
+                       (:file "forum")
+                       (:file "association")
+                       (:file "scroll")
+                       (:file "cache")
+                       (:file "order-by")
+                       (:file "purge")))))))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
   (in-package :cl-perec-test)
