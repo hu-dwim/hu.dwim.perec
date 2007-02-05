@@ -142,7 +142,7 @@
            (store-m-n-association-end-set object slot value)))
 	((and (typep slot 'persistent-association-end-effective-slot-definition)
 	      (eq (association-kind-of (association-of slot)) :1-1)
-              (primary-association-end-p slot))
+              (secondary-association-end-p slot))
          (when-bind other-object (slot-value-using-class (class-of object) object slot)
            (bind ((other-slot (other-effective-association-end-for (class-of other-object) slot)))
              (store-slot other-object other-slot nil)))
