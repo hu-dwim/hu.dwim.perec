@@ -177,6 +177,7 @@ wraps the compiled code with a runtime check of the result."))
              :visitor
              (lambda (,row)
                (let ,(emit-query-variable-bindings variables row #f)
+                 ,(emit-ignorable-variables-declaration variables)
                  (when (and ,@asserts)
                    (make-transient ,(first (action-args-of query)))))))))
         ;; execute deletes from sql
@@ -193,7 +194,7 @@ wraps the compiled code with a runtime check of the result."))
   (bind ((lexical-variables (lexical-variables-of query)))
     (if (contradictory-p query)
         `(lambda ,lexical-variables
-          (declare (ignore ,@lexical-variables))
+          (declare (ignorable ,@lexical-variables))
           ,(empty-result query))
         `(lambda ,lexical-variables
           (declare (ignorable ,@lexical-variables))
@@ -226,6 +227,7 @@ wraps the compiled code with a runtime check of the result."))
             ,form
             (lambda (,row)
               (let (,@(emit-query-variable-bindings variables row prefetchp))
+                ,(emit-ignorable-variables-declaration variables)
                 (and ,@asserts))))
           form))))
 
@@ -277,7 +279,7 @@ wraps the compiled code with a runtime check of the result."))
         ,form
         (lambda (,row)
           (let (,@(emit-query-variable-bindings variables row prefetchp))
-            (declare (ignorable ,@(get-query-variable-names query)))
+            ,(emit-ignorable-variables-declaration variables)
             (list ,@collects)))))))
 
 (defun add-unique-filter (query form)
@@ -298,6 +300,9 @@ wraps the compiled code with a runtime check of the result."))
                                     :initial-value (length +oid-column-names+)))
         (for i initially 0 then (+ i column-count))
         (collect `(,(name-of variable) (cache-object-with-prefetched-properties ,row ,i ',properties)))))
+
+(defun emit-ignorable-variables-declaration (variables)
+  `(declare (ignorable ,@(mapcar 'name-of variables))))
 
 ;;;;---------------------------------------------------------------------------
 ;;;; Transformations
