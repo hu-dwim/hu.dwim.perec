@@ -35,7 +35,7 @@
    (cond ((and (typep slot 'persistent-association-end-effective-slot-definition)
                (eq (association-kind-of (association-of slot)) :1-1)
                (secondary-association-end-p slot))
-          (object-reader
+          (funcall (reader-of slot)
            (first
             (select-records +oid-column-names+
                             (list (name-of (table-of slot)))
