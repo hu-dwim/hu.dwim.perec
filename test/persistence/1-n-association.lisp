@@ -1,6 +1,8 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/persistence/association/1-n :in test/persistence/association)
+(defsuite* (test/persistence/association/1-n :in test/persistence/association)
+  (with-and-without-caching-slot-values
+    (run-child-tests)))
 
 (defpclass* parent-test ()
   ())

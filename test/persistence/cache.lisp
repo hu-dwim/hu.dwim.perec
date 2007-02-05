@@ -1,6 +1,6 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/persistence/cache :in test/persistence)
+(defsuite* (test/persistence/cache :in test/persistence))
 
 (deftest test/persistence/cache/with-caching-slot-values ()
   (with-caching-slot-values
@@ -10,7 +10,7 @@
   (without-caching-slot-values
     (test/persistence/cache/slot-access)))
 
-(defsuite* test/persistence/cache/slot-access :in nil)
+(defsuite* (test/persistence/cache/slot-access :in nil))
 
 (defun counter+ (counter value)
   (if prc::*cache-slot-values* counter (+ counter value)))

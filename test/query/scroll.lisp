@@ -1,6 +1,6 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/query/select/scroll :in test/query/select)
+(defsuite* (test/query/select/scroll :in test/query/select))
 
 (defun check-page (page start end)
   "Checks if PAGE contains the integers from START (inclusive) to END (exclusive)."

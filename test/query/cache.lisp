@@ -1,6 +1,6 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/query/cache :in test/query)
+(defsuite* (test/query/cache :in test/query))
 
 (defmacro run-cache-test (&body body)
   `(with-fixture fill-data-3

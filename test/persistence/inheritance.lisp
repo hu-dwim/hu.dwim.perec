@@ -1,6 +1,6 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/persistence/inheritance :in test/persistence)
+(defsuite* (test/persistence/inheritance :in test/persistence))
 
 (defpclass* inheritance-t1-test ()
   ((slot :type (string 20) :cached #f)))

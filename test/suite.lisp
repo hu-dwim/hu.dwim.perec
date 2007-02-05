@@ -59,4 +59,4 @@
 
 (defsuite* test)
 
-(defsuite* test/persistence :in test)
+(defsuite* (test/persistence :in test))

@@ -1,8 +1,10 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/persistence/association :in test/persistence)
+(defsuite* (test/persistence/association :in test/persistence))
 
-(defsuite* test/persistence/association/1-1 :in test/persistence/association)
+(defsuite* test/persistence/association/1-1
+  (with-and-without-caching-slot-values
+    (run-child-tests)))
 
 (defpclass* brother-test ()
   ())

@@ -1,6 +1,6 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/query/select/order-by :in test/query/select)
+(defsuite* (test/query/select/order-by :in test/query/select))
 
 (defun check-ordered (classes order-spec)
   (bind ((compare-fn (generate-compare-fn order-spec))

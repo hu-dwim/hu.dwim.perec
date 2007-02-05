@@ -1,6 +1,6 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/query/purge :in test/query)
+(defsuite* (test/query/purge :in test/query))
 
 (defun check-existing-records (table-id expected)
   (bind ((table (format nil "_purge_~d_test" table-id))

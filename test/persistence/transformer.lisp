@@ -6,7 +6,7 @@
 
 (in-package :cl-perec-test)
 
-(defsuite* test/persistence/transformer :in test/persistence)
+(defsuite* (test/persistence/transformer :in test/persistence))
 
 (defparameter +transformer-test-value+ "value")
 
@@ -17,7 +17,7 @@
 ;;;;;;;;;;
 ;;; Writer
 
-(defsuite* test/persistence/transformer/writer :in test/persistence/transformer)
+(defsuite* (test/persistence/transformer/writer :in test/persistence/transformer))
 
 (deftest test/persistence/transformer/writer/string ()
   (is-equal-using-writer 'string
@@ -62,7 +62,7 @@
 ;;;;;;;;;;
 ;;; Reader
 
-(defsuite* test/persistence/transformer/reader :in test/persistence/transformer)
+(defsuite* (test/persistence/transformer/reader :in test/persistence/transformer))
 
 (defun is-equal-using-reader (type slot-value rdbms-values)
   (is (equal slot-value

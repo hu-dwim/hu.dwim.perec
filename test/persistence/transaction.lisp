@@ -1,6 +1,6 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/persistence/transaction :in test/persistence)
+(defsuite* (test/persistence/transaction :in test/persistence))
 
 (defpclass* transaction-test ()
   ((name nil :type t)))

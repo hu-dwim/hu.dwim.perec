@@ -1,6 +1,6 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/query :in test)
+(defsuite* (test/query :in test))
 
 (defvar *show-query* nil)
 
@@ -29,7 +29,7 @@
       (format t "~{~&~A~}" ',queries))
     ,@queries))
 
-(defsuite* test/query/select :in test/query)
+(defsuite* (test/query/select :in test/query))
 
 (defmacro test-query ((&key (select-count 1) (record-count nil) (fixture nil)) &body forms)
   (if fixture

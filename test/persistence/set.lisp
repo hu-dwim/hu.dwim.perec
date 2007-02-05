@@ -1,6 +1,6 @@
 (in-package :cl-perec-test)
 
-(defsuite* test/persistence/set :in test/persistence)
+(defsuite* (test/persistence/set :in test/persistence))
 
 (defpclass* referred-set-test ()
   ())

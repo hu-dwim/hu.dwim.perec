@@ -6,7 +6,7 @@
 
 (in-package :cl-perec-test)
 
-(defsuite* test/persistence/reference :in test/persistence)
+(defsuite* (test/persistence/reference :in test/persistence))
 
 (defpclass* referred-test ()
   ())
