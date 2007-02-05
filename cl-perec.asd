@@ -62,6 +62,7 @@
                :flexi-streams
                :local-time
                :parse-number
+               :contextl
                :metacopy
                :cl-ppcre
                :cl-store
