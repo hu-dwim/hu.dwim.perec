@@ -4,6 +4,7 @@
 
 (defmacro run-cache-test (&body body)
   `(with-fixture fill-data-3
+    (export-all-classes)
     (with-transaction
       (prc::clear-compiled-query-cache)
       (prc::reset-compile-query-counter)
@@ -61,6 +62,7 @@
                                   :metaclass (class-of class)
                                   :direct-superclasses (class-direct-superclasses class)
                                   :direct-slots nil)
+        (prc::ensure-exported class)
         (execute-query query)
         (is (= counter 2))))))
 

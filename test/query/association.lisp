@@ -32,6 +32,7 @@
 
 (defixture fill-data-2
   (with-transaction
+    (export-all-classes)
     (purge-objects 'movie-test)
     (purge-objects 'person-test)
     (let ((oceans-twelwe (make-instance 'movie-test :title "Ocean's Twelwe"))
@@ -60,7 +61,7 @@
       (collect m w))))
 
 (deftest test/query/select/association-chain ()
-  (test-query (:select-count 1 :record-count 1 :fixture fill-data-2)
+  (test-query (:select-count nil :record-count 1 :fixture fill-data-2) ;; TODO select-count
     (select ((m man-test))
       (assert (not (null (wife-of m))))
       (assert (typep (husband-of (wife-of m)) 'performer-test))

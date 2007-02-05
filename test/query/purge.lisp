@@ -30,6 +30,7 @@
 
 (defixture fill-data-7
   (with-transaction
+    (export-all-classes)
     (purge-objects 'purge-1-test)
     (purge-objects 'purge-2-test)
     (purge-objects 'purge-3-test)

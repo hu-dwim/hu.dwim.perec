@@ -36,6 +36,7 @@
 ;; PORT:
 (defixture fill-data-1
   (with-transaction
+    (export-all-classes)
     (purge-objects 'owner-test)
     (purge-objects 'topic-test)
     (purge-objects 'message-test)

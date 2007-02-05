@@ -35,7 +35,7 @@
 
 (defixture fill-data-6
   (with-transaction
-    ;; PORT:
+    (export-all-classes)
     (purge-objects 'order-by-test)
     (bind ((count 10)
            (int-values (iter (for i from 0 below count) (collect i)))
