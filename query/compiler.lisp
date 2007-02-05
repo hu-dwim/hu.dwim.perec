@@ -626,13 +626,13 @@ forms with joined variables.")
                   (association (association-of association-end)))
              (ecase (association-kind-of association)
                (:1-1
-                (if (secondary-association-end-p association-end)
+                (if (primary-association-end-p association-end)
                     (call-next-method)
                     (syntax-to-sql
                      (make-function-call ;; reverse
                       :fn fn
                       :args (list (make-association-end-access :association-end other-end
-                                                               :accessor (first (slot-definition-readers other-end))
+                                                               :accessor (first (slot-definition-readers (first (direct-slots-of other-end))))
                                                                :args (list object))
                                   variable)))))
                (:1-n

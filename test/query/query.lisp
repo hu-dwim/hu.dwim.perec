@@ -411,6 +411,7 @@
 (deftest test/query/select/association-chain ()
   (test-query (:select-count 1 :record-count 1 :fixture fill-data-2)
     (select ((m man))
+      (assert (not (null (wife-of m))))
       (assert (typep (husband-of (wife-of m)) 'performer))
       (assert (> (length (movies-of (husband-of (wife-of m)))) 0))
       (collect m))))
@@ -428,6 +429,9 @@
         ,@body))))
 
 (defpclass* query-cache-test ()
+  ((attr-1 :type integer-32)))
+
+(defpclass* query-cache-2-test ()
   ((attr-1 :type integer-32)))
 
 ;; PORT:
@@ -464,13 +468,19 @@
 
 (deftest test/query/cache-4 ()
   (run-cache-test
-    (bind ((query (make-query '(select ((o query-cache-test)) (collect o)))))
-      (is (= counter 0))
-      (execute-query query)
-      (is (= counter 1))
-      (undefine-class 'query-cache-test)
-      (signals error (execute-query query))
-      (is (= counter 2)))))
+    (with-confirmed-descructive-changes
+      (bind ((class (find-class 'query-cache-2-test))
+             (query (make-query '(select ((o query-cache-2-test)) (collect o)))))
+        (is (= counter 0))
+        (execute-query query)
+        (is (= counter 1))
+        (ensure-class-using-class class
+                                  (class-name class)
+                                  :metaclass (class-of class)
+                                  :direct-superclasses (class-direct-superclasses class)
+                                  :direct-slots nil)
+        (execute-query query)
+        (is (= counter 2))))))
 
 ;------------------------------------------------------------------------------
 

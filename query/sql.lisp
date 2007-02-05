@@ -292,7 +292,7 @@
              (association-kind (association-kind-of association)))
         (case association-kind
           (:1-1
-           (if (secondary-association-end-p association-end-2) ; TODO should check if primary
+           (if (primary-association-end-p association-end-2)
                (sql-=
                 (sql-id-column-reference-for object-1)
                 (sql-column-reference-for association-end-2 object-2))
