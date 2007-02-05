@@ -33,6 +33,15 @@
   "Restores a single slot without local side effects from the database."
   (values
    (cond ((and (typep slot 'persistent-association-end-effective-slot-definition)
+               (eq (association-kind-of (association-of slot)) :1-1)
+               (secondary-association-end-p slot))
+          (object-reader
+           (first
+            (select-records +oid-column-names+
+                            (list (name-of (table-of slot)))
+                            (sql-= (id-of object)
+                                   (make-instance 'sql-identifier :name (id-column-of slot)))))))
+         ((and (typep slot 'persistent-association-end-effective-slot-definition)
                (eq (association-kind-of (association-of slot)) :1-n)
                (eq (cardinality-kind-of slot) :n))
           (if *lazy-slot-values*
@@ -130,6 +139,15 @@
 (defun store-slot (object slot value)
   "Stores a single slot without local side effects into the database."
   (cond ((and (typep slot 'persistent-association-end-effective-slot-definition)
+	      (eq (association-kind-of (association-of slot)) :1-1)
+              (secondary-association-end-p slot))
+         (when-bind other-object (slot-value-using-class (class-of object) object slot)
+           (bind ((other-slot (other-effective-association-end-for (class-of other-object) slot)))
+             (store-slot other-object other-slot nil)))
+         (when value
+           (bind ((other-slot (other-effective-association-end-for (class-of value) slot)))
+             (store-slot value other-slot object))))
+        ((and (typep slot 'persistent-association-end-effective-slot-definition)
 	      (eq (association-kind-of (association-of slot)) :1-n)
 	      (eq (cardinality-kind-of slot) :n))
 	 (when (or value
@@ -140,16 +158,7 @@
 	 (when (or value
                    (persistent-p object))
            (store-m-n-association-end-set object slot value)))
-	((and (typep slot 'persistent-association-end-effective-slot-definition)
-	      (eq (association-kind-of (association-of slot)) :1-1)
-              (secondary-association-end-p slot))
-         (when-bind other-object (slot-value-using-class (class-of object) object slot)
-           (bind ((other-slot (other-effective-association-end-for (class-of other-object) slot)))
-             (store-slot other-object other-slot nil)))
-         (when value
-           (bind ((other-slot (other-effective-association-end-for (class-of value) slot)))
-             (store-slot value other-slot object))))
-        ((set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type slot)))
+	((set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type slot)))
          (store-slot-set object slot value))
 	(t
          (update-records (name-of (table-of slot))
