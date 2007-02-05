@@ -67,12 +67,14 @@
             (ensure-writer-function ',secondary-writer)))
         (eval-when (:load-toplevel :execute)
           (flet ((ensure-persistent-class (name)
-                   (ensure-class name
-                                 :metaclass (class-of (find-class name))
-                                 :direct-slots (mapcar
-                                                #L(list :instance !1)
-                                                (remove-if #L(typep !1 'persistent-association-end-direct-slot-definition)
-                                                           (class-direct-slots (find-class name)))))))
+                   (bind ((class (find-class name)))
+                     (ensure-class name
+                                   :metaclass (class-of class)
+                                   :direct-superclasses (class-direct-superclasses class)
+                                   :direct-slots (mapcar
+                                                  #L(list :instance !1)
+                                                  (remove-if #L(typep !1 'persistent-association-end-direct-slot-definition)
+                                                             (class-direct-slots class)))))))
             (prog1
                 (aif (find-persistent-association ',association-name)
                      (reinitialize-instance it :association-end-definitions ',processed-association-ends)
