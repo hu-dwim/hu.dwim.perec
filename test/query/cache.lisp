@@ -3,8 +3,8 @@
 (defsuite* (test/query/cache :in test/query))
 
 (defmacro run-cache-test (&body body)
-  `(with-fixture fill-data-3
-    (export-all-classes)
+  `(progn
+    (fill-data-3)
     (with-transaction
       (prc::clear-compiled-query-cache)
       (prc::reset-compile-query-counter)
@@ -20,6 +20,7 @@
 ;; PORT:
 (defixture fill-data-3
   (with-transaction
+    (export-all-classes)
     (purge-objects 'query-cache-test)
     (make-instance 'query-cache-test :attr-1 1)
     (make-instance 'query-cache-test :attr-1 2)))

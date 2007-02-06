@@ -13,7 +13,8 @@
         (collect i)))
 
 (defmacro run-purge-test (&body body)
-  `(with-fixture fill-data-7
+  `(progn
+    (fill-data-7)
     (with-transaction* (:default-terminal-action :rollback)
       (when *show-query*
         (format t "~{~&~A~}" ',body))

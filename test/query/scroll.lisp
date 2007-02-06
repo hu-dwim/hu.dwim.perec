@@ -21,7 +21,8 @@
           (make-instance 'scroll-test :attr-1 i))))
 
 (defmacro run-scroll-test (&body body)
-  `(with-fixture fill-data-5
+  `(progn
+    (fill-data-5)
     (run-queries
       ,@body)))
 

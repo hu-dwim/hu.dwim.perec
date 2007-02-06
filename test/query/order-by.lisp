@@ -25,7 +25,8 @@
           (finally (return #t)))))
 
 (defmacro run-order-by-test (&body body)
-  `(with-fixture fill-data-6
+  `(progn
+    (fill-data-6)
     (run-queries
       ,@body)))
 

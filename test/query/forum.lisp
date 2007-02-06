@@ -2,6 +2,8 @@
 
 ;;;; TODO: specify expected result in tests
 
+(defsuite* test/query/select :in test/query)
+
 (defpclass* topic-test ()
   ((title :type (string 50))))
 
