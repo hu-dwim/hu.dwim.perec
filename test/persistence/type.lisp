@@ -8,6 +8,7 @@
 
 (defsuite* (test/persistence/type :in test/persistence))
 
+;; TODO: factor this out into: equal*, <*, <=*, >*, >=*, =*, /=*
 (defgeneric object-equal-p (object-1 object-2)
   (:method (object-1 object-2)
            (equalp object-1 object-2))
