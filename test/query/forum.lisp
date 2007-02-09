@@ -244,6 +244,24 @@
       (assert (member (subject-of m) nil))
       (collect m))))
 
+(deftest test/query/select/member-4 ()
+  (test-query (:select-count 1 :record-count 0 :fixture fill-data-1)
+    (let ((topics (prc::select-objects topic-test)))
+      (execute-query
+       (make-query
+        `(select ((m message-test))
+          (assert (member m ',topics))
+          (collect m)))))))
+
+(deftest test/query/select/member-5 ()
+  (test-query (:select-count 3 :record-count 1 :fixture fill-data-1)
+    (let ((list (append (select-objects topic-test) (select-objects spam-test))))
+      (execute-query
+       (make-query
+        `(select ((m message-test))
+          (assert (member m ',list))
+          (collect m)))))))
+
 (deftest test/query/select/lisp-expr ()
   (test-query (:record-count 1 :fixture fill-data-1)
     (let ((num "1"))

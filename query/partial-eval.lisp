@@ -61,9 +61,16 @@ if it was fully evaluated.")
            (if (some 'syntax-object-p args)
                (progn (setf (args-of call) (mapcar 'syntax-from-value args (args-of call))) call)
                (apply fn args)))
-  ;; special case of (member x nil)
-  (:method ((fn (eql 'member)) (n-args (eql 2)) arg-1 (arg-2 null) args call)
-           nil))
+  ;; (member x nil) -> nil
+  ;; (member x <list>) -> (member x <list2>) where list2 contains those elements of list,
+  ;;                                         that have matching type
+  (:method ((fn (eql 'member)) (n-args (eql 2)) object (list list) args call)
+           (bind ((type (xtype-of object))
+                  (list (if (persistent-class-p type) (collect-if #L(typep !1 type) list) list)))
+             (cond
+               ((null list) nil)
+               (t (setf args (list object list))
+                  (call-next-method 'member 2 object list args call))))))
 
 (defgeneric %partial-eval-macro-call (macro n-args arg-1 arg-2 args call query static-vars)
 
