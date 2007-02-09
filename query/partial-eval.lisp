@@ -14,7 +14,7 @@
 (defun partial-eval (syntax query &optional static-vars)
   "Returns the partially evaluated SYNTAX. The SYNTAX can be a SYNTAX-OBJECT or a lisp form
  containing syntax objects. The result is always a SYNTAX-OBJECT."
-  (syntax-from-value (%partial-eval-syntax syntax query static-vars)))
+  (syntax-from-value (%partial-eval-syntax syntax query static-vars) syntax))
 
 (defgeneric %partial-eval-syntax (syntax query static-vars)
   (:documentation
@@ -59,7 +59,7 @@ if it was fully evaluated.")
 
   (:method (fn n-args arg-1 arg-2 args call)
            (if (some 'syntax-object-p args)
-               (progn (setf (args-of call) (mapcar 'syntax-from-value args)) call)
+               (progn (setf (args-of call) (mapcar 'syntax-from-value args (args-of call))) call)
                (apply fn args)))
   ;; special case of (member x nil)
   (:method ((fn (eql 'member)) (n-args (eql 2)) arg-1 (arg-2 null) args call)
@@ -88,10 +88,11 @@ if it was fully evaluated.")
   (:method (operator args form query static-vars)
            form))
 
-(defun syntax-from-value (thing)
-  (if (syntax-object-p thing)
-      thing
-      (make-literal-value :value thing)))
+(defun syntax-from-value (value orig-syntax)
+  (cond
+    ((syntax-object-p value) value)
+    ((syntax-object-p orig-syntax) (make-literal-value :value value :xtype (xtype-of orig-syntax)))
+    (t (make-literal-value :value value))))
 
 (defun syntax-from-generalized-boolean (thing)
   (if (syntax-object-p thing)
@@ -150,6 +151,6 @@ where x, y and z are arbitrary objects and '...' means zero or more occurence."
            (cond
              ((null operands) (make-literal-value :value #t))
              ((length=1 operands) (first operands))
-             ((find 'is-false-literal operands) (make-literal-value :value #f))
+             ((find-if 'is-false-literal operands) (make-literal-value :value #f))
              (t (make-macro-call :macro 'and :args operands)))))
       (?otherwise syntax))))

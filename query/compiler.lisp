@@ -315,6 +315,7 @@ wraps the compiled code with a runtime check of the result."))
     (normalize-query query)
     (infer-types query)
     (introduce-joined-variables query)
+    (partial-eval-asserts query)
     (when (not (contradictory-p query))
       (let ((*suppress-alias-names* (simple-purge-p query)))
         (build-sql query)))
@@ -411,11 +412,14 @@ forms with joined variables.")
                    (ensure-type query (arg-of access) (slot-definition-class (property-of access)))))
            (values)))
 
+(defun partial-eval-asserts (query)
+  (setf (asserts-of query)
+        (mapcar #L(partial-eval !1 query) (asserts-of query))))
 
 (defun contradictory-p (query)
   (is-false-literal
-   (partial-eval (make-macro-call :macro 'and :args (copy-query (asserts-of query)))
-                 query)))
+   (simplify-boolean-syntax
+    (make-macro-call :macro 'and :args (asserts-of query)))))
 
 (defun build-sql (query)
   "Converts assert conditions and order by specifications to SQL."
