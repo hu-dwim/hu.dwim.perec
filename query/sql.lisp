@@ -33,16 +33,21 @@
 
 (defun sql-select-oids-for-entity (entity-spec)
   (bind ((tables (rest (primary-tables-of (find-class entity-spec)))))
-    (sql-select-oids-from-tables tables)))
+    (sql-select-oids-from-tables tables 'sql-union)))
 
-(defun sql-select-oids-from-tables (tables)
+(defun sql-select-oids-from-tables (tables set-operation)
+  "Generates a select for the union or intersection of oids from TABLES."
+  (declare (type (member sql-union sql-intersect) set-operation))
   (case (length tables)
     (0 nil)
     (1 (sql-select-oids-from-table (first tables)))
-    (otherwise (apply 'sql-union (mapcar 'sql-select-oids-from-table tables)))))
+    (otherwise (apply set-operation (mapcar 'sql-select-oids-from-table tables)))))
 
-(defun sql-select-oids-from-table (table)
-  (sql-select :columns +oid-column-names+ :tables (list (name-of table))))
+(defgeneric sql-select-oids-from-table (table)
+  (:method ((table table))
+           (sql-select :columns +oid-column-names+ :tables (list (name-of table))))
+  (:method ((table sql-table-alias))
+           (sql-select :columns +oid-column-names+ :tables (list table))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Deletes
@@ -164,34 +169,70 @@
   (:method ((subquery sql-subquery) (alias symbol))
            (sql-derived-table :subquery subquery :alias alias))
 
-  (:method ((entity persistent-class) (alias symbol))
-           (bind ((tables (rest (primary-tables-of entity))))
-             (case (length tables)
-               (0 (error "No primary table for entity: ~A" entity))
-               (1 (sql-table-reference-for (first tables) alias))
-               (otherwise (sql-table-reference-for (sql-subquery :query (sql-select-oids-from-tables tables)) alias)))))
+  (:method ((class persistent-class) (alias symbol))
+           (sql-table-reference-for-type class alias))
 
-  (:method ((entity-name symbol) (alias symbol))
-           (aif (find-class entity-name)
+  (:method ((class-name symbol) (alias symbol))
+           (aif (find-class class-name)
                 (sql-table-reference-for it alias)
-                (error "No entity named '~A~%" entity-name)))
+                (error "No persistent class named '~A~%" class-name)))
 
   (:method ((variable query-variable) (alias symbol))
-           (bind ((type (xtype-of variable)))
-             (if (and (listp type) (member (car type) '(and or not)))
-                 (not-yet-implemented)
-                 (sql-table-reference-for-entity-form type alias))))
+           (assert (xtype-of variable))
+           (sql-table-reference-for-type (xtype-of variable) alias))
+
+  (:method ((syntax syntax-object) (alias symbol))
+           (make-function-call :fn 'sql-table-reference-for :args (list syntax alias)))
 
   (:method (element (variable query-variable))
            (sql-table-reference-for element (sql-alias-for variable)))
 
   (:method (element (entity persistent-class))
-           (sql-table-reference-for element (sql-alias-for entity))))
+           (sql-table-reference-for element (sql-alias-for entity)))
 
-(defun sql-table-reference-for-entity-form (entity-form &optional (alias nil alias-p))
-  (if alias-p
-      `(sql-table-reference-for ,entity-form ',alias)
-      `(sql-table-reference-for ,entity-form (sql-alias-for ,entity-form))))
+  (:method (element (syntax syntax-object))
+           (make-function-call :fn 'sql-table-reference-for :args (list element syntax))))
+
+(defgeneric sql-table-reference-for-type (type &optional alias)
+  
+  (:method ((class persistent-class) &optional alias)
+           (bind ((tables (rest (primary-tables-of class)))) ; TODO handle UNION/APPEND
+             (case (length tables)
+               (0 (error "No primary table for persistent class: ~A" class))
+               (1 (sql-table-reference-for (first tables) alias))
+               (t (sql-table-reference-for
+                   (sql-subquery :query (sql-select-oids-from-tables tables 'sql-union))
+                   alias)))))
+
+  (:method ((class-name symbol) &optional alias)
+           (sql-table-reference-for-type (find-class class-name) alias))
+
+  (:method ((type syntax-object) &optional alias) ;; type unknown at compile time
+           (make-function-call
+            :fn 'sql-table-reference-for-type
+            :args (list (backquote-type-syntax type) `',alias)))
+
+  (:method ((combined-type list) &optional alias)
+           (flet ((ensure-sql-query (table-ref)
+                    (assert (not (syntax-object-p table-ref)))
+                    (etypecase table-ref
+                      (sql-table-alias (sql-subquery :query (sql-select-oids-from-table table-ref)))
+                      (sql-derived-table (cl-rdbms::subquery-of table-ref))))) ; TODO export
+             (bind ((operands (mapcar 'sql-table-reference-for-type (rest combined-type))))
+               (if (some 'syntax-object-p operands) ;; some type unknown at compile time
+                   (make-function-call
+                    :fn 'sql-table-reference-for-type
+                    :args (list (backquote-type-syntax combined-type) `',alias))
+                   (ecase (car combined-type)
+                     (or (sql-table-reference-for
+                          (sql-subquery
+                           :query (apply 'sql-union (mapcar #L(ensure-sql-query !1) operands)))
+                          alias))
+                     (and (sql-table-reference-for
+                           (sql-subquery
+                            :query (apply 'sql-intersect (mapcar #L(ensure-sql-query !1) operands)))
+                           alias))
+                     (not (not-yet-implemented))))))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Column references
@@ -232,28 +273,28 @@
 ;;;----------------------------------------------------------------------------
 ;;; Subselects
 
-(defun sql-exists-subselect-for-variable (variable entity)
+(defun sql-exists-subselect-for-variable (variable type)
   "Returns an sql expression which evaluates to true iff the query variable named VARIABLE-NAME
- has the type ENTITY."
+ has the type TYPE."
   `(sql-exists
     (sql-subquery
      :query
      (sql-select
       :columns (list 1)
-      :tables (list ,(sql-table-reference-for-entity-form entity))
-      :where ,(sql-join-condition-for variable entity nil)))))
+      :tables (list ,(sql-table-reference-for-type type type))
+      :where ,(sql-join-condition-for variable type nil)))))
 
 (defun sql-exists-subselect-for-association-end (variable association-end)
   "Returns an sql expression which evaluates to true iff the query variable VARIABLE
  has associated objects through ASSOCIATION-END."
-  (bind ((entity (slot-definition-class association-end)))
+  (bind ((class (slot-definition-class association-end)))
     `(sql-exists
       (sql-subquery
        :query
        (sql-select
         :columns (list 1)
-        :tables (list ,(sql-table-reference-for-entity-form entity))
-        :where ,(sql-join-condition-for variable entity association-end))))))
+        :tables (list ,(sql-table-reference-for class (sql-alias-for class)))
+        :where ,(sql-join-condition-for variable class association-end))))))
 
 (defun sql-aggregate-subselect-for-variable (aggregate-function n-association-end 1-var)
   (bind ((1-association-end (other-association-end-of n-association-end))

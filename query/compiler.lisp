@@ -350,8 +350,6 @@ wraps the compiled code with a runtime check of the result."))
 (defgeneric normalize-syntax (syntax)
   (:documentation "Normalizes type asserts to (typep ...) forms to ease further processing:
   (typep <object> '<entity-name>)               -> (typep <object> <entity>)
-  (typep <query-variable> <type>)             -> (typep <query-variable> (find-class <type>))
-                                                             (except if <type> is a class)
   (subtypep (entity-of <obj>) '<entity-name>) -> (typep <object> <entity>)
   (subtypep (entity-of <obj>) <type>)         -> (typep <object> <type>)
 
@@ -375,11 +373,6 @@ wraps the compiled code with a runtime check of the result."))
                                :args (?obj #M(literal-value :value (?is ?name persistent-class-name-p))))
                 (setf (second (args-of call)) (make-literal-value :value (find-class ?name)))
                 call)
-             (#M(function-call :fn typep
-                               :args ((?is ?object query-variable-p) ?type))
-                (setf (second (args-of call))
-                      (make-function-call :fn 'find-class :args (list (second (args-of call)))))
-                call)
              (#M(function-call :fn subtypep
                                :args (#M(function-call :fn entity-of :args (?object))
                                         #M(literal-value :value (?is ?name persistent-class-name-p))))
@@ -389,6 +382,7 @@ wraps the compiled code with a runtime check of the result."))
              (#M(function-call :fn subtypep
                                :args (#M(function-call :fn entity-of :args (?object)) ?type))
                 (make-function-call :fn 'typep :args (list ?object ?type)))
+             ;; TODO reverse 1-1 association-end
              (?otherwise
               call))))
 

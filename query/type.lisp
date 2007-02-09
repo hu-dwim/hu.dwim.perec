@@ -6,15 +6,16 @@
 
 (in-package :cl-perec)
 
-;;;; entity
+;;;; Type specifier:
 ;;;;
-;;;; persistent-object + subclasses
+;;;;   persistent-class (type of persistent classes)
+;;;;   persistent classes (types of persistent objects)
+;;;;   names of persistent classes
+;;;;   lisp type specifiers for attributes
+;;;;   and,or,not combinations
 ;;;;
-;;;; model types of attribute values (string(6),integer(1,10),enum(a,b,c),state(i,e),etc.)
-;;;;
-;;;; and,or,not combinations
-;;;;
-;;;; function types
+;;;; Type expression:
+;;;;   an expression that evaluates to a type specifier
 ;;;;
 
 (defun infer-types (query)
@@ -116,3 +117,17 @@ Chosing property ~A randomly from ~A."
 
 (defun property-qualified-name (slot)
   (concatenate-symbol (class-name (slot-definition-class slot)) ":" (slot-definition-name slot)))
+
+(defgeneric backquote-type-syntax (type)
+  (:documentation "Generates a type expression that evaluates to the type.")
+
+  (:method ((class persistent-class))
+           class)
+
+  (:method ((type syntax-object))
+           type)
+
+  (:method ((combined-type list))
+           `(list
+             ',(first combined-type)
+             ,@(mapcar 'backquote-type-syntax (rest combined-type)))))

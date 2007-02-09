@@ -70,7 +70,8 @@
                        (:file "scroll")
                        (:file "cache")
                        (:file "order-by")
-                       (:file "purge")))))))
+                       (:file "purge")
+                       (:file "table-ref")))))))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
   (in-package :cl-perec-test)
