@@ -75,7 +75,7 @@
                         (object-not-found)))))))
 
 (defgeneric purge-object (object)
-  (:documentation "Purges the given object without respect to associations and other references.")
+  (:documentation "Purges the given object without respect to associations and references to it.")
   
   (:method ((object persistent-object))
            (ensure-exported (class-of object))
@@ -84,22 +84,29 @@
                              (id-column-matcher-where-clause object)))))
 
 (defgeneric purge-objects (class)
-  (:documentation "Purges all instances of the given class.")
+  (:documentation "Purges all instances of the given class without respect to associations and references.")
 
   (:method ((class-name symbol))
            (purge-objects (find-class class-name)))
 
   (:method ((class persistent-class))
-           (bind ((sub-classes (effective-persistent-sub-classes-for class #t)))
+           (ensure-exported class)
+           (bind ((sub-classes (persistent-effective-sub-classes-of class))
+                  (super-classes (persistent-effective-super-classes-of class)))
              (mapc #'ensure-exported sub-classes)
-             (dolist (table (delete-duplicates (mappend 'data-tables-of sub-classes)))
-               (delete-records (name-of table)
-                               (sql-in (sql-identifier :name +id-column-name+)
-                                       (sql-subquery :query
-                                                     (apply #'sql-union
-                                                            (mapcar #L(sql-select :columns (list +id-column-name+)
-                                                                                  :tables (list (name-of !1)))
-                                                                    (cdr (primary-tables-of class)))))))))))
+             (mapc #'ensure-exported super-classes)
+             (when (primary-tables-of class)
+               (dolist (table (delete-duplicates (mappend 'data-tables-of super-classes)))
+                 (delete-records (name-of table)
+                                 (sql-in (sql-identifier :name +id-column-name+)
+                                         (sql-subquery :query
+                                                       (apply #'sql-union
+                                                              (mapcar #L(sql-select :columns (list +id-column-name+)
+                                                                                    :tables (list (name-of !1)))
+                                                                      (cdr (primary-tables-of class)))))))))
+             (dolist (table (mapcar #'primary-table-of (list* class sub-classes)))
+               (when table
+                 (delete-records (name-of table)))))))
 
 (defmacro revive-object (place &rest args)
   "Load object found in PLACE into the current transaction, update PLACE if needed."

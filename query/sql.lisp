@@ -101,8 +101,8 @@
           (mapcar #'primary-table-of
                   (append
                    (list class)
-                   (effective-persistent-super-classes-for class)
-                   (effective-persistent-sub-classes-for class)))))
+                   (persistent-effective-super-classes-of class)
+                   (persistent-effective-sub-classes-of class)))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Alias names
