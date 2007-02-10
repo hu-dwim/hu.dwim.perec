@@ -25,7 +25,8 @@
 (defpackage :cl-perec-test-system
   (:use :cl :asdf))
 
-(defvar *test-database-connection-specification* '(:host "localhost" :database "dwim" :user-name "root" :password "admin123"))
+(defvar *test-database-connection-specification*
+  '(:host "localhost" :database "dwim" :user-name "root" :password "admin123"))
 
 (in-package :cl-perec-test-system)
 
