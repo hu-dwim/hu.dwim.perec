@@ -99,6 +99,8 @@
            #:transaction-timestamp
 
            ;; managing persistent objects
+           #:with-making-persistent-instances
+           #:with-making-transient-instances
            #:make-persistent
            #:make-transient
            #:persistent-p

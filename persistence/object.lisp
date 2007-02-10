@@ -9,6 +9,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Persistent object base class
 
+(defvar *make-persistent-instances* #t
+  "True means make-instance will make the new instance persistent by default.")
+
 (defpclass* persistent-object ()
   ((oid
     nil
@@ -45,9 +48,17 @@
     :type (list persistent-effective-slot-definition)
     :persistent #f
     :documentation "A list of slots for which the slot values are currently cached in the object in the lisp VM. This list must be updated when database update happens outside of slot access (batch update, trigger, etc."))
-  (:default-initargs :persistent #t)
+  (:default-initargs :persistent *make-persistent-instances*)
   (:abstract #t)
   (:documentation "Base class for all persistent classes. If this class is not inherited by a persistent class then it is automatically added to the direct superclasses. There is only one persistent object instance in a transaction with a give oid therefore eq will return true iff the oids are equal."))
+
+(defmacro with-making-persistent-instances (&body forms)
+  `(let ((*make-persistent-instances* #t))
+    ,@forms))
+
+(defmacro with-making-transient-instances (&body forms)
+  `(let ((*make-persistent-instances* #f))
+    ,@forms))
 
 ;;;;;;;;;;;;;;;
 ;;; MOP methods
