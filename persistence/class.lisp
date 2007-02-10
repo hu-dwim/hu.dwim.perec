@@ -292,7 +292,11 @@
 
 (defgeneric compute-data-table-slot-p (slot)
   (:method ((slot persistent-effective-slot-definition))
-           (primitive-type-p (remove-null-and-unbound-if-or-type (slot-definition-type slot)))))
+           (bind ((type (remove-null-and-unbound-if-or-type (slot-definition-type slot)))
+                  (class (slot-definition-class slot)))
+             (and (member (table-of slot) (data-tables-of class))
+                  (or (primitive-type-p type)
+                      (persistent-class-type-p type))))))
 
 (defgeneric compute-table (slot)
   (:method ((slot persistent-effective-slot-definition))
