@@ -96,7 +96,6 @@
            #:with-database
            #:with-transaction
            #:with-transaction*
-           #:transaction-timestamp
 
            ;; managing persistent objects
            #:with-making-persistent-instances
