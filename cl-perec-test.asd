@@ -61,7 +61,8 @@
                        (:file "1-1-association")
                        (:file "1-n-association")
                        (:file "m-n-association")
-                       (:file "cache")))
+                       (:file "cache")
+                       (:file "purge")))
              (:module :query
                       :serial t
                       :components

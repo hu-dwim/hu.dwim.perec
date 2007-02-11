@@ -135,7 +135,9 @@
                (call-next-method))))
 
 (defmethod finalize-inheritance :after ((class persistent-class))
+  (invalidate-computed-slot class 'persistent-direct-super-classes)
   (invalidate-computed-slot class 'persistent-effective-super-classes)
+  (invalidate-computed-slot class 'persistent-direct-sub-classes)
   (invalidate-computed-slot class 'persistent-effective-sub-classes)
   (mapc #L(ensure-slot-reader* class !1)
         (collect-if #L(set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type !1)))

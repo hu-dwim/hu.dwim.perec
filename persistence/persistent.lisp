@@ -51,7 +51,7 @@
   (:documentation "Loads an object with the given oid and attaches it with the current transaction if not yet attached. If no such object exists in the database then one of two things may happen. If the value of otherwise is a lambda function with one parameter then it is called with the given object. Otherwise the value of otherwise is returned. If prefetch is false then only the identity of the object is loaded, otherwise all attributes are loaded. Note that the object may not yet be committed into the database and therefore may not be seen by other transactions. Also objects not yet committed by other transactions are not returned according to transaction isolation rules. The object returned will be kept for the duration of the transaction and any subsequent calls to load, select, etc. will return the exact same object for which eq is required to return #t.")
 
   (:method ((object persistent-object) &rest args)
-           (apply 'load-object (oid-of object) args))
+           (apply #'load-object (oid-of object) args))
 
   (:method ((oid oid) &key (otherwise nil otherwise-provided-p) (prefetch #f) (skip-existence-check #f))
            (declare (ignore prefetch))
@@ -91,22 +91,32 @@
 
   (:method ((class persistent-class))
            (ensure-exported class)
-           (bind ((sub-classes (persistent-effective-sub-classes-of class))
-                  (super-classes (persistent-effective-super-classes-of class)))
-             (mapc #'ensure-exported sub-classes)
+           (bind ((class-primary-table (primary-table-of class))
+                  (super-classes (persistent-effective-super-classes-of class))
+                  (sub-classes (persistent-effective-sub-classes-of class))
+                  (super-primary-tables (mapcar #'primary-table-of super-classes))
+                  (sub-primary-tables (mapcar #'primary-table-of sub-classes)))
              (mapc #'ensure-exported super-classes)
+             (mapc #'ensure-exported sub-classes)
              (when (primary-tables-of class)
-               (dolist (table (delete-duplicates (mappend 'data-tables-of super-classes)))
-                 (delete-records (name-of table)
-                                 (sql-in (sql-identifier :name +id-column-name+)
-                                         (sql-subquery :query
-                                                       (apply #'sql-union
-                                                              (mapcar #L(sql-select :columns (list +id-column-name+)
-                                                                                    :tables (list (name-of !1)))
-                                                                      (cdr (primary-tables-of class)))))))))
-             (dolist (table (mapcar #'primary-table-of (list* class sub-classes)))
-               (when table
-                 (delete-records (name-of table)))))))
+               ;; delete instances from the primary tables of super classes and non primary data tables of sub classes 
+               (dolist (table (delete-if #L(or (eq !1 class-primary-table)
+                                               (member !1 sub-primary-tables))
+                                         (delete-duplicates
+                                          (append super-primary-tables
+                                                  (mappend #'data-tables-of sub-classes)))))
+                 (when table
+                   (delete-records (name-of table)
+                                   (sql-in (sql-identifier :name +id-column-name+)
+                                           (sql-subquery :query
+                                                         (apply #'sql-union
+                                                                (mapcar #L(sql-select :columns (list +id-column-name+)
+                                                                                      :tables (list (name-of !1)))
+                                                                        (cdr (primary-tables-of class)))))))))
+               ;; delete instances from the primary tables of sub classes
+               (dolist (table (list* class-primary-table sub-primary-tables))
+                 (when table
+                   (delete-records (name-of table))))))))
 
 (defmacro revive-object (place &rest args)
   "Load object found in PLACE into the current transaction, update PLACE if needed."

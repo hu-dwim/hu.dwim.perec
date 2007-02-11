@@ -1,0 +1,67 @@
+(in-package :cl-perec-test)
+
+(defsuite* (test/persistence/purge :in test/persistence))
+
+(defpclass* purge-a-test ()
+  ())
+
+(defpclass* purge-b-test (purge-a-test)
+  ())
+
+(defpclass* purge-c-test (purge-a-test)
+  ())
+
+(defpclass* purge-d-test (purge-b-test purge-c-test)
+  ()
+  (:abstract #t))
+
+(defpclass* purge-e-test (purge-d-test)
+  ())
+
+(defpclass* purge-f-test (purge-d-test)
+  ())
+
+(defpclass* purge-g-test (purge-b-test)
+  ())
+
+(defixture fixture/persistent/purge
+  (with-transaction
+    (purge-objects 'purge-a-test)
+    (make-instance 'purge-a-test)
+    (make-instance 'purge-b-test)
+    (make-instance 'purge-c-test)
+    (make-instance 'purge-e-test)
+    (make-instance 'purge-f-test)
+    (make-instance 'purge-g-test)))
+
+(defun purge-test (class-name delete-counter)
+  (with-fixture fixture/persistent/purge
+    (with-transaction
+      (let ((last-delete-counter (delete-counter-of (command-counter-of *transaction*)))
+            (total-instance-counter (length (select-objects purge-a-test)))
+            (purged-instance-counter (count-if #L(typep !1 class-name) (select-objects purge-a-test))))
+        (purge-objects class-name)
+        (is (= (- (delete-counter-of (command-counter-of *transaction*)) last-delete-counter)
+               delete-counter))
+        (is (= (count-if #L(typep !1 class-name) (select-objects purge-a-test))
+               0))
+        (is (= (- total-instance-counter purged-instance-counter)
+               (length (select-objects purge-a-test))))))))
+
+(defmacro def-purge-test (name class-name delete-counter)
+  `(deftest ,name ()
+    (purge-test ',class-name ,delete-counter)))
+
+(def-purge-test test/persistence/purge/a purge-a-test 6)
+
+(def-purge-test test/persistence/purge/b purge-b-test 6)
+
+(def-purge-test test/persistence/purge/c purge-c-test 5)
+
+(def-purge-test test/persistence/purge/d purge-d-test 5)
+
+(def-purge-test test/persistence/purge/e purge-e-test 4)
+
+(def-purge-test test/persistence/purge/f purge-f-test 4)
+
+(def-purge-test test/persistence/purge/g purge-g-test 3)

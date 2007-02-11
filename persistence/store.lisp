@@ -12,7 +12,7 @@
 
 (defun restore-slot-set (object slot)
   "Restores the non lazy list without local side effects from the database."
-  (mapcar #L(object-reader !1)
+  (mapcar #'object-reader
           (select-records (oid-columns-of (table-of slot))
                           (list (name-of (table-of slot)))
                           (id-column-matcher-where-clause object (id-column-of slot)))))
@@ -24,7 +24,7 @@
 (defun restore-m-n-association-end-set (object slot)
   "Restores the non lazy list association end value without local side effects from the database."
   (bind ((other-slot (other-association-end-of slot)))
-    (mapcar #L(object-reader !1)
+    (mapcar #'object-reader
             (select-records (columns-of slot)
                             (list (name-of (table-of slot)))
                             (id-column-matcher-where-clause object (id-column-of other-slot))))))
@@ -68,7 +68,7 @@
 (defun restore-prefetched-slots (object &optional (allow-missing #f))
   "Restores all prefetched slots at once without local side effects from the database. Executes a single select statement."
   (if-bind slots (prefetched-slots-of (class-of object))
-    (bind ((tables (delete-duplicates (mapcar #L(table-of !1) slots)))
+    (bind ((tables (delete-duplicates (mapcar #'table-of slots)))
            (record
             (first
              (select-records (mapcan (lambda (slot)
@@ -169,7 +169,7 @@
 (defun store-prefetched-slots (object)
   "Stores all prefetched slots without local side effects into the database. Executes one insert statement for each table."
   (bind ((prefetched-slots (prefetched-slots-of (class-of object)))
-         (tables (delete-duplicates (mapcar #L(table-of !1) prefetched-slots))))    
+         (tables (delete-duplicates (mapcar #'table-of prefetched-slots))))    
     (dolist (table tables)
       (bind ((slots (collect-if #L(eq (table-of !1) table) prefetched-slots))
              (slot-values (mapcar #L(cached-slot-boundp-or-value-using-class (class-of object) object !1) slots))

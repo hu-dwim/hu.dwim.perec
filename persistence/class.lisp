@@ -22,18 +22,26 @@
     (compute-as (collect-if #L(typep !1 'persistent-effective-slot-definition) (class-slots -self-)))
     :type (list persistent-effective-slot-definition)
     :documentation "The list of effective slots which are turned out to be persistent in this class.")
-   (persistent-effective-super-classes
-    (compute-as (compute-persistent-effective-super-classes -self-))
+   (persistent-direct-super-classes
+    (compute-as (collect-if #'persistent-class-p (class-direct-superclasses -self-)) )
     :type (list persistent-class)
-    :documentation "The list of effective persistent super classes in class precedence order.")
+    :documentation "The list of persistent direct sub classes.")
    (persistent-class-precedence-list
     (compute-as (list* -self- (persistent-effective-super-classes-of -self-)))
     :type (list persistent-class)
     :documentation "Similar to class-precedence-list but includes only persistent classes.")
+   (persistent-effective-super-classes
+    (compute-as (compute-persistent-effective-super-classes -self-))
+    :type (list persistent-class)
+    :documentation "The list of effective persistent super classes in class precedence order.")
+   (persistent-direct-sub-classes
+    (compute-as (collect-if #'persistent-class-p (class-direct-subclasses -self-)))
+    :type (list persistent-class)
+    :documentation "The list of persistent direct sub classes.")
    (persistent-effective-sub-classes
     (compute-as (compute-persistent-effective-sub-classes -self-))
     :type (list persistent-class)
-    :documentation "The list of effective persistent sub classes in no particular order.")
+    :documentation "The list of persistent effective sub classes in no particular order.")
    (primary-table
     (compute-as (compute-primary-table -self- -current-value-))
     :type table
@@ -175,8 +183,8 @@
 (defgeneric compute-persistent-effective-sub-classes (class)
   (:method ((class persistent-class))
            (delete-duplicates
-            (append (collect-if #'persistent-class-p (class-direct-subclasses class))
-                    (iter (for sub-class in (class-direct-subclasses class))
+            (append (persistent-direct-sub-classes-of class)
+                    (iter (for sub-class in (persistent-direct-sub-classes-of class))
                           (appending (persistent-effective-sub-classes-of sub-class)))))))
 
 (defgeneric compute-column-type (type &optional type-specification)
@@ -289,21 +297,25 @@
 
 (defgeneric compute-primary-tables (class)
   (:method ((class persistent-class))
-           (bind ((primary-classes (collect-if #'primary-table-of
-                                               (list* class (persistent-effective-sub-classes-of class))))
-                  (primary-class-sub-classes (mapcar #'persistent-effective-sub-classes-of primary-classes))
-                  (primary-tables (mapcar #'primary-table-of primary-classes)))
-             (when primary-class-sub-classes
-               (if (eq (length (reduce #'union primary-class-sub-classes))
-                       (length (reduce #'append primary-class-sub-classes)))
-                   (cons 'append primary-tables)
-                   (cons 'union primary-tables))))))
+           (labels ((primary-classes-of (class)
+                      (if (primary-table-of class)
+                          (list class)
+                          (iter (for sub-class in (persistent-direct-sub-classes-of class))
+                                (appending (primary-classes-of sub-class))))))
+             (bind ((primary-classes (primary-classes-of class))
+                    (primary-class-sub-classes (mapcar #'persistent-effective-sub-classes-of primary-classes))
+                    (primary-tables (mapcar #'primary-table-of primary-classes)))
+               (when primary-class-sub-classes
+                 (if (eq (length (reduce #'union primary-class-sub-classes))
+                         (length (reduce #'append primary-class-sub-classes)))
+                     (cons 'append primary-tables)
+                     (cons 'union primary-tables)))))))
 
 (defgeneric compute-data-tables (class)
   (:method ((class persistent-class))
            (delete-if #'null
                       (mapcar #'primary-table-of
-                              (persistent-effective-super-classes-of class)))))
+                              (list* class (persistent-effective-super-classes-of class))))))
 
 (defgeneric compute-data-table-slot-p (slot)
   (:method ((slot persistent-effective-slot-definition))
@@ -430,7 +442,7 @@
   (bind ((slot-name (slot-definition-name slot))
          (slot-class (slot-definition-class slot)))
     (ensure-finalized slot-class)
-    (iter (for class in (persistent-effective-super-classes-of))
+    (iter (for class in (persistent-effective-super-classes-of slot-class))
           (ensure-finalized class)
           (aif (find slot-name (persistent-effective-slots-of class) :key #'slot-definition-name)
                (collect it)))))
