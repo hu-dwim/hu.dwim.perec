@@ -23,10 +23,6 @@
                 '((:metaclass persistent-class)))
               options)))
 
-;; :persistent is a slot definition option and may be set to #t or #f
-(eval-always
-  (mapc #L(pushnew !1  *allowed-slot-definition-properties*) '(:persistent :prefetched :cached)))
-
 ;;;;;;;;;;;;;;;;;;
 ;;; defassociation
 

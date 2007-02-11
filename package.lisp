@@ -50,6 +50,12 @@
            #:defpclass*
            #:defassociation
            #:defassociation*
+           #:abstract-p
+           #:cached-p
+           #:prefetched-p
+           #:indexed-p
+           #:unique-p
+           #:required-p
 
            ;; persistent class meta objects
            #:persistent-class

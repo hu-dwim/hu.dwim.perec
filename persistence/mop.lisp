@@ -118,12 +118,13 @@
                                                                 slot-option-name
                                                                 specific-direct-slot-definitions)))))
 
+;; TODO: would be easier to put these into the slot option's default computation?
 (defgeneric compute-persistent-effective-slot-definition-option (class direct-slot slot-option-name direct-slot-definitions)
   (:method (class
             (direct-slot persistent-direct-slot-definition)
             slot-option-name
             direct-slot-definitions)
-           (when (member slot-option-name '(cached prefetched))
+           (when (member slot-option-name '(cached prefetched indexed unique required))
              (some #L(slot-initarg-and-value !1 slot-option-name) direct-slot-definitions)))
 
   (:method (class
