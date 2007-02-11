@@ -6,6 +6,8 @@
 
 (in-package :cl-perec)
 
+;; TODO: use subtypep instead of (eql ...) checks
+
 ;;;;;;;;;
 ;;; Types
 

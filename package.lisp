@@ -110,6 +110,7 @@
            #:make-transient
            #:persistent-p
            #:object-in-transaction-p
+           #:transaction-of
            #:p-eq
            #:purge-object
            #:purge-objects
