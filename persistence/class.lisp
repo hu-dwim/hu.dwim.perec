@@ -85,7 +85,7 @@
     :type boolean
     :computed-in compute-as
     :documentation "All prefetched slots are cached slots but the opposite may not be true. When a cached slot is loaded it's value will be stored in the CLOS object for fast subsequent read operations. Also whenever a cached slot is set the value will be remembered. The default cached slot semantics can be overriden on a per direct slot basis.")
-   (indexed ;; TODO:
+   (index ;; TODO:
     :type boolean
     :computed-in compute-as
     :documentation "True means the slot value will be indexed in the underlying RDBMS.")
@@ -164,7 +164,7 @@
 
 ;; :persistent is a slot definition option and may be set to #t or #f
 (eval-always
-  (mapc #L(pushnew !1  *allowed-slot-definition-properties*) '(:persistent :prefetched :cached :indexed :unique :required)))
+  (mapc #L(pushnew !1  *allowed-slot-definition-properties*) '(:persistent :prefetched :cached :index :unique :required)))
 
 (defmethod describe-object ((object persistent-class) stream)
   (call-next-method)

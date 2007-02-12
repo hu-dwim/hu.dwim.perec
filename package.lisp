@@ -53,7 +53,7 @@
            #:abstract-p
            #:cached-p
            #:prefetched-p
-           #:indexed-p
+           #:index-p
            #:unique-p
            #:required-p
 
@@ -169,7 +169,7 @@
            #:with-lazy-collections
            #:without-lazy-collections
 
-           ;; database access
+           ;; database and cache access
            #:with-bypassing-database-access
            #:without-bypassing-database-access))
 
