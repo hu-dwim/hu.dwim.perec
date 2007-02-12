@@ -127,6 +127,7 @@
            #:list-of
 
            ;; query
+           #:query
            #:select
            #:select-first-matching
            #:select-last-matching
