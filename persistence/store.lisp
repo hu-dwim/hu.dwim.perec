@@ -7,7 +7,7 @@
   '+unbound-slot-value+
   "This value is used to signal unbound slot value returned from database.")
 
-(defparameter *lazy-slot-values* #f
+(defparameter *lazy-collections* #f
   "True means slot-value-using-class will by default return lazy collections.")
 
 (defun restore-slot-set (object slot)
@@ -44,16 +44,16 @@
          ((and (typep slot 'persistent-association-end-effective-slot-definition)
                (eq (association-kind-of (association-of slot)) :1-n)
                (eq (cardinality-kind-of slot) :n))
-          (if *lazy-slot-values*
+          (if *lazy-collections*
               (make-instance 'persistent-1-n-association-end-set-container :object object :slot slot)
               (restore-1-n-association-end-set object slot)))
          ((and (typep slot 'persistent-association-end-effective-slot-definition)
                (eq (association-kind-of (association-of slot)) :m-n))
-          (if *lazy-slot-values*
+          (if *lazy-collections*
               (make-instance 'persistent-m-n-association-end-set-container :object object :slot slot)
               (restore-m-n-association-end-set object slot)))
          ((set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type slot)))
-          (if *lazy-slot-values*
+          (if *lazy-collections*
               (make-instance 'persistent-slot-set-container :object object :slot slot)
               (restore-slot-set object slot)))
          (t

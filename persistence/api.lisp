@@ -150,12 +150,12 @@
 ;;;;;;;;;;;;
 ;;; laziness
 
-(defmacro with-lazy-slot-values (&body body)
-  `(bind ((*lazy-slot-values* #t))
+(defmacro with-lazy-collections (&body body)
+  `(bind ((*lazy-collections* #t))
     ,@body))
 
-(defmacro without-lazy-slot-values (&body body)
-  `(bind ((*lazy-slot-values* #f))
+(defmacro without-lazy-collections (&body body)
+  `(bind ((*lazy-collections* #f))
     ,@body))
 
 ;;;;;;;;;;;;;;;;;;;

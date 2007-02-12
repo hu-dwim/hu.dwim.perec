@@ -161,13 +161,13 @@
            #:fixed-size-scroll
            #:simple-scroll
 
-           ;; cache
+           ;; turning cache on and off
            #:with-caching-slot-values
            #:without-caching-slot-values
 
            ;; laziness
-           #:with-lazy-slot-values
-           #:without-lazy-slot-values
+           #:with-lazy-collections
+           #:without-lazy-collections
 
            ;; database access
            #:with-bypassing-database-access

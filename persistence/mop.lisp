@@ -228,7 +228,7 @@
          (reader-gf (ensure-generic-function reader :lambda-list '(object))))
     (ensure-method reader-gf
                    `(lambda (object)
-                     (with-lazy-slot-values
+                     (with-lazy-collections
                        (slot-value-using-class ,class object ,slot)))
                    :specializers (list class))))
 
