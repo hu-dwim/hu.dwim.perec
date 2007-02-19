@@ -49,7 +49,8 @@
   "Caches the objects whose oid and slots are contained by ROW starting at START."
   (bind ((object (cache-object oid)))
     (mapc (lambda (slot rdbms-value)
-            (setf (cached-slot-value-using-class (class-of object) object slot)
+            ;; we use the slot-name here because we can't guarantee that the effective slot will match with the class of the object
+            (setf (cached-slot-value object (slot-definition-name slot))
                   (funcall (reader-of slot) rdbms-value)))
           slots rdbms-values)
     object))
