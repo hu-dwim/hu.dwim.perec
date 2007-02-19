@@ -174,6 +174,9 @@
          (describe-object it stream))
        (princ (format nil "The primary tables are: ~A" (primary-tables-of object)) stream)))
 
+(defprint-object (slot persistent-slot-definition)
+  (princ (slot-definition-name slot)))
+
 ;;;;;;;;;;
 ;;; Export
 
