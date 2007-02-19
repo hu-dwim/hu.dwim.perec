@@ -15,7 +15,6 @@
 
 (defun debug-persistent-p (object)
   "Same as persistent-p except it never prefetches slot values. Use for debug purposes."
-  #-debug(assert #f nil "This method should not be called when the debug feature is turned off")
   (if (slot-boundp object 'persistent)
       (persistent-p object)
       (progn
