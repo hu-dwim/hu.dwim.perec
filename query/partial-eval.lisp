@@ -88,7 +88,7 @@ if it was fully evaluated.")
              (if (some 'syntax-object-p args)
                 (progn (setf (args-of call) (mapcar 'syntax-from-generalized-boolean args))
                        (simplify-boolean-syntax call))
-                (eval (cons (macro-of call) args)))))
+                (eval (cons (macro-of call) (mapcar 'boolean-from-generalized-boolean args))))))
 
 (defgeneric %partial-eval-special-form (operator args form query static-vars)
   ;; special forms (currently not evaluated, TODO) 
@@ -101,36 +101,43 @@ if it was fully evaluated.")
     ((syntax-object-p orig-syntax) (make-literal-value :value value :xtype (xtype-of orig-syntax)))
     (t (make-literal-value :value value))))
 
-(defun syntax-from-generalized-boolean (thing)
-  (if (syntax-object-p thing)
-      thing
-      (make-literal-value :value (if thing #t #f))))
+(defun syntax-from-generalized-boolean (value)
+  (if (syntax-object-p value)
+      value
+      (make-literal-value :value (if value #t #f))))
+
+(defun boolean-from-generalized-boolean (value)
+  (assert (not (syntax-object-p value)))
+  (if value #t #f))
 
 (defun is-true-literal (syntax)
+  "Returns #t if SYNTAX is a true literal as generalized boolean."
   (and (typep syntax 'literal-value)
-       (eq (value-of syntax) #t)))
+       (not (eq (value-of syntax) #f))))
 
 (defun is-false-literal (syntax)
+  "Returns #t if SYNTAX is a false literal."
   (and (typep syntax 'literal-value)
        (eq (value-of syntax) #f)))
 
 (defun simplify-boolean-syntax (syntax)
   "Makes the following simplifications on SYNTAX:
-   (not #f)                   -> #t
-   (not #t)                   -> #f
+   (not false)                -> true
+   (not true)                 -> false
    (not (not x))              -> x
-   (or)                       -> #f
+   (or)                       -> false
    (or x)                     -> x
-   (or x... #f y...)          -> (or x... y...)
-   (or x... #t y...)          -> #t
+   (or x... false y...)       -> (or x... y...)
+   (or x... true y...)        -> true
    (or x... (or y...) z...)   -> (or x... y... z...)
-   (and)                      -> #t
+   (and)                      -> true
    (and x)                    -> x
-   (and x... #t y...)         -> (and x... y...)
-   (and x... #f y...)         -> #f
+   (and x... true y...)       -> (and x... y...)
+   (and x... false y...)      -> false
    (and x... (and y...) z...) -> (and x... y... z...)
 
-where x, y and z are arbitrary objects and '...' means zero or more occurence."
+where x, y and z are arbitrary objects and '...' means zero or more occurence,
+and false/true means a generalized boolean literal."
   
   (flet ((simplify-args (operator args)
            (iter (for arg in args)
@@ -142,9 +149,9 @@ where x, y and z are arbitrary objects and '...' means zero or more occurence."
       (#M(function-call :fn not :args (?arg))
          (bind ((arg (simplify-boolean-syntax ?arg)))
            (pattern-case arg
-             (#M(literal-value :value #t) (make-literal-value :value #f))
-             (#M(literal-value :value #f) (make-literal-value :value #t))
              (#M(function-call :fn not :args (?arg)) ?arg)
+             (#M(literal-value :value #f) (make-literal-value :value #t))
+             (#M(literal-value :value ?true) (make-literal-value :value #f))
              (?otherwise syntax))))
       (#M(macro-call :macro or :args ?args)
          (bind ((operands (remove-if 'is-false-literal (simplify-args 'or ?args))))
