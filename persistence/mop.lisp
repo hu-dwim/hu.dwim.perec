@@ -184,10 +184,7 @@
                              :key #L(getf !1 :class))))
                   (append (list :name (getf association-end-definition :slot)
                                 :association !1
-                                :persistent #t
-                                :initfunction (let ((initform (getf association-end-definition :initform)))
-                                                (when initform
-                                                  (lambda () initform))))
+                                :persistent #t)
                           (remove-keywords association-end-definition :slot :class :accessor)))
               depends-on-associations))))
 

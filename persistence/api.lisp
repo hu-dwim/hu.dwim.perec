@@ -35,8 +35,15 @@
              (append `(:readers (,reader)
                        :writers (,writer)
                        :initargs (,initarg))
-                     association-end))))
+                     association-end)))
+         (add-initfunction (association-end)
+           (let ((initform (getf association-end :initform)))
+             `(list ,@(mapcar #L`',!1 association-end)
+               :initfunction
+               (lambda ()
+                 ,initform)))))
     (bind ((processed-association-ends (mapcar #'process-association-end (first association-ends)))
+           (final-association-ends (cons 'list (mapcar #'add-initfunction processed-association-ends)))
            (primary-association-end (first processed-association-ends))
            (primary-class (getf primary-association-end :class))
            (primary-slot (getf primary-association-end :slot))
@@ -73,11 +80,11 @@
                                                              (class-direct-slots class)))))))
             (prog1
                 (aif (find-persistent-association ',association-name)
-                     (reinitialize-instance it :association-end-definitions ',processed-association-ends)
+                     (reinitialize-instance it :association-end-definitions ,final-association-ends)
                      (setf (find-persistent-association ',association-name)
                            (make-instance 'persistent-association
                                           :name ',association-name
-                                          :association-end-definitions ',processed-association-ends)))
+                                          :association-end-definitions ,final-association-ends)))
               (ensure-persistent-class ',primary-class)
               (ensure-persistent-class ',secondary-class))))))))
 
