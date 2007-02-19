@@ -20,6 +20,14 @@
            (child (make-instance 'child-test)))
       ,@body)))
 
+(deftest test/persistence/association/1-n/class ()
+  (let ((parent-slot (prc::find-slot 'child-test 'parent))
+        (children-slot (prc::find-slot 'parent-test 'children)))
+    (is (prc::primary-table-slot-p parent-slot))
+    (is (prc::data-table-slot-p parent-slot))
+    (is (not (prc::primary-table-slot-p children-slot)))
+    (is (not (prc::data-table-slot-p children-slot)))))
+
 (deftest test/persistence/association/1-n/initial-value/1 ()
   (with-parent-and-child-transaction
     (is (eq nil (parent-of child)))

@@ -22,6 +22,14 @@
            (brother (make-instance 'brother-test)))
       ,@body)))
 
+(deftest test/persistence/association/1-1/class ()
+  (let ((sister-slot (prc::find-slot 'brother-test 'sister))
+        (brother-slot (prc::find-slot 'sister-test 'brother)))
+    (is (prc::primary-table-slot-p sister-slot))
+    (is (prc::data-table-slot-p sister-slot))
+    (is (not (prc::primary-table-slot-p brother-slot)))
+    (is (not (prc::data-table-slot-p brother-slot)))))
+
 (deftest test/persistence/association/1-1/initial-value/1 ()
   (with-sister-and-brother-transaction
     (is (eq nil (brother-of sister)))

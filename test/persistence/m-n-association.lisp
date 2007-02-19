@@ -20,6 +20,14 @@
            (course (make-instance 'course-test)))
       ,@body)))
 
+(deftest test/persistence/association/m-n/class ()
+  (let ((students-slot (prc::find-slot 'course-test 'students))
+        (courses-slot (prc::find-slot 'student-test 'courses)))
+    (is (not (prc::primary-table-slot-p students-slot)))
+    (is (not (prc::data-table-slot-p students-slot)))
+    (is (not (prc::primary-table-slot-p courses-slot)))
+    (is (not (prc::data-table-slot-p courses-slot)))))
+
 (deftest test/persistence/association/m-n/initial-value/1 ()
   (with-student-and-course-transaction
     (is (null (courses-of student)))
