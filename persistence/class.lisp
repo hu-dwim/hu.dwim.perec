@@ -93,6 +93,7 @@
     :type boolean
     :computed-in compute-as
     :documentation "True means the slot value will be enforced to be unique among instances in the underlying RDBMS.")
+   ;; TODO: rename this slot option, type-check :always :on-commit (initform decides what extra slot values are allowed)
    (required ;; TODO:
     :type boolean
     :computed-in compute-as
@@ -110,6 +111,10 @@
   ((direct-slots
     :type (list persistent-direct-slot-definition)
     :documentation "The list of direct slots definitions used to compute this effective slot during the class finalization procedure.")
+   (primary-class
+    (compute-as (compute-primary-class -self-))
+    :type persistent-class
+    :documentation "The persistent class which owns the primary table where this slot will be stored.")
    (table
     (compute-as (compute-table -self-))
     :type table
@@ -133,6 +138,10 @@
     (compute-as (compute-writer (slot-definition-type -self-)))
     :type (or null function)
     :documentation "A one parameter function which transforms a lisp object to the corresponding RDBMS data. This is present only for data table slots.")
+   (primary-table-slot
+    (compute-as (compute-primary-table-slot-p -self-))
+    :type boolean
+    :documentation "True means the slot can be loaded from the primary table of its class.")
    (data-table-slot
     (compute-as (compute-data-table-slot-p -self-))
     :type boolean
@@ -300,10 +309,14 @@
            (ensure-finalized class)
            (flet ((primary-table-columns-for-class (class)
                     (delete-duplicates
-                     (mappend #L(mappend #L(when (eq (primary-table-of class) (table-of !1))
-                                             (columns-of !1))
-                                         (persistent-effective-slots-of !1))
-                              (list* class (collect-if #L(typep !1 'persistent-class) (depends-on-of class)))))))
+                     (append
+                      (mappend #L(when (primary-table-slot-p !1)
+                                   (columns-of !1))
+                               (persistent-effective-slots-of class))
+                      (mappend #L(when (eq class (primary-class-of !1))
+                                   (columns-of !1))
+                               (mappend #L(persistent-effective-slots-of !1)
+                                        (collect-if #L(typep !1 'persistent-class) (depends-on-of class))))))))
              (when (or (not (abstract-p class))
                        (primary-table-columns-for-class class))
                (or current-table
@@ -336,26 +349,35 @@
                       (mapcar #'primary-table-of
                               (list* class (persistent-effective-super-classes-of class))))))
 
+(defgeneric compute-primary-table-slot-p (slot)
+  (:method ((slot persistent-effective-slot-definition))
+           (and (not (some #'primary-table-slot-p (persistent-effective-super-slot-precedence-list-of slot)))
+                (data-table-slot-p slot)
+                (eq (primary-class-of slot) (slot-definition-class slot)))))
+
 (defgeneric compute-data-table-slot-p (slot)
   (:method ((slot persistent-effective-slot-definition))
-           (bind ((type (remove-null-and-unbound-if-or-type (slot-definition-type slot)))
-                  (class (slot-definition-class slot)))
-             (and (member (table-of slot) (data-tables-of class))
+           (bind ((type (remove-null-and-unbound-if-or-type (slot-definition-type slot))))
+             (and (subtypep (slot-definition-class slot) (primary-class-of slot))
                   (or (primitive-type-p type)
                       (persistent-class-type-p type))))))
 
-(defgeneric compute-table (slot)
+(defgeneric compute-primary-class (slot)
   (:method ((slot persistent-effective-slot-definition))
-           (or (some #'table-of (persistent-effective-super-slot-precedence-list-of slot))
+           (or (some #'primary-class-of (persistent-effective-super-slot-precedence-list-of slot))
                (bind ((type (slot-definition-type slot)))
                  (awhen (remove-null-and-unbound-if-or-type type)
                    (cond ((set-type-p it)
-                          (primary-table-of (find-class (second it))))
+                          (find-class (second it)))
                          ((or (primitive-type-p it)
                               (persistent-class-type-p it))
-                          (primary-table-of (slot-definition-class slot)))
+                          (slot-definition-class slot))
                          (t
                           (error "Unknown type ~A in slot ~A" type slot))))))))
+
+(defgeneric compute-table (slot)
+  (:method ((slot persistent-effective-slot-definition))
+           (primary-table-of (primary-class-of slot))))
 
 (defgeneric compute-columns (slot)
   (:method ((slot persistent-effective-slot-definition))

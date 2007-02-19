@@ -106,16 +106,22 @@
                               (mappend #'columns-of
                                        (mapcar #'effective-association-end-for (association-ends-of association)))))))
 
-(defmethod compute-table ((slot persistent-association-end-effective-slot-definition))
+(defmethod compute-primary-class ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))
     (ecase (association-kind-of association)
       (:1-1 (if (primary-association-end-p slot)
                 (call-next-method)
-                (table-of (other-association-end-of slot))))
+                (slot-definition-class (other-association-end-of slot))))
       (:1-n (if (eq :1 (cardinality-kind-of slot))
                 (call-next-method)
-                (table-of (other-association-end-of slot))))
-      (:m-n (primary-table-of (association-of slot))))))
+                (slot-definition-class (other-association-end-of slot))))
+      (:m-n nil))))
+
+(defmethod compute-table ((slot persistent-association-end-effective-slot-definition))
+  (bind ((association (association-of slot)))
+    (if (eq :m-n (association-kind-of association))
+        (primary-table-of association)
+        (call-next-method))))
 
 (defmethod compute-columns ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))
