@@ -35,13 +35,13 @@
 (defsystem :cl-perec-test
   :description "Tests for cl-perec."
   :depends-on (:iterate
-                :arnesi
-                :metabang-bind
-                :defclass-star
-                :local-time
-                :stefil
-                :cl-rdbms
-                :cl-perec)
+               :arnesi
+               :metabang-bind
+               :defclass-star
+               :local-time
+               :stefil
+               :cl-rdbms
+               :cl-perec)
   :serial t
   :components
   ((:module :test
