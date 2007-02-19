@@ -93,6 +93,7 @@
   (:documentation "Either returns the cached slot value or the unbound slot marker. This method does not interact with the database.")
 
   (:method ((class persistent-class) (object persistent-object) (slot persistent-effective-slot-definition))
+           (debug-only (assert (debug-persistent-p object)))
            (with-bypassing-database-access
              (if (not (slot-boundp-using-class class object slot))
                  +unbound-slot-value+
@@ -102,6 +103,7 @@
   (:documentation "Either sets the slot value to the given new value or makes the slot unbound if the new value is the unbound marker. This method does not interact with the database.")
 
   (:method (new-value (class persistent-class) (object persistent-object) (slot persistent-effective-slot-definition))
+           (debug-only (assert (debug-persistent-p object)))
            (with-bypassing-database-access
              (if (eq +unbound-slot-value+ new-value)
                  (slot-makunbound-using-class class object slot)
@@ -118,7 +120,8 @@
     (assert (eq class (class-of object)))
     (assert (eq class (slot-definition-class slot))))
   ;; check for the persistent flag slot
-  (if (and (eq (slot-definition-name slot) 'persistent)
+  (if (and (not *bypass-database-access*)
+           (eq (slot-definition-name slot) 'persistent)
            (not (slot-boundp-using-class class object slot)))
       ;; prefetch if possible otherwise simple existence check
       (if (prefetched-slots-of class)

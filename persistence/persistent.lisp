@@ -35,7 +35,8 @@
 
   (:method ((oid oid))
            (aif (cached-object-of oid)
-                it
+                (prog1 it
+                  (setf (persistent-p it) #t))
                 (setf (cached-object-of oid) (create-object oid #t))))
 
   (:method ((object persistent-object))
@@ -69,7 +70,7 @@
                     ;; even tough we are unsure if the object is persistent or not
                     ;; because prefetching slots may recursively call load-object from persistent-p
                     ;; we also want to have non persistent objects in the cache anyway
-                    (cache-object new-object)
+                    (setf (cached-object-of (oid-of new-object)) new-object)
                     (if (or skip-existence-check (persistent-p new-object))
                         new-object
                         (object-not-found)))))))
