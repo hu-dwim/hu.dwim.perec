@@ -44,6 +44,7 @@
   (:method (fn arg1 arg2 call query)
            call)
 
+  ;; toplevel (typep <query-variable> <type>)
   (:method ((fn (eql 'typep)) (variable query-variable) type call query)
            (restrict-variable-type variable (type-syntax->type type))
            nil))
@@ -51,6 +52,13 @@
 (defgeneric infer-types-pass-2 (syntax query &optional toplevel)
   (:method (syntax query &optional toplevel)
            (declare (ignore syntax query toplevel))
+           (values))
+
+  ;; literal persistent object
+  (:method ((literal literal-value) query &optional toplevel)
+           (declare (ignore toplevel))
+           (when (persistent-object-p (value-of literal))
+             (setf (xtype-of literal) (class-of (value-of literal))))
            (values))
 
   (:method ((form compound-form) query &optional toplevel)
@@ -68,16 +76,17 @@
                        (slot-definition-type (property-of access))
                        (associated-class-of (property-of access))))))
 
+  ;; toplevel (eq <obj1> <obj2>) -> (type-of <obj1>) == (type-of <obj2>)
   (:method ((call function-call) query &optional toplevel)
            (call-next-method)
            (when (and toplevel (eq (fn-of call) 'eq) (= (length (args-of call)) 2))
-             (bind ((arg1 (first (args-of call)))
-                    (arg2 (second (args-of call)))
-                    (type1 (xtype-of arg1))
-                    (type2 (xtype-of arg2)))
+             (bind ((obj1 (first (args-of call)))
+                    (obj2 (second (args-of call))))
                (cond
-                ((and type1 (not type2)) (setf (xtype-of arg2) type1))
-                ((and (not type1) type2) (setf (xtype-of arg1) type2)))))))
+                 ((and (not (has-default-type-p obj1)) (has-default-type-p obj2))
+                  (setf (xtype-of obj2) (xtype-of obj1)))
+                 ((and (has-default-type-p obj1) (not (has-default-type-p obj2)))
+                  (setf (xtype-of obj1) (xtype-of obj2))))))))
 
 (defun type-syntax->type (type)
   (if (and (literal-value-p type)
@@ -131,3 +140,8 @@ Chosing property ~A randomly from ~A."
            `(list
              ',(first combined-type)
              ,@(mapcar 'backquote-type-syntax (rest combined-type)))))
+
+(defun has-default-type-p (syntax)
+  (eq (xtype-of syntax)
+      (funcall (slot-definition-initfunction
+                (find-slot (class-name (class-of syntax)) 'xtype)))))
