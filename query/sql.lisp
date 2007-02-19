@@ -320,6 +320,19 @@
                ,(sql-column-reference-for other-end table)
                ,(sql-id-column-reference-for variable))))))
 
+(defun sql-subselect-for-m-n-association (association-end variable)
+  (bind ((other-end (other-association-end-of association-end))
+         (table (primary-table-of (association-of association-end))))
+    `(sql-subquery
+      :query
+      (sql-select
+       :columns (list ,(sql-column-reference-for association-end table))
+       :tables (list (sql-identifier :name ',(name-of table)))
+       :where (sql-=
+               ,(sql-column-reference-for other-end table)
+               ,(sql-id-column-reference-for variable))))))
+
+
 
 ;;;----------------------------------------------------------------------------
 ;;; Joins

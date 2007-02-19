@@ -540,7 +540,7 @@ forms with joined variables.")
 (defgeneric attribute-access-to-sql (accessor arg access)
   (:method (accessor arg access)
            (if (free-of-query-variables-p access)
-               access
+               `(value->sql-literal ,access ,(xtype-of access))
                (sql-map-failed)))
 
   (:method (accessor (variable query-variable) access)
@@ -552,12 +552,18 @@ forms with joined variables.")
 (defgeneric association-end-access-to-sql (accessor arg access)
   (:method (accessor arg access)
            (if (free-of-query-variables-p access)
-               access
+               `(value->sql-literal ,access ,(xtype-of access))
                (sql-map-failed)))
 
   (:method (accessor (variable query-variable) access)
            ;; association-end accessor
-           (sql-column-reference-for (association-end-of access) variable)))
+           (bind ((association-end (association-end-of access))
+                  (association (association-of association-end)))
+             (ecase (association-kind-of association)
+               ((:1-1 :1-n)
+                (sql-column-reference-for association-end variable))
+               (:m-n
+                (sql-subselect-for-m-n-association association-end variable))))))
 
 (defgeneric function-call-to-sql (fn n-args arg-1 arg-2 call)
 
@@ -600,7 +606,7 @@ forms with joined variables.")
 
   ;; (member <object> (<association-end-accessor> <query-variable>))
   ;; e.g. (member m1 (messages-of topic)) --> (_m1.topic_id = _topic.id)
-  (:method ((fn (eql 'member)) (n-args (eql 2)) object (access association-end-access) call)
+  (:method ((fn (eql 'member)) (n-args (eql 2)) (object query-variable) (access association-end-access) call)
            ;; member form -> join
            ;;   example:
            ;;   (member m (messages-of t)) -> m.topic_id = t.id
@@ -700,9 +706,11 @@ forms with joined variables.")
       (make-new-joined-variable query object association-end type)))
 
 (defun ensure-type (query object type)
-  (or (and (eq (xtype-of object) type) object)
-      (find-joined-variable-by-definition query object nil type)
-      (make-new-joined-variable query object nil type)))
+  (if (not (xtype-of object))
+      (progn (setf (xtype-of object) type) object)
+      (or (and (eq (xtype-of object) type) object)
+          (find-joined-variable-by-definition query object nil type)
+          (make-new-joined-variable query object nil type))))
 
 (defun find-joined-variable-by-definition (query object association-end type)
   (find-if

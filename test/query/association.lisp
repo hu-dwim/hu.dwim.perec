@@ -67,3 +67,18 @@
       (assert (typep (husband-of (wife-of m)) 'performer-test))
       (assert (> (length (movies-of (husband-of (wife-of m)))) 0))
       (collect m))))
+
+(deftest test/query/select/association-m-n/lexical-1 ()
+  (test-query (:select-count nil :record-count 2)
+    (let ((s (select-first-matching movie-test)))
+      (select ((p performer-test))
+        (assert (member p (performers-of s)))
+        (collect p)))))
+
+(deftest test/query/select/association-m-n/lexical-2 ()
+  (test-query (:select-count nil :record-count 2)
+    (let ((s (select-first-matching movie-test)))
+      (select ((p performer-test))
+        (assert (member s (movies-of p)))
+        (collect p)))))
+
