@@ -39,8 +39,13 @@ if it was fully evaluated.")
   (:method ((variable dynamic-variable) query static-vars)
            (bind ((variable-name (name-of variable)))
              (if (and (boundp variable-name) (member variable-name static-vars))
-                (symbol-value variable-name)
-                variable)))
+                 (symbol-value variable-name)
+                 variable)))
+
+  (:method ((access property-access) query static-vars)
+           (if (property-of access)
+               (call-next-method)
+               access))
 
   (:method ((call macro-call) query static-vars)
            (bind ((args (args-of call)))
@@ -61,6 +66,17 @@ if it was fully evaluated.")
            (if (some 'syntax-object-p args)
                (progn (setf (args-of call) (mapcar 'syntax-from-value args (args-of call))) call)
                (apply fn args)))
+
+  ;; (typep query-variable t1) -> nil
+  ;;    when the types t1 and (xtype-of query-variable) does not have common subtypes
+  (:method ((fn (eql 'typep)) (n-args (eql 2)) (variable query-variable) (type persistent-class) args call)
+           (let ((variable-type (xtype-of variable)))
+             (if (and (typep variable-type 'persistent-class)
+                      (null (intersection (adjoin type (persistent-effective-sub-classes-of type))
+                                          (adjoin variable-type (persistent-effective-sub-classes-of variable-type)))))
+                 nil
+                 (call-next-method))))
+
   ;; (member x nil) -> nil
   ;; (member x <list>) -> (member x <list2>) where list2 contains those elements of list,
   ;;                                         that have matching type

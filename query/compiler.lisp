@@ -545,9 +545,10 @@ forms with joined variables.")
 
   (:method (accessor (variable query-variable) access)
            ;; attribute accessor
-           (if (persistent-slot-p (attribute-of access))
-               (sql-column-reference-for (attribute-of access) variable)
-               (call-next-method))))
+           (bind ((attribute (attribute-of access)))
+             (if (and attribute (persistent-slot-p attribute))
+                 (sql-column-reference-for attribute variable)
+                (call-next-method)))))
 
 (defgeneric association-end-access-to-sql (accessor arg access)
   (:method (accessor arg access)
@@ -557,13 +558,15 @@ forms with joined variables.")
 
   (:method (accessor (variable query-variable) access)
            ;; association-end accessor
-           (bind ((association-end (association-end-of access))
-                  (association (association-of association-end)))
-             (ecase (association-kind-of association)
-               ((:1-1 :1-n)
-                (sql-column-reference-for association-end variable))
-               (:m-n
-                (sql-subselect-for-m-n-association association-end variable))))))
+           (if (association-end-of access)
+               (bind ((association-end (association-end-of access))
+                      (association (association-of association-end)))
+                 (ecase (association-kind-of association)
+                   ((:1-1 :1-n)
+                    (sql-column-reference-for association-end variable))
+                   (:m-n
+                    (sql-subselect-for-m-n-association association-end variable))))
+               (sql-map-failed))))
 
 (defgeneric function-call-to-sql (fn n-args arg-1 arg-2 call)
 
@@ -573,7 +576,8 @@ forms with joined variables.")
              ;; e.g. (length (messages-of topic)) -->
              ;;         (select count(_m.id) from _message _m where _m.topic_id = _topic.id)
              ((and (sql-aggregate-function-name-p fn) (= n-args 1)
-                   (association-end-access-p arg-1) (query-variable-p (arg-of arg-1)))
+                   (association-end-access-p arg-1) (association-end-of arg-1)
+                   (query-variable-p (arg-of arg-1)))
               (ecase (association-kind-of (association-of (association-end-of arg-1)))
                 (:1-1
                  (sql-map-failed))
@@ -610,7 +614,8 @@ forms with joined variables.")
            ;; member form -> join
            ;;   example:
            ;;   (member m (messages-of t)) -> m.topic_id = t.id
-           (if (not (query-variable-p (arg-of access)))
+           (if (or (not (query-variable-p (arg-of access)))
+                   (not (association-end-of access)))
                (call-next-method)
                (bind ((association-end (association-end-of access))
                       (variable (arg-of access))
@@ -629,25 +634,28 @@ forms with joined variables.")
   ;;   (eq (wife-of man) woman)      -> man.wife_id = woman.id
   ;;   (eq (husband-of woman) man)   -> man.wife_id = woman.id
   (:method ((fn (eql 'eq)) (n-args (eql 2)) (access association-end-access) object call)
-           (bind ((association-end (association-end-of access))
-                  (other-end (other-association-end-of association-end))
-                  (variable (arg-of access))
-                  (association (association-of association-end)))
-             (ecase (association-kind-of association)
-               (:1-1
-                (if (primary-association-end-p association-end)
-                    (call-next-method)
-                    (syntax-to-sql
-                     (make-function-call ;; reverse
-                      :fn fn
-                      :args (list (make-association-end-access :association-end other-end
-                                                               :accessor (first (slot-definition-readers (first (direct-slots-of other-end))))
-                                                               :args (list object))
-                                  variable)))))
-               (:1-n
-                (call-next-method))
-               (:m-n
-                (sql-map-failed)))))
+
+           (if (not (association-end-of access))
+               (sql-map-failed)
+               (bind ((association-end (association-end-of access))
+                      (other-end (other-association-end-of association-end))
+                      (variable (arg-of access))
+                      (association (association-of association-end)))
+                 (ecase (association-kind-of association)
+                   (:1-1
+                    (if (primary-association-end-p association-end)
+                        (call-next-method)
+                        (syntax-to-sql
+                         (make-function-call ;; reverse
+                          :fn fn
+                          :args (list (make-association-end-access :association-end other-end
+                                                                   :accessor (first (slot-definition-readers (first (direct-slots-of other-end))))
+                                                                   :args (list object))
+                                      variable)))))
+                   (:1-n
+                    (call-next-method))
+                   (:m-n
+                    (sql-map-failed))))))
 
   (:method ((fn (eql 'eq)) (n-args (eql 2)) object (access association-end-access) call)
            (function-call-to-sql fn 2 access object call))
@@ -666,7 +674,9 @@ forms with joined variables.")
   (:method ((fn (eql 'null)) (n-args (eql 1)) (access association-end-access) arg-2 call)
            (bind ((association-end (association-end-of access))
                   (variable (arg-of access)))
-             (if (and (query-variable-p variable) (to-many-association-end-p association-end))
+             (if (and (query-variable-p variable)
+                      association-end
+                      (to-many-association-end-p association-end))
                  `(sql-not ,(sql-exists-subselect-for-association-end variable association-end))
                  (call-next-method)))))
 

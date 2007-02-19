@@ -126,7 +126,7 @@ Be careful when using in different situations, because it modifies *readtable*."
 
 (define-syntax-node property-access (function-call)
   ((operator :initarg :accessor :accessor accessor-of)
-   (property)))
+   (property nil)))
 
 (define-syntax-node attribute-access (property-access)
   ((property :initarg :attribute :accessor attribute-of)))
