@@ -42,11 +42,6 @@ if it was fully evaluated.")
                  (symbol-value variable-name)
                  variable)))
 
-  (:method ((access property-access) query static-vars)
-           (if (property-of access)
-               (call-next-method)
-               access))
-
   (:method ((call macro-call) query static-vars)
            (bind ((args (args-of call)))
              (%partial-eval-macro-call

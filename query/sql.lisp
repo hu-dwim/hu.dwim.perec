@@ -55,7 +55,7 @@
   "Returns two values, the first is a list of SQL statements that deletes the records, the second is a cleanup form."
   (bind ((variable (first (action-args-of query)))
          (type (xtype-of variable))
-         (tables (when (persistent-class-p type) (tables-for type))))
+         (tables (when (persistent-class-p type) (tables-for-delete type))))
     (if (simple-purge-p query)
       (bind ((table (first tables)))
         `(list ,(sql-delete-from-table table :where (where-clause-of query))))
@@ -82,7 +82,7 @@
        (eq (action-of query) :purge)
        (length=1 (query-variables-of query))
        (persistent-class-p (xtype-of (first (query-variables-of query))))
-       (length=1 (tables-for (xtype-of (first (query-variables-of query)))))))
+       (length=1 (tables-for-delete (xtype-of (first (query-variables-of query)))))))
 
 (defun sql-delete-for-subselect (table subselect)
   (sql-delete-from-table
@@ -96,7 +96,8 @@
     :table ,(sql-table-reference-for table nil)
     :where ,where))
 
-(defun tables-for (class)
+(defun tables-for-delete (class)
+  "Returns the tables where instances of CLASS are stored."
   (delete nil
           (mapcar #'primary-table-of
                   (append

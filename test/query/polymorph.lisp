@@ -19,7 +19,6 @@
     (make-instance 'pt-1-test :attr1 1)
     (make-instance 'pt-2-test :attr1 "1")))
 
-
 (deftest test/query/select/polymorph-1 ()
   (test-query (:select-count 0 :record-count 0 :fixture polymorph-test-data)
     (select ((o pt-0-test))
