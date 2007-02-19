@@ -29,7 +29,7 @@
 
 (in-package :cl-perec-system)
 
-(defparameter *load-with-debug-p* nil)
+(defvar *load-with-debug-p* nil)
 
 (defclass local-cl-source-file (cl-source-file)
   ())

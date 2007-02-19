@@ -93,7 +93,8 @@
   (:documentation "Either returns the cached slot value or the unbound slot marker. This method does not interact with the database.")
 
   (:method ((class persistent-class) (object persistent-object) (slot persistent-effective-slot-definition))
-           (debug-only (assert (debug-persistent-p object)))
+           ;; TODO: review this
+           #+nil(debug-only (assert (debug-persistent-p object))) ;; when a new object is created, persistent-p is set only in initialize-instance :after
            (with-bypassing-database-access
              (if (not (slot-boundp-using-class class object slot))
                  +unbound-slot-value+
