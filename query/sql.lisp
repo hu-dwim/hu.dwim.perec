@@ -98,12 +98,17 @@
 
 (defun tables-for-delete (class)
   "Returns the tables where instances of CLASS are stored."
-  (delete nil
-          (mapcar #'primary-table-of
-                  (append
-                   (list class)
-                   (persistent-effective-super-classes-of class)
-                   (persistent-effective-sub-classes-of class)))))
+  (bind ((super-classes (persistent-effective-super-classes-of class))
+         (sub-classes (persistent-effective-sub-classes-of class))
+         (class-primary-table (primary-table-of class))
+         (super-primary-tables (mapcar 'primary-table-of super-classes))
+         (super-sub-primary-tables (mappend 'data-tables-of sub-classes)))
+    (delete nil
+            (delete-duplicates
+             (append
+              (list class-primary-table)
+              super-primary-tables
+              super-sub-primary-tables)))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Alias names

@@ -4,10 +4,12 @@
 
 (defun check-existing-records (&rest content)
   (iter (for (table-id expected-records) on content by 'cddr)
-        (with table-name = (format nil "_purge_~d_test" table-id))
-        (with column-name = (make-symbol (format nil "_int_attr_~d" table-id)))
-        (with records-in-database = (apply 'nconc (execute (sql `(select (,column-name) (,table-name))))))
-        (is (sort records-in-database #'<=) expected-records)))
+        (for table-name = (format nil "_purge_~d_test" table-id))
+        (for column-name = (make-symbol (format nil "_int_attr_~d" table-id)))
+        (for records-in-database = (sort (apply 'nconc (execute (sql `(select (,column-name) (,table-name)))))
+                                         #'<=))
+        (is (equal records-in-database expected-records)
+            "Table ~S: expected ~S, but found ~S" table-name expected-records records-in-database)))
 
 (defmacro run-purge-test (&body body)
   `(progn
@@ -72,8 +74,6 @@
     (purge-objects 'purge-5-test)
     (purge-objects 'purge-6-test)
     (purge-objects 'purge-7-test)
-    
-
     (make-instance 'purge-0-test :int-attr-0 0)
     (make-instance 'purge-0-test :int-attr-0 1)
     (make-instance 'purge-1-test :int-attr-1 0)
@@ -113,11 +113,11 @@
 (def-purge-query-test test/query/purge-delete-1-one 1 0
   '(0 (0 1)
     1 (1 2 3 4 5 6 7 8 9 10 11)
-    2 (1 2 3 4 5)
-    3 (1 2 3 4 5 6 7)
-    5 (1)
-    6 (1)
-    7 (1)))
+    2 (0 1 2 3 4 5)
+    3 (0 1 2 3 4 5 6 7)
+    5 (0 1)
+    6 (0 1)
+    7 (0 1)))
 
 (def-purge-query-test test/query/purge/delete-2-all 2 nil
   '(0 (0 1)
@@ -131,10 +131,10 @@
 (def-purge-query-test test/query/purge/delete-2-one 2 0
   `(0 (0 1)
     1 (0 1 3 4 5 6 7 8 9 10 11)
-    2 (1 3 5)
-    3 (0 1 3 5 6 7)
-    5 (1)
-    6 (1)
+    2 (1 2 3 4 5)
+    3 (0 1 2 3 4 5 6 7)
+    5 (0 1)
+    6 (0 1)
     7 (0 1)))
 
 (def-purge-query-test test/query/purge/delete-3-all 3 nil
@@ -149,11 +149,11 @@
 (def-purge-query-test test/query/purge/delete-3-one 3 0
   `(0 (0 1)
     1 (0 1 2 3 5 6 7 8 9 10 11)
-    2 (0 1 3 5)
-    3 (1 3 5 7)
-    5 (1)
-    6 (1)
-    7 (1)))
+    2 (0 1 2 3 4 5)
+    3 (1 2 3 4 5 6 7)
+    5 (0 1)
+    6 (0 1)
+    7 (0 1)))
 
 (def-purge-query-test test/query/purge/delete-4-all 4 nil
   `(0 (0 1)
@@ -162,15 +162,6 @@
     3 (0 1 6 7)
     5 nil
     6 nil
-    7 (0 1)))
-
-(def-purge-query-test test/query/purge/delete-4-one 4 0
-  `(0 (0 1)
-    1 (0 1 2 3 4 5 7 9 10 11)
-    2 (0 1 3 5)
-    3 (0 1 3 5 6 7)
-    5 (1)
-    6 (1)
     7 (0 1)))
 
 (def-purge-query-test test/query/purge/delete-5-all 5 nil
