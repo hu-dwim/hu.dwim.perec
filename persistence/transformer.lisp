@@ -253,4 +253,3 @@
 
 (defun object-writer (slot-value)
   (oid-values slot-value))
-

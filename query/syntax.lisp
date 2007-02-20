@@ -326,8 +326,10 @@ Be careful when using in different situations, because it modifies *readtable*."
         ((pattern-variable-p pattern)
          (match-variable pattern input bindings))
         ((eql pattern input) bindings)
-        ((single-pattern-p pattern)                 ; ***
-         (single-matcher pattern input bindings))   ; ***
+        ((segment-pattern-p pattern)                
+         (segment-matcher pattern input bindings))
+        ((single-pattern-p pattern)     ; ***
+         (single-matcher pattern input bindings)) ; ***
         ((object-pattern-p pattern)
          (object-matcher pattern input bindings))
         ((and (consp pattern) (consp input)) 
@@ -378,6 +380,10 @@ Be careful when using in different situations, because it modifies *readtable*."
 (setf (get '?or  'single-match) 'match-or)
 (setf (get '?and 'single-match) 'match-and)
 (setf (get '?not 'single-match) 'match-not)
+(setf (get '?*  'segment-match) 'segment-match)
+(setf (get '?+  'segment-match) 'segment-match+)
+(setf (get '??  'segment-match) 'segment-match?)
+(setf (get '?if 'segment-match) 'match-if)
 
 (defun single-pattern-p (pattern)
   "Is this a single-matching pattern?
@@ -394,6 +400,60 @@ Be careful when using in different situations, because it modifies *readtable*."
   "Get the single-match function for x, 
   if it is a symbol that has one."
   (when (symbolp x) (get x 'single-match)))
+
+(defun segment-matcher (pattern input bindings)
+  "Call the right function for this kind of segment pattern."
+  (funcall (segment-match-fn (first (first pattern)))
+           pattern input bindings))
+
+(defun segment-pattern-p (pattern)
+  "Is this a segment-matching pattern like ((?* var) . pat)?"
+  (and (consp pattern) (consp (first pattern)) 
+       (symbolp (first (first pattern)))
+       (segment-match-fn (first (first pattern)))))
+
+(defun segment-match-fn (x)
+  "Get the segment-match function for x, 
+  if it is a symbol that has one."
+  (when (symbolp x) (get x 'segment-match)))
+
+(defun segment-match (pattern input bindings &optional (start 0))
+  "Match the segment pattern ((?* var) . pat) against input."
+  (let ((var (second (first pattern)))
+        (pat (rest pattern)))
+    (if (null pat)
+        (match-variable var input bindings)
+        (let ((pos (first-match-pos (first pat) input start)))
+          (if (null pos)
+              failed-match
+              (let ((b2 (pattern-match
+                          pat (subseq input pos)
+                          (match-variable var (subseq input 0 pos)
+                                          bindings))))
+                ;; If this match failed, try another longer one
+                (if (eq b2 failed-match)
+                    (segment-match pattern input bindings (+ pos 1))
+                    b2)))))))
+
+(defun first-match-pos (pat1 input start)
+  "Find the first position that pat1 could possibly match input,
+  starting at position start.  If pat1 is non-constant, then just
+  return start."
+  (cond ((and (atom pat1) (not (pattern-variable-p pat1)))
+         (position pat1 input :start start :test #'equal))
+        ((<= start (length input)) start) ;*** fix, rjf 10/1/92 (was <)
+        (t nil)))
+
+(defun segment-match+ (pattern input bindings)
+  "Match one or more elements of input."
+  (segment-match pattern input bindings 1))
+
+(defun segment-match? (pattern input bindings)
+  "Match zero or one element of input."
+  (let ((var (second (first pattern)))
+        (pat (rest pattern)))
+    (or (pattern-match (cons var pat) input bindings)
+        (pattern-match pat input bindings))))
 
 (defun object-pattern-p (pattern)
   (typep pattern 'syntax-object))
@@ -415,6 +475,15 @@ Be careful when using in different situations, because it modifies *readtable*."
         failed-match
         (bind ((slots (mapcar 'slot-definition-name (class-slots (class-of pattern)))))
           (slot-matcher slots bindings)))))
+
+(defun match-if (pattern input bindings)
+  "Test an arbitrary expression involving variables.
+  The pattern looks like ((?if code) . rest)."
+  ;; *** fix, rjf 10/1/92 (used to eval binding values)
+  (and (progv (mapcar #'car bindings)
+           (mapcar #'cdr bindings)
+         (eval (second (first pattern))))
+       (pattern-match (rest pattern) input bindings)))
 
 (defun match-is (var-and-pred input bindings)
   "Succeed and bind var if the input satisfies pred,
