@@ -233,6 +233,38 @@ Be careful when using in different situations, because it modifies *readtable*."
 (defun parse-args-p (macro-name)
   (member macro-name '(and or)))
 
+;;;;
+;;;; Substitute
+;;;;
+(defgeneric substitute-syntax (syntax subs)
+  (:method ((syntax t) (subs null))
+           syntax)
+
+  (:method ((syntax t) (subs cons))
+           (aif (assoc syntax subs)
+                (cdr it)
+                syntax))
+
+  (:method ((literal literal-value) (subs cons)) ; FIXME
+           (bind ((value (substitute-syntax (value-of literal) subs)))
+             (if (eq value (value-of literal))
+                 literal
+                 value)))
+
+  (:method ((cons cons) (subs cons))
+           (rcons (substitute-syntax (car cons) subs)
+                  (substitute-syntax (cdr cons) subs)
+                  cons))
+
+  (:method ((unparsed unparsed-form) (subs cons))
+           (setf (form-of unparsed) (substitute-syntax (form-of unparsed) subs))
+           unparsed)
+
+  (:method ((compound compound-form) (subs cons))
+           (setf (operands-of compound) (substitute-syntax (operands-of compound) subs))
+           compound)
+
+  )
 
 ;;;;
 ;;;; Pattern matching

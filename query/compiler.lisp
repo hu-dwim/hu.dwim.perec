@@ -85,11 +85,16 @@ with the result of the naively compiled query.")
   (bind ((lexical-variables (lexical-variables-of query))
          (variables (get-query-variable-names query))
          (body (body-of query))
-         (body (mapcar 'query-macroexpand body)))
+         (body (mapcar 'query-macroexpand body))
+         (persistent-object-literals (collect-persistent-object-literals body))
+         (persistent-object-variables (mapcar #L(gensym (symbol-name (class-name (class-of !1))))
+                                              persistent-object-literals)))
     (with-unique-names (objects result-list)
       `(lambda ,lexical-variables
         (declare (ignorable ,@lexical-variables))
-        (let ((,objects (mapcar 'cache-object
+        ,@(mapcar #L(`(load-object ,!1)) persistent-object-literals)
+        (let (,@(mapcar #L(`(,!1 (load-object ,!2))) persistent-object-variables persistent-object-literals)
+              (,objects (mapcar 'cache-object
                                 (execute ,(sql-select-oids-for-entity 'persistent-object))))
               (,result-list nil))
           (flet ((assert! (cond) (when (not cond) (throw 'fail nil)))
@@ -100,7 +105,10 @@ with the result of the naively compiled query.")
             (bind-cartesian-product ((,@variables) ,objects)
               (catch 'fail
                 (progn
-                  ,@(tree-substitute 'assert! 'assert body)))))
+                  ,@(sublis
+                     (cons '(assert . assert!)
+                           (mapcar 'cons persistent-object-literals persistent-object-variables))
+                     body)))))
           ,(add-conversion-to-result-type
             query
             (add-unique-filter
@@ -167,27 +175,34 @@ wraps the compiled code with a runtime check of the result."))
          (asserts (asserts-of query))
          (variables (query-variables-of query))
          (purge-var (first (action-args-of query)))
-         (type (xtype-of purge-var)))
+         (type (xtype-of purge-var))
+         (substitutions (generate-persistent-object-substitutions query)))
     (if asserts
         ;; execute deletes from lisp filter
         (with-unique-names (row)
           `(lambda ,lexical-variables
             (declare (ignorable ,@lexical-variables))
-            (execute ,(sql-select-for-query query)
-             :visitor
-             (lambda (,row)
-               (let ,(emit-query-variable-bindings variables row #f)
-                 ,(emit-ignorable-variables-declaration variables)
-                 (when (and ,@asserts)
-                   (make-transient ,(first (action-args-of query)))))))))
+            (let (,@(emit-persistent-object-bindings substitutions))
+              ,(substitute-syntax
+                `(execute ,(sql-select-for-query query)
+                  :visitor
+                  (lambda (,row)
+                    (let ,(emit-query-variable-bindings variables row #f)
+                      ,(emit-ignorable-variables-declaration variables)
+                      (when (and ,@asserts)
+                        (make-transient ,(first (action-args-of query)))))))
+                substitutions))))
         ;; execute deletes from sql
         (bind (((values deletes cleanup) (sql-deletes-for-query query)))
           `(lambda ,lexical-variables
             (declare (ignorable ,@lexical-variables))
-            (invalidate-persistent-flag-of-cached-objects (find-persistent-class* ,type))
-            ,(if cleanup
-                 `(unwind-protect (mapc 'execute ,deletes) (execute ,cleanup))
-                 `(mapc 'execute ,deletes)))))))
+            (let (,@(emit-persistent-object-bindings substitutions))
+              (invalidate-persistent-flag-of-cached-objects (find-persistent-class* ,type))
+              ,(substitute-syntax
+                (if cleanup
+                    `(unwind-protect (mapc 'execute ,deletes) (execute ,cleanup))
+                    `(mapc 'execute ,deletes))
+                substitutions)))))))
 
 (defun emit-select (query)
   "Emits code that for the compiled query."
@@ -196,21 +211,25 @@ wraps the compiled code with a runtime check of the result."))
         `(lambda ,lexical-variables
           (declare (ignorable ,@lexical-variables))
           ,(empty-result query))
-        `(lambda ,lexical-variables
-          (declare (ignorable ,@lexical-variables))
-          ,(add-conversion-to-result-type
-            query
-            (add-unique-filter
-             query
-             (add-mapping-for-collects
-              query
-              (add-sorter-for-order-by
-               query
-               (add-filter-for-asserts
+        (bind ((substitutions (generate-persistent-object-substitutions query)))
+          `(lambda ,lexical-variables
+           (declare (ignorable ,@lexical-variables))
+           (let (,@(emit-persistent-object-bindings substitutions))
+             ,(substitute-syntax
+               (add-conversion-to-result-type
                 query
-                `(open-result-set
-                  ',(result-type-of query)
-                  ,(partial-eval (sql-select-for-query query) query)))))))))))
+                (add-unique-filter
+                 query
+                 (add-mapping-for-collects
+                  query
+                  (add-sorter-for-order-by
+                   query
+                   (add-filter-for-asserts
+                    query
+                    `(open-result-set
+                      ',(result-type-of query)
+                      ,(partial-eval (sql-select-for-query query) query)))))))
+               substitutions)))))))
 
 (defun empty-result (query)
   (ecase (result-type-of query)
@@ -303,6 +322,14 @@ wraps the compiled code with a runtime check of the result."))
 
 (defun emit-ignorable-variables-declaration (variables)
   `(declare (ignorable ,@(mapcar 'name-of variables))))
+
+(defun generate-persistent-object-substitutions (query)
+  (bind ((objects (collect-persistent-object-literals query))
+         (variables (mapcar #L(gensym (symbol-name (class-name (class-of !1)))) objects)))
+    (mapcar 'cons objects variables)))
+
+(defun emit-persistent-object-bindings (substitutions)
+  (mapcar #L(`(,(cdr !1) (load-object ,(car !1)))) substitutions))
 
 ;;;;---------------------------------------------------------------------------
 ;;;; Transformations
@@ -746,3 +773,35 @@ forms with joined variables.")
   (etypecase name-or-class
     (symbol (find-persistent-class name-or-class))
     (persistent-class name-or-class)))
+
+(defgeneric collect-persistent-object-literals (element &optional result)
+  (:method ((query simple-query) &optional result)
+           (collect-persistent-object-literals
+            (order-by-of query)
+            (collect-persistent-object-literals
+             (action-args-of query)
+             (collect-persistent-object-literals
+              (asserts-of query)
+              result))))
+
+  (:method ((element t) &optional result)
+           result)
+
+  (:method ((object persistent-object) &optional result)
+           (adjoin object result))
+
+  (:method ((literal literal-value) &optional result)
+           (collect-persistent-object-literals (value-of literal) result))
+
+  (:method ((cons cons) &optional result)
+           (collect-persistent-object-literals
+            (car cons)
+            (collect-persistent-object-literals
+             (cdr cons)
+             result)))
+
+  (:method ((form unparsed-form) &optional result)
+           (collect-persistent-object-literals (form-of form) result))
+
+  (:method ((form compound-form) &optional result)
+           (collect-persistent-object-literals (operands-of form) result)))

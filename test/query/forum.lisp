@@ -123,6 +123,16 @@
             (assert (eq (owner-of o) user))
             (collect o))))))
 
+(deftest test/query/select/with-literal-object ()
+  (with-fixture fill-data-1
+      (bind ((user (with-transaction (select-first-matching user-test))))
+        (test-query (:select-count nil :record-count 2)
+          (execute-query
+           (make-query
+            `(select ((o topic-test))
+              (assert (eq (owner-of o) (first-arg ,user o)))
+              (collect o))))))))
+
 (deftest test/query/select/polimorph-association-end ()
   (test-query (:select-count (+ 2 1) :record-count 2 :fixture fill-data-1)
     (let ((topic (select-first-matching topic-test)))

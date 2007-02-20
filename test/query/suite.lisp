@@ -46,3 +46,7 @@
              `(is (= (length result) ,record-count))
              `(is (not (null result))))))))
 
+(defun first-arg (arg-1 &rest rest-args)
+  (declare (ignore rest-args))
+  arg-1)
+
