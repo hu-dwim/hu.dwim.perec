@@ -6,7 +6,118 @@
 
 (in-package :cl-perec)
 
-;; TODO: use subtypep instead of (eql ...) checks
+;;;;;;;;
+;;; Type
+
+(defparameter *types* (make-hash-table))
+
+(defclass* type-object ()
+  ((args
+    :type list)
+   (body
+    :type list)))
+
+(defmacro deftype** (name args &body body)
+  `(progn
+    (deftype ,name ,args ,@body)
+    (setf (gethash ',name *types*) ,@body)))
+
+;;;;;;;;;;;;;
+;;; Normalize
+
+(defun normalize (type)
+  (iter (for simplified-type initially type then (simplify-boolean-form (normalize* (->dnf simplified-type))))
+        (for previous-type previous simplified-type)
+        (until (equal simplified-type previous-type))
+        (finally (return simplified-type))))
+
+(defun class-type-p (type)
+  (and (symbolp type)
+       (find-class type nil)))
+
+(defun normalize* (type)
+  (pattern-case type
+    (#t #t)
+    (#f #f)
+    ((and (?* ?x) (not ?a) (?* ?y) ?b (?* ?z)
+          (?if (not (subtypep ?a ?b))))
+     (normalize `(and ,@?x ,@?y ,?b ,@?z)))
+    ((and (?* ?x) ?a (?* ?y) (not ?b) (?* ?z)
+          (?if (not (subtypep ?b ?a))))
+     (normalize `(and ,@?x ,@?y ,?a ,@?z)))
+    ((and (?* ?x) ?a (?* ?y) (not ?a) (?* ?z))
+     #f)
+    ((and (?* ?x) (not ?a) (?* ?y) ?a (?* ?z))
+     #f)
+    ((or (?* ?x) ?a (?* ?y) (not ?a) (?* ?z))
+     #t)
+    ((or (?* ?x) (not ?a) (?* ?y) ?a (?* ?z))
+     #t)
+    ((?is ?type class-type-p)
+     type)
+    ((?is ?type symbolp)
+     (let ((body (gethash type *types*)))
+       (normalize body)))
+    (((?or or and not) . ?args)
+     (list* (first type) (mapcar #'normalize (cdr type))))
+    (?type
+     type)))
+
+(defun simplify-boolean-form (form)
+  "Makes the following simplifications on form:
+   (not false)                -> true
+   (not true)                 -> false
+   (not (not x))              -> x
+   (or)                       -> false
+   (or x)                     -> x
+   (or x... false y...)       -> (or x... y...)
+   (or x... true y...)        -> true
+   (or x... (or y...) z...)   -> (or x... y... z...)
+   (and)                      -> true
+   (and x)                    -> x
+   (and x... true y...)       -> (and x... y...)
+   (and x... false y...)      -> false
+   (and x... (and y...) z...) -> (and x... y... z...)
+
+where x, y and z are arbitrary objects and '...' means zero or more occurence,
+and false/true means a generalized boolean literal."
+  (pattern-case form
+    ((not ?arg)
+     (bind ((arg (simplify-boolean-form ?arg)))
+       (pattern-case arg
+         ((not ?arg) ?arg)
+         (#f #t)
+         (#t #f)
+         (?otherwise form))))
+    ((or . ?args)
+     (bind ((operands (remove #f (mapcar #'simplify-boolean-form ?args))))
+       (cond
+         ((null operands) #f)
+         ((length=1 operands) (first operands))
+         ((some #L(eq !1 #t) operands) #t)
+         (t `(or ,@operands)))))
+    ((and . ?args)
+     (bind ((operands (remove #t (mapcar #'simplify-boolean-form ?args))))
+       (cond
+         ((null operands) #t)
+         ((length=1 operands) (first operands))
+         ((some #L(eq !1 #f) operands) #f)
+         (t `(and ,@operands)))))
+    (?otherwise form)))
+
+#|
+;; TODO: example
+(deftype** t1 ()
+  '(member a b c))
+
+(deftype** unbound ()
+  '(member +unbound-slot-value+))
+
+#+nil
+(normalize '(and (not null)
+             (not unbound)
+             (or null unbound t1)))
+|#
 
 ;;;;;;;;;
 ;;; Types

@@ -89,6 +89,7 @@
              (:file "slot-value")
              (:file "persistent")
              (:file "serialization")
+             (:file "logic")
              (:file "type")
              (:file "transformer")
              (:file "set")
