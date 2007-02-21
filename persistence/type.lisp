@@ -288,7 +288,7 @@
 ;;;
 ;;; non float -> (type-error)
 
-(defmapping float (make-instance 'sql-float-type)
+(defmapping float (make-instance 'sql-float-type :bite-size 32)
   'object->number-reader
   (non-null-identity-writer type))
 
@@ -297,7 +297,10 @@
 ;;;
 ;;; non double -> (type-error)
 
-(defmapping double (make-instance 'sql-float-type)
+(deftype* double ()
+  'double-float)
+
+(defmapping double-float (make-instance 'sql-float-type :bit-size 64)
   'object->number-reader
   (non-null-identity-writer type))
 

@@ -82,6 +82,7 @@
            #:float-64
            #:float
            #:double
+           #:double-float
            #:number
            #:string
            #:text
