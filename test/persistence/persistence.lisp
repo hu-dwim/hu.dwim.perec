@@ -3,7 +3,7 @@
 (in-suite test/persistence)
 
 (defpclass* persistence-test ()
-  ((name :type (string 20))))
+  ((name :type (text 20))))
 
 (deftest test/persistence/make-instance/1 ()
   (with-transaction

@@ -5,11 +5,11 @@
 (defsuite* (test/query/select :in test/query))
 
 (defpclass* topic-test ()
-  ((title :type (string 50))))
+  ((title :type (text 50))))
 
 (defpclass* message-test ()
-  ((subject :type (string 50))
-   (content :type (string 50))))
+  ((subject :type (text 50))
+   (content :type (text 50))))
 
 (defpclass* ad-test (message-test)
   ())
@@ -19,11 +19,11 @@
    (spam-type :type (member phishing money-from-africa viagra))))
 
 (defpclass* owner-test ()
-  ((name :type (string 50)))
+  ((name :type (text 50)))
   (:abstract #t))
 
 (defpclass* user-test (owner-test)
-  ((password :type (string 50))
+  ((password :type (text 50))
    (birthday :type date)
    (age 32 :persistent #f :type integer-32)))
 

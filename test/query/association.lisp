@@ -1,11 +1,11 @@
 (in-package :cl-perec-test)
 
 (defpclass* person-test ()
-  ((first-name :type (string 50))
-   (last-name :type (string 50))))
+  ((first-name :type (text 50))
+   (last-name :type (text 50))))
 
 (defpclass* movie-test ()
-  ((title :type (string 50))))
+  ((title :type (text 50))))
 
 (defpclass* man-test (person-test)
   ())

@@ -3,7 +3,7 @@
 (defsuite* (test/persistence/inheritance :in test/persistence))
 
 (defpclass* inheritance-t1-test ()
-  ((slot :type (string 20) :cached #f)))
+  ((slot :type (text 20) :cached #f)))
 
 (defpclass* inheritance-t2-test (inheritance-t1-test)
   ((slot :cached #t)))

@@ -32,7 +32,7 @@
 
 (defpclass* order-by-test ()
   ((int-attr :type integer-32)
-   (str-attr :type (string 10))))
+   (str-attr :type (text 10))))
 
 (defixture fill-data-6
   (with-transaction
