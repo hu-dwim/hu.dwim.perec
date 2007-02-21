@@ -256,8 +256,11 @@
 (defun compute-reader (type)
   "Maps a type to a one parameter lambda which will be called with the received RDBMS values."
   (bind ((normalized-type (normalized-type-for type))
-         (unbound-subtype-p (unbound-subtype-p type))
-         (null-subtype-p (null-subtype-p type))
+         (mapped-type (mapped-type-for normalized-type))
+         (unbound-subtype-p (and (not (unbound-subtype-p mapped-type))
+                                 (unbound-subtype-p type)))
+         (null-subtype-p (and (not (null-subtype-p mapped-type))
+                              (null-subtype-p type)))
          (wrapper (cond ((and unbound-subtype-p
                               null-subtype-p)
                          'unbound-or-null-reader)
@@ -267,7 +270,7 @@
                          'null-reader)
                         (t
                          'identity))))
-    (funcall wrapper (compute-reader* (mapped-type-for normalized-type) normalized-type))))
+    (funcall wrapper (compute-reader* mapped-type normalized-type))))
 
 (defgeneric compute-reader* (type type-specification)
   (:method (type type-specification)
@@ -286,8 +289,11 @@
 (defun compute-writer (type)
   "Maps a type to a one parameter lambda which will be called with the slot value."
   (bind ((normalized-type (normalized-type-for type))
-         (unbound-subtype-p (unbound-subtype-p type))
-         (null-subtype-p (null-subtype-p type))
+         (mapped-type (mapped-type-for normalized-type))
+         (unbound-subtype-p (and (not (unbound-subtype-p mapped-type))
+                                 (unbound-subtype-p type)))
+         (null-subtype-p (and (not (null-subtype-p mapped-type))
+                              (null-subtype-p type)))
          (unbound-and-null-subtype-p (and unbound-subtype-p null-subtype-p))
          (wrapper (cond (unbound-and-null-subtype-p
                          'unbound-or-null-writer)
@@ -299,7 +305,7 @@
                          (lambda (function column-number)
                            (declare (ignore column-number))
                            function)))))
-    (funcall wrapper (compute-writer* (mapped-type-for normalized-type) normalized-type)
+    (funcall wrapper (compute-writer* mapped-type normalized-type)
              (+ (cond ((persistent-class-type-p normalized-type)
                        2)
                       ((primitive-type-p normalized-type)
@@ -403,26 +409,28 @@
            (or (some #'columns-of (persistent-effective-super-slot-precedence-list-of slot))
                (bind ((name (slot-definition-name slot))
                       (type (slot-definition-type slot))
+                      (normalized-type (normalized-type-of slot))
+                      (mapped-type (mapped-type-for normalized-type))
+                      (complex-type-p (and (null-subtype-p type)
+                                           (unbound-subtype-p type)
+                                           (not (null-subtype-p mapped-type))
+                                           (not (unbound-subtype-p mapped-type))))
                       (class (slot-definition-class slot)))
-                 (awhen (normalized-type-of slot)
-                   (cond ((set-type-p it)
+                 (when normalized-type
+                   (cond ((set-type-p normalized-type)
                           (make-columns-for-reference-slot (class-name class)
                                                            (strcat name "-for-" (class-name class))))
-                         ((persistent-class-type-p it)
+                         ((persistent-class-type-p normalized-type)
                           (append
-                           (when (and (null-subtype-p type)
-                                      (unbound-subtype-p type)
-                                      (not (subtypep type 'symbol)))
+                           (when complex-type-p
                              (list
                               (make-instance 'column
                                              :name (rdbms-name-for (concatenate-symbol name "-bound"))
                                              :type (make-instance 'sql-boolean-type))))
                            (make-columns-for-reference-slot (class-name class) name)))
-                         ((primitive-type-p it)
+                         ((primitive-type-p normalized-type)
                           (append
-                           (when (and (null-subtype-p type)
-                                      (unbound-subtype-p type)
-                                      (not (subtypep type 'symbol)))
+                           (when complex-type-p
                              (list
                               (make-instance 'column
                                              :name (rdbms-name-for (concatenate-symbol name "-bound"))
@@ -430,7 +438,7 @@
                            (list
                             (make-instance 'column
                                            :name (rdbms-name-for name)
-                                           :type (compute-column-type it)))))
+                                           :type (compute-column-type type)))))
                          (t
                           (error "Unknown type ~A in slot ~A" type slot))))))))
 
@@ -452,10 +460,12 @@
        (eq 'set (first type))))
 
 (defun unbound-subtype-p (type)
-  (subtypep 'unbound type))
+  (and (not (eq 'member type))
+       (subtypep 'unbound type)))
 
 (defun null-subtype-p (type)
-  (subtypep 'null type))
+  (and (not (eq 'member type))
+       (subtypep 'null type)))
 
 ;;;;;;;;;;;
 ;;; Utility

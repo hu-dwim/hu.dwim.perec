@@ -87,8 +87,12 @@
         (prog1-bind effective-slot-definition
             (apply #'make-instance effective-slot-class :direct-slots direct-slot-definitions initargs)
           (bind ((type (slot-definition-type effective-slot-definition))
-                 (unbound-subtype-p (unbound-subtype-p type))
-                 (null-subtype-p (null-subtype-p type))
+                 (normalized-type (normalized-type-for type))
+                 (mapped-type (mapped-type-for normalized-type))
+                 (unbound-subtype-p (and (not (unbound-subtype-p mapped-type))
+                                         (unbound-subtype-p type)))
+                 (null-subtype-p (and (not (null-subtype-p mapped-type))
+                                      (null-subtype-p type)))
                  (initfunction (slot-definition-initfunction effective-slot-definition)))
             (when (and (or null-subtype-p
                            (set-type-p type))
