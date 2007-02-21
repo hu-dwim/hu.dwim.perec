@@ -71,7 +71,12 @@
   :serial t
   :components
   ((:file "package")
-   (:file "duplicates")
+   (:module :util
+            :serial t
+            :components
+            ((:file "duplicates")
+             (:file "matcher")
+             (:file "logic")))
    (:module :persistence
             :serial t
             :components
@@ -89,7 +94,6 @@
              (:file "slot-value")
              (:file "persistent")
              (:file "serialization")
-             (:file "logic")
              (:file "type")
              (:file "transformer")
              (:file "set")
