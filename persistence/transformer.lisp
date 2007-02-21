@@ -125,7 +125,9 @@
   (symbol-from-canonical-name (first rdbms-values)))
 
 (defun symbol->string-writer (slot-value)
-  (list (canonical-symbol-name slot-value)))
+  (if (eq slot-value +unbound-slot-value+)
+      (error 'type-error :datum slot-value :expected-type 'symbol)
+      (list (canonical-symbol-name slot-value))))
 
 ;;;;;;;;
 ;;; List

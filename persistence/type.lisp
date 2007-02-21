@@ -365,7 +365,8 @@
         (satisfies maximum-symbol-name-length-p)))
 
 (defmapping symbol* (if (consp type-specification)
-                        (make-instance 'sql-character-varying-type :size (second type-specification))
+                        (make-instance 'sql-character-varying-type :size (second (find 'symbol* type-specification
+                                                                                       :key #L(when (listp !1) (first !1)))))
                         (make-instance 'sql-character-large-object-type))
   'string->symbol-reader
   'symbol->string-writer)
