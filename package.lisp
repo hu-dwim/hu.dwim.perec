@@ -112,6 +112,9 @@
            #:make-persistent
            #:make-transient
            #:persistent-p
+           #:created-p
+           #:modified-p
+           #:deleted-p
            #:object-in-transaction-p
            #:transaction-of
            #:p-eq
