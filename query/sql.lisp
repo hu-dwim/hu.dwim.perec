@@ -148,17 +148,10 @@
         (sql-oid-column-references-for variable))))
 
 (defun prefetched-properties-for (variable)
-  (unless (slot-boundp variable 'prefetched-properties)
-    (bind ((type (xtype-of variable)))
-      (setf (prefetched-properties-of variable)
-            (when (persistent-class-p type)
-              (collect-if #L(prefetched-property-p type !1)
-                          (persistent-effective-slots-of type))))))
-  (prefetched-properties-of variable))
-
-(defun prefetched-property-p (class slot)
-  (and (prefetched-p slot)
-       (eq (table-of slot) (primary-table-of class))))
+  (bind ((type (xtype-of variable)))
+    (when (persistent-class-p type)
+      (collect-if #L(eq (table-of !1) (primary-table-of type))
+                  (prefetched-slots-of type)))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Table references

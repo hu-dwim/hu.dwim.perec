@@ -109,8 +109,7 @@ Be careful when using in different situations, because it modifies *readtable*."
   ())
 
 (define-syntax-node query-variable (variable)
-  ((xtype +persistent-object-class+)
-   (prefetched-properties)))
+  ((xtype +persistent-object-class+)))
 
 (define-syntax-node joined-variable (query-variable)
   ((object :documentation "Object which owns the association-end.")
