@@ -65,6 +65,7 @@
              (defpclass* type-test ()
                ((,name :type ,type))))))
         (flet ((make-object ()
+                 (execute "delete from _type_test")
                  (setf object
                        (apply #'make-instance
                               'type-test
@@ -73,6 +74,13 @@
                                        (first (slot-definition-initargs (prc::find-slot (find-class 'type-test) ',name)))
                                        ,value)))))
                (test-object (object)
+                 ,(when (and test-value-p test-value)
+                        `(is (= 0 (caar
+                                   (execute (strcat "select count(*) from _type_test where "
+                                                    (rdbms::name-of
+                                                     (last1
+                                                      (prc::columns-of (prc::find-slot (find-class 'type-test) ',name))))
+                                                    " is null"))))))
                  (is ,(if test-value-p
                           `(object-equal-p ,value (slot-value object ',name))
                           `(not (slot-boundp object ',name))))))
