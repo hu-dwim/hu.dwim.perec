@@ -37,7 +37,7 @@
   (make-instance 'sql-integer-type :bit-size +oid-id-bit-size+)
   "The RDBMS type for the oid's id slot.")
 
-(defconstant +oid-class-name-maximum-length+ 64
+(defconstant +oid-class-name-maximum-length+ 128
   "Maximum length of class names.")
 
 (defvar +oid-class-name-sql-type+
