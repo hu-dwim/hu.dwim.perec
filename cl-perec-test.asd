@@ -56,6 +56,7 @@
                        (:file "transformer")
                        (:file "transaction")
                        (:file "persistence")
+                       (:file "canonical")
                        (:file "type")
                        (:file "inheritance")
                        (:file "reference")

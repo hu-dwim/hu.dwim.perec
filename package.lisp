@@ -50,6 +50,7 @@
            #:defpclass*
            #:defassociation
            #:defassociation*
+           #:deftype*
            #:abstract-p
            #:cached-p
            #:prefetched-p
