@@ -87,12 +87,12 @@
         (prog1-bind effective-slot-definition
             (apply #'make-instance effective-slot-class :direct-slots direct-slot-definitions initargs)
           (bind ((type (slot-definition-type effective-slot-definition))
-                 (or-unbound-type-p (or-unbound-type-p type))
-                 (or-null-type-p (or-null-type-p type))
+                 (unbound-subtype-p (unbound-subtype-p type))
+                 (null-subtype-p (null-subtype-p type))
                  (initfunction (slot-definition-initfunction effective-slot-definition)))
-            (when (and (or or-null-type-p
+            (when (and (or null-subtype-p
                            (set-type-p type))
-                       (not or-unbound-type-p)
+                       (not unbound-subtype-p)
                        (not initfunction))
               (setf (slot-definition-initfunction effective-slot-definition)
                     (constantly nil))))))
@@ -141,7 +141,7 @@
   (invalidate-computed-slot class 'persistent-direct-sub-classes)
   (invalidate-computed-slot class 'persistent-effective-sub-classes)
   (mapc #L(ensure-slot-reader* class !1)
-        (collect-if #L(set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type !1)))
+        (collect-if #L(set-type-p (normalized-type-of !1))
                     (persistent-effective-slots-of class))))
 
 (defmethod compute-slots :after ((class persistent-class))
@@ -205,11 +205,11 @@
     (setf (find-persistent-class name) class)
     (invalidate-computed-slot class 'persistent-direct-slots)
     ;; update type specific class dependencies
-    (mapc #L(bind ((type (remove-null-and-unbound-if-or-type (slot-definition-type !1))))
+    (mapc #L(bind ((type (normalized-type-for (slot-definition-type !1))))
               (when (set-type-p type)
                 (pushnew class (depends-on-of (find-class (second type))))
                 (pushnew (find-class (second type)) (depends-on-me-of class))))
-          (class-direct-slots class))
+          (persistent-direct-slots-of class))
     (mapc #L(bind ((association (association-of !1))
                    (association-end-position
                     (position (slot-definition-name !1) (association-end-definitions-of association)

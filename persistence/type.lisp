@@ -22,6 +22,9 @@
     (setf (gethash ',name *types*) (make-instance 'type-object :args ',args :body ',body))
     (deftype ,name ,args ,@body)))
 
+(defun type-specifier-p (type)
+  (gethash (first (ensure-list type)) *types*))
+
 (defun substitute-type-arguments (type args)
   (let ((type-object (gethash type *types*)))
     (if type-object
@@ -39,6 +42,11 @@
         (until (equal simplified-type previous-type))
         (finally (return simplified-type))))
 
+(defvar *canonical-types* nil)
+
+(defun canonical-type-p (type)
+  (member (first (ensure-list type)) *canonical-types*))
+
 (defun class-type-p (type)
   (and (symbolp type)
        (find-class type nil)))
@@ -52,6 +60,10 @@
   (pattern-case type
     (t t)
     (nil nil)
+    (boolean 'boolean)
+    (double 'double)
+    ((?is ?type canonical-type-p)
+     type)
     ((?is ?type class-type-p)
      type)
     ((?or (and (?* ?x) ?a (?* ?y) (not ?a) (?* ?z))
@@ -60,8 +72,12 @@
     ((?or (or (?* ?x) ?a (?* ?y) (not ?a) (?* ?z))
           (or (?* ?x) (not ?a) (?* ?y) ?a (?* ?z)))
      t)
-    ((?is ?type symbolp)
-     (canonical-type-for (substitute-type-arguments type nil)))
+    ((and (?* ?x) ?a (?* ?x) ?b (?* ?z)
+          (?if (and (persistent-class-type-p ?a)
+                    (persistent-class-type-p ?b)
+                    (not (intersection (list* (find-class ?a) (persistent-effective-sub-classes-of (find-class ?a)))
+                                       (list* (find-class ?b) (persistent-effective-sub-classes-of (find-class ?b))))))))
+     nil)
     ((?or (and (?* ?x) ?a (?* ?y) (not ?b) (?* ?z)
                (?if (disjunct-type-p ?a ?b)))
           (and (?* ?x) (not ?b) (?* ?y) ?a (?* ?z)
@@ -69,26 +85,65 @@
      (canonical-type-for `(and ,@?x ,@?y ,?a ,@?z)))
     (((?or or and not) . ?args)
      (list* (first type) (mapcar #'canonical-type-for (cdr type))))
+    ((?is ?type symbolp)
+     (canonical-type-for (substitute-type-arguments type nil)))
+    ((?is ?type type-specifier-p)
+     (canonical-type-for (substitute-type-arguments (first type) (cdr type))))
     (?type
      type)))
+
+(defparameter *mapped-type-precedence-list*
+  '(nil
+    unbound
+    null
+    boolean
+    integer-16
+    integer-32
+    integer-64
+    integer
+    float-32
+    float-64
+    float
+    double
+    number
+    text
+    duration
+    string
+    date
+    time
+    timestamp
+    form
+    member
+    symbol*
+    symbol
+    serialized
+    t))
 
 ;;;;;;;;;
 ;;; Types
 
-#+nil
-(defmacro deftype* (name sql-type reader writer)
+(defmacro defmapping (name sql-type reader writer)
   `(progn
-    (defmethod compute-column-type ((type (eql ',name)) &optional type-specification)
+    (defmethod compute-column-type* ((type (eql ',name)) type-specification)
       (declare (ignorable type-specification))
       ,sql-type)
 
-    (defmethod compute-reader ((type (eql ',name)) &optional type-specification)
+    (defmethod compute-reader* ((type (eql ',name)) type-specification)
       (declare (ignorable type-specification))
       ,reader)
 
-    (defmethod compute-writer ((type (eql ',name)) &optional type-specification)
+    (defmethod compute-writer* ((type (eql ',name)) type-specification)
       (declare (ignorable type-specification))
       ,writer)))
+
+;;;;;;;
+;;; Nil
+;;;
+;;; other -> (type-error)
+
+(defmapping nil nil
+  #L(error 'type-error :datum (first !1) :expected-type nil)
+  #L(error 'type-error :datum !1 :expected-type nil))
 
 ;;;;;;;;;;;
 ;;; Unbound
@@ -100,8 +155,7 @@
 (deftype* unbound ()
   `(member ,+unbound-slot-value+))
 
-#+nil
-(deftype* unbound (make-instance 'sql-boolean-type)
+(defmapping unbound (make-instance 'sql-boolean-type)
   (unbound-reader #L(error 'type-error :datum (first !1) :expected-type type))
   (unbound-writer #L(error 'type-error :datum !1 :expected-type type)))
 
@@ -111,20 +165,9 @@
 ;;; nil -> NULL
 ;;; t -> (type-error)
 
-#+nil
-(deftype* null (make-instance 'sql-boolean-type)
+(defmapping null (make-instance 'sql-boolean-type)
   (null-reader #L(error 'type-error :datum (first !1) :expected-type type))
   (null-writer #L(error 'type-error :datum !1 :expected-type type)))
-
-;;;;;;;
-;;; Nil
-;;;
-;;; other -> (type-error)
-
-#+nil
-(deftype* nil nil
-  #L(error 'type-error :datum (first !1) :expected-type nil)
-  #L(error 'type-error :datum !1 :expected-type nil))
 
 ;;;;;
 ;;; t
@@ -133,10 +176,9 @@
 ;;; nil -> true, NULL
 ;;; other -> true, (base64)
 
-#+nil
-(deftype* t (make-instance 'sql-character-large-object-type)
-  (unbound-or-null-reader 'base64->object-reader)
-  (unbound-or-null-writer 'object->base64-writer 2))
+(defmapping t (make-instance 'sql-character-large-object-type)
+  'base64->object-reader
+  'object->base64-writer)
 
 ;;;;;;;;;;;;;;
 ;;; Serialized
@@ -145,15 +187,19 @@
 ;;; nil -> (type-error)
 ;;; other -> (base64)
 
+(defun maximum-serialized-size-p (serialized)
+  (declare (ignore serialized))
+  t)
+
 (deftype* serialized (&optional size)
   (declare (ignore size))
   '(and (not unbound)
-        (not null)))
+        (not null)
+        (satisfies maximum-serialized-size-p)))
 
-#+nil
-(deftype* serialized (if (consp type-specification)
-                         (make-instance 'sql-character-varying-type :size (second type-specification))
-                         (make-instance 'sql-character-large-object-type))
+(defmapping serialized (if (consp type-specification)
+                           (make-instance 'sql-character-varying-type :size (second type-specification))
+                           (make-instance 'sql-character-large-object-type))
   'base64->object-reader
   'object->base64-writer)
 
@@ -164,10 +210,9 @@
 ;;; t -> true
 ;;; other -> (type-error)
 
-#+nil
-(deftype* boolean (make-instance 'sql-boolean-type)
+(defmapping boolean (make-instance 'sql-boolean-type)
   'object->boolean-reader
-  'identity-writer)
+  'boolean->string-writer)
 
 ;;;;;;;;;;;;;;
 ;;; Integer-16
@@ -177,8 +222,7 @@
 (deftype* integer-16 ()
   `(integer ,(- (expt 2 15)) ,(1- (expt 2 15))))
 
-#+nil
-(deftype* integer-16 (make-instance 'sql-integer-type :bit-size 16)
+(defmapping integer-16 (make-instance 'sql-integer-type :bit-size 16)
   'object->integer-reader
   (non-null-identity-writer type))
 
@@ -190,8 +234,7 @@
 (deftype* integer-32 ()
   `(integer ,(- (expt 2 31)) ,(1- (expt 2 31))))
 
-#+nil
-(deftype* integer-32 (make-instance 'sql-integer-type :bit-size 32)
+(defmapping integer-32 (make-instance 'sql-integer-type :bit-size 32)
   'object->integer-reader
   (non-null-identity-writer type))
 
@@ -203,8 +246,7 @@
 (deftype* integer-64 ()
   `(integer ,(- (expt 2 63)) ,(1- (expt 2 63))))
 
-#+nil
-(deftype* integer-64 (make-instance 'sql-integer-type :bit-size 64)
+(defmapping integer-64 (make-instance 'sql-integer-type :bit-size 64)
   'object->integer-reader
   (non-null-identity-writer type))
 
@@ -213,8 +255,7 @@
 ;;;
 ;;; non integer -> (type-error)
 
-#+nil
-(deftype* integer (make-instance 'sql-integer-type)
+(defmapping integer (make-instance 'sql-integer-type)
   'object->integer-reader
   (non-null-identity-writer type))
 
@@ -226,8 +267,7 @@
 (deftype* float-32 ()
   `float)
 
-#+nil
-(deftype* float-32 (make-instance 'sql-float-type :bit-size 32)
+(defmapping float-32 (make-instance 'sql-float-type :bit-size 32)
   'object->number-reader
   (non-null-identity-writer type))
 
@@ -239,8 +279,7 @@
 (deftype* float-64 ()
   `float)
 
-#+nil
-(deftype* float-64 (make-instance 'sql-float-type :bit-size 64)
+(defmapping float-64 (make-instance 'sql-float-type :bit-size 64)
   'object->number-reader
   (non-null-identity-writer type))
 
@@ -249,8 +288,7 @@
 ;;;
 ;;; non float -> (type-error)
 
-#+nil
-(deftype* float (make-instance 'sql-float-type)
+(defmapping float (make-instance 'sql-float-type)
   'object->number-reader
   (non-null-identity-writer type))
 
@@ -259,8 +297,7 @@
 ;;;
 ;;; non double -> (type-error)
 
-#+nil
-(deftype* double (make-instance 'sql-float-type)
+(defmapping double (make-instance 'sql-float-type)
   'object->number-reader
   (non-null-identity-writer type))
 
@@ -269,8 +306,7 @@
 ;;;
 ;;; non number -> (type-error)
 
-#+nil
-(deftype* number (make-instance 'sql-numeric-type)
+(defmapping number (make-instance 'sql-numeric-type)
   'object->number-reader
   (non-null-identity-writer type))
 
@@ -279,8 +315,28 @@
 ;;;
 ;;; non string -> (type-error)
 
-#+nil
-(deftype* string (if (consp type-specification)
+(defmapping string (if (consp type-specification)
+                       (make-instance 'sql-character-type :size (second type-specification))
+                       (make-instance 'sql-character-large-object-type))
+  (non-null-identity-reader type)
+  (non-null-identity-writer type))
+
+;;;;;;;;
+;;; Text
+;;;
+;;; non string -> (type-error)
+
+;; TODO:
+(defun maximum-length-p (string)
+  (declare (ignore string))
+  t)
+
+(deftype* text (&optional maximum-length)
+  (declare (ignore maximum-length))
+  '(and string
+        (satisfies maximum-length-p)))
+
+(defmapping text (if (consp type-specification)
                      (make-instance 'sql-character-varying-type :size (second type-specification))
                      (make-instance 'sql-character-large-object-type))
   (non-null-identity-reader type)
@@ -291,19 +347,23 @@
 ;;;
 ;;; non symbol -> (type-error)
 
-#+nil
-(deftype* symbol (make-instance 'sql-character-large-object-type)
+(defmapping symbol (make-instance 'sql-character-large-object-type)
   'string->symbol-reader
   'symbol->string-writer)
 
-(deftype* symbol* (&optional size)
-  (declare (ignore size))
-  'symbol)
+;; TODO:
+(defun maximum-symbol-name-length-p (symbol)
+  (declare (ignore symbol))
+  t)
 
-#+nil
-(deftype* symbol* (if (consp type-specification)
-                      (make-instance 'sql-character-varying-type :size (second type-specification))
-                      (make-instance 'sql-character-large-object-type))
+(deftype* symbol* (&optional maximum-length)
+  (declare (ignore maximum-length))
+  '(and symbol
+        (satisfies maximum-symbol-name-length-p)))
+
+(defmapping symbol* (if (consp type-specification)
+                        (make-instance 'sql-character-varying-type :size (second type-specification))
+                        (make-instance 'sql-character-large-object-type))
   'string->symbol-reader
   'symbol->string-writer)
 
@@ -312,11 +372,16 @@
 ;;;
 ;;; non date -> (type-error)
 
-(deftype* date ()
-  'local-time)
+;; TODO:
+(defun date-p (date)
+  (declare (ignore date))
+  t)
 
-#+nil
-(deftype* date (make-instance 'sql-date-type)
+(deftype* date ()
+  '(and local-time
+        (satisfies date-p)))
+
+(defmapping date (make-instance 'sql-date-type)
   'integer->local-time-reader
   'local-time->string-writer)
 
@@ -325,11 +390,16 @@
 ;;;
 ;;; non date -> (type-error)
 
-(deftype* time ()
-  'local-time)
+;; TODO:
+(defun time-p (time)
+  (declare (ignore time))
+  t)
 
-#+nil
-(deftype* time (make-instance 'sql-time-type)
+(deftype* time ()
+  '(and local-time
+        (satisfies time-p)))
+
+(defmapping time (make-instance 'sql-time-type)
   'string->local-time-reader
   'local-time->string-writer)
 
@@ -341,8 +411,7 @@
 (deftype* timestamp ()
   'local-time)
 
-#+nil
-(deftype* timestamp (make-instance 'sql-timestamp-type)
+(defmapping timestamp (make-instance 'sql-timestamp-type)
   'integer->local-time-reader
   'local-time->string-writer)
 
@@ -351,11 +420,16 @@
 ;;;
 ;;; non string -> (type-error)
 
-(deftype* duration ()
-  'string)
+;; TODO:
+(defun duration-p (duration)
+  (declare (ignore duration))
+  t)
 
-#+nil
-(deftype* duration (make-instance 'sql-character-varying-type :size 32)
+(deftype* duration ()
+  '(and string
+        (satisfies duration-p)))
+
+(defmapping duration (make-instance 'sql-character-varying-type :size 32)
   (non-null-identity-reader type)
   (non-null-identity-writer type))
 
@@ -366,10 +440,10 @@
 
 (deftype* form (&optional size)
   (declare (ignore size))
-  'list)
+  '(and list
+        (satisfies maximum-serialized-size-p)))
 
-#+nil
-(deftype* form (make-instance 'sql-character-varying-type)
+(defmapping form (make-instance 'sql-character-varying-type)
   'string->list-reader
   'list->string-writer)
 
@@ -378,13 +452,12 @@
 ;;;
 ;;; not found in members -> (type-error)
 
-#+nil
-(deftype* member (make-instance 'sql-integer-type :bit-size 16)
+(defmapping member (make-instance 'sql-integer-type :bit-size 16)
   (integer->member-reader type-specification)
   (member->integer-writer type-specification))
 
 ;;;;;;
 ;;; Or
 ;;;
-;;; May combine null and unbound with a primitive type and may generate an extra column
+;;; May be used to combine null and unbound with a primitive type and may generate an extra column.
 ;;; See compute-reader and compute-writer generic function definitions

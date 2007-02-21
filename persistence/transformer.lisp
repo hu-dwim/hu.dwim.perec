@@ -169,8 +169,8 @@
 
 (defun boolean->string-writer (slot-value)
   (if slot-value
-      (list "t")
-      (list "f")))
+      (list "TRUE")
+      (list "FALSE")))
 
 (defun object->boolean-reader (rdbms-values)
   (bind ((value (first rdbms-values)))

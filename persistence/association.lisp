@@ -38,7 +38,7 @@
     (compute-as nil)
     :type persistent-association)
    (associated-class
-    (compute-as (awhen (remove-null-and-unbound-if-or-type (slot-definition-type -self-))
+    (compute-as (awhen (normalized-type-for (slot-definition-type -self-))
                   (if (set-type-p it)
                       (find-class (second it))
                       (find-class it))))

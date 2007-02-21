@@ -84,6 +84,7 @@
            #:double
            #:number
            #:string
+           #:text
            #:symbol
            #:symbol*
            #:date

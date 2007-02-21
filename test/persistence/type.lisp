@@ -157,8 +157,13 @@
 
 (def-type-test string/1 string "")
 (def-type-test string/2 string (random-string 10000))
-(def-type-test string/3 (string 20) "")
-(def-type-test string/4 (string 20) "something")
+(def-type-test string/3 (string 20) "                    ")
+(def-type-test string/4 (string 20) "something           ")
+
+(def-type-test text/1 text "")
+(def-type-test text/2 text (random-string 10000))
+(def-type-test text/3 (text 20) "")
+(def-type-test text/4 (text 20) "something")
 
 (def-type-test symbol/1 symbol 'something)
 (def-type-test symbol/2 symbol 'cl-perec-test::something)

@@ -108,7 +108,10 @@
 
 (defcclass* persistent-effective-slot-definition
     (persistent-slot-definition standard-effective-slot-definition)
-  ((direct-slots
+  ((normalized-type
+    (compute-as (normalized-type-for (slot-definition-type -self-)))
+    :type list)
+   (direct-slots
     :type (list persistent-direct-slot-definition)
     :documentation "The list of direct slots definitions used to compute this effective slot during the class finalization procedure.")
    (primary-class
@@ -124,7 +127,7 @@
     :type (list sql-column)
     :documentation "The list of RDBMS columns which will be queried or updated to get and set the data of this slot.")
    (id-column
-    (compute-as (bind ((type (remove-null-and-unbound-if-or-type (slot-definition-type -self-))))
+    (compute-as (bind ((type (normalized-type-of -self-)))
                   (if (or (persistent-class-type-p type)
                           (set-type-p type))
                       (first (columns-of -self-)))))
@@ -151,7 +154,7 @@
     :documentation "The prefetched option is inherited among direct slots according to the class precedence list. If no direct slot has prefetched specification then the default behaviour is to prefetch data tabe slot.")
    (cached
     (compute-as (or (prefetched-p -self-)
-                    (persistent-class-type-p (remove-null-and-unbound-if-or-type (slot-definition-type -self-)))))
+                    (persistent-class-type-p (normalized-type-of -self-))))
     :documentation "The cached option is inherited among direct slots according to the class precedence list. If no direct slot has cached specification then the default behaviour is to cache prefetched slots and single object references."))
   (:metaclass persistent-slot-definition-class)
   (:documentation "Class for persistent effective slot definitions."))
@@ -215,94 +218,111 @@
                     (iter (for sub-class in (persistent-direct-sub-classes-of class))
                           (appending (persistent-effective-sub-classes-of sub-class)))))))
 
-(defgeneric compute-column-type (type &optional type-specification)
-  (:documentation "Returns the RDBMS type for the given type.")
+(defvar *canonical-types*)
 
-  (:method (type &optional type-specification)
+(defvar *mapped-type-precedence-list*)
+
+(defun mapped-type-for (type)
+  (if (persistent-class-type-p type)
+      type
+      (find-if #L(cond ((or (eq type !1)
+                            (and (listp type)
+                                 (eq (first type) !1)))
+                        #t)
+                       ((eq 'member !1)
+                        (and (listp type)
+                             (eq 'member (first type))))
+                       (t
+                        (subtypep type !1)))
+               *mapped-type-precedence-list*)))
+
+(defun normalized-type-for (type)
+  (let ((*canonical-types* *mapped-type-precedence-list*))
+    (canonical-type-for
+     `(and (not null)
+           (not unbound)
+           ,type))))
+
+(defun compute-column-type (type)
+  "Returns the RDBMS type for the given type."
+  (let ((normalized-type (normalized-type-for type)))
+    (compute-column-type* (mapped-type-for normalized-type) normalized-type)))
+
+(defgeneric compute-column-type* (type type-specification)
+  (:method (type type-specification)
            (declare (ignore type-specification))
-           (error "Cannot map type ~A to RDBMS type" type))
+           (error "Cannot map type ~A to RDBMS type" type)))
 
-  (:method ((type list) &optional type-specification)
-           (declare (ignore type-specification))
-           (compute-column-type (first type) type)))
+(defun compute-reader (type)
+  "Maps a type to a one parameter lambda which will be called with the received RDBMS values."
+  (bind ((normalized-type (normalized-type-for type))
+         (unbound-subtype-p (unbound-subtype-p type))
+         (null-subtype-p (null-subtype-p type))
+         (wrapper (cond ((and unbound-subtype-p
+                              null-subtype-p)
+                         'unbound-or-null-reader)
+                        (unbound-subtype-p
+                         'unbound-reader)
+                        (null-subtype-p
+                         'null-reader)
+                        (t
+                         'identity))))
+    (funcall wrapper (compute-reader* (mapped-type-for normalized-type) normalized-type))))
 
-(defgeneric compute-reader (type &optional type-specification)
-  (:documentation "Maps a type to a one parameter lambda which will be called with the received RDBMS values.")
-
-  (:method (type &optional type-specification)
+(defgeneric compute-reader* (type type-specification)
+  (:method (type type-specification)
            (declare (ignore type-specification))
            (error "Cannot map type ~A to a reader" type))
 
-  (:method ((type list) &optional type-specification)
+  (:method ((type symbol) type-specification)
            (declare (ignore type-specification))
-           (compute-reader (first type) type))
-
-  (:method ((type symbol) &optional type-specification)
-           (declare (ignore type-specification))
-           (if (subtypep type 'persistent-object)
-               'object-reader
+           (if (persistent-class-type-p type)'object-reader
                (call-next-method)))
 
-  (:method ((type (eql 'or)) &optional type-specification)
-           (bind ((or-unbound-type-p (or-unbound-type-p type-specification))
-                  (or-null-type-p (or-null-type-p type-specification))
-                  (wrapper (cond ((and or-unbound-type-p
-                                       or-null-type-p)
-                                  'unbound-or-null-reader)
-                                 (or-unbound-type-p
-                                  'unbound-reader)
-                                 (or-null-type-p
-                                  'null-reader)
-                                 (t
-                                  'identity))))
-             (funcall wrapper (compute-reader (remove-null-and-unbound-if-or-type type-specification))))))
+  (:method ((type persistent-class) type-specification)
+           (declare (ignore type-specification))
+           'object-reader))
 
-(defgeneric compute-writer (type &optional type-specification)
-  (:documentation "Maps a type to a one parameter lambda which will be called with the slot value.")
+(defun compute-writer (type)
+  "Maps a type to a one parameter lambda which will be called with the slot value."
+  (bind ((normalized-type (normalized-type-for type))
+         (unbound-subtype-p (unbound-subtype-p type))
+         (null-subtype-p (null-subtype-p type))
+         (unbound-and-null-subtype-p (and unbound-subtype-p null-subtype-p))
+         (wrapper (cond (unbound-and-null-subtype-p
+                         'unbound-or-null-writer)
+                        (unbound-subtype-p
+                         'unbound-writer)
+                        (null-subtype-p
+                         'null-writer)
+                        (t
+                         (lambda (function column-number)
+                           (declare (ignore column-number))
+                           function)))))
+    (funcall wrapper (compute-writer* (mapped-type-for normalized-type) normalized-type)
+             (+ (cond ((persistent-class-type-p normalized-type)
+                       2)
+                      ((primitive-type-p normalized-type)
+                       1)
+                      (t (error "Cannot map type ~A to a writer" type)))
+                (if unbound-and-null-subtype-p
+                    1
+                    0)))))
 
-  (:method (type &optional type-specification)
+(defgeneric compute-writer* (type type-specification)
+  (:method (type type-specification)
            (declare (ignore type-specification))
            (error "Cannot map type ~A to a writer" type))
 
-  (:method ((type list) &optional type-specification)
-           (declare (ignore type-specification))
-           (compute-writer (first type) type))
-
-  (:method ((type symbol) &optional type-specification)
+  (:method ((type symbol) type-specification)
            (declare (ignore type-specification))
            (if (persistent-class-type-p type)
                'object-writer
                (call-next-method)))
 
-  (:method ((type persistent-class) &optional type-specification)
+  (:method ((type persistent-class) type-specification)
            (declare (ignore type-specification))
-           'object-writer)
-
-  (:method ((type (eql 'or)) &optional type-specification)
-           (bind ((type (remove-null-and-unbound-if-or-type type-specification))
-                  (or-unbound-type-p (or-unbound-type-p type-specification))
-                  (or-null-type-p (or-null-type-p type-specification))
-                  (or-unbound-and-null-type-p (and or-unbound-type-p
-                                                   or-null-type-p))
-                  (wrapper (cond (or-unbound-and-null-type-p
-                                  'unbound-or-null-writer)
-                                 (or-unbound-type-p
-                                  'unbound-writer)
-                                 (or-null-type-p
-                                  'null-writer)
-                                 (t
-                                  (lambda (function column-number)
-                                    (declare (ignore column-number))
-                                    function)))))
-             (funcall wrapper (compute-writer type)
-                      (+ (cond ((persistent-class-type-p type)
-                                2)
-                               ((primitive-type-p type)
-                                1)
-                               (t (error "Cannot map type ~A to a writer" type)))
-                         (if or-unbound-and-null-type-p
-                             1
-                             0))))))
+           'object-writer))
 
 (defgeneric compute-primary-table (class current-table)
   (:method ((class persistent-class) current-table)
@@ -357,7 +377,7 @@
 
 (defgeneric compute-data-table-slot-p (slot)
   (:method ((slot persistent-effective-slot-definition))
-           (bind ((type (remove-null-and-unbound-if-or-type (slot-definition-type slot))))
+           (bind ((type (normalized-type-of slot)))
              (and (subtypep (slot-definition-class slot) (primary-class-of slot))
                   (or (primitive-type-p type)
                       (persistent-class-type-p type))))))
@@ -365,15 +385,14 @@
 (defgeneric compute-primary-class (slot)
   (:method ((slot persistent-effective-slot-definition))
            (or (some #'primary-class-of (persistent-effective-super-slot-precedence-list-of slot))
-               (bind ((type (slot-definition-type slot)))
-                 (awhen (remove-null-and-unbound-if-or-type type)
-                   (cond ((set-type-p it)
-                          (find-class (second it)))
-                         ((or (primitive-type-p it)
-                              (persistent-class-type-p it))
-                          (slot-definition-class slot))
-                         (t
-                          (error "Unknown type ~A in slot ~A" type slot))))))))
+               (awhen (normalized-type-of slot)
+                 (cond ((set-type-p it)
+                        (find-class (second it)))
+                       ((or (primitive-type-p it)
+                            (persistent-class-type-p it))
+                        (slot-definition-class slot))
+                       (t
+                        (error "Unknown type ~A in slot ~A" (slot-definition-type slot) slot)))))))
 
 (defgeneric compute-table (slot)
   (:method ((slot persistent-effective-slot-definition))
@@ -385,14 +404,14 @@
                (bind ((name (slot-definition-name slot))
                       (type (slot-definition-type slot))
                       (class (slot-definition-class slot)))
-                 (awhen (remove-null-and-unbound-if-or-type type)
+                 (awhen (normalized-type-of slot)
                    (cond ((set-type-p it)
                           (make-columns-for-reference-slot (class-name class)
                                                            (strcat name "-for-" (class-name class))))
                          ((persistent-class-type-p it)
                           (append
-                           (when (and (or-null-type-p type)
-                                      (or-unbound-type-p type)
+                           (when (and (null-subtype-p type)
+                                      (unbound-subtype-p type)
                                       (not (subtypep type 'symbol)))
                              (list
                               (make-instance 'column
@@ -401,8 +420,8 @@
                            (make-columns-for-reference-slot (class-name class) name)))
                          ((primitive-type-p it)
                           (append
-                           (when (and (or-null-type-p type)
-                                      (or-unbound-type-p type)
+                           (when (and (null-subtype-p type)
+                                      (unbound-subtype-p type)
                                       (not (subtypep type 'symbol)))
                              (list
                               (make-instance 'column
@@ -418,23 +437,10 @@
 ;;;;;;;;
 ;;; Type
 
-(defun remove-null-and-unbound-if-or-type (type)
-  "If the type is an or type specification then it removes null and unbound from it. Removes the or type combinator from the result if possible."
-  (if (and (listp type)
-           (eq 'or (first type)))
-      (let ((simplified-type (remove 'null (remove 'unbound type))))
-        (if (<= (length simplified-type) 2)
-            (second simplified-type)
-            simplified-type))
-      type))
-
 (defun primitive-type-p (type)
   "Accept types such as: integer, string, boolean, (or unbound integer), (or null string), (or unbound null boolean), etc."
-  (cond ((listp type)
-         (member (first type) '(serialized string symbol symbol* member form)))
-        ((symbolp type)
-         (not (subtypep type 'persistent-object)))
-        (t #f)))
+  (and (not (persistent-class-type-p type))
+       (not (set-type-p type))))
 
 (defun persistent-class-type-p (type)
   "Returns true for persistent class types."
@@ -445,10 +451,10 @@
   (and (listp type)
        (eq 'set (first type))))
 
-(defun or-unbound-type-p (type)
+(defun unbound-subtype-p (type)
   (subtypep 'unbound type))
 
-(defun or-null-type-p (type)
+(defun null-subtype-p (type)
   (subtypep 'null type))
 
 ;;;;;;;;;;;

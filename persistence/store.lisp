@@ -52,7 +52,7 @@
           (if *lazy-collections*
               (make-instance 'persistent-m-n-association-end-set-container :object object :slot slot)
               (restore-m-n-association-end-set object slot)))
-         ((set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type slot)))
+         ((set-type-p (normalized-type-of slot))
           (if *lazy-collections*
               (make-instance 'persistent-slot-set-container :object object :slot slot)
               (restore-slot-set object slot)))
@@ -158,7 +158,7 @@
 	 (when (or value
                    (persistent-p object))
            (store-m-n-association-end-set object slot value)))
-	((set-type-p (remove-null-and-unbound-if-or-type (slot-definition-type slot)))
+	((set-type-p (normalized-type-of slot))
          (store-slot-set object slot value))
 	(t
          (update-records (name-of (table-of slot))
