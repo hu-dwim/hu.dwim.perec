@@ -183,14 +183,16 @@
     (let ((depends-on-associations
            (collect-if #L(typep !1 'persistent-association)
                        (depends-on-of class))))
-      (mapcar #L(let ((association-end-definition
-                       (find (class-name class) (association-end-definitions-of !1)
-                             :key #L(getf !1 :class))))
-                  (append (list :name (getf association-end-definition :slot)
-                                :association !1
-                                :persistent #t)
-                          (remove-keywords association-end-definition :slot :class :accessor)))
-              depends-on-associations))))
+      (mappend (lambda (association)
+                 (let ((association-end-definitions
+                       (collect-if #L(eq (class-name class) (getf !1 :class))
+                                   (association-end-definitions-of association))))
+                  (mapcar #L(append (list :name (getf !1 :slot)
+                                          :association association
+                                          :persistent #t)
+                                    (remove-keywords !1 :slot :class :accessor))
+                          association-end-definitions)))
+               depends-on-associations))))
 
 ;; this is not the real shared-initialize because portable programs are not allowed to override that
 ;; so we are somewhat emulating it by calling this function from both initialize-instance and reinitialize-instance
