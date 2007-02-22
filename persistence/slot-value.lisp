@@ -57,6 +57,19 @@
   (with-bypassing-database-access
     (setf (slot-value object slot-name) new-value)))
 
+(defun cached-slot-boundp-or-value (object slot-name)
+  "Similar to slot-value-boundp-or-value but never interacts with the database."
+  (debug-only (assert (debug-persistent-p object)))
+  (bind ((class (class-of object)))
+    (cached-slot-boundp-or-value-using-class class object (find-slot class slot-name))))
+
+(defun (setf cached-slot-boundp-or-value) (new-value object slot-name)
+  "Similar to (setf slot-value-boundp-or-value) but never interacts with the database."
+  (debug-only (assert (debug-persistent-p object)))
+  (bind ((class (class-of object)))
+    (setf (cached-slot-boundp-or-value-using-class class object (find-slot class slot-name))
+          new-value)))
+
 (defgeneric cached-slot-value-using-class (class object slot)
   (:documentation "Returns the cached value of the object's slot similar to slot-value-using-class but never interacts with the database.")
 
