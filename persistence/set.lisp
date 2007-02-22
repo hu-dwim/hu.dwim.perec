@@ -11,6 +11,7 @@
 
 ;; TODO: distinguish between set type and disjunct set type (the latter used in 1-n associations for example)
 
+;; TODO: defptype*?
 (deftype set (&optional type)
   (declare (ignore type))
   '(and (not unbound)

@@ -32,7 +32,8 @@
            #:time
            #:form
            #:variable
-           #:transaction)
+           #:transaction
+           #:float-type)
 
   (:shadowing-import-from :iterate
                           #:finish)
@@ -48,15 +49,23 @@
   (:export ;; defining persistent classes
            #:defpclass
            #:defpclass*
-           #:defassociation
-           #:defassociation*
-           #:deftype*
+           #:find-class
            #:abstract-p
            #:cached-p
            #:prefetched-p
            #:index-p
            #:unique-p
            #:required-p
+
+           ;; defining persistent associations
+           #:defassociation
+           #:defassociation*
+           #:find-association
+
+           ;; defining persistent types
+           #:defptype
+           #:defptype*
+           #:find-type
 
            ;; persistent class meta objects
            #:persistent-class

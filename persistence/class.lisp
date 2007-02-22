@@ -218,10 +218,6 @@
                     (iter (for sub-class in (persistent-direct-sub-classes-of class))
                           (appending (persistent-effective-sub-classes-of sub-class)))))))
 
-(defvar *canonical-types*)
-
-(defvar *mapped-type-precedence-list*)
-
 (defun mapped-type-for (type)
   (if (persistent-class-type-p type)
       type

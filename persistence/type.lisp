@@ -6,35 +6,79 @@
 
 (in-package :cl-perec)
 
-;;;;;;;;
-;;; Type
+;;;;;;;;;;;;;;;;;;
+;;; Defining types
 
-(defparameter *types* (make-hash-table))
+(defparameter *persistent-types* (make-hash-table))
 
-(defclass* type-object ()
-  ((args
+(defclass* persistent-type ()
+  ((name
+    :type symbol)
+   (args
     :type list)
    (body
     :type list)))
 
-(defmacro deftype* (name args &body body)
-  `(progn
-    (setf (gethash ',name *types*) (make-instance 'type-object :args ',args :body ',body))
-    (deftype ,name ,args ,@body)))
+;; TODO: use defclass* only from defptype*
+(defmacro defptype (name args slots &body body)
+  (bind ((common-lisp-type-p (eq (symbol-package name) (find-package :common-lisp)))
+         (allow-nil-args-p (or (null args)
+                               (eq '&optional (first args))
+                               (eq '&rest (first args)))))
+    `(progn
+      ,(when args
+             `(defclass* ,(type-class-name-for name) (persistent-type)
+               ,(append
+                 `((name ',name)
+                   (args ',args)
+                   (body ',body)) slots)))
+      ,(when (or allow-nil-args-p
+                 (not common-lisp-type-p))
+             `(eval-when (:load-toplevel :execute)
+               (let ((parsed-type (when ,allow-nil-args-p
+                                    (parse-type (substitute-type-arguments* ',args ',body nil)))))
+                 (setf (find-type ',name)
+                       (or (and ,allow-nil-args-p
+                                parsed-type
+                                (aprog1 parsed-type
+                                  (setf (name-of it) ',name)
+                                  (setf (args-of it) ',args)
+                                  (setf (body-of it) ',body)))
+                           (make-instance 'persistent-type :name ',name :args ',args :body ',body))))))
+      ,(if common-lisp-type-p
+           `',name
+           `(deftype ,name ,args ,@body)))))
+
+(defmacro defptype* (name args slots &body body)
+  `(defptype ,name ,args ,slots ,@body))
+
+(defun find-type (type)
+  (gethash (first (ensure-list type)) *persistent-types*))
+
+(defun (setf find-type) (new-value type)
+  (setf (gethash (first (ensure-list type)) *persistent-types*) new-value))
+
+(defun type-class-name-for (type)
+  (concatenate-symbol (if (eq (symbol-package type)
+                              (find-package :common-lisp))
+                          (find-package :cl-perec)
+                          (symbol-package type))
+                      type "-type"))
 
 (defun type-specifier-p (type)
-  (gethash (first (ensure-list type)) *types*))
+  (find-type type))
 
 (defun substitute-type-arguments (type args)
-  (let ((type-object (gethash type *types*)))
-    (if type-object
-        (let ((body (body-of type-object)))
-          (eval `(let (,@(mapcar #L(list !1 !2) (args-of type-object) args))
-                  ,@body)))
+  (let ((persistent-type (find-type type)))
+    (if persistent-type
+        (substitute-type-arguments* (args-of persistent-type) (body-of persistent-type) args)
         (error "Unknown type specifier: ~A" type))))
 
-;;;;;;;;;;;;;
-;;; Normalize
+(defun substitute-type-arguments* (args body actual-args)
+  (eval `(apply (lambda ,args ,@body) ',actual-args)))
+
+;;;;;;;;;;;;;;;;;;
+;;; Canonical type
 
 (defun canonical-type-for (type)
   (iter (for simplified-type :initially type :then (simplify-boolean-form (canonical-type-for* (->dnf simplified-type))))
@@ -42,7 +86,8 @@
         (until (equal simplified-type previous-type))
         (finally (return simplified-type))))
 
-(defvar *canonical-types* nil)
+(defvar *canonical-types* nil
+  "A list of type names to be treated as canonical types when a type is converted into canonical form.")
 
 (defun canonical-type-p (type)
   (member (first (ensure-list type)) *canonical-types*))
@@ -88,11 +133,14 @@
     ((?is ?type symbolp)
      (canonical-type-for (substitute-type-arguments type nil)))
     ((?is ?type type-specifier-p)
-     (canonical-type-for (substitute-type-arguments (first type) (cdr type))))
+     (let ((substituted-type (substitute-type-arguments (first type) (cdr type))))
+       (if (not (equal substituted-type type))
+           (canonical-type-for substituted-type)
+           type)))
     (?type
      type)))
 
-(defparameter *mapped-type-precedence-list*
+(defvar *mapped-type-precedence-list*
   '(nil
     unbound
     null
@@ -109,18 +157,19 @@
     text
     duration
     string
+    timestamp
     date
     time
-    timestamp
     form
     member
     symbol*
     symbol
     serialized
-    t))
+    t)
+  "An ordered list of types which are mapped to RDBMS.")
 
-;;;;;;;;;
-;;; Types
+;;;;;;;;;;;;;;;;;
+;;; RDBMS mapping
 
 (defmacro defmapping (name sql-type reader writer)
   `(progn
@@ -136,332 +185,45 @@
       (declare (ignorable type-specification))
       ,writer)))
 
-;;;;;;;
-;;; Nil
-;;;
-;;; other -> (type-error)
-
-(defmapping nil nil
-  #L(error 'type-error :datum (first !1) :expected-type nil)
-  #L(error 'type-error :datum !1 :expected-type nil))
-
-;;;;;;;;;;;
-;;; Unbound
-;;; 
-;;; unbound -> NULL
-;;; t -> type-error
-
-;; this type must be used to mark slots which might be unbound (e.g. (or unbound null integer))
-(deftype* unbound ()
-  `(member ,+unbound-slot-value+))
-
-(defmapping unbound (make-instance 'sql-boolean-type)
-  (unbound-reader #L(error 'type-error :datum (first !1) :expected-type type))
-  (unbound-writer #L(error 'type-error :datum !1 :expected-type type)))
-
-;;;;;;;;
-;;; Null
-;;; 
-;;; nil -> NULL
-;;; t -> (type-error)
-
-(defmapping null (make-instance 'sql-boolean-type)
-  (null-reader #L(error 'type-error :datum (first !1) :expected-type type))
-  (null-writer #L(error 'type-error :datum !1 :expected-type type)))
-
-;;;;;
-;;; t
-;;; 
-;;; unbound -> NULL, NULL
-;;; nil -> true, NULL
-;;; other -> true, (base64)
-
-(defmapping t (make-instance 'sql-character-large-object-type)
-  'base64->object-reader
-  'object->base64-writer)
-
-;;;;;;;;;;;;;;
-;;; Serialized
-;;; 
-;;; unbound -> (type-error)
-;;; nil -> (type-error)
-;;; other -> (base64)
-
-(defun maximum-serialized-size-p (serialized)
-  (declare (ignore serialized))
-  t)
-
-(deftype* serialized (&optional size)
-  (declare (ignore size))
-  '(and (not unbound)
-        (not null)
-        (satisfies maximum-serialized-size-p)))
-
-(defmapping serialized (if (consp type-specification)
-                           (make-instance 'sql-character-varying-type :size (second type-specification))
-                           (make-instance 'sql-character-large-object-type))
-  'base64->object-reader
-  'object->base64-writer)
-
-;;;;;;;;;;;
-;;; Boolean
-;;; 
-;;; nil -> false
-;;; t -> true
-;;; other -> (type-error)
-
-(defmapping boolean (make-instance 'sql-boolean-type)
-  'object->boolean-reader
-  'boolean->string-writer)
-
-;;;;;;;;;;;;;;
-;;; Integer-16
-;;;
-;;; non integer -> (type-error)
-
-(deftype* integer-16 ()
-  `(integer ,(- (expt 2 15)) ,(1- (expt 2 15))))
-
-(defmapping integer-16 (make-instance 'sql-integer-type :bit-size 16)
-  'object->integer-reader
-  (non-null-identity-writer type))
-
-;;;;;;;;;;;;;;
-;;; Integer-32
-;;;
-;;; non integer -> (type-error)
-
-(deftype* integer-32 ()
-  `(integer ,(- (expt 2 31)) ,(1- (expt 2 31))))
-
-(defmapping integer-32 (make-instance 'sql-integer-type :bit-size 32)
-  'object->integer-reader
-  (non-null-identity-writer type))
-
-;;;;;;;;;;;;;;
-;;; Integer-64
-;;;
-;;; non integer -> (type-error)
-
-(deftype* integer-64 ()
-  `(integer ,(- (expt 2 63)) ,(1- (expt 2 63))))
-
-(defmapping integer-64 (make-instance 'sql-integer-type :bit-size 64)
-  'object->integer-reader
-  (non-null-identity-writer type))
-
-;;;;;;;;;;;
-;;; Integer
-;;;
-;;; non integer -> (type-error)
-
-(defmapping integer (make-instance 'sql-integer-type)
-  'object->integer-reader
-  (non-null-identity-writer type))
-
-;;;;;;;;;;;;
-;;; Float-32
-;;;
-;;; non float -> (type-error)
-
-(deftype* float-32 ()
-  `float)
-
-(defmapping float-32 (make-instance 'sql-float-type :bit-size 32)
-  'object->number-reader
-  (non-null-identity-writer type))
-
-;;;;;;;;;;;;
-;;; Float-64
-;;;
-;;; non float -> (type-error)
-
-(deftype* float-64 ()
-  `float)
-
-(defmapping float-64 (make-instance 'sql-float-type :bit-size 64)
-  'object->number-reader
-  (non-null-identity-writer type))
-
-;;;;;;;;;
-;;; Float
-;;;
-;;; non float -> (type-error)
-
-(defmapping float (make-instance 'sql-float-type :bite-size 32)
-  'object->number-reader
-  (non-null-identity-writer type))
-
-;;;;;;;;;;
-;;; Double
-;;;
-;;; non double -> (type-error)
-
-(deftype* double ()
-  'double-float)
-
-(defmapping double-float (make-instance 'sql-float-type :bit-size 64)
-  'object->number-reader
-  (non-null-identity-writer type))
-
-;;;;;;;;;;
-;;; Number
-;;;
-;;; non number -> (type-error)
-
-(defmapping number (make-instance 'sql-numeric-type)
-  'object->number-reader
-  (non-null-identity-writer type))
-
-;;;;;;;;;;
-;;; String
-;;;
-;;; non string -> (type-error)
-
-(defmapping string (if (consp type-specification)
-                       (make-instance 'sql-character-type :size (second type-specification))
-                       (make-instance 'sql-character-large-object-type))
-  (non-null-identity-reader type)
-  (non-null-identity-writer type))
-
-;;;;;;;;
-;;; Text
-;;;
-;;; non string -> (type-error)
-
-;; TODO:
-(defun maximum-length-p (string)
-  (declare (ignore string))
-  t)
-
-(deftype* text (&optional maximum-length)
-  (declare (ignore maximum-length))
-  '(and string
-        (satisfies maximum-length-p)))
-
-(defmapping text (if (consp type-specification)
-                     (make-instance 'sql-character-varying-type :size (second type-specification))
-                     (make-instance 'sql-character-large-object-type))
-  (non-null-identity-reader type)
-  (non-null-identity-writer type))
-
-;;;;;;;;;;
-;;; Symbol
-;;;
-;;; non symbol -> (type-error)
-
-(defmapping symbol (make-instance 'sql-character-large-object-type)
-  'string->symbol-reader
-  'symbol->string-writer)
-
-;; TODO:
-(defun maximum-symbol-name-length-p (symbol)
-  (declare (ignore symbol))
-  t)
-
-(deftype* symbol* (&optional maximum-length)
-  (declare (ignore maximum-length))
-  '(and symbol
-        (satisfies maximum-symbol-name-length-p)))
-
-(defmapping symbol* (if (consp type-specification)
-                        (make-instance 'sql-character-varying-type :size (second (find 'symbol* type-specification
-                                                                                       :key #L(when (listp !1) (first !1)))))
-                        (make-instance 'sql-character-large-object-type))
-  'string->symbol-reader
-  'symbol->string-writer)
-
-;;;;;;;;
-;;; Date
-;;;
-;;; non date -> (type-error)
-
-;; TODO:
-(defun date-p (date)
-  (declare (ignore date))
-  t)
-
-(deftype* date ()
-  '(and local-time
-        (satisfies date-p)))
-
-(defmapping date (make-instance 'sql-date-type)
-  'integer->local-time-reader
-  'local-time->string-writer)
-
-;;;;;;;;
-;;; Time
-;;;
-;;; non date -> (type-error)
-
-;; TODO:
-(defun time-p (time)
-  (declare (ignore time))
-  t)
-
-(deftype* time ()
-  '(and local-time
-        (satisfies time-p)))
-
-(defmapping time (make-instance 'sql-time-type)
-  'string->local-time-reader
-  'local-time->string-writer)
-
-;;;;;;;;;;;;;
-;;; Timestamp
-;;;
-;;; non date -> (type-error)
-
-(deftype* timestamp ()
-  'local-time)
-
-(defmapping timestamp (make-instance 'sql-timestamp-type)
-  'integer->local-time-reader
-  'local-time->string-writer)
-
-;;;;;;;;;;;;
-;;; Duration
-;;;
-;;; non string -> (type-error)
-
-;; TODO:
-(defun duration-p (duration)
-  (declare (ignore duration))
-  t)
-
-(deftype* duration ()
-  '(and string
-        (satisfies duration-p)))
-
-(defmapping duration (make-instance 'sql-character-varying-type :size 32)
-  (non-null-identity-reader type)
-  (non-null-identity-writer type))
-
-;;;;;;;;
-;;; Form
-;;;
-;;; non form -> (type-error)
-
-(deftype* form (&optional size)
-  (declare (ignore size))
-  '(and list
-        (satisfies maximum-serialized-size-p)))
-
-(defmapping form (make-instance 'sql-character-varying-type)
-  'string->list-reader
-  'list->string-writer)
-
-;;;;;;;;;;
-;;; Member
-;;;
-;;; not found in members -> (type-error)
-
-(defmapping member (make-instance 'sql-integer-type :bit-size 16)
-  (integer->member-reader type-specification)
-  (member->integer-writer type-specification))
-
-;;;;;;
-;;; Or
-;;;
-;;; May be used to combine null and unbound with a primitive type and may generate an extra column.
-;;; See compute-reader and compute-writer generic function definitions
+;;;;;;;;;;;;;;;
+;;; Type parser
+
+(defgeneric parse-keyword-type-parameters (type type-parameters)
+  (:method (type type-parameters)
+           type-parameters)
+
+  ;; TODO: ?
+  #+nil
+  (:method ((type collection-type) type-parameters)
+           (append (list :element-type (parse-type (getf type-parameters :element-type)))
+                   (call-next-method type (remove-keywords type-parameters :element-type)))))
+
+(defgeneric parse-positional-type-parameters (type type-parameters)
+  (:method (type type-parameters)
+           (let ((args (remove-if #L(or (eq !1 '&optional)
+                                        (eq !1 '&key)
+                                        (eq !1 '&rest)
+                                        (eq !1 '&allow-other-keys))
+                                  (args-of type))))
+             (eval `(apply (lambda ,(args-of type)
+                             (list ,@(mappend #L(list (intern (symbol-name !1) (find-package :keyword)) !1) args)))
+                     ',type-parameters))))
+
+  ;; TODO: ?
+  #+nil
+  (:method ((type collection-type) type-parameters)
+           (append (list :element-type (parse-type (car type-parameters)))
+                   (call-next-method type (cdr type-parameters)))))
+
+(defun parse-type (type-specifier)
+  (etypecase type-specifier
+    (symbol (find-type type-specifier))
+    (list
+     (let ((type (make-instance (type-class-name-for (first type-specifier)))))
+       (apply #'reinitialize-instance type
+              (cond ((= 0 (length type-specifier))
+                     nil)
+                    ((find-if #'keywordp (cdr type-specifier))
+                     (parse-keyword-type-parameters type (rest type-specifier)))
+                    (t (parse-positional-type-parameters type (rest type-specifier)))))))
+    (persistent-type type-specifier)))

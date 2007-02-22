@@ -3,7 +3,7 @@
 (defcclass* persistent-association (exportable)
   ((name
     :type symbol
-    :documentation "Unique name of the association. This name can be used to find the association using find-persistent-association.")
+    :documentation "Unique name of the association. This name can be used to find the association using find-association.")
    (association-end-definitions
     (compute-as nil)
     :type list
@@ -145,10 +145,10 @@
 (defparameter *persistent-associations* (make-hash-table)
   "A mapping from association names to association objects.")
 
-(defun find-persistent-association (name)
+(defun find-association (name)
   (gethash name *persistent-associations*))
 
-(defun (setf find-persistent-association) (new-value name)
+(defun (setf find-association) (new-value name)
   (setf (gethash name *persistent-associations*) new-value))
 
 (defun to-one-association-end-p (association-end)

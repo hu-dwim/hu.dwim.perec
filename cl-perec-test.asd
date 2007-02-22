@@ -83,6 +83,7 @@
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
   (in-package :cl-perec-test)
   (pushnew :debug *features*)
+  (declaim (optimize (debug 3)))
   (eval (read-from-string
          "(progn
             (setf *database*
