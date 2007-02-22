@@ -75,7 +75,7 @@
             :serial t
             :components
             ((:file "duplicates")
-             (:file "matcher")
+             (:file "pattern-matcher")
              (:file "logic")))
    (:module :persistence
             :serial t
