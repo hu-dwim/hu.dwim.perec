@@ -77,7 +77,8 @@
                        (:file "order-by")
                        (:file "purge")
                        (:file "table-ref")
-                       (:file "polymorph")))))))
+                       (:file "polymorph")
+                       (:file "type")))))))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
   (in-package :cl-perec-test)

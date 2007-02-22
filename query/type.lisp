@@ -54,13 +54,6 @@
            (declare (ignore syntax query toplevel))
            (values))
 
-  ;; literal persistent object
-  (:method ((literal literal-value) query &optional toplevel)
-           (declare (ignore toplevel))
-           (when (persistent-object-p (value-of literal))
-             (setf (xtype-of literal) (class-of (value-of literal))))
-           (values))
-
   (:method ((form compound-form) query &optional toplevel)
            (declare (ignore toplevel))
            (mapc #L(infer-types-pass-2 !1 query #f) (operands-of form)))
@@ -78,7 +71,9 @@
   ;; toplevel (eq <obj1> <obj2>) -> (type-of <obj1>) == (type-of <obj2>)
   (:method ((call function-call) query &optional toplevel)
            (call-next-method)
-           (when (and toplevel (eq (fn-of call) 'eq) (= (length (args-of call)) 2))
+           (when (and toplevel
+                      (member (fn-of call) '(eq eql equal = string=))
+                      (= (length (args-of call)) 2))
              (bind ((obj1 (first (args-of call)))
                     (obj2 (second (args-of call))))
                (cond

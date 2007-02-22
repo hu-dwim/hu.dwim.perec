@@ -50,7 +50,7 @@
   (bind ((object (cache-object oid)))
     (mapc (lambda (slot rdbms-value)
             ;; we use the slot-name here because we can't guarantee that the effective slot will match with the class of the object
-            (setf (cached-slot-value object (slot-definition-name slot))
+            (setf (cached-slot-boundp-or-value object (slot-definition-name slot))
                   (funcall (reader-of slot) rdbms-value)))
           slots rdbms-values)
     object))
@@ -70,21 +70,63 @@
 ;;;
 ;;; Conversion between lisp and sql values
 ;;;
-(defgeneric value->sql-literal (value type)
-  (:method (value type)
-           (sql-literal
-            :value (first ; TODO
-                    (funcall (compute-writer (or type (type-of value)))
-                             value))))
+(defgeneric value->sql-literal (value type &optional args)
 
-  (:method ((value string) (type null)) ; TODO
+  ;; Runtime cast error
+  
+  (:method (value type &optional args)
+           (declare (ignore args))
+           (error "Can not cast ~A to ~A" value type))
+
+  ;; Supported types
+  
+  (:method (value (type symbol) &optional args)
+           (sql-literal :value (value->sql-value value type args)))
+
+  (:method (value (type persistent-class) &optional args)
+           (assert (null args))
+           (assert (typep value type))
+           (sql-literal :value (id-of value)))
+
+  (:method (value (type cons) &optional args)
+           (assert (null args))
+           (value->sql-literal value (first type) (rest type)))
+
+  ;; Infer type from value
+
+  (:method ((value persistent-object) (type null) &optional args)
+           (assert (null args))
+           (value->sql-literal value (type-of value)))
+ 
+  (:method ((value string) (type null) &optional args) ; TODO
+           (assert (null args))
            (value->sql-literal value 'string))
 
-  (:method ((value number) (type null)) ; TODO BIT
+  (:method ((value number) (type null) &optional args) ; TODO BIT
+           (assert (null args))
            (value->sql-literal value 'number))
 
-  (:method ((value list) type)
-           (sql-literal :value (mapcar #L(value->sql-literal !1 nil) value))))
+  ;; Iterate on lists
+
+  (:method ((value list) (type persistent-class) &optional args)
+           (assert (null args))
+           (assert (every #L(typep !1 type) value))
+           (sql-literal :value (mapcar 'id-of value)))
+
+  (:method ((value list) (type null) &optional args) ; FIXME list of unknown type, hopefully not a form
+           (assert (null args))
+           (sql-literal :value (mapcar #L(value->sql-literal !1 type) value))))
+
+(defun value->sql-value (value type type-args)
+  (assert type)
+  (first ;; FIXME
+   (value->sql-values value type type-args)))
+
+(defun value->sql-values (value type type-args)
+  (assert type)
+  (funcall
+    (compute-writer (if type-args (cons type type-args) type))
+    value))
 
   
 

@@ -49,6 +49,7 @@
   `(progn
     (with-transaction
       (let ((-object- ,form-1))
+        (declare (ignorable -object-))
         ,@forms-2))
     (with-two-transactions ,form-1 ,@forms-2)))
 
