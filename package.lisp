@@ -194,5 +194,3 @@
 (import-sql-constructor-names)
 
 (define-computed-universe compute-as)
-
-(deflogger log ())
