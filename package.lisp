@@ -147,6 +147,8 @@
            #:select-last-matching
            #:select-object
            #:select-objects
+           #:select-similar-object
+           #:select-similar-objects
            #:make-query
            #:add-lexical-variable
            #:add-query-variable
