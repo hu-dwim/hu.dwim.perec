@@ -66,6 +66,9 @@
            ;; defining persistent types
            #:defptype
            #:find-type
+           #:normalized-type-of
+           #:parse-type
+           #:destructure-type
            #:def-member-type
 
            ;; persistent class meta objects

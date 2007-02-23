@@ -231,6 +231,24 @@
     (persistent-type type-specifier)))
 
 ;;;;;;;;;;;;;;;;
+;;; Type printer
+
+;; TODO:
+
+;;;;;;;;;;;;;;;;;;;;
+;;; Destructure type
+
+(defun destructure-type (type)
+  "Returns (values normalized-type null-subtype-p unbound-subtype-p)."
+  (bind ((normalized-type (normalized-type-for type))
+         (mapped-type (mapped-type-for normalized-type))
+         (unbound-subtype-p (and (not (unbound-subtype-p mapped-type))
+                                 (unbound-subtype-p type)))
+         (null-subtype-p (and (not (null-subtype-p mapped-type))
+                              (null-subtype-p type))))
+    (values normalized-type null-subtype-p unbound-subtype-p)))
+
+;;;;;;;;;;;;;;;;
 ;;; Type matcher
 
 (defvar *matches-type-cut-function*)
@@ -274,3 +292,4 @@
 
   (:method (value (type list))
            (typep value type)))
+
