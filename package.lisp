@@ -120,6 +120,7 @@
            #:with-making-transient-instances
            #:make-persistent
            #:make-transient
+           #:oid-of
            #:persistent-p
            #:created-p
            #:modified-p
