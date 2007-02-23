@@ -26,7 +26,8 @@
 (defun create-object (oid &optional (persistent 'unknown))
   "Creates an object representing the given oid as its identity. The object will not be associated with the current transaction nor will it be stored in the database. The object may or may not be known to be either persistent or transient."
   (assert oid)
-  (prog1-bind object (make-instance (find-class (oid-class-name oid)) :oid oid :persistent 'unknown)
+  ;; shared-initialize should not call initfunctions for persistent slots when we are caching or loading persistent object (aka here)
+  (prog1-bind object (make-instance (find-class (oid-class-name oid)) :oid oid :persistent 'unknown :initialize-persistent-slots #f)
     (unless (eq persistent 'unknown)
       (setf (persistent-p object) persistent))))
 

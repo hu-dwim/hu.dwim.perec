@@ -47,3 +47,20 @@
     (let ((object (make-instance 'persistence-test :name "the one")))
       (slot-makunbound object 'prc::persistent)
       (is (persistent-p object)))))
+
+(defpclass* initform-1-test ()
+  ((name "Hello" :type (text 20))))
+
+(defpclass* initform-2-test ()
+  ((name (error "Hello") :type (text 20))))
+
+(deftest test/persistence/initform/1 ()
+  (with-transaction
+    (is (equal "Hello" (name-of (make-instance 'initform-1-test))))))
+
+(deftest test/persistence/initform/2 ()
+  (let ((object
+         (with-transaction
+           (stefil:signals error (make-instance 'initform-2-test)))))
+    (with-transaction
+      (finishes (revive-object object)))))
