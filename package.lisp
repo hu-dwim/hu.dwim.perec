@@ -159,6 +159,7 @@
 
            ;; query
            #:query
+           #:query-builder
            #:select
            #:select-first-matching
            #:select-last-matching
