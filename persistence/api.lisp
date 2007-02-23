@@ -42,7 +42,9 @@
                :initfunction
                (lambda ()
                  ,initform)))))
-    (bind ((processed-association-ends (mapcar #'process-association-end (first association-ends)))
+    (bind ((metaclass (or (second (find :metaclass association-ends :key #'first))
+                          'persistent-association))
+           (processed-association-ends (mapcar #'process-association-end (first association-ends)))
            (final-association-ends (cons 'list (mapcar #'add-initfunction processed-association-ends)))
            (primary-association-end (first processed-association-ends))
            (primary-class (getf primary-association-end :class))
@@ -82,7 +84,7 @@
                 (aif (find-association ',association-name)
                      (reinitialize-instance it :association-end-definitions ,final-association-ends)
                      (setf (find-association ',association-name)
-                           (make-instance 'persistent-association
+                           (make-instance ',metaclass
                                           :name ',association-name
                                           :association-end-definitions ,final-association-ends)))
               (ensure-persistent-class ',primary-class)
@@ -95,7 +97,8 @@
                          `(:accessor ,(default-accessor-name-transformer (getf !1 :slot) nil)))
                        (unless (getf !1 :initarg)
                          `(:initarg ,(default-initarg-name-transformer (getf !1 :slot) nil))))
-             (first association-ends))))
+             (first association-ends))
+    ,@(cdr association-ends)))
 
 ;;;;;;;;;
 ;;; types
