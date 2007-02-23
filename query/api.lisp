@@ -94,9 +94,11 @@
   (bind ((class (find-class type)))
     (iter (for (initarg value) on rest by 'cddr)
           (collect `(equal (,(first
-                              (slot-definition-readers
-                               (find initarg (class-slots class)
-                                     :key #L(first (slot-definition-initargs !1))))) -object-)
+                              (some #'slot-definition-readers
+                                    (direct-slots-of
+                                     (find initarg (class-slots class)
+                                           :key #L(first (slot-definition-initargs !1))))))
+                            -object-)
                      ,value)))))
 
 (defmacro select-similar-object (type &rest rest &key &allow-other-keys)
