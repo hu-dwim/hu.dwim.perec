@@ -122,7 +122,7 @@
          "(progn
             (setf *database*
                   (make-instance 'postgresql-pg
-                                 :transaction-mixin 'cl-perec::transaction-mixin
+                                 :transaction-mixin 'cl-perec:transaction-mixin
                                  :connection-specification cl-user::*test-database-connection-specification*))
             (retest))")))
 
