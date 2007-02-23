@@ -121,8 +121,13 @@
 
            ;; most of the transaction API is inherited from cl-rdbms
            #:with-database
+           #:*database*
            #:with-transaction
            #:with-transaction*
+           #:*transaction*
+           #:mark-transaction-for-commit-only
+           #:mark-transaction-for-rollback-only
+           #:transaction-timestamp
            #:transaction-mixin
 
            ;; managing persistent objects
