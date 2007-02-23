@@ -82,6 +82,10 @@
   (integer->member-reader type-specification)
   (member->integer-writer type-specification))
 
+(defmacro def-member-type (name &body members)
+  `(defptype ,name ()
+    `(member ,@',members)))
+
 ;;;;;;;;;;;
 ;;; Unbound
 ;;; 

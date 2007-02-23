@@ -65,6 +65,7 @@
            ;; defining persistent types
            #:defptype
            #:find-type
+           #:def-member-type
 
            ;; persistent class meta objects
            #:persistent-class
