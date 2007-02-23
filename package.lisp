@@ -143,9 +143,10 @@
            #:object-in-transaction-p
            #:transaction-of
            #:p-eq
+           #:load-object
+           #:revive-object
            #:purge-object
            #:purge-objects
-           #:revive-object
 
            ;; most of the collection API is inherited from cl-containers 
            #:insert-item
