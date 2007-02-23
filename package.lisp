@@ -28,6 +28,7 @@
         :cl-rdbms)
 
   (:shadow #:log
+           #:name
            #:set
            #:time
            #:form
