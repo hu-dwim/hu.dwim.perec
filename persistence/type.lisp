@@ -14,6 +14,8 @@
 (defclass* persistent-type ()
   ((name
     :type symbol)
+   (documentation
+    :type string)
    (args
     :type list)
    (body
@@ -172,8 +174,8 @@
     t)
   "An ordered list of types which are mapped to RDBMS.")
 
-;;;;;;;;;;;;;;;;;
-;;; RDBMS mapping
+;;;;;;;;;;;;;;;;
+;;; Type mapping
 
 (defmacro defmapping (name sql-type reader writer)
   `(progn
@@ -227,3 +229,48 @@
                      (parse-keyword-type-parameters type (rest type-specifier)))
                     (t (parse-positional-type-parameters type (rest type-specifier)))))))
     (persistent-type type-specifier)))
+
+;;;;;;;;;;;;;;;;
+;;; Type matcher
+
+(defvar *matches-type-cut-function*)
+
+(defun default-matches-type-cut (object slot type)
+  (declare (ignore object slot))
+  (or (persistent-object-p type)
+      (set-type-p type)))
+
+(defun matches-type (value type &key (cut-function #'default-matches-type-cut) (signal-type-violations #f))
+  (bind ((*matches-type-cut-function* cut-function))
+    (flet ((body ()
+             (aprog1 (matches-type* value type)
+               (unless it
+                 (error (make-condition 'value-type-violation :value value :value-type type))))))
+      (if (not signal-type-violations)
+          (handler-case (body)
+            (type-violation () #f))
+          (body)))))
+
+(defcondition* type-violation ()
+  ())
+
+(defcondition* value-type-violation (type-violation)
+  ((value
+    :type t)
+   (value-type
+    :type the-type)))
+
+(defcondition* object-slot-type-violation (type-violation)
+  ((object
+    :type persistent-object)
+   (slot
+    :type persistent-effective-slot-definition)))
+
+(defgeneric matches-type* (value type)
+  (:documentation "Checks if the given value matches the type.")
+
+  (:method (value type)
+           (error "Value ~A could not be matched against type ~A" value type))
+
+  (:method (value (type list))
+           (typep value type)))

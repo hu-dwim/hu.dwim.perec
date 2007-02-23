@@ -467,6 +467,21 @@
   (and (not (eq 'member type))
        (subtypep 'null type)))
 
+(defmethod matches-type* (value (type symbol))
+  (and (typep value type)
+       (or (not (persistent-class-type-p type))
+           (every (lambda (slot)
+                    (bind ((type (normalized-type-of slot))
+                           (class (class-of value)))
+                      (unless (funcall *matches-type-cut-function* value type)
+                        (if (slot-boundp-using-class class value slot)
+                            (bind ((slot-value (slot-value-using-class class value slot)))
+                              (aprog1 (matches-type* slot-value type)
+                                (unless it
+                                  (error (make-condition 'object-slot-type-violation :object value :slot slot)))))
+                            (not (unbound-subtype-p type))))))
+                  (persistent-effective-slots-of type)))))
+
 ;;;;;;;;;;;
 ;;; Utility
 
