@@ -12,8 +12,7 @@
 ;;; May be used to combine null and unbound with a primitive type and may generate an extra column.
 ;;; See compute-reader and compute-writer generic function definitions
 
-(defptype* or (&rest types)
-    ((types :type list))
+(defptype or (&rest types)
   `(or ,@types))
 
 (defmethod parse-keyword-type-parameters ((type or-type) type-parameters)
@@ -28,8 +27,7 @@
 ;;;
 ;;; Not supported
 
-(defptype* and (&rest types)
-    ((types :type list))
+(defptype and (&rest types)
   `(and ,@types))
 
 (defmethod parse-keyword-type-parameters ((type and-type) type-parameters)
@@ -44,8 +42,7 @@
 ;;;
 ;;; Not supported
 
-(defptype* not (negated-type)
-    ((negated-type :type list))
+(defptype not (negated-type)
   `(not ,negated-type))
 
 (defmethod parse-keyword-type-parameters((type not-type) type-parameters)
@@ -58,8 +55,7 @@
 ;;;;;;;;;;;;;
 ;;; Satisfies
 
-(defptype* satisfies (function)
-    ((function :type symbol))
+(defptype satisfies (function)
   `(satisfies ,function))
 
 ;;;;;;;
@@ -67,8 +63,7 @@
 ;;;
 ;;; other -> (type-error)
 
-(defptype* nil ()
-    ()
+(defptype nil ()
   nil)
 
 (defmapping nil nil
@@ -80,10 +75,7 @@
 ;;;
 ;;; not found in members -> (type-error)
 
-(defptype* member (&rest members)
-    ((members
-      nil
-      :type list))
+(defptype member (&rest members)
   `(member ,@members))
 
 (defmapping member (make-instance 'sql-integer-type :bit-size 16)
@@ -97,8 +89,7 @@
 ;;; t -> type-error
 
 ;; this type must be used to mark slots which might be unbound (e.g. (or unbound integer))
-(defptype* unbound ()
-    ()
+(defptype unbound ()
   `(member ,+unbound-slot-value+))
 
 (defmapping unbound (make-instance 'sql-boolean-type)
@@ -111,8 +102,7 @@
 ;;; nil -> NULL
 ;;; t -> (type-error)
 
-(defptype* null ()
-    ()
+(defptype null ()
   'null)
 
 (defmapping null (make-instance 'sql-boolean-type)
@@ -126,8 +116,7 @@
 ;;; nil -> true, NULL
 ;;; other -> true, (base64)
 
-(defptype* t ()
-    ()
+(defptype t ()
   t)
 
 (defmapping t (make-instance 'sql-character-large-object-type)
@@ -145,10 +134,7 @@
   (declare (ignore serialized))
   t)
 
-(defptype* serialized (&optional byte-size)
-    ((byte-size
-      nil
-      :type integer))
+(defptype serialized (&optional byte-size)
   (declare (ignore byte-size))
   '(and (not unbound)
         (not null)
@@ -167,8 +153,7 @@
 ;;; t -> true
 ;;; other -> (type-error)
 
-(defptype* boolean ()
-    ()
+(defptype boolean ()
   'boolean)
 
 (defmapping boolean (make-instance 'sql-boolean-type)
@@ -180,16 +165,7 @@
 ;;;
 ;;; non integer -> (type-error)
 
-(defptype* integer (&optional minimum-value maximum-value bit-size)
-    ((minimum-value
-      nil
-      :type integer)
-     (maximum-value
-      nil
-      :type integer)
-     (bit-size
-      nil
-      :type integer))
+(defptype integer (&optional minimum-value maximum-value bit-size)
   (declare (ignore bit-size))
   `(integer ,minimum-value ,maximum-value))
 
@@ -202,8 +178,7 @@
 ;;;
 ;;; non integer -> (type-error)
 
-(defptype* integer-16 ()
-    ()
+(defptype integer-16 ()
   `(integer ,(- (expt 2 15)) ,(1- (expt 2 15))))
 
 (defmapping integer-16 (make-instance 'sql-integer-type :bit-size 16)
@@ -215,8 +190,7 @@
 ;;;
 ;;; non integer -> (type-error)
 
-(defptype* integer-32 ()
-    ()
+(defptype integer-32 ()
   `(integer ,(- (expt 2 31)) ,(1- (expt 2 31))))
 
 (defmapping integer-32 (make-instance 'sql-integer-type :bit-size 32)
@@ -228,8 +202,7 @@
 ;;;
 ;;; non integer -> (type-error)
 
-(defptype* integer-64 ()
-    ()
+(defptype integer-64 ()
   `(integer ,(- (expt 2 63)) ,(1- (expt 2 63))))
 
 (defmapping integer-64 (make-instance 'sql-integer-type :bit-size 64)
@@ -241,13 +214,7 @@
 ;;;
 ;;; non float -> (type-error)
 
-(defptype* float (&optional minimum-value maximum-value)
-    ((minimum-value
-      nil
-      :type integer)
-     (maximum-value
-      nil
-      :type integer))
+(defptype float (&optional minimum-value maximum-value)
   `(float ,minimum-value ,maximum-value))
 
 (defmapping float (make-instance 'sql-float-type :bite-size 64)
@@ -259,8 +226,7 @@
 ;;;
 ;;; non float -> (type-error)
 
-(defptype* float-32 ()
-    ()
+(defptype float-32 ()
   'float)
 
 (defmapping float-32 (make-instance 'sql-float-type :bit-size 32)
@@ -272,8 +238,7 @@
 ;;;
 ;;; non float -> (type-error)
 
-(defptype* float-64 ()
-    ()
+(defptype float-64 ()
   'float)
 
 (defmapping float-64 (make-instance 'sql-float-type :bit-size 64)
@@ -285,8 +250,7 @@
 ;;;
 ;;; non double -> (type-error)
 
-(defptype* double ()
-    ()
+(defptype double ()
   'double-float)
 
 (defmapping double-float (make-instance 'sql-float-type :bit-size 64)
@@ -298,8 +262,7 @@
 ;;;
 ;;; non number -> (type-error)
 
-(defptype* number ()
-    ()
+(defptype number ()
   'number)
 
 (defmapping number (make-instance 'sql-numeric-type)
@@ -311,13 +274,7 @@
 ;;;
 ;;; non string -> (type-error)
 
-(defptype* string (&optional length acceptable-characters)
-    ((length
-      nil
-      :type integer)
-     (acceptable-characters
-      nil
-      :type string))
+(defptype string (&optional length acceptable-characters)
   (declare (ignore acceptable-characters))
   `(string ,length))
 
@@ -337,13 +294,7 @@
   (declare (ignore string))
   t)
 
-(defptype* text (&optional maximum-length acceptable-characters)
-    ((maximum-length
-      nil
-      :type integer)
-     (acceptable-characters
-      nil
-      :type string))
+(defptype text (&optional maximum-length acceptable-characters)
   (declare (ignore maximum-length acceptable-characters))
   '(and string
         (satisfies maximum-length-p)))
@@ -359,8 +310,7 @@
 ;;;
 ;;; non symbol -> (type-error)
 
-(defptype* symbol ()
-    ()
+(defptype symbol ()
   'symbol)
 
 (defmapping symbol (make-instance 'sql-character-large-object-type)
@@ -372,10 +322,7 @@
   (declare (ignore symbol))
   t)
 
-(defptype* symbol* (&optional maximum-length)
-    ((maximum-length
-      nil
-      :type integer))
+(defptype symbol* (&optional maximum-length)
   (declare (ignore maximum-length))
   '(and symbol
         (satisfies maximum-symbol-name-length-p)))
@@ -397,8 +344,7 @@
   (declare (ignore date))
   t)
 
-(defptype* date ()
-    ()
+(defptype date ()
   '(and local-time
         (satisfies date-p)))
 
@@ -416,8 +362,7 @@
   (declare (ignore time))
   t)
 
-(defptype* time ()
-    ()
+(defptype time ()
   '(and local-time
         (satisfies time-p)))
 
@@ -430,8 +375,7 @@
 ;;;
 ;;; non date -> (type-error)
 
-(defptype* timestamp ()
-    ()
+(defptype timestamp ()
   '(and local-time
         (satisfies date-p)
         (satisfies time-p)))
@@ -450,8 +394,7 @@
   (declare (ignore duration))
   t)
 
-(defptype* duration ()
-    ()
+(defptype duration ()
   '(and string
         (satisfies duration-p)))
 
@@ -464,10 +407,7 @@
 ;;;
 ;;; non form -> (type-error)
 
-(defptype* form (&optional byte-size)
-    ((byte-size
-      nil
-      :type integer))
+(defptype form (&optional byte-size)
   (declare (ignore byte-size))
   '(and list
         (satisfies maximum-serialized-size-p)))
@@ -475,18 +415,3 @@
 (defmapping form (make-instance 'sql-character-varying-type)
   'string->list-reader
   'list->string-writer)
-
-;; TODO: ?
-#|
-member-type ok
-state-type ?
-string-type ok
-symbol-type -
-integer-type ok
-float-type ok
-
-boolean-type ok
-date-type ok
-time-type ok
-timestamp-type ok
-|#

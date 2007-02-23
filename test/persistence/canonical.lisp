@@ -31,7 +31,7 @@
 
 (def-canonical-type-test (member a b c) (member a b c) member)
 
-(defptype* t1 ()
+(defptype t1 ()
     ()
   '(member a b c))
 
@@ -49,7 +49,7 @@
     (member a b c)
   complex/2)
 
-(defptype* t2 ()
+(defptype t2 ()
     ()
   '(or null unbound t1))
 

@@ -64,7 +64,6 @@
 
            ;; defining persistent types
            #:defptype
-           #:defptype*
            #:find-type
 
            ;; persistent class meta objects

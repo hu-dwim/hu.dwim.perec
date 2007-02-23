@@ -19,8 +19,7 @@
    (body
     :type list)))
 
-;; TODO: use defclass* only from defptype*
-(defmacro defptype (name args slots &body body)
+(defmacro defptype (name args &body body)
   (bind ((common-lisp-type-p (eq (symbol-package name) (find-package :common-lisp)))
          (allow-nil-args-p (or (null args)
                                (eq '&optional (first args))
@@ -31,7 +30,8 @@
                ,(append
                  `((name ',name)
                    (args ',args)
-                   (body ',body)) slots)))
+                   (body ',body))
+                 (mapcar #L(list !1 nil) (argument-names-for args)))))
       ,(when (or allow-nil-args-p
                  (not common-lisp-type-p))
              `(eval-when (:load-toplevel :execute)
@@ -49,9 +49,6 @@
            `',name
            `(deftype ,name ,args ,@body)))))
 
-(defmacro defptype* (name args slots &body body)
-  `(defptype ,name ,args ,slots ,@body))
-
 (defun find-type (type)
   (gethash (first (ensure-list type)) *persistent-types*))
 
@@ -64,6 +61,13 @@
                           (find-package :cl-perec)
                           (symbol-package type))
                       type "-type"))
+
+(defun argument-names-for (args)
+  (remove-if #L(or (eq !1 '&optional)
+                   (eq !1 '&key)
+                   (eq !1 '&rest)
+                   (eq !1 '&allow-other-keys))
+             args))
 
 (defun type-specifier-p (type)
   (find-type type))
@@ -200,11 +204,7 @@
 
 (defgeneric parse-positional-type-parameters (type type-parameters)
   (:method (type type-parameters)
-           (let ((args (remove-if #L(or (eq !1 '&optional)
-                                        (eq !1 '&key)
-                                        (eq !1 '&rest)
-                                        (eq !1 '&allow-other-keys))
-                                  (args-of type))))
+           (let ((args (argument-names-for (args-of type))))
              (eval `(apply (lambda ,(args-of type)
                              (list ,@(mappend #L(list (intern (symbol-name !1) (find-package :keyword)) !1) args)))
                      ',type-parameters))))
