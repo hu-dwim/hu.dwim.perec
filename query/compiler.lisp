@@ -542,26 +542,12 @@ forms with joined variables.")
 
 (defgeneric literal-to-sql (value type literal)
   (:documentation "Maps a literal value to SQL.")
-  
+
   (:method (value type literal)
-           `(value->sql-literal ,literal ',type))
-
-  (:method ((value string) type literal)
-           (value->sql-literal value type))
-
-  (:method ((value number) type literal)
-           (value->sql-literal value type))
-
-  (:method ((value null) type literal)
-           (value->sql-literal value type))
-
-  (:method ((value persistent-object) type literal)
-           (value->sql-literal value type))
-
-  (:method ((value symbol) type literal) ;; cannot specialize on keyword type
-           (if (keywordp value)
-               value
-               (call-next-method))))
+           (cond
+             ((keywordp value) value)
+             ((syntax-object-p type) `(value->sql-literal ,literal ',type))
+             (t (value->sql-literal value type)))))
 
 (defgeneric attribute-access-to-sql (accessor arg access)
   (:method (accessor arg access)
@@ -617,6 +603,19 @@ forms with joined variables.")
                   (sql-aggregate-function-for fn)
                   (association-end-of arg-1)
                   (arg-of arg-1)))))
+             ;; eq,eql and friends: compare with NULL can be true
+             ((member fn '(eq eql equal))
+              (sql-equal
+               (syntax-to-sql arg-1)
+               (syntax-to-sql arg-2)
+               :check-nils (and (or (not (xtype-of arg-1)) (subtypep 'null (xtype-of arg-1)))
+                                (or (not (xtype-of arg-2)) (subtypep 'null (xtype-of arg-2))))))
+             ((eq fn 'string=)
+              (sql-string=
+               (syntax-to-sql arg-1)
+               (syntax-to-sql arg-2)
+               :check-nils (and (or (not (xtype-of arg-1)) (subtypep 'null (xtype-of arg-1)))
+                                (or (not (xtype-of arg-2)) (subtypep 'null (xtype-of arg-2))))))
              ;; (<fn> <arg> ...), where <fn> has SQL counterpart
              ;; e.g. (+ 1 2) --> (1 + 2)
              ((sql-operator-p fn)

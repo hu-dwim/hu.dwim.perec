@@ -171,6 +171,9 @@ Be careful when using in different situations, because it modifies *readtable*."
     (princ " " stream)
     (princ (if (slot-boundp form 'operands) (operands-of form) "?") stream)))
 
+(defun null-literal-p (syntax)
+  (and (literal-value-p syntax)
+       (null (value-of syntax))))
 
 ;;;;
 ;;;; Parse/unparse

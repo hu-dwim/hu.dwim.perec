@@ -419,11 +419,11 @@
                          (iter (for second in rest-args)
                                (in outer (collect (funcall sql-operator first second))))))))))
 
-(define-sql-operator 'eq 'sql-=)
-(define-sql-operator 'eql 'sql-=)
-(define-sql-operator 'equal 'sql-=)
+(define-sql-operator 'eq 'sql-equal)
+(define-sql-operator 'eql 'sql-equal)
+(define-sql-operator 'equal 'sql-equal)
 (define-chained-sql-operator '= 'sql-=)
-(define-sql-operator 'string= 'sql-=)
+(define-sql-operator 'string= 'sql-string=)
 
 (define-sql-operator 'and 'sql-and)
 (define-sql-operator 'or 'sql-or)
@@ -452,6 +452,29 @@
 
 (define-sql-operator 'null 'sql-is-null)
 
+(defun sql-equal (first second &key check-nils)
+  (cond
+    ((sql-null-literal-p first)
+     `(sql-is-null ,second))
+    ((sql-null-literal-p second)
+     `(sql-is-null ,first))
+    ((or (sql-literal-p first) (sql-literal-p second) (not check-nils))
+     `(sql-= ,first ,second))
+    (t
+     `(sql-or (sql-= ,first ,second) (sql-and (sql-is-null ,first) (sql-is-null ,second))))))
+
+(defun sql-string= (string1 string2 &key (start1 0) end1 (start2 0) end2 check-nils)
+  (cond
+    ((sql-null-literal-p string1)
+     `(sql-is-null ,string2))
+    ((sql-null-literal-p string2)
+     `(sql-is-null ,string1))
+    ((or (sql-literal-p string1) (sql-literal-p string2) (not check-nils))
+     `(sql-= ,(sql-subseq string1 start1 end1) ,(sql-subseq string2 start2 end2)))
+    (t
+     `(sql-or (sql-and (sql-is-null ,string1) (sql-is-null ,string2))
+              (sql-= ,(sql-subseq string1 start1 end1) ,(sql-subseq string2 start2 end2))))))
+
 (defun sql-subseq (seq start &optional end)
   "TODO: other sequnce types"
   (if (or (not (numberp start)) (> start 0) end)
@@ -467,6 +490,14 @@
 
 (defun sql-length (str)
   (sql-function-call :name "char_length" :arguments (list str)))
+
+(defun sql-null-literal-p (sql) ; FIXME: 'false'?
+  (or (null sql)
+      (and (typep sql 'sql-literal)
+           (null (cl-rdbms::value-of sql)))))
+
+(defun sql-literal-p (sql)
+  (typep sql 'cl-rdbms::sql-literal*))
 
 ;;;----------------------------------------------------------------------------
 ;;; Aggregate functions
