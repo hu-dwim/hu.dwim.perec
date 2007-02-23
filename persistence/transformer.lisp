@@ -9,11 +9,20 @@
 ;;;;;;;;;;;
 ;;; Unbound
 
-(defun unbound-reader (function)
-  (lambda (rdbms-values)
-    (if (every #'null rdbms-values)
-        +unbound-slot-value+
-        (funcall function rdbms-values))))
+(defun equaln (value-1 value-2 count)
+  (iter (repeat count)
+        (for v-1 in value-1)
+        (for v-2 in value-2)
+        (unless (eq v-1 v-2)
+          (return-from equaln #f)))
+  #t)
+
+(defun unbound-reader (function column-number)
+  (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil))))
+    (lambda (rdbms-values)
+      (if (equaln unbound-rdbms-value rdbms-values column-number)
+          +unbound-slot-value+
+          (funcall function rdbms-values)))))
 
 (defun unbound-writer (function column-number)
   (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil))))
@@ -25,11 +34,12 @@
 ;;;;;;;;
 ;;; Null
 
-(defun null-reader (function)
-  (lambda (rdbms-values)
-    (if (every #'null rdbms-values)
-        nil
-        (funcall function rdbms-values))))
+(defun null-reader (function column-number)
+  (bind ((nil-rdbms-value (iter (repeat column-number) (collect nil))))
+    (lambda (rdbms-values)
+      (if (equaln nil-rdbms-value rdbms-values column-number)
+          nil
+          (funcall function rdbms-values)))))
 
 (defun null-writer (function column-number)
   (bind ((nil-rdbms-value (iter (repeat column-number) (collect nil))))
@@ -41,13 +51,15 @@
 ;;;;;;;;;;;;;;;;;;;
 ;;; Unbound or null
 
-(defun unbound-or-null-reader (function)
-  (lambda (rdbms-values)
-    (cond ((every #'null rdbms-values)
-           +unbound-slot-value+)
-          ((every #'null (cdr rdbms-values))
-           nil)
-          (t (funcall function (cdr rdbms-values))))))
+(defun unbound-or-null-reader (function column-number)
+  (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil)))
+         (nil-rdbms-value (list* #t (cdr unbound-rdbms-value))))
+    (lambda (rdbms-values)
+      (cond ((equaln unbound-rdbms-value rdbms-values column-number)
+             +unbound-slot-value+)
+            ((equaln nil-rdbms-value rdbms-values column-number)
+             nil)
+            (t (funcall function (cdr rdbms-values)))))))
 
 (defun unbound-or-null-writer (function column-number)
   (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil)))

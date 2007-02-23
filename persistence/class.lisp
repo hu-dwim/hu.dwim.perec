@@ -249,6 +249,16 @@
            (declare (ignore type-specification))
            (error "Cannot map type ~A to RDBMS type" type)))
 
+(defun column-count-for (normalized-type unbound-and-null-subtype-p)
+  (+ (cond ((persistent-class-type-p normalized-type)
+            2)
+           ((primitive-type-p normalized-type)
+            1)
+           (t (error "Cannot map type ~A to a writer" normalized-type)))
+     (if unbound-and-null-subtype-p
+         1
+         0)))
+
 (defun compute-reader (type)
   "Maps a type to a one parameter lambda which will be called with the received RDBMS values."
   (bind ((normalized-type (normalized-type-for type))
@@ -257,16 +267,18 @@
                                  (unbound-subtype-p type)))
          (null-subtype-p (and (not (null-subtype-p mapped-type))
                               (null-subtype-p type)))
-         (wrapper (cond ((and unbound-subtype-p
-                              null-subtype-p)
+         (unbound-and-null-subtype-p (and unbound-subtype-p null-subtype-p))
+         (wrapper (cond (unbound-and-null-subtype-p
                          'unbound-or-null-reader)
                         (unbound-subtype-p
                          'unbound-reader)
                         (null-subtype-p
                          'null-reader)
                         (t
-                         'identity))))
-    (funcall wrapper (compute-reader* mapped-type normalized-type))))
+                         (lambda (function column-number)
+                           (declare (ignore column-number))
+                           function)))))
+    (funcall wrapper (compute-reader* mapped-type normalized-type) (column-count-for normalized-type unbound-and-null-subtype-p))))
 
 (defgeneric compute-reader* (type type-specification)
   (:method (type type-specification)
@@ -301,15 +313,7 @@
                          (lambda (function column-number)
                            (declare (ignore column-number))
                            function)))))
-    (funcall wrapper (compute-writer* mapped-type normalized-type)
-             (+ (cond ((persistent-class-type-p normalized-type)
-                       2)
-                      ((primitive-type-p normalized-type)
-                       1)
-                      (t (error "Cannot map type ~A to a writer" type)))
-                (if unbound-and-null-subtype-p
-                    1
-                    0)))))
+    (funcall wrapper (compute-writer* mapped-type normalized-type) (column-count-for normalized-type unbound-and-null-subtype-p))))
 
 (defgeneric compute-writer* (type type-specification)
   (:method (type type-specification)
