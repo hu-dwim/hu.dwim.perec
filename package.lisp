@@ -123,6 +123,7 @@
            #:with-database
            #:with-transaction
            #:with-transaction*
+           #:transaction-mixin
 
            ;; managing persistent objects
            #:with-making-persistent-instances
