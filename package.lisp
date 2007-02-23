@@ -77,6 +77,14 @@
            #:persistent-association-end-slot-definition
            #:persistent-association-end-direct-slot-definition
            #:persistent-association-end-effective-slot-definition
+           #:persistent-type
+           #:integer-type
+           #:float-type
+           #:string-type
+           #:text-type
+           #:member-type
+           #:serialized-type
+           #:symbol-type
 
            ;; primitve types
            #:t
