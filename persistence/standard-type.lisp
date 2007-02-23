@@ -298,8 +298,8 @@
   (declare (ignore string))
   t)
 
-(defptype text (&optional maximum-length acceptable-characters)
-  (declare (ignore maximum-length acceptable-characters))
+(defptype text (&optional maximum-length minimum-length acceptable-characters)
+  (declare (ignore maximum-length minimum-length acceptable-characters))
   '(and string
         (satisfies maximum-length-p)))
 

@@ -33,7 +33,9 @@
                  `((name ',name)
                    (args ',args)
                    (body ',body))
-                 (mapcar #L(list !1 nil) (argument-names-for args)))))
+                 (mapcar #L(list !1 nil) (argument-names-for args)))
+               (:export-class-name-p #t)
+               (:export-accessor-names-p #t)))
       ,(when (or allow-nil-args-p
                  (not common-lisp-type-p))
              `(eval-when (:load-toplevel :execute)
