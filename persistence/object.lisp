@@ -15,7 +15,7 @@
 (defpclass* persistent-object ()
   ((oid
     nil
-    :type oid
+    :type (or null oid)
     :persistent #f
     :documentation "Life time unique identifier of the object which can be remembered and may be used the load the object later.")
    (persistent
@@ -89,8 +89,9 @@
     (setf (cached-slots-of object)
           (collect-if #'cached-p (persistent-effective-slots-of (class-of object))))))
 
-(defmethod make-instance :before ((class persistent-class) &key &allow-other-keys)
-  (ensure-exported class)
+(defmethod make-instance :before ((class persistent-class) &key persistent &allow-other-keys)
+  (when persistent
+    (ensure-exported class))
   (when (abstract-p class)
     (error "Cannot make instances of abstract class ~A" class)))
 
