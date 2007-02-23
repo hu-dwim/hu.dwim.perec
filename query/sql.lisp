@@ -286,14 +286,14 @@
 (defun sql-exists-subselect-for-association-end (variable association-end)
   "Returns an sql expression which evaluates to true iff the query variable VARIABLE
  has associated objects through ASSOCIATION-END."
-  (bind ((class (slot-definition-class association-end)))
+  (bind ((class (slot-definition-class (other-association-end-of association-end))))
     `(sql-exists
       (sql-subquery
        :query
        (sql-select
         :columns (list 1)
         :tables (list ,(sql-table-reference-for class (sql-alias-for class)))
-        :where ,(sql-join-condition-for variable class association-end))))))
+        :where ,(sql-join-condition-for variable class (other-association-end-of association-end)))))))
 
 (defun sql-aggregate-subselect-for-variable (aggregate-function n-association-end 1-var)
   (bind ((1-association-end (other-association-end-of n-association-end))
@@ -317,6 +317,18 @@
        :tables (list (sql-identifier :name ',(name-of table)))
        :where (sql-=
                ,(sql-column-reference-for other-end table)
+               ,(sql-id-column-reference-for variable))))))
+
+(defun sql-subselect-for-secondary-association-end (association-end variable)
+  (bind ((primary-association-end (other-association-end-of association-end))
+         (class (slot-definition-class primary-association-end)))
+    `(sql-subquery
+      :query
+      (sql-select
+       :columns (list ,(sql-id-column-reference-for nil))
+       :tables (list ,(sql-table-reference-for class nil))
+       :where (sql-=
+               ,(sql-column-reference-for primary-association-end nil)
                ,(sql-id-column-reference-for variable))))))
 
 (defun sql-subselect-for-m-n-association (association-end variable)

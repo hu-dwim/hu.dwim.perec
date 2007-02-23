@@ -574,8 +574,14 @@ forms with joined variables.")
                (bind ((association-end (association-end-of access))
                       (association (association-of association-end)))
                  (ecase (association-kind-of association)
-                   ((:1-1 :1-n)
-                    (sql-column-reference-for association-end variable))
+                   (:1-1
+                    (if (primary-association-end-p association-end)
+                        (sql-column-reference-for association-end variable)
+                        (sql-subselect-for-secondary-association-end association-end variable)))
+                   (:1-n
+                    (if (to-one-association-end-p association-end)
+                        (sql-column-reference-for association-end variable)
+                        (sql-subselect-for-secondary-association-end association-end variable)))
                    (:m-n
                     (sql-subselect-for-m-n-association association-end variable))))
                (sql-map-failed))))
@@ -696,6 +702,7 @@ forms with joined variables.")
   ;; null form
   ;;   example:
   ;;   (null (messages-of t)) -> exists(select 1 from message m where m.topic_id = t.id)
+#|  
   (:method ((fn (eql 'null)) (n-args (eql 1)) (access association-end-access) arg-2 call)
            (bind ((association-end (association-end-of access))
                   (variable (arg-of access)))
@@ -703,7 +710,9 @@ forms with joined variables.")
                       association-end
                       (to-many-association-end-p association-end))
                  `(sql-not ,(sql-exists-subselect-for-association-end variable association-end))
-                 (call-next-method)))))
+                 (call-next-method))))
+|#
+  )
 
 (defgeneric macro-call-to-sql (macro n-args arg-1 arg-2 call)
   (:method (macro n-args arg-1 arg-2 call)
