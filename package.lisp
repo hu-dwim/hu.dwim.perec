@@ -44,6 +44,10 @@
                           #:enqueue
                           #:parent)
 
+  (:shadowing-import-from :flexi-streams
+                          #:octets-to-string
+                          #:string-to-octets)
+
   (:shadowing-import-from :cl-rdbms
                           #:update-index)
 
