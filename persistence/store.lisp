@@ -1,7 +1,7 @@
 (in-package :cl-perec)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; RDBMS slot restorers
+;;;;;;;;;;;;;
+;;; Constants
 
 (defconstant +unbound-slot-value+
   '+unbound-slot-value+
@@ -9,6 +9,14 @@
 
 (defparameter *lazy-collections* #f
   "True means slot-value-using-class will by default return lazy collections.")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; RDBMS slot restorers
+
+(defun restore-slot-value (slot rdbms-values)
+  "Provides convenient access to the arguments in the debugger."
+  (declare (optimize (debug 3)))
+  (funcall (reader-of slot) rdbms-values))
 
 (defun restore-slot-set (object slot)
   "Restores the non lazy list without local side effects from the database."
@@ -35,12 +43,12 @@
    (cond ((and (typep slot 'persistent-association-end-effective-slot-definition)
                (eq (association-kind-of (association-of slot)) :1-1)
                (secondary-association-end-p slot))
-          (funcall (reader-of slot)
+          (restore-slot-value slot
            (first
             (select-records +oid-column-names+
                             (list (name-of (table-of slot)))
                             (sql-= (id-of object)
-                                   (make-instance 'sql-identifier :name (id-column-of slot)))))))
+                                   (sql-identifier :name (id-column-of slot)))))))
          ((and (typep slot 'persistent-association-end-effective-slot-definition)
                (eq (association-kind-of (association-of slot)) :1-n)
                (eq (cardinality-kind-of slot) :n))
@@ -62,7 +70,7 @@
                    (select-records (columns-of slot)
                                    (list (name-of (table-of slot)))
                                    (id-column-matcher-where-clause object)))))
-            (funcall (reader-of slot) record))))
+            (restore-slot-value slot record))))
    slot))
 
 (defun restore-prefetched-slots (object &optional (allow-missing #f))
@@ -88,7 +96,7 @@
         (values
          (iter (for i first 0 then (+ i (length (columns-of slot))))
                (for slot in slots)
-               (collect (funcall (reader-of slot) (nthcdr i record))))
+               (collect (restore-slot-value slot (nthcdr i record))))
          slots)))))
 
 (defun restore-all-slots (object)
@@ -100,6 +108,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS slot storers
+
+(defun store-slot-value (slot slot-value)
+  "Provides convenient access to the arguments in the debugger."
+  (declare (optimize (debug 3)))
+  (funcall (writer-of slot) slot-value))
 
 (defun delete-slot-set (object slot)
   (update-records (name-of (table-of slot))
@@ -163,7 +176,7 @@
 	(t
          (update-records (name-of (table-of slot))
                          (columns-of slot)
-                         (funcall (writer-of slot) value)
+                         (store-slot-value slot value)
                          (id-column-matcher-where-clause object)))))
 
 (defun store-prefetched-slots (object)
@@ -176,7 +189,7 @@
              (oid-columns (oid-columns-of table))
              (columns (mappend #'columns-of slots))
              (oid-values (oid-values object))
-             (rdbms-values (mappend #L(funcall (writer-of !1) !2) slots slot-values)))
+             (rdbms-values (mappend #L(store-slot-value !1 !2) slots slot-values)))
         (if (persistent-p object)
             (update-records (name-of table) columns rdbms-values (id-column-matcher-where-clause object))
             (insert-records (name-of table) (append oid-columns columns) (append oid-values rdbms-values)))))
@@ -194,20 +207,13 @@
 ;;; Utility
 
 (defun id-column-matcher-where-clause (object &optional (id-name +id-column-name+))
-  (make-instance 'sql-binary-operator
-                 :name '=
-                 :left (make-instance 'sql-identifier
-                                      :name id-name)
-                 :right (make-instance 'sql-literal
-                                       :type +oid-id-sql-type+
-                                       :value (id-of object))))
+  (sql-binary-operator :name '=
+                       :left (sql-identifier :name id-name)
+                       :right (sql-literal :type +oid-id-sql-type+ :value (id-of object))))
 
 (defun id-column-list-matcher-where-clause (values &optional (id-name +id-column-name+))
-  (make-instance 'sql-binary-operator
-                 :name 'in
-                 :left (make-instance 'sql-identifier :name id-name)
-                 :right (mapcar (lambda (value)
-                                  (make-instance 'sql-literal
-                                                 :type +oid-id-sql-type+
-                                                 :value (id-of value)))
-                                values)))
+  (sql-binary-operator :name 'in
+                       :left (sql-identifier :name id-name)
+                       :right (mapcar (lambda (value)
+                                        (sql-literal :type +oid-id-sql-type+ :value (id-of value)))
+                                      values)))
