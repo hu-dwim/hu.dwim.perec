@@ -111,18 +111,22 @@
       (= (id-of object-1)
          (id-of object-2))))
 
-(defprint-object (self persistent-object)
-  "Prints the oid of the object and whether the object is known to be persistent or transient."
+(defun print-persistent-object (object)
+  (declare (type persistent-object object))
   (princ ":persistent ")
-  (princ (cond ((not (slot-boundp self 'persistent))
+  (princ (cond ((not (slot-boundp object 'persistent))
                 "#? ")
-               ((persistent-p self)
+               ((persistent-p object)
                 "#t ")
                (t "#f ")))
-  (if (and (slot-boundp self 'oid)
-           (oid-of self))
-      (princ (id-of self))
+  (if (and (slot-boundp object 'oid)
+           (oid-of object))
+      (princ (id-of object))
       (princ "nil")))
+
+(defprint-object (self persistent-object)
+  "Prints the oid of the object and whether the object is known to be persistent or transient."
+  (print-persistent-object self))
 
 (defun ensure-oid (object)
   "Makes sure that the object has a valid oid."

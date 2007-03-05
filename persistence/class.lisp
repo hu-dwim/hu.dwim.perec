@@ -447,6 +447,8 @@
                             (make-instance 'column
                                            :name (rdbms-name-for name)
                                            :type (compute-column-type type)
+                                           ;; TODO: add null constraint if type-check is :always (and (not (subytpep 'null type))
+                                           ;;                                                         (not (subytpep 'unbound type)))
                                            :constraints (if (unique-p slot)
                                                             (list (sql-unique-constraint)))
                                            :index (if (and (index-p slot)

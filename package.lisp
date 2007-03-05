@@ -154,6 +154,7 @@
            #:revive-object
            #:purge-object
            #:purge-objects
+           #:print-persistent-object
 
            ;; most of the collection API is inherited from cl-containers 
            #:insert-item
