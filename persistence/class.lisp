@@ -93,11 +93,10 @@
     :type boolean
     :computed-in compute-as
     :documentation "True means the slot value will be enforced to be unique among instances in the underlying RDBMS.")
-   ;; TODO: rename this slot option, type-check :always :on-commit (initform decides what extra slot values are allowed)
-   (required ;; TODO:
-    :type boolean
+   (type-check
+    :type (member :always :on-commit)
     :computed-in compute-as
-    :documentation "True means the slot cannot be unbound when committing the transaction."))
+    :documentation "On commit type check means that during the transaction the slot may have null and unbound value and the type check will be done when the transaction commits."))
   (:documentation "Base class for both persistent direct and effective slot definitions."))
 
 (defcclass* persistent-direct-slot-definition
@@ -161,7 +160,10 @@
     :documentation "The index option is inherited among direct slots according to the class precedence list with defaulting to false.")
    (unique
     (compute-as #f)
-    :documentation "The unique option is inherited among direct slots according to the class precedence list with defaulting to false."))
+    :documentation "The unique option is inherited among direct slots according to the class precedence list with defaulting to false.")
+   (type-check
+    (compute-as :always)
+    :documentation "The type check option is inherited among direct slots according to the class precedence list with defaulting to :always."))
   (:documentation "Class for persistent effective slot definitions."))
 
 (defcclass* class-primary-table (table)
@@ -181,7 +183,7 @@
 
 ;; :persistent is a slot definition option and may be set to #t or #f
 (eval-always
-  (mapc #L(pushnew !1  *allowed-slot-definition-properties*) '(:persistent :prefetched :cached :index :unique :required)))
+  (mapc #L(pushnew !1  *allowed-slot-definition-properties*) '(:persistent :prefetched :cached :index :unique :type-check)))
 
 (defmethod describe-object ((object persistent-class) stream)
   (call-next-method)

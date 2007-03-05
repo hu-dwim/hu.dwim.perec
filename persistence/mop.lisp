@@ -127,7 +127,7 @@
             (direct-slot persistent-direct-slot-definition)
             slot-option-name
             direct-slot-definitions)
-           (when (member slot-option-name '(cached prefetched index unique required))
+           (when (member slot-option-name '(cached prefetched index unique type-check))
              (some #L(slot-initarg-and-value !1 slot-option-name) direct-slot-definitions)))
 
   (:method (class
