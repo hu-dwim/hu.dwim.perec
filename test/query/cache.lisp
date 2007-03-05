@@ -51,20 +51,25 @@
       (is (not (equal result (execute-query query)))))))
 
 (deftest test/query/cache-4 ()
-  (run-cache-test
-    (with-confirmed-descructive-changes
-      (bind ((class (find-class 'query-cache-2-test))
-             (query (make-query '(select ((o query-cache-2-test)) (collect o)))))
-        (is (= counter 0))
-        (execute-query query)
-        (is (= counter 1))
+  (progn
+    (fill-data-3)
+    (bind ((class (find-class 'query-cache-2-test))
+           (query (make-query '(select ((o query-cache-2-test)) (collect o)))))
+      (prc::clear-compiled-query-cache)
+      (prc::reset-compile-query-counter)
+      (symbol-macrolet ((counter prc::*compile-query-counter*))
+        (with-transaction
+          (is (= counter 0))
+          (execute-query query)
+          (is (= counter 1)))
         (ensure-class-using-class class
                                   (class-name class)
                                   :metaclass (class-of class)
                                   :direct-superclasses (class-direct-superclasses class)
                                   :direct-slots nil)
-        (prc::ensure-exported class)
-        (execute-query query)
-        (is (= counter 2))))))
+        (with-confirmed-descructive-changes (prc::ensure-exported class))
+        (with-transaction
+          (execute-query query)
+          (is (= counter 2)))))))
 
 
