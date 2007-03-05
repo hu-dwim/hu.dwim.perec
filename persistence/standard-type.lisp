@@ -175,7 +175,7 @@
 
 (defmapping integer (make-instance 'sql-integer-type)
   'object->integer-reader
-  (non-null-identity-writer type))
+  (non-null-and-non-unbound-identity-writer type))
 
 ;;;;;;;;;;;;;;
 ;;; Integer-16
@@ -187,7 +187,7 @@
 
 (defmapping integer-16 (make-instance 'sql-integer-type :bit-size 16)
   'object->integer-reader
-  (non-null-identity-writer type))
+  (non-null-and-non-unbound-identity-writer type))
 
 ;;;;;;;;;;;;;;
 ;;; Integer-32
@@ -199,7 +199,7 @@
 
 (defmapping integer-32 (make-instance 'sql-integer-type :bit-size 32)
   'object->integer-reader
-  (non-null-identity-writer type))
+  (non-null-and-non-unbound-identity-writer type))
 
 ;;;;;;;;;;;;;;
 ;;; Integer-64
@@ -211,7 +211,7 @@
 
 (defmapping integer-64 (make-instance 'sql-integer-type :bit-size 64)
   'object->integer-reader
-  (non-null-identity-writer type))
+  (non-null-and-non-unbound-identity-writer type))
 
 ;;;;;;;;;
 ;;; Float
@@ -223,7 +223,7 @@
 
 (defmapping float (make-instance 'sql-float-type :bite-size 64)
   'object->number-reader
-  (non-null-identity-writer type))
+  (non-null-and-non-unbound-identity-writer type))
 
 ;;;;;;;;;;;;
 ;;; Float-32
@@ -235,7 +235,7 @@
 
 (defmapping float-32 (make-instance 'sql-float-type :bit-size 32)
   'object->number-reader
-  (non-null-identity-writer type))
+  (non-null-and-non-unbound-identity-writer type))
 
 ;;;;;;;;;;;;
 ;;; Float-64
@@ -247,7 +247,7 @@
 
 (defmapping float-64 (make-instance 'sql-float-type :bit-size 64)
   'object->number-reader
-  (non-null-identity-writer type))
+  (non-null-and-non-unbound-identity-writer type))
 
 ;;;;;;;;;;
 ;;; Double
@@ -259,7 +259,7 @@
 
 (defmapping double-float (make-instance 'sql-float-type :bit-size 64)
   'object->number-reader
-  (non-null-identity-writer type))
+  (non-null-and-non-unbound-identity-writer type))
 
 ;;;;;;;;;;
 ;;; Number
@@ -271,7 +271,7 @@
 
 (defmapping number (make-instance 'sql-numeric-type)
   'object->number-reader
-  (non-null-identity-writer type))
+  (non-null-and-non-unbound-identity-writer type))
 
 ;;;;;;;;;;
 ;;; String
@@ -285,8 +285,8 @@
 (defmapping string (if (consp type-specification)
                        (make-instance 'sql-character-type :size (second type-specification))
                        (make-instance 'sql-character-large-object-type))
-  (non-null-identity-reader type)
-  (non-null-identity-writer type))
+  (non-null-and-non-unbound-identity-reader type)
+  (non-null-and-non-unbound-identity-writer type))
 
 ;;;;;;;;
 ;;; Text
@@ -306,8 +306,8 @@
 (defmapping text (if (consp type-specification)
                      (make-instance 'sql-character-varying-type :size (second type-specification))
                      (make-instance 'sql-character-large-object-type))
-  (non-null-identity-reader type)
-  (non-null-identity-writer type))
+  (non-null-and-non-unbound-identity-reader type)
+  (non-null-and-non-unbound-identity-writer type))
 
 ;;;;;;;;;;
 ;;; Symbol
@@ -403,8 +403,8 @@
         (satisfies duration-p)))
 
 (defmapping duration (make-instance 'sql-character-varying-type :size 32)
-  (non-null-identity-reader type)
-  (non-null-identity-writer type))
+  (non-null-and-non-unbound-identity-reader type)
+  (non-null-and-non-unbound-identity-writer type))
 
 ;;;;;;;;
 ;;; Form

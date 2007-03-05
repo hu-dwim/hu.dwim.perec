@@ -100,17 +100,18 @@
 ;;;;;;;;;;;;;;;;;;;;;
 ;;; Non nil identity
 
-(defun non-null-identity-reader (type)
+(defun non-null-and-non-unbound-identity-reader (type)
   (lambda (rdbms-values)
     (aif (first rdbms-values)
          it
          (error 'type-error :datum it :expected-type type))))
 
-(defun non-null-identity-writer (type)
+(defun non-null-and-non-unbound-identity-writer (type)
   (lambda (slot-value)
-    (if slot-value
-       (list slot-value)
-       (error 'type-error :datum slot-value :expected-type type))))
+    (if (and slot-value
+             (not (eq slot-value +unbound-slot-value+)))
+        (list slot-value)
+        (error 'type-error :datum slot-value :expected-type type))))
 
 ;;;;;;;;;;
 ;;; Number
