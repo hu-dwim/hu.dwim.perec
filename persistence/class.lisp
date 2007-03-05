@@ -85,11 +85,11 @@
     :type boolean
     :computed-in compute-as
     :documentation "All prefetched slots are cached slots but the opposite may not be true. When a cached slot is loaded it's value will be stored in the CLOS object for fast subsequent read operations. Also whenever a cached slot is set the value will be remembered. The default cached slot semantics can be overriden on a per direct slot basis.")
-   (index ;; TODO:
+   (index
     :type boolean
     :computed-in compute-as
     :documentation "True means the slot value will be indexed in the underlying RDBMS.")
-   (unique ;; TODO:
+   (unique
     :type boolean
     :computed-in compute-as
     :documentation "True means the slot value will be enforced to be unique among instances in the underlying RDBMS.")
@@ -155,7 +155,13 @@
    (cached
     (compute-as (or (prefetched-p -self-)
                     (persistent-class-type-p (normalized-type-of -self-))))
-    :documentation "The cached option is inherited among direct slots according to the class precedence list. If no direct slot has cached specification then the default behaviour is to cache prefetched slots and single object references."))
+    :documentation "The cached option is inherited among direct slots according to the class precedence list. If no direct slot has cached specification then the default behaviour is to cache prefetched slots and single object references.")
+   (index
+    (compute-as #f)
+    :documentation "The index option is inherited among direct slots according to the class precedence list with defaulting to false.")
+   (unique
+    (compute-as #f)
+    :documentation "The unique option is inherited among direct slots according to the class precedence list with defaulting to false."))
   (:documentation "Class for persistent effective slot definitions."))
 
 (defcclass* class-primary-table (table)
@@ -414,30 +420,37 @@
                                            (unbound-subtype-p type)
                                            (not (null-subtype-p mapped-type))
                                            (not (unbound-subtype-p mapped-type))))
-                      (class (slot-definition-class slot)))
+                      (class (slot-definition-class slot))
+                      (class-name (class-name class)))
                  (when normalized-type
                    (cond ((set-type-p normalized-type)
-                          (make-columns-for-reference-slot (class-name class)
-                                                           (strcat name "-for-" (class-name class))))
+                          (make-columns-for-reference-slot class-name
+                                                           (strcat name "-for-" class-name)))
                          ((persistent-class-type-p normalized-type)
                           (append
                            (when complex-type-p
                              (list
                               (make-instance 'column
                                              :name (rdbms-name-for (concatenate-symbol name "-bound"))
-                                             :type (make-instance 'sql-boolean-type))))
-                           (make-columns-for-reference-slot (class-name class) name)))
+                                             :type (sql-boolean-type))))
+                           (make-columns-for-reference-slot class-name name)))
                          ((primitive-type-p normalized-type)
                           (append
                            (when complex-type-p
                              (list
                               (make-instance 'column
                                              :name (rdbms-name-for (concatenate-symbol name "-bound"))
-                                             :type (make-instance 'sql-boolean-type))))
+                                             :type (sql-boolean-type))))
                            (list
                             (make-instance 'column
                                            :name (rdbms-name-for name)
-                                           :type (compute-column-type type)))))
+                                           :type (compute-column-type type)
+                                           :constraints (if (unique-p slot)
+                                                            (list (sql-unique-constraint)))
+                                           :index (if (and (index-p slot)
+                                                           (not (unique-p slot)))
+                                                      (sql-index :name
+                                                                 (rdbms-name-for (concatenate-symbol name "-on-" class-name "-idx"))))))))
                          (t
                           (error "Unknown type ~A in slot ~A" type slot))))))))
 
@@ -537,8 +550,8 @@
    (make-instance 'column
                   :name +id-column-name+
                   :type +oid-id-sql-type+
-                  :constraints (list (make-instance 'sql-not-null-constraint)
-                                     (make-instance 'sql-primary-key-constraint)))
+                  :constraints (list (sql-not-null-constraint)
+                                     (sql-primary-key-constraint)))
    (make-instance 'column
                   :name +class-name-column-name+
                   :type +oid-class-name-sql-type+)))
@@ -551,7 +564,7 @@
      (make-instance 'column
                     :name id-column-name
                     :type +oid-id-sql-type+
-                    :index (make-instance 'sql-index :name id-index-name))
+                    :index (sql-index :name id-index-name))
      (make-instance 'column
                     :name class-name-column-name
                     :type +oid-class-name-sql-type+))))

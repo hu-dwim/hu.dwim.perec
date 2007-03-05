@@ -34,14 +34,14 @@
   "Length of the life time unique identifier numbers in bits.")
 
 (defvar +oid-id-sql-type+
-  (make-instance 'sql-integer-type :bit-size +oid-id-bit-size+)
+  (sql-integer-type :bit-size +oid-id-bit-size+)
   "The RDBMS type for the oid's id slot.")
 
 (defconstant +oid-class-name-maximum-length+ 128
   "Maximum length of class names.")
 
 (defvar +oid-class-name-sql-type+
-  (make-instance 'sql-character-varying-type :size +oid-class-name-maximum-length+)
+  (sql-character-varying-type :size +oid-class-name-maximum-length+)
   "The RDBMS type for the oid's class-name slot")
 
 ;;;;;;;;;;

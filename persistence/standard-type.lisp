@@ -78,7 +78,7 @@
 (defptype member (&rest members)
   `(member ,@members))
 
-(defmapping member (make-instance 'sql-integer-type :bit-size 16)
+(defmapping member (sql-integer-type :bit-size 16)
   (integer->member-reader type-specification)
   (member->integer-writer type-specification))
 
@@ -96,7 +96,7 @@
 (defptype unbound ()
   `(member ,+unbound-slot-value+))
 
-(defmapping unbound (make-instance 'sql-boolean-type)
+(defmapping unbound (sql-boolean-type)
   (unbound-reader #L(error 'type-error :datum (first !1) :expected-type type))
   (unbound-writer #L(error 'type-error :datum !1 :expected-type type)))
 
@@ -109,7 +109,7 @@
 (defptype null ()
   'null)
 
-(defmapping null (make-instance 'sql-boolean-type)
+(defmapping null (sql-boolean-type)
   (null-reader #L(error 'type-error :datum (first !1) :expected-type type))
   (null-writer #L(error 'type-error :datum !1 :expected-type type)))
 
@@ -123,7 +123,7 @@
 (defptype t ()
   t)
 
-(defmapping t (make-instance 'sql-character-large-object-type)
+(defmapping t (sql-character-large-object-type)
   'base64->object-reader
   'object->base64-writer)
 
@@ -145,8 +145,8 @@
         (satisfies maximum-serialized-size-p)))
 
 (defmapping serialized (if (consp type-specification)
-                           (make-instance 'sql-character-varying-type :size (second type-specification))
-                           (make-instance 'sql-character-large-object-type))
+                           (sql-character-varying-type :size (second type-specification))
+                           (sql-character-large-object-type))
   'base64->object-reader
   'object->base64-writer)
 
@@ -160,7 +160,7 @@
 (defptype boolean ()
   'boolean)
 
-(defmapping boolean (make-instance 'sql-boolean-type)
+(defmapping boolean (sql-boolean-type)
   'object->boolean-reader
   'boolean->string-writer)
 
@@ -173,7 +173,7 @@
   (declare (ignore bit-size))
   `(integer ,minimum-value ,maximum-value))
 
-(defmapping integer (make-instance 'sql-integer-type)
+(defmapping integer (sql-integer-type)
   'object->integer-reader
   (non-null-and-non-unbound-identity-writer type))
 
@@ -185,7 +185,7 @@
 (defptype integer-16 ()
   `(integer ,(- (expt 2 15)) ,(1- (expt 2 15))))
 
-(defmapping integer-16 (make-instance 'sql-integer-type :bit-size 16)
+(defmapping integer-16 (sql-integer-type :bit-size 16)
   'object->integer-reader
   (non-null-and-non-unbound-identity-writer type))
 
@@ -197,7 +197,7 @@
 (defptype integer-32 ()
   `(integer ,(- (expt 2 31)) ,(1- (expt 2 31))))
 
-(defmapping integer-32 (make-instance 'sql-integer-type :bit-size 32)
+(defmapping integer-32 (sql-integer-type :bit-size 32)
   'object->integer-reader
   (non-null-and-non-unbound-identity-writer type))
 
@@ -209,7 +209,7 @@
 (defptype integer-64 ()
   `(integer ,(- (expt 2 63)) ,(1- (expt 2 63))))
 
-(defmapping integer-64 (make-instance 'sql-integer-type :bit-size 64)
+(defmapping integer-64 (sql-integer-type :bit-size 64)
   'object->integer-reader
   (non-null-and-non-unbound-identity-writer type))
 
@@ -221,7 +221,7 @@
 (defptype float (&optional minimum-value maximum-value)
   `(float ,minimum-value ,maximum-value))
 
-(defmapping float (make-instance 'sql-float-type :bite-size 64)
+(defmapping float (sql-float-type :bite-size 64)
   'object->number-reader
   (non-null-and-non-unbound-identity-writer type))
 
@@ -233,7 +233,7 @@
 (defptype float-32 ()
   'float)
 
-(defmapping float-32 (make-instance 'sql-float-type :bit-size 32)
+(defmapping float-32 (sql-float-type :bit-size 32)
   'object->number-reader
   (non-null-and-non-unbound-identity-writer type))
 
@@ -245,7 +245,7 @@
 (defptype float-64 ()
   'float)
 
-(defmapping float-64 (make-instance 'sql-float-type :bit-size 64)
+(defmapping float-64 (sql-float-type :bit-size 64)
   'object->number-reader
   (non-null-and-non-unbound-identity-writer type))
 
@@ -257,7 +257,7 @@
 (defptype double ()
   'double-float)
 
-(defmapping double-float (make-instance 'sql-float-type :bit-size 64)
+(defmapping double-float (sql-float-type :bit-size 64)
   'object->number-reader
   (non-null-and-non-unbound-identity-writer type))
 
@@ -269,7 +269,7 @@
 (defptype number ()
   'number)
 
-(defmapping number (make-instance 'sql-numeric-type)
+(defmapping number (sql-numeric-type)
   'object->number-reader
   (non-null-and-non-unbound-identity-writer type))
 
@@ -283,8 +283,8 @@
   `(string ,length))
 
 (defmapping string (if (consp type-specification)
-                       (make-instance 'sql-character-type :size (second type-specification))
-                       (make-instance 'sql-character-large-object-type))
+                       (sql-character-type :size (second type-specification))
+                       (sql-character-large-object-type))
   (non-null-and-non-unbound-identity-reader type)
   (non-null-and-non-unbound-identity-writer type))
 
@@ -304,8 +304,8 @@
         (satisfies maximum-length-p)))
 
 (defmapping text (if (consp type-specification)
-                     (make-instance 'sql-character-varying-type :size (second type-specification))
-                     (make-instance 'sql-character-large-object-type))
+                     (sql-character-varying-type :size (second type-specification))
+                     (sql-character-large-object-type))
   (non-null-and-non-unbound-identity-reader type)
   (non-null-and-non-unbound-identity-writer type))
 
@@ -317,7 +317,7 @@
 (defptype symbol ()
   'symbol)
 
-(defmapping symbol (make-instance 'sql-character-large-object-type)
+(defmapping symbol (sql-character-large-object-type)
   'string->symbol-reader
   'symbol->string-writer)
 
@@ -332,9 +332,9 @@
         (satisfies maximum-symbol-name-length-p)))
 
 (defmapping symbol* (if (consp type-specification)
-                        (make-instance 'sql-character-varying-type :size (second (find 'symbol* type-specification
-                                                                                       :key #L(when (listp !1) (first !1)))))
-                        (make-instance 'sql-character-large-object-type))
+                        (sql-character-varying-type :size (second (find 'symbol* type-specification
+                                                                        :key #L(when (listp !1) (first !1)))))
+                        (sql-character-large-object-type))
   'string->symbol-reader
   'symbol->string-writer)
 
@@ -352,7 +352,7 @@
   '(and local-time
         (satisfies date-p)))
 
-(defmapping date (make-instance 'sql-date-type)
+(defmapping date (sql-date-type)
   'integer->local-time-reader
   'local-time->string-writer)
 
@@ -370,7 +370,7 @@
   '(and local-time
         (satisfies time-p)))
 
-(defmapping time (make-instance 'sql-time-type)
+(defmapping time (sql-time-type)
   'string->local-time-reader
   'local-time->string-writer)
 
@@ -384,7 +384,7 @@
         (satisfies date-p)
         (satisfies time-p)))
 
-(defmapping timestamp (make-instance 'sql-timestamp-type)
+(defmapping timestamp (sql-timestamp-type)
   'integer->local-time-reader
   'local-time->string-writer)
 
@@ -402,7 +402,7 @@
   '(and string
         (satisfies duration-p)))
 
-(defmapping duration (make-instance 'sql-character-varying-type :size 32)
+(defmapping duration (sql-character-varying-type :size 32)
   (non-null-and-non-unbound-identity-reader type)
   (non-null-and-non-unbound-identity-writer type))
 
@@ -416,6 +416,6 @@
   '(and list
         (satisfies maximum-serialized-size-p)))
 
-(defmapping form (make-instance 'sql-character-varying-type)
+(defmapping form (sql-character-varying-type)
   'string->list-reader
   'list->string-writer)
