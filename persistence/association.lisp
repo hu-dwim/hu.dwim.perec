@@ -80,14 +80,13 @@
                     (secondary-association-end-of (association-of -self-))
                     (primary-association-end-of (association-of -self-))))
     :type persistent-association-end-direct-slot-definition))
-  (:metaclass persistent-slot-definition-class))
+  (:metaclass identity-preserving-class))
 
 (defcclass* persistent-association-end-effective-slot-definition
     (persistent-association-end-slot-definition persistent-effective-slot-definition)
   ((other-association-end
     (compute-as (other-effective-association-end-for (associated-class-of (first (direct-slots-of -self-))) -self-))
-    :type persistent-association-end-direct-slot-definition))
-  (:metaclass persistent-slot-definition-class))
+    :type persistent-association-end-direct-slot-definition)))
 
 ;;;;;;;;;;
 ;;; Export

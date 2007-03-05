@@ -72,7 +72,7 @@
     :documentation "The list of persistent classes which must look at this class when computing RDBMS meta data."))
   (:documentation "Persistent class is a class meta object for classes. Standard defclass forms may be used to define persistent classes. A persistent class will have persistent slots unless marked with :persistent #f. A persistent slot should have type specification to be efficient both in storage and speed. The special type unbound must be used to mark slots which might be unbound."))
 
-(defclass persistent-slot-definition-class (computed-class)
+(defclass identity-preserving-class (computed-class)
   ()
   (:documentation "This class serves a very special purpose, namely being able to return the very same instance in make-instance for slot definition meta objects."))
 
@@ -103,7 +103,7 @@
 (defcclass* persistent-direct-slot-definition
     (persistent-slot-definition standard-direct-slot-definition)
   ()
-  (:metaclass persistent-slot-definition-class)
+  (:metaclass identity-preserving-class)
   (:documentation "Class for persistent direct slot definitions."))
 
 (defcclass* persistent-effective-slot-definition
@@ -156,7 +156,6 @@
     (compute-as (or (prefetched-p -self-)
                     (persistent-class-type-p (normalized-type-of -self-))))
     :documentation "The cached option is inherited among direct slots according to the class precedence list. If no direct slot has cached specification then the default behaviour is to cache prefetched slots and single object references."))
-  (:metaclass persistent-slot-definition-class)
   (:documentation "Class for persistent effective slot definitions."))
 
 (defcclass* class-primary-table (table)

@@ -16,8 +16,7 @@
   (declare (ignore persistent))
   (apply #'call-next-method slot slot-names args))
 
-(defmethod make-instance ((slot-definition-class-meta-object persistent-slot-definition-class)
-                          &key instance &allow-other-keys)
+(defmethod make-instance ((object identity-preserving-class) &key instance &allow-other-keys)
   ;; used in class finalization protocol when instantiating direct slot definitions
   ;; this allows associations to be defined independently of direct slot definitions
   ;; and ensure-class to be called without loosing the old non association direct slot definitions
