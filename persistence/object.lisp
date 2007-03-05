@@ -82,6 +82,10 @@
       (when (eq persistent 'unknown)
         (slot-makunbound object 'persistent)))))
 
+(defmethod initialize-instance :before ((object persistent-object) &key persistent &allow-other-keys)
+  (when persistent
+    (ensure-exported (class-of object))))
+
 (defmethod initialize-instance :after ((object persistent-object) &key persistent &allow-other-keys)
   (when (eq persistent #t)
     (make-persistent object)
@@ -89,9 +93,7 @@
     (setf (cached-slots-of object)
           (collect-if #'cached-p (persistent-effective-slots-of (class-of object))))))
 
-(defmethod make-instance :before ((class persistent-class) &key persistent &allow-other-keys)
-  (when persistent
-    (ensure-exported class))
+(defmethod make-instance :before ((class persistent-class) &key &allow-other-keys)
   (when (abstract-p class)
     (error "Cannot make instances of abstract class ~A" class)))
 
