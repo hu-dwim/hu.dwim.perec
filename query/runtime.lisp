@@ -51,7 +51,7 @@
     (mapc (lambda (slot rdbms-value)
             ;; we use the slot-name here because we can't guarantee that the effective slot will match with the class of the object
             (setf (cached-slot-boundp-or-value object (slot-definition-name slot))
-                  (funcall (reader-of slot) rdbms-value)))
+                  (restore-slot-value slot rdbms-value)))
           slots rdbms-values)
     object))
 
