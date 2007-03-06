@@ -77,7 +77,7 @@
                  (iter (for slot in (class-slots (class-of object)))
                        (unless (typep slot 'persistent-slot-definition)
                          (collect (slot-definition-name slot))))
-                 (remove-if #L(typep (find-slot !1 (class-of object)) 'persistent-slot-definition) slot-names)))))
+                 (remove-if #L(typep (find-slot (class-of object) !1) 'persistent-slot-definition) slot-names)))))
     (prog1 (apply #'call-next-method object processed-slot-names :persistent #f args)
       (when (eq persistent 'unknown)
         (slot-makunbound object 'persistent)))))
