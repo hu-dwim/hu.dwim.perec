@@ -28,14 +28,14 @@
 (defmacro define-query-macro (name (&rest args) &body body)
   "Defines name as a query macro."
   `(progn
-    (setf (expander-of ',name) #'(lambda ,args ,@body))
+    (setf (query-macro-expander-of ',name) #'(lambda ,args ,@body))
     ',name))
 
-(defun expander-of (name)
+(defun query-macro-expander-of (name)
   "Returns the expander of the query macro named NAME, or NIL."
   (get name 'query-macro))
 
-(defun (setf expander-of) (value name)
+(defun (setf query-macro-expander-of) (value name)
   "Sets the expander of the query macro named NAME."
   (setf (get name 'query-macro)
         value))
@@ -44,7 +44,7 @@
   "Expand the query macro at the top of the FORM."
   (bind ((name (if (consp form) (car form)))
          (args (if (consp form) (cdr form)))
-         (expander (expander-of name)))
+         (expander (query-macro-expander-of name)))
    (if expander
        (apply expander args)
        form)))
@@ -54,7 +54,7 @@
   (cond
     ((atom form) form)
     ((constantp form) form)
-    ((expander-of (car form))
+    ((query-macro-expander-of (car form))
      (bind (((values expanded-form expanded-p) (query-macroexpand1 form)))
        (if (or expanded-form expanded-p)
            (query-macroexpand ; TODO: detect infinite loops
