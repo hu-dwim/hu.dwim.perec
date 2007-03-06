@@ -168,7 +168,9 @@
 
            ;; query
            #:query
+           #:copy-query
            #:query-builder
+           #:simple-query-builder
            #:select
            #:select-first-matching
            #:select-last-matching
@@ -185,6 +187,7 @@
            #:unique
            #:flat
            #:result-set
+           #:result-type-of
            #:define-query-macro
            #:like
            #:avg
