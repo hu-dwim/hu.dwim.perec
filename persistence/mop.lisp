@@ -164,7 +164,7 @@
                               (class-of direct-superclass))))
                    direct-superclasses)
           direct-superclasses
-          (cons persistent-object direct-superclasses)))))
+          (append direct-superclasses (list persistent-object))))))
 
 (defun process-direct-slot-definitions (direct-slots)
   (loop for direct-slot :in direct-slots
