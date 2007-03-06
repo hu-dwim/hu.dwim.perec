@@ -42,7 +42,7 @@
 
 (defmethod print-object ((query query) stream)
   (print-unreadable-object (query stream :type t)
-    (princ (query-hash-key-for query) stream)))
+    (prin1 (query-hash-key-for query) stream)))
 
 (defun query-hash-key-for (query)
   (list (mapcar 'name-of (lexical-variables-of query)) (select-form-of query)))
