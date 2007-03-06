@@ -10,8 +10,8 @@
   (import '(cl-perec::primary-table-of
             cl-perec::primary-tables-of
             cl-perec::data-tables-of
-            cl-perec::prefetched-p
-            cl-perec::cached-p
+            cl-perec::prefetch-p
+            cl-perec::cache-p
             cl-perec::table-of
             cl-perec::columns-of
             cl-perec::depends-on-of

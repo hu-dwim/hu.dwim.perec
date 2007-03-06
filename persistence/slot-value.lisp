@@ -146,7 +146,7 @@
               (iter (for restored-slot-value in restored-slot-values)
                     (for restored-slot in restored-slots)
                     (when (and *cache-slot-values*
-                               (cached-p restored-slot))
+                               (cache-p restored-slot))
                       (setf (cached-slot-boundp-or-value-using-class class object restored-slot) restored-slot-value)))))
           ;; simple existence test
           (setf (slot-value-using-class class object slot) (object-exists-in-database-p object)))
@@ -168,7 +168,7 @@
         (funcall call-next-method)
         ;; restore the slot value from the database and put it in the underlying slot when appropriate
         (if (and *cache-slot-values*
-                 (prefetched-p slot))
+                 (prefetch-p slot))
             ;; restore all prefetched slot values at once
             (bind (((values restored-slot-values restored-slots) (restore-prefetched-slots object))
                    (slot-value))
@@ -176,13 +176,13 @@
                     (for restored-slot in restored-slots)
                     (when (eq slot restored-slot)
                       (setf slot-value restored-slot-value))
-                    (when (cached-p restored-slot)
+                    (when (cache-p restored-slot)
                       (setf (cached-slot-boundp-or-value-using-class class object restored-slot) restored-slot-value)))
               (funcall return-with  slot-value))
             ;; only restore the requested slot value
             (bind (((values restored-slot-value restored-slot) (restore-slot object slot)))
               (when (and *cache-slot-values*
-                         (cached-p restored-slot))
+                         (cache-p restored-slot))
                 (setf (cached-slot-boundp-or-value-using-class class object restored-slot) restored-slot-value))
               (funcall return-with restored-slot-value))))))
 
@@ -207,13 +207,13 @@
       (bind ((*propagate-cache-changes* #f))
         (propagate-cache-changes class object slot new-value)))
     (when (and *cache-slot-values*
-               (cached-p slot)
+               (cache-p slot)
                persistent)
       (pushnew slot (cached-slots-of object)))
     ;; store slot value in the underlying slot if appropriate
     (when (or (not persistent)
               (and *cache-slot-values*
-                   (cached-p slot))
+                   (cache-p slot))
               *bypass-database-access*)
       (funcall call-next-method))
     new-value))

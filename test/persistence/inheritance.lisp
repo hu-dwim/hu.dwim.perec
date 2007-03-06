@@ -3,10 +3,10 @@
 (defsuite* (test/persistence/inheritance :in test/persistence))
 
 (defpclass* inheritance-t1-test ()
-  ((slot :type (text 20) :cached #f)))
+  ((slot :type (text 20) :cache #f)))
 
 (defpclass* inheritance-t2-test (inheritance-t1-test)
-  ((slot :cached #t)))
+  ((slot :cache #t)))
 
 (deftest test/persistence/inheritance/store-value/1 ()
   (let ((value "hello"))
@@ -15,5 +15,5 @@
       (is (equal value (slot-of (make-instance 'inheritance-t2-test :slot value)))))))
 
 (deftest test/persistence/inheritance/override/1 ()
-  (is (not (prc::cached-p (prc::find-slot (find-class 'inheritance-t1-test) 'slot))))
-  (is (prc::cached-p (prc::find-slot (find-class 'inheritance-t2-test) 'slot))))
+  (is (not (cache-p (prc::find-slot (find-class 'inheritance-t1-test) 'slot))))
+  (is (cache-p (prc::find-slot (find-class 'inheritance-t2-test) 'slot))))

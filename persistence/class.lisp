@@ -55,11 +55,11 @@
     :type (list table)
     :documentation "All the tables which hold direct data of an instance of this class. This list contains the primary tables of the super persistent classes.")
    (prefetched-slots
-    (compute-as (collect-if #'prefetched-p (persistent-effective-slots-of -self-)))
+    (compute-as (collect-if #'prefetch-p (persistent-effective-slots-of -self-)))
     :type (list persistent-effective-slot-definition)
     :documentation "The list of effective slots which will be loaded from and stored to the database at once when loading an instance of this class. Moreover when a persistent object is revived its prefetched slots will be loaded.")
    (non-prefetched-slots
-    (compute-as (remove-if #'prefetched-p (persistent-effective-slots-of -self-)))
+    (compute-as (remove-if #'prefetch-p (persistent-effective-slots-of -self-)))
     :type (list effective-slot)
     :documentation "The list of effective slots which will be loaded and stored lazily and separately from other slots.")
    (depends-on
@@ -77,11 +77,11 @@
   (:documentation "This class serves a very special purpose, namely being able to return the very same instance in make-instance for slot definition meta objects."))
 
 (defcclass* persistent-slot-definition (standard-slot-definition)
-  ((prefetched
+  ((prefetch
     :type boolean
     :computed-in compute-as
     :documentation "Prefetched slots are loaded from and stored into the database at once. A prefetched slot must be in a table which can be accessed using a where clause matching to the id of the object thus it must be in a data table. The default prefetched slot semantics can be overriden on a per direct slot basis.")
-   (cached
+   (cache
     :type boolean
     :computed-in compute-as
     :documentation "All prefetched slots are cached slots but the opposite may not be true. When a cached slot is loaded it's value will be stored in the CLOS object for fast subsequent read operations. Also whenever a cached slot is set the value will be remembered. The default cached slot semantics can be overriden on a per direct slot basis.")
@@ -148,11 +148,11 @@
     (compute-as (compute-data-table-slot-p -self-))
     :type boolean
     :documentation "True means the slot can be loaded from one of the data tables of its class.")
-   (prefetched
+   (prefetch
     (compute-as (data-table-slot-p -self-))
     :documentation "The prefetched option is inherited among direct slots according to the class precedence list. If no direct slot has prefetched specification then the default behaviour is to prefetch data tabe slot.")
-   (cached
-    (compute-as (or (prefetched-p -self-)
+   (cache
+    (compute-as (or (prefetch-p -self-)
                     (persistent-class-type-p (normalized-type-of -self-))))
     :documentation "The cached option is inherited among direct slots according to the class precedence list. If no direct slot has cached specification then the default behaviour is to cache prefetched slots and single object references.")
    (index
@@ -183,7 +183,7 @@
 
 ;; :persistent is a slot definition option and may be set to #t or #f
 (eval-always
-  (mapc #L(pushnew !1  *allowed-slot-definition-properties*) '(:persistent :prefetched :cached :index :unique :type-check)))
+  (mapc #L(pushnew !1  *allowed-slot-definition-properties*) '(:persistent :prefetch :cache :index :unique :type-check)))
 
 (defmethod describe-object ((object persistent-class) stream)
   (call-next-method)

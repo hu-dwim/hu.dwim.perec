@@ -56,8 +56,8 @@
            #:defpclass*
            #:find-class
            #:abstract-p
-           #:cached-p
-           #:prefetched-p
+           #:cache-p
+           #:prefetch-p
            #:index-p
            #:unique-p
            #:required-p

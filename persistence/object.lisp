@@ -91,7 +91,7 @@
     (make-persistent object)
     (setf (created-p object) #t)
     (setf (cached-slots-of object)
-          (collect-if #'cached-p (persistent-effective-slots-of (class-of object))))))
+          (collect-if #'cache-p (persistent-effective-slots-of (class-of object))))))
 
 (defmethod make-instance :before ((class persistent-class) &key &allow-other-keys)
   (when (abstract-p class)
