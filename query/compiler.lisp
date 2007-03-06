@@ -776,11 +776,6 @@ forms with joined variables.")
   "Generates a name for a joined variable of type TYPE."
   (gensym (symbol-name (class-name type))))
 
-(defun find-persistent-class* (name-or-class)
-  (etypecase name-or-class
-    (symbol (find-persistent-class name-or-class))
-    (persistent-class name-or-class)))
-
 (defgeneric collect-persistent-object-literals (element &optional result)
   (:method ((query simple-query) &optional result)
            (collect-persistent-object-literals

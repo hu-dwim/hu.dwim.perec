@@ -97,6 +97,11 @@
 (defvar *canonical-types* nil
   "A list of type names to be treated as canonical types when a type is converted into canonical form.")
 
+(defun find-class* (class-or-name)
+  (if (typep class-or-name 'standard-class)
+      class-or-name
+      (find-class class-or-name)))
+
 (defun canonical-type-p (type)
   (member (first (ensure-list type)) *canonical-types*))
 
@@ -122,14 +127,18 @@
     ((?or (and (?* ?x) ?a (?* ?y) (not ?a) (?* ?z))
           (and (?* ?x) (not ?a) (?* ?y) ?a (?* ?z)))
      nil)
+    ((and (?* ?x) ?a (?* ?y) ?a (?* ?z))
+     (canonical-type-for (list* 'and (append ?x (list ?a) ?y ?z))))
     ((?or (or (?* ?x) ?a (?* ?y) (not ?a) (?* ?z))
           (or (?* ?x) (not ?a) (?* ?y) ?a (?* ?z)))
      t)
+    ((or (?* ?x) ?a (?* ?y) ?a (?* ?z))
+     (canonical-type-for (list* 'or (append ?x (list ?a) ?y ?z))))
     ((and (?* ?x) ?a (?* ?x) ?b (?* ?z)
           (?if (and (persistent-class-type-p ?a)
                     (persistent-class-type-p ?b)
-                    (not (intersection (list* (find-class ?a) (persistent-effective-sub-classes-of (find-class ?a)))
-                                       (list* (find-class ?b) (persistent-effective-sub-classes-of (find-class ?b))))))))
+                    (not (intersection (list* (find-class* ?a) (persistent-effective-sub-classes-of (find-class* ?a)))
+                                       (list* (find-class* ?b) (persistent-effective-sub-classes-of (find-class* ?b))))))))
      nil)
     ((?or (and (?* ?x) ?a (?* ?y) (not ?b) (?* ?z)
                (?if (disjunct-type-p ?a ?b)))

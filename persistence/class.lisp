@@ -507,6 +507,11 @@
 (defun find-persistent-class (name)
   (gethash name *persistent-classes*))
 
+(defun find-persistent-class* (name-or-class)
+  (etypecase name-or-class
+    (symbol (find-persistent-class name-or-class))
+    (persistent-class name-or-class)))
+
 (defun (setf find-persistent-class) (new-value name)
   (setf (gethash name *persistent-classes*) new-value))
 
