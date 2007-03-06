@@ -63,35 +63,15 @@
 ;;;;;;;;;;;;;;;
 ;;; MOP methods
 
-(defmethod shared-initialize :around ((object persistent-object) slot-names &rest args
-                                      &key (initialize-persistent-slots #t) persistent &allow-other-keys)
-  "Make sure that this slot is set before any other slots, especially persistent ones."
-  ;; make-persistent will be called from initialize-instance
-  ;; this allows svuc to cache initargs and ignore the database
-  (remf-keywords args :persistent :cached-slots :initialize-persistent-slots)
-  (let ((processed-slot-names
-         (if initialize-persistent-slots
-             slot-names
-             (if (eq slot-names t)
-                 ;; TODO: cache the list and make this more efficient
-                 (iter (for slot in (class-slots (class-of object)))
-                       (unless (typep slot 'persistent-slot-definition)
-                         (collect (slot-definition-name slot))))
-                 (remove-if #L(typep (find-slot (class-of object) !1) 'persistent-slot-definition) slot-names)))))
-    (prog1 (apply #'call-next-method object processed-slot-names :persistent #f args)
-      (when (eq persistent 'unknown)
-        (slot-makunbound object 'persistent)))))
-
-(defmethod initialize-instance :before ((object persistent-object) &key persistent &allow-other-keys)
+(defmethod initialize-instance :around ((object persistent-object) &rest args &key persistent &allow-other-keys)
   (when persistent
-    (ensure-exported (class-of object))))
-
-(defmethod initialize-instance :after ((object persistent-object) &key persistent &allow-other-keys)
-  (when (eq persistent #t)
-    (make-persistent object)
-    (setf (created-p object) #t)
-    (setf (cached-slots-of object)
-          (collect-if #'cache-p (persistent-effective-slots-of (class-of object))))))
+    (ensure-exported (class-of object)))
+  (prog1 (apply #'call-next-method object :persistent #f args)
+    (when (eq persistent #t)
+      (make-persistent object)
+      (setf (created-p object) #t)
+      (setf (cached-slots-of object)
+            (collect-if #'cache-p (persistent-effective-slots-of (class-of object)))))))
 
 (defmethod make-instance :before ((class persistent-class) &key &allow-other-keys)
   (when (abstract-p class)

@@ -171,7 +171,7 @@
         collect (if (or (getf direct-slot :instance)
                         (getf direct-slot :persistent))
                     direct-slot
-                    (if (get-properties direct-slot '(:persistent))
+                    (if (hasf direct-slot :persistent)
                         ;; remove :persistent nil
                         (remove-keywords direct-slot :persistent)
                         ;; add default :persistent t

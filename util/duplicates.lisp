@@ -72,6 +72,9 @@
     ,@body
     ,var))
 
+(defun hasf (plist indicator)
+  (not (eq (getf plist indicator :unbound) :unbound)))
+
 (defun collect-if (predicate sequence)
   "Collect elements from SEQUENCE for which the PREDICATE is true."
   (remove-if-not predicate sequence))

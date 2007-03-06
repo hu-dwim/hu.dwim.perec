@@ -23,13 +23,31 @@
           (decf (select-counter-of (command-counter-of *transaction*))))
         (setf (persistent-p object) (object-exists-in-database-p object)))))
 
-(defun create-object (oid &optional (persistent 'unknown))
-  "Creates an object representing the given oid as its identity. The object will not be associated with the current transaction nor will it be stored in the database. The object may or may not be known to be either persistent or transient."
-  (assert oid)
-  ;; shared-initialize should not call initfunctions for persistent slots when we are caching or loading persistent object (aka here)
-  (prog1-bind object (make-instance (find-class (oid-class-name oid)) :oid oid :persistent 'unknown :initialize-persistent-slots #f)
-    (unless (eq persistent 'unknown)
-      (setf (persistent-p object) persistent))))
+(defgeneric initialize-revived-slot-p (slot)
+  (:documentation "When a persistent instance is revived the slots marked here will be initialized by shared-initialize. The default implementation will not initialize persistent slots.")
+
+  (:method (slot)
+           #t)
+
+  (:method ((slot persistent-effective-slot-definition))
+           #f))
+
+(defgeneric initialize-revived-instance (instance &key &allow-other-keys)
+  (:documentation "When a revived instance is initialized slots marked with initialize-revived-slot-p will be passed down to be initialized by shared-initialize.")
+
+  (:method ((instance persistent-object) &rest args &key oid &allow-other-keys)
+           (assert oid)
+           (bind ((slot-names
+                   (iter (for slot in (class-slots (class-of instance)))
+                         (when (initialize-revived-slot-p slot)
+                           (collect (slot-definition-name slot))))))
+             (apply #'shared-initialize instance slot-names args))))
+
+(defgeneric make-revived-instance (class &key &allow-other-keys)
+  (:documentation "Creates a new instance representing the given oid as its identity. The instance will not be associated with the current transaction nor will it be stored in the database. The instance may or may not be known to be either persistent or transient. This generic function should not be called outside of cl-perec but methods may be defined on it.")
+
+  (:method ((class persistent-class) &rest args &key &allow-other-keys)
+           (apply #'initialize-revived-instance (allocate-instance class) args)))
 
 (defgeneric cache-object (thing)
   (:documentation "Attaches an object to the current transaction. The object must be already present in the database, so load-object would return an instance for it. The purpose of this method is to cache objects returned by a query or when the existence may be guaranteed by some other means.")
@@ -42,7 +60,7 @@
            (aif (cached-object-of oid)
                 (prog1 it
                   (setf (persistent-p it) #t))
-                (setf (cached-object-of oid) (create-object oid #t))))
+                (setf (cached-object-of oid) (make-revived-instance (find-class (oid-class-name oid)) :oid oid :persistent #t))))
 
   (:method ((object persistent-object))
            (debug-only (assert (debug-persistent-p object)))
@@ -69,7 +87,7 @@
                           (t otherwise))))
              (aif (cached-object-of oid)
                   it
-                  (let ((new-object (create-object oid)))
+                  (let ((new-object (make-revived-instance (find-class (oid-class-name oid)) :oid oid)))
                     ;; REVIEW: is this the correct thing to do?
                     ;; we push the new-object into the cache first
                     ;; even tough we are unsure if the object is persistent or not
