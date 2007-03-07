@@ -174,10 +174,11 @@
 	((set-type-p (normalized-type-of slot))
          (store-slot-set object slot value))
 	(t
-         (update-records (name-of (table-of slot))
-                         (columns-of slot)
-                         (store-slot-value slot value)
-                         (id-column-matcher-where-clause object)))))
+         (when-bind columns (columns-of slot)
+           (update-records (name-of (table-of slot))
+                           columns
+                           (store-slot-value slot value)
+                           (id-column-matcher-where-clause object))))))
 
 (defun store-prefetched-slots (object)
   "Stores all prefetched slots without local side effects into the database. Executes one insert statement for each table."
