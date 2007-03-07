@@ -42,7 +42,6 @@
                :stefil
                :cl-rdbms
                :cl-perec)
-  :serial t
   :components
   ((:module :test
             :serial t
@@ -50,7 +49,6 @@
             ((:file "package")
              (:file "suite")
              (:module :persistence
-                      :serial t
                       :components
                       ((:file "table")
                        (:file "transformer")
