@@ -93,8 +93,9 @@
 ;;; t -> type-error
 
 ;; this type must be used to mark slots which might be unbound (e.g. (or unbound integer))
+;; 42 is the magic number which prevents unbound to be the subtype of symbol
 (defptype unbound ()
-  `(member ,+unbound-slot-value+))
+  `(member ,+unbound-slot-value+ 42))
 
 (defmapping unbound (sql-boolean-type)
   (unbound-reader #L(error 'type-error :datum (first !1) :expected-type type))
@@ -175,7 +176,7 @@
 
 (defmapping integer (sql-integer-type)
   'object->integer-reader
-  (non-null-and-non-unbound-identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;;;;;
 ;;; Integer-16
@@ -187,7 +188,7 @@
 
 (defmapping integer-16 (sql-integer-type :bit-size 16)
   'object->integer-reader
-  (non-null-and-non-unbound-identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;;;;;
 ;;; Integer-32
@@ -199,7 +200,7 @@
 
 (defmapping integer-32 (sql-integer-type :bit-size 32)
   'object->integer-reader
-  (non-null-and-non-unbound-identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;;;;;
 ;;; Integer-64
@@ -211,7 +212,7 @@
 
 (defmapping integer-64 (sql-integer-type :bit-size 64)
   'object->integer-reader
-  (non-null-and-non-unbound-identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;
 ;;; Float
@@ -223,7 +224,7 @@
 
 (defmapping float (sql-float-type :bite-size 64)
   'object->number-reader
-  (non-null-and-non-unbound-identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;;;
 ;;; Float-32
@@ -235,7 +236,7 @@
 
 (defmapping float-32 (sql-float-type :bit-size 32)
   'object->number-reader
-  (non-null-and-non-unbound-identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;;;
 ;;; Float-64
@@ -247,7 +248,7 @@
 
 (defmapping float-64 (sql-float-type :bit-size 64)
   'object->number-reader
-  (non-null-and-non-unbound-identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;
 ;;; Double
@@ -259,7 +260,7 @@
 
 (defmapping double-float (sql-float-type :bit-size 64)
   'object->number-reader
-  (non-null-and-non-unbound-identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;
 ;;; Number
@@ -271,7 +272,7 @@
 
 (defmapping number (sql-numeric-type)
   'object->number-reader
-  (non-null-and-non-unbound-identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;
 ;;; String
@@ -285,8 +286,8 @@
 (defmapping string (if (consp type-specification)
                        (sql-character-type :size (second type-specification))
                        (sql-character-large-object-type))
-  (non-null-and-non-unbound-identity-reader type)
-  (non-null-and-non-unbound-identity-writer type))
+  'identity-reader
+  'identity-writer)
 
 ;;;;;;;;
 ;;; Text
@@ -306,8 +307,8 @@
 (defmapping text (if (consp type-specification)
                      (sql-character-varying-type :size (second type-specification))
                      (sql-character-large-object-type))
-  (non-null-and-non-unbound-identity-reader type)
-  (non-null-and-non-unbound-identity-writer type))
+  'identity-reader
+  'identity-writer)
 
 ;;;;;;;;;;
 ;;; Symbol
@@ -403,8 +404,8 @@
         (satisfies duration-p)))
 
 (defmapping duration (sql-character-varying-type :size 32)
-  (non-null-and-non-unbound-identity-reader type)
-  (non-null-and-non-unbound-identity-writer type))
+  'identity-reader
+  'identity-writer)
 
 ;;;;;;;;
 ;;; Form

@@ -133,11 +133,11 @@
     :type sql-column
     :documentation "This is the id column of the oid reference when appropriarte for the slot type.")
    (reader
-    (compute-as (compute-reader (slot-definition-type -self-)))
+    (compute-as (compute-reader -self- (slot-definition-type -self-)))
     :type (or null function)
     :documentation "A one parameter function which transforms RDBMS data received as a list to the corresponding lisp object. This is present only for data table slots.")
    (writer
-    (compute-as (compute-writer (slot-definition-type -self-)))
+    (compute-as (compute-writer -self- (slot-definition-type -self-)))
     :type (or null function)
     :documentation "A one parameter function which transforms a lisp object to the corresponding RDBMS data. This is present only for data table slots.")
    (primary-table-slot
@@ -266,26 +266,58 @@
          1
          0)))
 
-(defun compute-reader (type)
+(defun compute-transformer (transformer-type slot type)
   "Maps a type to a one parameter lambda which will be called with the received RDBMS values."
-  (bind ((normalized-type (normalized-type-for type))
-         (mapped-type (mapped-type-for normalized-type))
-         (unbound-subtype-p (and (not (unbound-subtype-p mapped-type))
-                                 (unbound-subtype-p type)))
-         (null-subtype-p (and (not (null-subtype-p mapped-type))
-                              (null-subtype-p type)))
-         (unbound-and-null-subtype-p (and unbound-subtype-p null-subtype-p))
-         (wrapper (cond (unbound-and-null-subtype-p
-                         'unbound-or-null-reader)
-                        (unbound-subtype-p
-                         'unbound-reader)
-                        (null-subtype-p
-                         'null-reader)
-                        (t
-                         (lambda (function column-number)
-                           (declare (ignore column-number))
-                           function)))))
-    (funcall wrapper (compute-reader* mapped-type normalized-type) (column-count-for normalized-type unbound-and-null-subtype-p))))
+  (flet ((wrapper-function-for (symbol-or-function)
+           (if (functionp symbol-or-function)
+               symbol-or-function
+               (concatenate-symbol (find-package :cl-perec) symbol-or-function "-" transformer-type)))
+         (identity-wrapper (slot type function column-number)
+           (declare (ignorable slot type column-number))
+           function))
+    (bind ((normalized-type (normalized-type-for type))
+           (mapped-type (mapped-type-for normalized-type))
+           (unbound-subtype-p (unbound-subtype-p type))
+           (null-subtype-p (and (not (null-subtype-p mapped-type))
+                                (null-subtype-p type)))
+           (column-count (column-count-for normalized-type (and unbound-subtype-p null-subtype-p)))
+           ((values wrapper-1 wrapper-2)
+            (cond ((and unbound-subtype-p
+                        null-subtype-p)
+                   (values 'unbound-or-null #'identity-wrapper))
+                  ((and unbound-subtype-p
+                        (not null-subtype-p))
+                   (values 'unbound (if (null-subtype-p mapped-type)
+                                        #'identity-wrapper
+                                        'non-null)))
+                  ((and (not unbound-subtype-p)
+                        null-subtype-p)
+                   (values 'non-unbound 'null))
+                  ((and (not unbound-subtype-p)
+                        (not null-subtype-p))
+                   (values 'non-unbound (if (null-subtype-p mapped-type)
+                                            #'identity-wrapper
+                                            'non-null))))))
+      (values
+       (funcall (wrapper-function-for wrapper-1)
+                slot
+                type
+                (funcall (wrapper-function-for wrapper-2)
+                         slot
+                         type
+                         (funcall (if (eq transformer-type 'reader)
+                                      'compute-reader*
+                                      'compute-writer*)
+                                  mapped-type
+                                  normalized-type)
+                         column-count)
+                column-count)
+       wrapper-1
+       wrapper-2))))
+
+(defun compute-reader (slot type)
+  "Maps a type to a one parameter lambda which will be called with the received RDBMS values."
+  (compute-transformer 'reader slot type))
 
 (defgeneric compute-reader* (type type-specification)
   (:method (type type-specification)
@@ -301,26 +333,9 @@
            (declare (ignore type-specification))
            'object-reader))
 
-(defun compute-writer (type)
+(defun compute-writer (slot type)
   "Maps a type to a one parameter lambda which will be called with the slot value."
-  (bind ((normalized-type (normalized-type-for type))
-         (mapped-type (mapped-type-for normalized-type))
-         (unbound-subtype-p (and (not (unbound-subtype-p mapped-type))
-                                 (unbound-subtype-p type)))
-         (null-subtype-p (and (not (null-subtype-p mapped-type))
-                              (null-subtype-p type)))
-         (unbound-and-null-subtype-p (and unbound-subtype-p null-subtype-p))
-         (wrapper (cond (unbound-and-null-subtype-p
-                         'unbound-or-null-writer)
-                        (unbound-subtype-p
-                         'unbound-writer)
-                        (null-subtype-p
-                         'null-writer)
-                        (t
-                         (lambda (function column-number)
-                           (declare (ignore column-number))
-                           function)))))
-    (funcall wrapper (compute-writer* mapped-type normalized-type) (column-count-for normalized-type unbound-and-null-subtype-p))))
+  (compute-transformer 'writer slot type))
 
 (defgeneric compute-writer* (type type-specification)
   (:method (type type-specification)

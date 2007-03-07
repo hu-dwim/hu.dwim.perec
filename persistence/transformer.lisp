@@ -17,41 +17,89 @@
           (return-from equaln #f)))
   #t)
 
-(defun unbound-reader (function column-number)
+(defcondition* slot-type-error (type-error)
+  ((slot
+    :type persistent-effective-slot-definition))
+  (:report
+   (lambda (condition stream)
+     (format stream
+             "~@<The value ~2I~:_~S ~I~_in slot ~A is not of type ~2I~_~S.~:>"
+             (type-error-datum condition)
+             (slot-definition-name (slot-of condition))
+             (type-error-expected-type condition)))))
+
+(defmacro def-transformer-wrapper (name &body forms)
+  `(defun ,name (slot type function column-number)
+    (declare (ignorable slot type column-number))
+    ,@forms))
+
+(def-transformer-wrapper unbound-reader
   (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil))))
     (lambda (rdbms-values)
       (if (equaln unbound-rdbms-value rdbms-values column-number)
           +unbound-slot-value+
           (funcall function rdbms-values)))))
 
-(defun unbound-writer (function column-number)
+(def-transformer-wrapper non-unbound-reader
+  (lambda (rdbms-values)
+    (prog1-bind slot-value (funcall function rdbms-values)
+      (when (eq +unbound-slot-value+ slot-value)
+        (if slot
+            (error 'unbound-slot :instance nil :name (slot-definition-name slot))
+            (error 'type-error :datum slot-value :expected-type type))))))
+
+(def-transformer-wrapper unbound-writer
   (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil))))
     (lambda (slot-value)
       (if (eq +unbound-slot-value+ slot-value)
           unbound-rdbms-value
           (funcall function slot-value)))))
 
+(def-transformer-wrapper non-unbound-writer
+  (lambda (slot-value)
+    (if (eq +unbound-slot-value+ slot-value)
+        (if slot
+            (error 'unbound-slot :instance nil :name (slot-definition-name slot))
+            (error 'type-error :datum slot-value :expected-type type))
+        (funcall function slot-value))))
+
 ;;;;;;;;
 ;;; Null
 
-(defun null-reader (function column-number)
+(def-transformer-wrapper null-reader
   (bind ((nil-rdbms-value (iter (repeat column-number) (collect nil))))
     (lambda (rdbms-values)
       (if (equaln nil-rdbms-value rdbms-values column-number)
           nil
           (funcall function rdbms-values)))))
 
-(defun null-writer (function column-number)
+(def-transformer-wrapper non-null-reader
+  (lambda (rdbms-values)
+    (prog1-bind slot-value (funcall function rdbms-values)
+      (unless slot-value
+        (if slot
+            (error 'slot-type-error :slot slot :datum slot-value :expected-type type)
+            (error 'type-error :datum slot-value :expected-type type))))))
+
+(def-transformer-wrapper null-writer
   (bind ((nil-rdbms-value (iter (repeat column-number) (collect nil))))
     (lambda (slot-value)
       (if slot-value
           (funcall function slot-value)
           nil-rdbms-value))))
 
+(def-transformer-wrapper non-null-writer
+  (lambda (slot-value)
+    (if slot-value
+        (funcall function slot-value)
+        (if slot
+            (error 'slot-type-error :slot slot :datum slot-value :expected-type type)
+            (error 'type-error :datum slot-value :expected-type type)))))
+
 ;;;;;;;;;;;;;;;;;;;
 ;;; Unbound or null
 
-(defun unbound-or-null-reader (function column-number)
+(def-transformer-wrapper unbound-or-null-reader
   (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil)))
          (nil-rdbms-value (list* #t (cdr unbound-rdbms-value))))
     (lambda (rdbms-values)
@@ -61,7 +109,7 @@
              nil)
             (t (funcall function (cdr rdbms-values)))))))
 
-(defun unbound-or-null-writer (function column-number)
+(def-transformer-wrapper unbound-or-null-writer
   (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil)))
          (nil-rdbms-value (list* #t (cdr unbound-rdbms-value))))
     (lambda (slot-value)
@@ -97,22 +145,6 @@
 (defun identity-writer (slot-value)
   (list slot-value))
 
-;;;;;;;;;;;;;;;;;;;;;
-;;; Non nil identity
-
-(defun non-null-and-non-unbound-identity-reader (type)
-  (lambda (rdbms-values)
-    (aif (first rdbms-values)
-         it
-         (error 'type-error :datum it :expected-type type))))
-
-(defun non-null-and-non-unbound-identity-writer (type)
-  (lambda (slot-value)
-    (if (and slot-value
-             (not (eq slot-value +unbound-slot-value+)))
-        (list slot-value)
-        (error 'type-error :datum slot-value :expected-type type))))
-
 ;;;;;;;;;;
 ;;; Number
 
@@ -138,9 +170,7 @@
   (symbol-from-canonical-name (first rdbms-values)))
 
 (defun symbol->string-writer (slot-value)
-  (if (eq slot-value +unbound-slot-value+)
-      (error 'type-error :datum slot-value :expected-type 'symbol)
-      (list (canonical-symbol-name slot-value))))
+  (list (canonical-symbol-name slot-value)))
 
 ;;;;;;;;
 ;;; List
@@ -199,6 +229,8 @@
                 (= 1 value)) #t)
           ((equal "t" value) #t)
           ((equal "f" value) #f)
+          ((equal "TRUE" value) #t)
+          ((equal "FALSE" value) #f)
           (t (error 'type-error :datum value :expected-type 'boolean)))))
 
 ;;;;;;;;;;

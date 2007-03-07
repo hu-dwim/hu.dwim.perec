@@ -17,7 +17,7 @@
 
 (def-canonical-type-test null null)
 
-(def-canonical-type-test unbound (member prc::+unbound-slot-value+))
+(def-canonical-type-test unbound (member prc::+unbound-slot-value+ 42))
 
 (def-canonical-type-test boolean boolean)
 
@@ -38,7 +38,7 @@
 (def-canonical-type-test
     (or null unbound t1)
     (or null
-        (member prc::+unbound-slot-value+)
+        (member prc::+unbound-slot-value+ 42)
         (member a b c))
   complex/1)
 

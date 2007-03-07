@@ -125,7 +125,7 @@
 (defun value->sql-values (value type type-args)
   (assert type)
   (funcall
-    (compute-writer (if type-args (cons type type-args) type))
+    (compute-writer nil (if type-args (cons type type-args) type))
     value))
 
   
