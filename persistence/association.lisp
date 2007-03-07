@@ -33,7 +33,7 @@
    (primary-table
     (compute-as (compute-primary-table -self- -current-value-))
     :type table
-    :documentation  "The table which holds the oids of the associated entities.")))
+    :documentation  "The table which holds the oids of the associated instances.")))
 
 (defcclass* persistent-association-end-slot-definition (persistent-slot-definition)
   ((association
