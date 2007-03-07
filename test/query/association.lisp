@@ -46,7 +46,7 @@
             (wife-of brad-pitt) angelina-jolie))))
 
 (deftest test/query/select/association/1-1 ()
-  (test-query (:select count 1 :record-count 1 :fixture association-test-fixture)
+  (test-query (:select-count 1 :record-count 1 :fixture association-test-fixture)
     (select ((m man))
       (assert (equal (name-of (wife-of))))
       (collect m))))
