@@ -107,7 +107,7 @@
 
 (defun compute-persistent-effective-slot-definition-initargs (class direct-slot-definitions)
   (iter (for slot-option-name in (delete-duplicates
-                                  (collect-if #L(eq (symbol-package !1) (find-package :cl-perec))
+                                  (collect-if #L(not (eq (symbol-package !1) (find-package :common-lisp)))
                                               (mapcan #L(mapcar #'slot-definition-name
                                                                 (class-slots (class-of !1)))
                                                       direct-slot-definitions))))
@@ -121,16 +121,15 @@
                                                                 slot-option-name
                                                                 specific-direct-slot-definitions)))))
 
-;; TODO: would be easier to put these into the slot option's default computation?
 (defgeneric compute-persistent-effective-slot-definition-option (class direct-slot slot-option-name direct-slot-definitions)
-  (:method (class
+  (:method ((class persistent-class)
             (direct-slot persistent-direct-slot-definition)
             slot-option-name
             direct-slot-definitions)
            (when (member slot-option-name '(cache prefetch index unique type-check))
              (some #L(slot-initarg-and-value !1 slot-option-name) direct-slot-definitions)))
 
-  (:method (class
+  (:method ((class persistent-class)
             (direct-slot persistent-association-end-direct-slot-definition)
             slot-option-name
             direct-slot-definitions)
@@ -155,16 +154,17 @@
 ;;; Utility
 
 (defun ensure-persistent-object-class (name direct-superclasses)
-  (unless (eq 'persistent-object name)
-    (let ((persistent-object (find-class 'persistent-object))
-          (persistent-class (find-class 'persistent-class)))
-      (if (find-if (lambda (direct-superclass)
-                     (member persistent-class
-                             (compute-class-precedence-list
-                              (class-of direct-superclass))))
-                   direct-superclasses)
-          direct-superclasses
-          (append direct-superclasses (list persistent-object))))))
+  (if (eq 'persistent-object name)
+      direct-superclasses
+      (let ((persistent-object (find-class 'persistent-object))
+            (persistent-class (find-class 'persistent-class)))
+        (if (find-if (lambda (direct-superclass)
+                       (member persistent-class
+                               (compute-class-precedence-list
+                                (class-of direct-superclass))))
+                     direct-superclasses)
+            direct-superclasses
+            (append direct-superclasses (list persistent-object))))))
 
 (defun process-direct-slot-definitions (direct-slots)
   (loop for direct-slot :in direct-slots
@@ -196,7 +196,7 @@
 ;; this is not the real shared-initialize because portable programs are not allowed to override that
 ;; so we are somewhat emulating it by calling this function from both initialize-instance and reinitialize-instance
 (defun shared-ininitialize-around-persistent-class (class call-next-method &rest args
-                                                          &key name direct-slots direct-superclasses &allow-other-keys)
+                                                    &key name direct-slots direct-superclasses &allow-other-keys)
   ;; call initialize-instance or reinitialize-instance next method
   (prog1
       (apply call-next-method
@@ -205,8 +205,7 @@
                                    (association-direct-slot-definitions class))
              :direct-superclasses (ensure-persistent-object-class name direct-superclasses)
              :abstract (first (getf args :abstract))
-             #+lispworks :optimize-slot-access #+lispworks nil 
-             (remove-keywords args :direct-slots))
+             (remove-keywords args :direct-slots :direct-superclasses :abstract))
     (setf (find-persistent-class name) class)
     (invalidate-computed-slot class 'persistent-direct-slots)
     ;; update type specific class dependencies
