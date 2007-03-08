@@ -58,6 +58,8 @@
   (export-all-classes)
   (test))
 
+(in-root-suite)
+
 (defsuite* test)
 
 (defsuite* (test/persistence :in test))
