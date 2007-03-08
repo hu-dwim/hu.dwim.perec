@@ -183,7 +183,7 @@
 
 ;; :persistent is a slot definition option and may be set to #t or #f
 (eval-always
-  (mapc #L(pushnew !1  *allowed-slot-definition-properties*) '(:persistent :prefetch :cache :index :unique :type-check)))
+  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:persistent :prefetch :cache :index :unique :type-check)))
 
 (defmethod describe-object ((object persistent-class) stream)
   (call-next-method)
