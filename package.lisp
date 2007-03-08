@@ -158,6 +158,7 @@
 
            ;; most of the collection API is inherited from cl-containers 
            #:insert-item
+           #:first-item
            #:delete-item
            #:size
            #:empty-p
