@@ -45,19 +45,14 @@
             (performers-of mr&mrs-smith) (list brad-pitt angelina-jolie)
             (wife-of brad-pitt) angelina-jolie))))
 
-(deftest test/query/select/association/1-1 ()
+(deftest test/query/select/association-1-1/1 ()
   (test-query (:select-count 1 :record-count 1 :fixture association-test-fixture)
-    (select ((m man))
-      (assert (equal (name-of (wife-of))))
+    (select ((m man-test))
+      (assert (not (null (wife-of m))))
+      (assert (equal (name-of (wife-of m)) "Angelina Jolie"))
       (collect m))))
 
-(deftest test/query/select/association-n-m ()
-  (test-query (:select-count 1 :record-count 4 :fixture association-test-fixture)
-    (select ((m movie-test) (p performer-test))
-      (assert (member p (performers-of m)))
-      (collect (title-of m) (name-of p)))))
-
-(deftest test/query/select/association-1-1 ()
+(deftest test/query/select/association-1-1/2 ()
   (test-query (:select-count 1 :record-count 1 :fixture association-test-fixture)
     (select ((m man-test) (w woman-test))
       (assert (eq (wife-of m) w))
@@ -66,6 +61,12 @@
     (select ((m man-test) (w woman-test))
       (assert (eq (husband-of w) m))
       (collect m w))))
+
+(deftest test/query/select/association-n-m ()
+  (test-query (:select-count 1 :record-count 4 :fixture association-test-fixture)
+    (select ((m movie-test) (p performer-test))
+      (assert (member p (performers-of m)))
+      (collect (title-of m) (name-of p)))))
 
 (deftest test/query/select/association-chain ()
   (test-query (:select-count nil :record-count 1 :fixture association-test-fixture) ;; TODO select-count

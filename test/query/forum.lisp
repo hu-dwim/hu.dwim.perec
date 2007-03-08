@@ -145,7 +145,7 @@
     (select ((user user-test))
       (collect (name-of user)))))
 
-(deftest test/query/select/association ()
+(deftest test/query/select/simple-association ()
   (test-query (:select-count nil :record-count 2 :fixture fill-data-1)
     (select ((topic topic-test))
       (collect (owner-of topic)))))
