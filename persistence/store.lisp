@@ -3,12 +3,21 @@
 ;;;;;;;;;;;;;
 ;;; Constants
 
-(defconstant +unbound-slot-value+
-  '+unbound-slot-value+
-  "This value is used to signal unbound slot value returned from database.")
-
 (defparameter *lazy-collections* #f
   "True means slot-value-using-class will by default return lazy collections.")
+
+(defstruct unbound-value)
+
+(defparameter +unbound-slot-value+
+  (make-unbound-value)
+  "This value is used to signal unbound slot value returned from database.")
+
+(defmethod make-load-form ((instance unbound-value) &optional environment)
+  (declare (ignore environment))
+  '(make-unbound-value))
+
+(defun unbound-slot-value-p (value)
+  (eq +unbound-slot-value+ value))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS slot restorers

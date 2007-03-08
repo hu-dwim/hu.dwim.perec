@@ -182,6 +182,7 @@
     symbol*
     symbol
     serialized
+    set
     t)
   "An ordered list of types which are mapped to RDBMS.")
 
@@ -207,26 +208,14 @@
 
 (defgeneric parse-keyword-type-parameters (type type-parameters)
   (:method (type type-parameters)
-           type-parameters)
-
-  ;; TODO: ?
-  #+nil
-  (:method ((type collection-type) type-parameters)
-           (append (list :element-type (parse-type (getf type-parameters :element-type)))
-                   (call-next-method type (remove-keywords type-parameters :element-type)))))
+           type-parameters))
 
 (defgeneric parse-positional-type-parameters (type type-parameters)
   (:method (type type-parameters)
            (let ((args (argument-names-for (args-of type))))
              (eval `(apply (lambda ,(args-of type)
                              (list ,@(mappend #L(list (intern (symbol-name !1) (find-package :keyword)) !1) args)))
-                     ',type-parameters))))
-
-  ;; TODO: ?
-  #+nil
-  (:method ((type collection-type) type-parameters)
-           (append (list :element-type (parse-type (car type-parameters)))
-                   (call-next-method type (cdr type-parameters)))))
+                     ',type-parameters)))))
 
 (defun parse-type (type-specifier)
   (etypecase type-specifier

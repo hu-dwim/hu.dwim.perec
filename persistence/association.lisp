@@ -42,7 +42,7 @@
    (associated-class
     (compute-as (awhen (normalized-type-for (slot-definition-type -self-))
                   (if (set-type-p it)
-                      (find-class (second it))
+                      (find-class (set-type-class-for it))
                       (find-class it))))
     :type persistent-class)
    (min-cardinality
@@ -134,7 +134,7 @@
                 (call-next-method)
                 (columns-of (other-association-end-of slot))))
       (:m-n (make-columns-for-reference-slot (class-name (slot-definition-class slot))
-                                             (second (slot-definition-type slot)))))))
+                                             (set-type-class-for (normalized-type-for (slot-definition-type slot))))))))
 
 (defcclass* association-primary-table (table)
   ()

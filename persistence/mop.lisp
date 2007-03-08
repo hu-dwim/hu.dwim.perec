@@ -212,8 +212,9 @@
     ;; update type specific class dependencies
     (mapc #L(bind ((type (normalized-type-for (slot-definition-type !1))))
               (when (set-type-p type)
-                (pushnew class (depends-on-of (find-class (second type))))
-                (pushnew (find-class (second type)) (depends-on-me-of class))))
+                (bind ((associated-class (find-class (set-type-class-for type))))
+                  (pushnew class (depends-on-of associated-class))
+                  (pushnew associated-class (depends-on-me-of class)))))
           (persistent-direct-slots-of class))
     (mapc #L(bind ((association (association-of !1))
                    (association-end-position

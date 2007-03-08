@@ -415,7 +415,7 @@
            (or (some #'primary-class-of (persistent-effective-super-slot-precedence-list-of slot))
                (awhen (normalized-type-of slot)
                  (cond ((set-type-p it)
-                        (find-class (second it)))
+                        (find-class (set-type-class-for it)))
                        ((or (primitive-type-p it)
                             (persistent-class-type-p it))
                         (slot-definition-class slot))
@@ -487,8 +487,11 @@
 
 (defun set-type-p (type)
   "Returns true for persistent set types."
-  (and (listp type)
-       (eq 'set (first type))))
+  (and (not (subtypep type 'list))
+       (subtypep type '(set persistent-object))))
+
+(defun set-type-class-for (type)
+  (second (find 'set type :key #L(first (ensure-list !1)))))
 
 (defun unbound-subtype-p (type)
   (and (not (eq 'member type))

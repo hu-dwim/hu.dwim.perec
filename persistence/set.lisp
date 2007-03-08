@@ -9,13 +9,14 @@
 ;;;;;;;
 ;;; Set
 
-;; TODO: distinguish between set type and disjunct set type (the latter used in 1-n associations for example)
+(defptype set (&optional sub-type)
+  (declare (ignore sub-type))
+  '(or list persistent-slot-set-container))
 
-;; TODO: defptype?
-(deftype set (&optional type)
-  (declare (ignore type))
-  '(and (not unbound)
-        (not null)))
+;; TODO: distinguish between set type and disjunct set type (the latter used in 1-n associations for example)
+(defptype disjunct-set (&optional sub-type)
+  (declare (ignore sub-type))
+  '(or list persistent-slot-set-container))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lazy slot set container

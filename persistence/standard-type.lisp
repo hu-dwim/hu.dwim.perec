@@ -92,10 +92,12 @@
 ;;; unbound -> NULL
 ;;; t -> type-error
 
+(defptype eql (value)
+  `(eql ,value))
+
 ;; this type must be used to mark slots which might be unbound (e.g. (or unbound integer))
-;; 42 is the magic number which prevents unbound to be the subtype of symbol
 (defptype unbound ()
-  `(member ,+unbound-slot-value+ 42))
+  `(eql ,+unbound-slot-value+))
 
 (defmapping unbound (sql-boolean-type)
   (unbound-reader #L(error 'type-error :datum (first !1) :expected-type type))
