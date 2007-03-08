@@ -24,13 +24,6 @@
   (is-equal-using-reader type slot-value rdbms-values)
   (is-equal-using-writer type slot-value rdbms-values))
 
-(deftest test/persistence/transformer/unbound ()
-  (mapc #L(is (or (eq !1 'unbound)
-                  (eq !1 'member)
-                  (eq !1 t)
-                  (not (subtypep 'unbound !1))))
-        prc::*mapped-type-precedence-list*))
-
 ;;;;;;;;;;;
 ;;; Boolean
 

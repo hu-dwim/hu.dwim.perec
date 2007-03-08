@@ -6,56 +6,131 @@
 
 (in-package :cl-perec-test)
 
+;;;;;;;;;;;;;
+;;; Canonical
+
 (defsuite* (test/persistence/canonical :in test/persistence))
 
-(deftest test/persistence/canonical/type (type canonical-type)
-  (is (equalp canonical-type (prc::canonical-type-for type))))
+(defun check-mapped-type (type)
+  (is (or (eq type 'unbound)
+          (eq type 'member)
+          (eq type t)
+          (not (prc::unbound-subtype-p type))))
+  (is (or (eq type 'set)
+          (eq type 'member)
+          (eq type t)
+          (not (prc::set-type-p type)))))
 
-(defmacro def-canonical-type-test (type canonical-type &optional name)
-  `(deftest ,(prc::concatenate-symbol 'test/persistence/canonical "/" (or name type)) ()
+(deftest test/persistence/canonical/subtypep ()
+  (mapc #'check-mapped-type prc::*mapped-type-precedence-list*))
+
+(deftest test/persistence/canonical/type (type canonical-type)
+  (let ((prc::*canonical-types* '(unbound)))
+    (is (equalp canonical-type (prc::canonical-type-for type)))))
+
+(defmacro def-canonical-type-test (name type canonical-type)
+  `(deftest ,(prc::concatenate-symbol 'test/persistence/canonical/ name) ()
     (test/persistence/canonical/type ',type ',canonical-type)))
 
-(def-canonical-type-test null null)
+(def-canonical-type-test null/1 null null)
 
-(def-canonical-type-test unbound (member prc::+unbound-slot-value+ 42))
+(def-canonical-type-test unbound/1 unbound unbound)
 
-(def-canonical-type-test boolean boolean)
+(def-canonical-type-test boolean/1 boolean boolean)
+(def-canonical-type-test boolean/2 (and (not unbound) boolean) boolean)
 
-(def-canonical-type-test integer integer)
+(def-canonical-type-test integer/1 integer integer)
+(def-canonical-type-test integer/2 (and (not unbound) (not null) integer) integer)
 
-(def-canonical-type-test float float)
+(def-canonical-type-test float/1 float float)
+(def-canonical-type-test float/2 (and (not unbound) (not null) float) float)
 
-(def-canonical-type-test double double)
+(def-canonical-type-test double/1 double double)
+(def-canonical-type-test double/2 (and (not unbound) (not null) double) double)
 
-(def-canonical-type-test number number)
+(def-canonical-type-test number/1 number number)
+(def-canonical-type-test number/2 (and (not unbound) (not null) number) number)
 
-(def-canonical-type-test (member a b c) (member a b c) member)
+(def-canonical-type-test string/1 string string)
+(def-canonical-type-test string/2 (and (not unbound) (not null) string) string)
+
+(def-canonical-type-test symbol/1 symbol symbol)
+(def-canonical-type-test symbol/2 (and (not unbound) symbol) symbol)
+
+(def-canonical-type-test member/1 (member a b c) (member a b c))
 
 (defptype t1 ()
     ()
   '(member a b c))
 
-(def-canonical-type-test
-    (or null unbound t1)
-    (or null
-        (member prc::+unbound-slot-value+ 42)
-        (member a b c))
-  complex/1)
+(def-canonical-type-test complex/1
+  (or null unbound t1)
+  (or null
+      unbound
+      (member a b c)))
 
-(def-canonical-type-test
-    (and (not null)
-         (not unbound)
-         (or null unbound t1))
-    (member a b c)
-  complex/2)
+(def-canonical-type-test complex/2
+  (and (not null)
+       (not unbound)
+       (or null unbound t1))
+  (member a b c))
 
 (defptype t2 ()
     ()
   '(or null unbound t1))
 
-(def-canonical-type-test
-    (and (not null)
-         (not unbound)
-         t2)
-    (member a b c)
-  complex/3)
+(def-canonical-type-test complex/3
+  (and (not null)
+       (not unbound)
+       t2)
+  (member a b c))
+
+;;;;;;;;;;;;;;
+;;; Normalized
+
+(defsuite* (test/persistence/normalized :in test/persistence))
+
+(deftest test/persistence/normalized/type (type normalized-type)
+  (is (equalp normalized-type (prc::normalized-type-for type))))
+
+(defmacro def-normalized-type-test (name type normalized-type)
+  `(deftest ,(prc::concatenate-symbol 'test/persistence/normalized/ name) ()
+    (test/persistence/normalized/type ',type ',normalized-type)))
+
+(def-normalized-type-test null/1 unbound nil)
+
+(def-normalized-type-test unbound/1 unbound nil)
+
+(def-normalized-type-test boolean/1 boolean (and (not null) boolean))
+(def-normalized-type-test boolean/2 (or unbound boolean) (and (not null) boolean))
+
+(def-normalized-type-test integer/1 integer integer)
+(def-normalized-type-test integer/2 (or unbound integer) integer)
+(def-normalized-type-test integer/3 (or null integer) integer)
+(def-normalized-type-test integer/4 (or unbound null integer) integer)
+
+(def-normalized-type-test float/1 float float)
+(def-normalized-type-test float/2 (or unbound float) float)
+(def-normalized-type-test float/3 (or null float) float)
+(def-normalized-type-test float/4 (or unbound null float) float)
+
+(def-normalized-type-test double/1 double double)
+(def-normalized-type-test double/2 (or unbound double) double)
+(def-normalized-type-test double/3 (or null double) double)
+(def-normalized-type-test double/4 (or unbound null double) double)
+
+(def-normalized-type-test number/1 number number)
+(def-normalized-type-test number/2 (or unbound number) number)
+(def-normalized-type-test number/3 (or null number) number)
+(def-normalized-type-test number/4 (or unbound null number) number)
+
+(def-normalized-type-test string/1 string string)
+(def-normalized-type-test string/2 (or unbound string) string)
+(def-normalized-type-test string/3 (or null string) string)
+(def-normalized-type-test string/4 (or unbound null string) string)
+
+(def-normalized-type-test symbol/1 symbol (and (not null) symbol))
+(def-normalized-type-test symbol/2 (or unbound symbol) (and (not null) symbol))
+
+(def-normalized-type-test set/1 (set persistent-object) (and (not null) (set persistent-object)))
+
