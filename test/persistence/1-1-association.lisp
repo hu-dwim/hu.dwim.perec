@@ -28,7 +28,9 @@
     (is (prc::primary-table-slot-p sister-slot))
     (is (prc::data-table-slot-p sister-slot))
     (is (not (prc::primary-table-slot-p brother-slot)))
-    (is (not (prc::data-table-slot-p brother-slot)))))
+    (is (not (prc::data-table-slot-p brother-slot)))
+    (is (cache-p sister-slot))
+    (is (cache-p brother-slot))))
 
 (deftest test/persistence/association/1-1/initial-value/1 ()
   (with-sister-and-brother-transaction

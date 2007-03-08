@@ -26,7 +26,9 @@
     (is (not (prc::primary-table-slot-p students-slot)))
     (is (not (prc::data-table-slot-p students-slot)))
     (is (not (prc::primary-table-slot-p courses-slot)))
-    (is (not (prc::data-table-slot-p courses-slot)))))
+    (is (not (prc::data-table-slot-p courses-slot)))
+    (is (not (cache-p students-slot)))
+    (is (not (cache-p courses-slot)))))
 
 (deftest test/persistence/association/m-n/initial-value/1 ()
   (with-student-and-course-transaction

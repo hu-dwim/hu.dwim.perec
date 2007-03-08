@@ -15,6 +15,12 @@
       (declare (ignorable referred reference-set))
       ,@body)))
 
+(deftest test/persistence/set/class ()
+  (let ((referred-set-slot (prc::find-slot 'reference-set-test 'referred-set)))
+    (is (not (prc::primary-table-slot-p referred-set-slot)))
+    (is (not (prc::data-table-slot-p referred-set-slot)))
+    (is (not (cache-p referred-set-slot)))))
+
 (deftest test/persistence/set/initial-value/1 ()
   (with-reference-set-transaction
     (is (eq nil (referred-set-of reference-set)))))

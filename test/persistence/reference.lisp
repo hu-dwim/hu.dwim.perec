@@ -30,6 +30,12 @@
       (declare (ignorable referred reference))
       ,@body)))
 
+(deftest test/persistence/reference/class ()
+  (let ((referred-slot (prc::find-slot 'reference-test 'referred)))
+    (is (prc::primary-table-slot-p referred-slot))
+    (is (prc::data-table-slot-p referred-slot))
+    (is (cache-p referred-slot))))
+
 (deftest test/persistence/reference/initial-value/1 ()
   (with-and-without-caching-slot-values
     (with-one-and-two-transactions (make-instance 'reference-or-null-test)

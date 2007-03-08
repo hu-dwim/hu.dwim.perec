@@ -26,7 +26,9 @@
     (is (prc::primary-table-slot-p parent-slot))
     (is (prc::data-table-slot-p parent-slot))
     (is (not (prc::primary-table-slot-p children-slot)))
-    (is (not (prc::data-table-slot-p children-slot)))))
+    (is (not (prc::data-table-slot-p children-slot)))
+    (is (cache-p parent-slot))
+    (is (not (cache-p children-slot)))))
 
 (deftest test/persistence/association/1-n/initial-value/1 ()
   (with-parent-and-child-transaction
