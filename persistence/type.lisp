@@ -19,7 +19,9 @@
    (args
     :type list)
    (body
-    :type list)))
+    :type list)
+   (substituter
+    :type function)))
 
 (defmacro defptype (name args &body body)
   (bind ((common-lisp-type-p (eq (symbol-package name) (find-package :common-lisp)))
@@ -39,16 +41,17 @@
       ,(when (or allow-nil-args-p
                  (not common-lisp-type-p))
              `(eval-when (:load-toplevel :execute)
-               (let ((parsed-type (when ,allow-nil-args-p
-                                    (parse-type (substitute-type-arguments* ',args ',body nil)))))
-                 (setf (find-type ',name)
-                       (or (and ,allow-nil-args-p
-                                parsed-type
-                                (aprog1 parsed-type
-                                  (setf (name-of it) ',name)
-                                  (setf (args-of it) ',args)
-                                  (setf (body-of it) ',body)))
-                           (make-instance 'persistent-type :name ',name :args ',args :body ',body))))))
+               (bind ((substituter (lambda ,args ,@body))
+                      (type ,(when allow-nil-args-p
+                                   `(parse-type (apply substituter nil)))))
+                 (unless type
+                   (setf type (make-instance 'persistent-type)))
+                 (setf (name-of type) ',name)
+                 (setf (args-of type) ',args)
+                 (setf (body-of type) ',body)
+                 (setf (substituter-of type) substituter)
+                 (setf (find-type ',name) type)
+                 type)))
       ,(if common-lisp-type-p
            `',name
            `(deftype ,name ,args ,@body)))))
@@ -79,11 +82,8 @@
 (defun substitute-type-arguments (type args)
   (let ((persistent-type (find-type type)))
     (if persistent-type
-        (substitute-type-arguments* (args-of persistent-type) (body-of persistent-type) args)
+        (apply (substituter-of (find-type type)) args)
         (error "Unknown type specifier: ~A" type))))
-
-(defun substitute-type-arguments* (args body actual-args)
-  (eval `(apply (lambda ,args ,@body) ',actual-args)))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; Canonical type
@@ -211,8 +211,12 @@
            type-parameters))
 
 (defgeneric parse-positional-type-parameters (type type-parameters)
+  (:method (type (type-parameters null))
+           nil)
+  
   (:method (type type-parameters)
            (let ((args (argument-names-for (args-of type))))
+             ;; TODO: eliminate this eval by storing the lambde in the defptype
              (eval `(apply (lambda ,(args-of type)
                              (list ,@(mappend #L(list (intern (symbol-name !1) (find-package :keyword)) !1) args)))
                      ',type-parameters)))))
