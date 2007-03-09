@@ -1,6 +1,3 @@
-- change entity name to class name in query subsystem
-- change property/properties/attribute/attributes names to slot/slots names in query subsystem
 - change object name to instance name in places such as select-instance, purge-instance, load-instance, etc.
-
 - eliminate superfluous dependencies (cl-containers, cl-ppcre)
 - eliminate duplicates
