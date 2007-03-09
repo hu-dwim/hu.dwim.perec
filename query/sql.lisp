@@ -31,8 +31,8 @@
          :tables (list ,@(sql-table-references-for query))
          :where ,(where-clause-of query))))))
 
-(defun sql-select-oids-for-entity (entity-spec)
-  (bind ((tables (rest (primary-tables-of (find-class entity-spec)))))
+(defun sql-select-oids-for-class (class-name)
+  (bind ((tables (rest (primary-tables-of (find-class class-name)))))
     (sql-select-oids-from-tables tables 'sql-union)))
 
 (defun sql-select-oids-from-tables (tables set-operation)
@@ -186,8 +186,8 @@
   (:method (element (variable query-variable))
            (sql-table-reference-for element (sql-alias-for variable)))
 
-  (:method (element (entity persistent-class))
-           (sql-table-reference-for element (sql-alias-for entity)))
+  (:method (element (class persistent-class))
+           (sql-table-reference-for element (sql-alias-for class)))
 
   (:method (element (syntax syntax-object))
            (make-function-call :fn 'sql-table-reference-for :args (list element syntax))))
@@ -297,9 +297,9 @@
 
 (defun sql-aggregate-subselect-for-variable (aggregate-function n-association-end 1-var)
   (bind ((1-association-end (other-association-end-of n-association-end))
-         (n-entity (slot-definition-class 1-association-end))
-         (n-var (make-query-variable :name (gensym (symbol-name (class-name n-entity)))
-                                     :xtype n-entity)))
+         (n-class (slot-definition-class 1-association-end))
+         (n-var (make-query-variable :name (gensym (symbol-name (class-name n-class)))
+                                     :xtype n-class)))
     `(sql-subquery
       :query
       (sql-select

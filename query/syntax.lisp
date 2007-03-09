@@ -123,15 +123,15 @@ Be careful when using in different situations, because it modifies *readtable*."
   ((operator :initarg :fn :accessor fn-of)
    (operands :initarg :args :accessor args-of)))
 
-(define-syntax-node property-access (function-call)
+(define-syntax-node slot-access (function-call)
   ((operator :initarg :accessor :accessor accessor-of)
-   (property nil)))
+   (slot nil)))
 
-(define-syntax-node attribute-access (property-access)
-  ((property :initarg :attribute :accessor attribute-of)))
+(define-syntax-node attribute-access (slot-access)
+  ((slot :initarg :attribute :accessor attribute-of)))
 
-(define-syntax-node association-end-access (property-access)
-  ((property :initarg :association-end :accessor association-end-of)))
+(define-syntax-node association-end-access (slot-access)
+  ((slot :initarg :association-end :accessor association-end-of)))
 
 (define-syntax-node macro-call (compound-form)
   ((operator :initarg :macro :accessor macro-of)
@@ -146,12 +146,12 @@ Be careful when using in different situations, because it modifies *readtable*."
    :slot-names (mapcar 'slot-definition-name (class-slots (class-of object)))
    :environment env))
 
-(defgeneric arg-of (property-access)
-  (:method ((access property-access))
+(defgeneric arg-of (slot-access)
+  (:method ((access slot-access))
            (first (args-of access))))
 
-(defgeneric (setf arg-of) (value property-access)
-  (:method (value (access property-access))
+(defgeneric (setf arg-of) (value slot-access)
+  (:method (value (access slot-access))
            (setf (args-of access) (list value))))
 
 (defmethod print-object ((variable variable) stream)

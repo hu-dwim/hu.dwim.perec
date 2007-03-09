@@ -58,15 +58,15 @@
            (declare (ignore toplevel))
            (mapc #L(infer-types-pass-2 !1 query #f) (operands-of form)))
 
-  (:method ((access property-access) query &optional toplevel)
+  (:method ((access slot-access) query &optional toplevel)
            (declare (ignore toplevel))
            (call-next-method)
-           (setf (property-of access) (property-for-property-access access))
-           (when (property-of access)
+           (setf (slot-of access) (slot-for-slot-access access))
+           (when (slot-of access)
              (setf (xtype-of access)
                    (if (attribute-access-p access)
-                       (slot-definition-type (property-of access))
-                       (associated-class-of (property-of access))))))
+                       (slot-definition-type (slot-of access))
+                       (associated-class-of (slot-of access))))))
 
   ;; toplevel (eq <obj1> <obj2>) -> (type-of <obj1>) == (type-of <obj2>)
   (:method ((call function-call) query &optional toplevel)
@@ -95,15 +95,15 @@
       ((and (listp orig-type) (eq (first orig-type) 'and)) (appendf (xtype-of variable) type))
       (t (setf (xtype-of variable) (list 'and orig-type type))))))
 
-(defgeneric property-for-property-access (access)
+(defgeneric slot-for-slot-access (access)
   (:method ((access attribute-access))
-           (find-property-by-owner-type (arg-of access)
+           (find-slot-by-owner-type (arg-of access)
                                         (effective-slots-for-accessor (accessor-of access))))
   (:method ((access association-end-access))
-           (find-property-by-owner-type (arg-of access)
+           (find-slot-by-owner-type (arg-of access)
                                         (effective-association-ends-for-accessor (accessor-of access)))))
 
-(defun find-property-by-owner-type (owner properties)
+(defun find-slot-by-owner-type (owner properties)
   (bind ((owner-type (xtype-of owner)))
     (cond
       ((length=1 properties)
@@ -112,13 +112,13 @@
        (find owner-type properties :key 'slot-definition-class :test 'subtypep))
       (t
        (warn "Cannot determine the type of ~A at compile time.
-Chosing property ~A randomly from ~A."
+Chosing slot ~A randomly from ~A."
              owner
-             (property-qualified-name (first properties))
-             (mapcar 'property-qualified-name properties))
+             (slot-qualified-name (first properties))
+             (mapcar 'slot-qualified-name properties))
        (first properties)))))
 
-(defun property-qualified-name (slot)
+(defun slot-qualified-name (slot)
   (concatenate-symbol (class-name (slot-definition-class slot)) ":" (slot-definition-name slot)))
 
 (defgeneric backquote-type-syntax (type)

@@ -95,7 +95,7 @@ with the result of the naively compiled query.")
         ,@(mapcar #L(`(load-instance ,!1)) persistent-object-literals)
         (let (,@(mapcar #L(`(,!1 (load-instance ,!2))) persistent-object-variables persistent-object-literals)
               (,objects (mapcar 'cache-object
-                                (execute ,(sql-select-oids-for-entity 'persistent-object))))
+                                (execute ,(sql-select-oids-for-class 'persistent-object))))
               (,result-list nil))
           (flet ((assert! (cond) (when (not cond) (throw 'fail nil)))
                  (collect (&rest exprs) (push exprs ,result-list))
@@ -376,9 +376,9 @@ wraps the compiled code with a runtime check of the result."))
 
 (defgeneric normalize-syntax (syntax)
   (:documentation "Normalizes type asserts to (typep ...) forms to ease further processing:
-  (typep <object> '<entity-name>)               -> (typep <object> <entity>)
-  (subtypep (entity-of <obj>) '<entity-name>) -> (typep <object> <entity>)
-  (subtypep (entity-of <obj>) <type>)         -> (typep <object> <type>)
+  (typep <object> '<class-name>)               -> (typep <object> <class>)
+  (subtypep (class-of <obj>) '<class-name>) -> (typep <object> <class>)
+  (subtypep (class-of <obj>) <type>)         -> (typep <object> <type>)
 
   if the assoc is 1-1
   (eq (<primary-assoc-end-accessor> <obj1>) <obj2>) -> 
@@ -394,20 +394,20 @@ wraps the compiled code with a runtime check of the result."))
            (call-next-method)
            (pattern-case call
              (#M(function-call :fn typep
-                               :args (?obj #M(literal-value :value (?is ?entity persistent-class-p))))
+                               :args (?obj #M(literal-value :value (?is ?class persistent-class-p))))
                 call)
              (#M(function-call :fn typep
                                :args (?obj #M(literal-value :value (?is ?name persistent-class-name-p))))
                 (setf (second (args-of call)) (make-literal-value :value (find-class ?name)))
                 call)
              (#M(function-call :fn subtypep
-                               :args (#M(function-call :fn entity-of :args (?object))
+                               :args (#M(function-call :fn class-of :args (?object))
                                         #M(literal-value :value (?is ?name persistent-class-name-p))))
                 (make-function-call :fn 'typep
                                     :args (list ?object
                                                 (make-literal-value :value (find-class ?name)))))
              (#M(function-call :fn subtypep
-                               :args (#M(function-call :fn entity-of :args (?object)) ?type))
+                               :args (#M(function-call :fn class-of :args (?object)) ?type))
                 (make-function-call :fn 'typep :args (list ?object ?type)))
              ;; TODO reverse 1-1 association-end
              (?otherwise
@@ -428,14 +428,14 @@ forms with joined variables.")
   (:method ((syntax compound-form) query)
            (mapc #L(introduce-joined-variables-for !1 query) (operands-of syntax)))  
   ;; attribute/association-end access -> ensure that arg is a query variable with the correct type
-  (:method ((access property-access) query)
+  (:method ((access slot-access) query)
            (call-next-method)
            (when (association-end-access-p (arg-of access))
              (setf (arg-of access)
                    (joined-variable-for-association-end-access query (arg-of access))))
-           (when (property-of access)
+           (when (slot-of access)
              (setf (arg-of access)
-                   (ensure-type query (arg-of access) (slot-definition-class (property-of access)))))
+                   (ensure-type query (arg-of access) (slot-definition-class (slot-of access)))))
            (values)))
 
 (defun partial-eval-asserts (query)
@@ -472,20 +472,20 @@ forms with joined variables.")
 ;;;
 (defmethod optimize-query ((compiler simple-query-compiler) syntax)
   "Optimize the compiled form."
-  ;(simplify-entity-references syntax)
+  ;(simplify-class-references syntax)
   ;(partial-eval syntax)
   syntax)
 
-(defun simplify-entity-references (syntax)
+(defun simplify-class-references (syntax)
   (pattern-case syntax
     (#M(function-call :fn find-class
                       :args (#M(function-call :fn name-of
-                                              :args ((? and ?inner #M(function-call :fn entity-of
+                                              :args ((? and ?inner #M(function-call :fn class-of
                                                                                     :args (?object)))))))
-       (simplify-entity-references ?inner))
+       (simplify-class-references ?inner))
     (#M(compound-form)
        (setf (operands-of syntax)
-             (mapcar 'simplify-entity-references (operands-of syntax)))
+             (mapcar 'simplify-class-references (operands-of syntax)))
        syntax)
     (?otherwise
      syntax)))
@@ -702,25 +702,11 @@ forms with joined variables.")
 
   ;; typep form
   ;;   example:
-  ;;   (typep o #<entity user>) -> exists(select 1 from user u where u.id = o.id)
+  ;;   (typep o #<class user>) -> exists(select 1 from user u where u.id = o.id)
   (:method ((fn (eql 'typep)) (n-args (eql 2)) (variable query-variable) (type literal-value) call)
            (if (persistent-class-p (value-of type))
                (sql-exists-subselect-for-variable variable (value-of type))
                (call-next-method)))
-
-  ;; null form
-  ;;   example:
-  ;;   (null (messages-of t)) -> exists(select 1 from message m where m.topic_id = t.id)
-                                        #|  
-  (:method ((fn (eql 'null)) (n-args (eql 1)) (access association-end-access) arg2 call)
-  (bind ((association-end (association-end-of access))
-  (variable (arg-of access)))
-  (if (and (query-variable-p variable)
-  association-end
-  (to-many-association-end-p association-end))
-  `(sql-not ,(sql-exists-subselect-for-association-end variable association-end))
-  (call-next-method))))
-  |#
   )
 
 (defgeneric macro-call-to-sql (macro n-args arg1 arg2 call)
