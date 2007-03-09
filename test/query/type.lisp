@@ -12,7 +12,7 @@
             (cl-perec::ensure-exported
              (defpclass* query-type-test ()
                ((,name :type ,type)))))
-          (purge-objects 'query-type-test))
+          (purge-instances 'query-type-test))
         (bind ((,slot (prc::find-slot (find-class 'query-type-test) ',name))
                (,init-arg (first (slot-definition-initargs ,slot)))
                (,accessor (first (slot-definition-readers (first (prc::direct-slots-of ,slot))))))

@@ -101,15 +101,15 @@
                             -object-)
                      ,value)))))
 
-(defmacro select-similar-object (type &rest rest &key &allow-other-keys)
-  `(select-object (-object- ,type)
+(defmacro select-similar-instance (type &rest rest &key &allow-other-keys)
+  `(select-instance (-object- ,type)
     ,@(select-similar-assert-for type rest)))
 
-(defmacro select-similar-objects (type &rest rest &key &allow-other-keys)
-  `(select-objects (-object- ,type)
+(defmacro select-similar-instances (type &rest rest &key &allow-other-keys)
+  `(select-instances (-object- ,type)
     ,@(select-similar-assert-for type rest)))
 
-(defmacro select-object (&optional variable &body body)
+(defmacro select-instance (&optional variable &body body)
   `(let ((scroll (simple-select (:result-type scroll) ,variable ,@body)))
     (setf (page-size scroll) 1)
     (case (element-count scroll)
@@ -117,7 +117,7 @@
       (1 (first-page! scroll) (first (aref (elements scroll) 0)))
       (otherwise (error "Query did not return unique result.")))))
 
-(defmacro select-objects (&optional variable &body body)
+(defmacro select-instances (&optional variable &body body)
   "Select objects using one variable and collect the values of that variable based upon a set of asserts."
   `(simple-select (:result-type list) ,variable ,@body))
 

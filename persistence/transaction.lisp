@@ -21,12 +21,12 @@
         (awhen transaction
           (make-weak-pointer transaction))))
 
-(defun object-in-transaction-p (object)
+(defun instance-in-transaction-p (object)
   "Returns true iff the object is attached to a transaction which is in progress."
   (awhen (transaction-of object)
     (transaction-in-progress-p it)))
 
-(defun object-in-current-transaction-p (object)
+(defun instance-in-current-transaction-p (object)
   "Returns true iff the object is attached to the current transaction which is in progress."
   (and (in-transaction-p)
        (eq (transaction-of object) *transaction*)))

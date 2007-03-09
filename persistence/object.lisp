@@ -91,7 +91,7 @@
       (= (id-of object-1)
          (id-of object-2))))
 
-(defun print-persistent-object (object)
+(defun print-persistent-instance (object)
   (declare (type persistent-object object))
   (princ ":persistent ")
   (princ (cond ((not (slot-boundp object 'persistent))
@@ -106,7 +106,7 @@
 
 (defprint-object (self persistent-object)
   "Prints the oid of the object and whether the object is known to be persistent or transient."
-  (print-persistent-object self))
+  (print-persistent-instance self))
 
 (defun ensure-oid (object)
   "Makes sure that the object has a valid oid."

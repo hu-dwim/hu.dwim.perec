@@ -29,7 +29,7 @@
        (with-transaction
          (make-instance 'c3 :s3 (make-instance 'c2 :s2 nil)))))
   (with-transaction
-    (revive-object o)
+    (revive-instance o)
     (s2-of (s3-of o))))
 
 (defpclass c4 ()

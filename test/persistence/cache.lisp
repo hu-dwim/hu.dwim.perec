@@ -31,7 +31,7 @@
             (make-instance 'cache-test :name "the one")))
          select-counter)
     (with-transaction
-      (revive-object object)
+      (revive-instance object)
       (name-of object)
       (setf select-counter (current-select-counter))
       (name-of object)
@@ -59,7 +59,7 @@
             (make-instance 'reference-test :referred (make-instance 'referred-test))))
          select-counter)
     (with-transaction
-      (revive-object object)
+      (revive-instance object)
       (referred-of object)
       (setf select-counter (current-select-counter))
       (referred-of object)
@@ -91,8 +91,8 @@
               (list sister brother))))
          select-counter)
     (with-transaction
-      (revive-object sister)
-      (revive-object brother)
+      (revive-instance sister)
+      (revive-instance brother)
       (sister-of brother)
       (brother-of sister)
       (setf select-counter (current-select-counter))
@@ -122,7 +122,7 @@
             (make-instance 'child-test :parent (make-instance 'parent-test))))
          select-counter)
     (with-transaction
-      (revive-object child)
+      (revive-instance child)
       (parent-of child)
       (setf select-counter (current-select-counter))
       (parent-of child)

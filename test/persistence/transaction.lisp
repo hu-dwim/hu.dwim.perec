@@ -10,23 +10,23 @@
     
 (deftest test/persistence/transaction/in-transaction/1 ()
   (with-transaction
-    (is (object-in-transaction-p (make-instance 'transaction-test)))))
+    (is (instance-in-transaction-p (make-instance 'transaction-test)))))
 
 (deftest test/persistence/transaction/in-transaction/2 ()
-  (is (not (object-in-transaction-p
+  (is (not (instance-in-transaction-p
             (with-transaction
               (make-instance 'transaction-test))))))
 
-(deftest test/persistence/transaction/revive-object/1 ()
+(deftest test/persistence/transaction/revive-instance/1 ()
   (let ((object
          (with-transaction
            (make-instance 'transaction-test))))
     (finishes
       (with-transaction
-        (revive-object object)
+        (revive-instance object)
         (name-of object)))))
 
-(deftest test/persistence/transaction/revive-object/2 ()
+(deftest test/persistence/transaction/revive-instance/2 ()
   (let ((object
          (with-transaction
            (make-instance 'transaction-test))))

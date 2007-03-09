@@ -14,8 +14,8 @@
 
 (defixture polymorph-test-data
   (with-transaction
-    (purge-objects 'pt-1-test)
-    (purge-objects 'pt-2-test)
+    (purge-instances 'pt-1-test)
+    (purge-instances 'pt-2-test)
     (make-instance 'pt-1-test :attr1 1)
     (make-instance 'pt-2-test :attr1 "1")))
 

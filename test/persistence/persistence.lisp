@@ -14,7 +14,7 @@
          (with-transaction
            (make-instance 'persistence-test :name "the one"))))
     (with-transaction
-      (revive-object object)
+      (revive-instance object)
       (is (persistent-p object)))))
 
 (deftest test/persistence/make-transient/1 ()
@@ -63,4 +63,4 @@
          (with-transaction
            (stefil:signals error (make-instance 'initform-2-test)))))
     (with-transaction
-      (finishes (revive-object object)))))
+      (finishes (revive-instance object)))))

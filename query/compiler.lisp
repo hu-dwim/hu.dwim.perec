@@ -92,8 +92,8 @@ with the result of the naively compiled query.")
     (with-unique-names (objects result-list)
       `(lambda ,lexical-variables
         (declare (ignorable ,@lexical-variables))
-        ,@(mapcar #L(`(load-object ,!1)) persistent-object-literals)
-        (let (,@(mapcar #L(`(,!1 (load-object ,!2))) persistent-object-variables persistent-object-literals)
+        ,@(mapcar #L(`(load-instance ,!1)) persistent-object-literals)
+        (let (,@(mapcar #L(`(,!1 (load-instance ,!2))) persistent-object-variables persistent-object-literals)
               (,objects (mapcar 'cache-object
                                 (execute ,(sql-select-oids-for-entity 'persistent-object))))
               (,result-list nil))
@@ -329,7 +329,7 @@ wraps the compiled code with a runtime check of the result."))
     (mapcar 'cons objects variables)))
 
 (defun emit-persistent-object-bindings (substitutions)
-  (mapcar #L(`(,(cdr !1) (load-object ,(car !1)))) substitutions))
+  (mapcar #L(`(,(cdr !1) (load-instance ,(car !1)))) substitutions))
 
 ;;;;---------------------------------------------------------------------------
 ;;;; Transformations

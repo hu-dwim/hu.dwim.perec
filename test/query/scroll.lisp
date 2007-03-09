@@ -16,7 +16,7 @@
 (defixture fill-data-5
   (with-transaction
     (export-all-classes)
-    (purge-objects 'scroll-test)
+    (purge-instances 'scroll-test)
     (iter (for i from 0 below 10)
           (make-instance 'scroll-test :attr-1 i))))
 
@@ -84,5 +84,5 @@
     (bind ((scroll (select (:result-type scroll) ((o scroll-test)) (collect (attr-1-of o)))))
       (setf (page-size scroll) 3)
       (check-page (elements scroll) 0 3)
-      (purge-object (select-first-matching scroll-test))
+      (purge-instance (select-first-matching scroll-test))
       (check-page (elements scroll) 1 4))))

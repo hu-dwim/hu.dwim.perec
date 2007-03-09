@@ -295,8 +295,8 @@
 ;;; Object
 
 (defun object-reader (rdbms-values)
-  (load-object (make-oid :id (first rdbms-values) :class-name (symbol-from-canonical-name (second rdbms-values)))
-               :skip-existence-check #t))
+  (load-instance (make-oid :id (first rdbms-values) :class-name (symbol-from-canonical-name (second rdbms-values)))
+                 :skip-existence-check #t))
 
 (defun object-writer (slot-value)
   (oid-values slot-value))

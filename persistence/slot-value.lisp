@@ -157,7 +157,7 @@
   (bind ((persistent (persistent-p object)))
     (assert (or *bypass-database-access*
                 (not persistent)
-                (object-in-current-transaction-p object)))
+                (instance-in-current-transaction-p object)))
     (if (or (not persistent)
             *bypass-database-access*
             (and *cache-slot-values*
@@ -191,7 +191,7 @@
   (bind ((persistent (persistent-p object)))
     (assert (or *bypass-database-access*
                 (not persistent)
-                (object-in-current-transaction-p object)))
+                (instance-in-current-transaction-p object)))
     ;; store slot value in the database
     (when (and (not *bypass-database-access*)
                persistent)
@@ -289,5 +289,5 @@
   (defmethod swank::inspect-for-emacs ((object persistent-object) inspector)
     (bind (((values nil body) (call-next-method)))
       (values (if (debug-persistent-p object) "A persistent object." "A transient object.")
-              (append `("Transaction: " (:value ,(when (object-in-transaction-p object) (transaction-of object))) (:newline))
+              (append `("Transaction: " (:value ,(when (instance-in-transaction-p object) (transaction-of object))) (:newline))
                       body)))))

@@ -137,7 +137,7 @@
            #:transaction-timestamp
            #:transaction-mixin
 
-           ;; managing persistent objects
+           ;; managing persistent instances
            #:with-making-persistent-instances
            #:with-making-transient-instances
            #:make-persistent
@@ -147,14 +147,14 @@
            #:created-p
            #:modified-p
            #:deleted-p
-           #:object-in-transaction-p
+           #:instance-in-transaction-p
            #:transaction-of
            #:p-eq
-           #:load-object
-           #:revive-object
-           #:purge-object
-           #:purge-objects
-           #:print-persistent-object
+           #:load-instance
+           #:revive-instance
+           #:purge-instance
+           #:purge-instances
+           #:print-persistent-instance
 
            ;; most of the collection API is inherited from cl-containers 
            #:insert-item
@@ -175,10 +175,10 @@
            #:select
            #:select-first-matching
            #:select-last-matching
-           #:select-object
-           #:select-objects
-           #:select-similar-object
-           #:select-similar-objects
+           #:select-instance
+           #:select-instances
+           #:select-similar-instance
+           #:select-similar-instances
            #:make-query
            #:add-lexical-variable
            #:add-query-variable

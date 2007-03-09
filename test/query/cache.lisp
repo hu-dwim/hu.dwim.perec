@@ -21,7 +21,7 @@
 (defixture fill-data-3
   (with-transaction
     (export-all-classes)
-    (purge-objects 'query-cache-test)
+    (purge-instances 'query-cache-test)
     (make-instance 'query-cache-test :attr-1 1)
     (make-instance 'query-cache-test :attr-1 2)))
 

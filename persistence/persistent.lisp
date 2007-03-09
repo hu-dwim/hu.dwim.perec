@@ -50,7 +50,7 @@
            (apply #'initialize-revived-instance (allocate-instance class) args)))
 
 (defgeneric cache-object (thing)
-  (:documentation "Attaches an object to the current transaction. The object must be already present in the database, so load-object would return an instance for it. The purpose of this method is to cache objects returned by a query or when the existence may be guaranteed by some other means.")
+  (:documentation "Attaches an object to the current transaction. The object must be already present in the database, so load-instance would return an instance for it. The purpose of this method is to cache objects returned by a query or when the existence may be guaranteed by some other means.")
 
   (:method ((values list))
            (assert (= 2 (length values)))
@@ -71,11 +71,11 @@
   (:report (lambda (c stream)
              (format stream "Object not found for oid ~A" (oid-of c)))))
 
-(defgeneric load-object (thing &key otherwise prefetch skip-existence-check)
+(defgeneric load-instance (thing &key otherwise prefetch skip-existence-check)
   (:documentation "Loads an object with the given oid and attaches it with the current transaction if not yet attached. If no such object exists in the database then one of two things may happen. If the value of otherwise is a lambda function with one parameter then it is called with the given object. Otherwise the value of otherwise is returned. If prefetch is false then only the identity of the object is loaded, otherwise all slots are loaded. Note that the object may not yet be committed into the database and therefore may not be seen by other transactions. Also objects not yet committed by other transactions are not returned according to transaction isolation rules. The object returned will be kept for the duration of the transaction and any subsequent calls to load, select, etc. will return the exact same object for which eq is required to return #t.")
 
   (:method ((object persistent-object) &rest args)
-           (apply #'load-object (oid-of object) args))
+           (apply #'load-instance (oid-of object) args))
 
   (:method ((oid oid) &key (otherwise nil otherwise-provided-p) (prefetch #f) (skip-existence-check #f))
            (declare (ignore prefetch))
@@ -91,15 +91,15 @@
                     ;; REVIEW: is this the correct thing to do?
                     ;; we push the new-object into the cache first
                     ;; even tough we are unsure if the object is persistent or not
-                    ;; because prefetching slots may recursively call load-object from persistent-p
+                    ;; because prefetching slots may recursively call load-instance from persistent-p
                     ;; we also want to have non persistent objects in the cache anyway
                     (setf (cached-object-of (oid-of new-object)) new-object)
                     (if (or skip-existence-check (persistent-p new-object))
                         new-object
                         (object-not-found)))))))
 
-(defgeneric purge-object (object)
-  (:documentation "Purges the given object without respect to associations and references to it.")
+(defgeneric purge-instance (object)
+  (:documentation "Purges the given instance without respect to associations and references to it.")
   
   (:method ((object persistent-object))
            (ensure-exported (class-of object))
@@ -107,11 +107,11 @@
              (delete-records (name-of table)
                              (id-column-matcher-where-clause object)))))
 
-(defgeneric purge-objects (class)
+(defgeneric purge-instances (class)
   (:documentation "Purges all instances of the given class without respect to associations and references.")
 
   (:method ((class-name symbol))
-           (purge-objects (find-class class-name)))
+           (purge-instances (find-class class-name)))
 
   (:method ((class persistent-class))
            (ensure-exported class)
@@ -142,15 +142,15 @@
                  (when table
                    (delete-records (name-of table))))))))
 
-(defmacro revive-object (place &rest args)
+(defmacro revive-instance (place &rest args)
   "Load object found in PLACE into the current transaction, update PLACE if needed."
   (with-unique-names (instance)
     `(bind ((,instance ,place))
       (when ,instance
-        (assert (or (not (object-in-transaction-p ,instance))
+        (assert (or (not (instance-in-transaction-p ,instance))
                     (eq (transaction-of ,instance)
                         *transaction*)))
-        (setf ,place (load-object ,instance ,@args))))))
+        (setf ,place (load-instance ,instance ,@args))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Making objects persistent and transient
@@ -174,6 +174,6 @@
         (insert-item deleted-objects object)))
   (with-caching-slot-values
     (restore-all-slots object))
-  (purge-object object)
+  (purge-instance object)
   (setf (persistent-p object) #f)
   (remove-cached-object object))

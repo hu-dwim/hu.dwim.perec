@@ -17,10 +17,10 @@
 (defixture create-type-test-data
   (with-transaction
     (export-all-classes)
-    (purge-objects 'super-1-test)
-    (purge-objects 'super-2-test)
-    (purge-objects 'sub-1-test)
-    (purge-objects 'sub-2-test)
+    (purge-instances 'super-1-test)
+    (purge-instances 'super-2-test)
+    (purge-instances 'sub-1-test)
+    (purge-instances 'sub-2-test)
     (make-instance 'sub-1-test :attr1 1 :attr2 1)
     (make-instance 'sub-2-test :attr1 2 :attr2 2)))
 

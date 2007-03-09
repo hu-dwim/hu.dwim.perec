@@ -61,9 +61,9 @@
       `(progn
         (eval-when (:compile-toplevel)
           (flet ((ensure-reader-function (name)
-                   (ensure-generic-function name :lambda-list '(object)))
+                   (ensure-generic-function name :lambda-list '(instance)))
                  (ensure-writer-function (name)
-                   (ensure-generic-function name :lambda-list '(new-value object))))
+                   (ensure-generic-function name :lambda-list '(new-value instance))))
             (ensure-reader-function ',primary-reader)
             (ensure-reader-function ',(concatenate-symbol primary-reader "*"))
             (ensure-writer-function ',primary-writer)
@@ -118,18 +118,18 @@
 ;;;;;;;;;;;;;;;
 ;;; persistence
 
-(defgeneric make-persistent (object)
-  (:documentation "Makes an object persistent without making its associated objects persistent.")
+(defgeneric make-persistent (instance)
+  (:documentation "Makes an instance persistent without making its associated instances persistent.")
 
-  (:method :around (object)
-           (unless (persistent-p object)
+  (:method :around (instance)
+           (unless (persistent-p instance)
              (call-next-method))))
 
-(defgeneric make-transient (object)
-  (:documentation "Makes an object transient without making its associated objects transient.")
+(defgeneric make-transient (instance)
+  (:documentation "Makes an instance transient without making its associated instances transient.")
 
-  (:method :around (object)
-           (when (persistent-p object)
+  (:method :around (instance)
+           (when (persistent-p instance)
              (call-next-method))))
 
 ;;;;;;;;;;;;;;

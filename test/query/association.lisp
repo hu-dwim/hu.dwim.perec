@@ -34,8 +34,8 @@
 (defixture association-test-fixture
   (with-transaction
     (export-all-classes)
-    (purge-objects 'movie-test)
-    (purge-objects 'person-test)
+    (purge-instances 'movie-test)
+    (purge-instances 'person-test)
     (let ((oceans-twelwe (make-instance 'movie-test :title "Ocean's Twelwe"))
           (mr&mrs-smith (make-instance 'movie-test :title "Mr. & Mrs. Smith"))
           (george-clooney (make-instance 'actor-test :name "George Clooney"))

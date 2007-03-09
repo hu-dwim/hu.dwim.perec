@@ -236,7 +236,7 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
 
 (defmethod revive-result-set! ((result-set list-result-set))
   (dolist (record (contents result-set))
-    (mapl #L(when (persistent-object-p (car !1)) (revive-object (car !1)))
+    (mapl #L(when (persistent-object-p (car !1)) (revive-instance (car !1)))
           record)))
 
 

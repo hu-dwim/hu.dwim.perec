@@ -39,9 +39,9 @@
 (defixture fill-data-1
   (with-transaction
     (export-all-classes)
-    (purge-objects 'owner-test)
-    (purge-objects 'topic-test)
-    (purge-objects 'message-test)
+    (purge-instances 'owner-test)
+    (purge-instances 'topic-test)
+    (purge-instances 'message-test)
     (bind ((user1 (make-instance 'user-test
                                  :name "user1"
                                  :birthday (encode-local-time 0 0 0 0 22 4 1984 :timezone +utc-zone+)
@@ -118,7 +118,7 @@
   (with-fixture fill-data-1
       (let ((user (with-transaction (select-first-matching user-test))))
         (test-query (:select-count nil :record-count 2)
-          (revive-object user)          ; for eq
+          (revive-instance user)          ; for eq
           (select ((o topic-test))
             (assert (eq (owner-of o) user))
             (collect o))))))
@@ -237,7 +237,7 @@
 
 (deftest test/query/select/member-1 ()
   (test-query (:select-count 2 :record-count 3 :fixture fill-data-1)
-    (let ((messages (cdr (prc::select-objects message-test))))
+    (let ((messages (cdr (prc::select-instances message-test))))
       (select ((m message-test))
         (assert (member m messages))
         (collect m)))))
@@ -256,7 +256,7 @@
 
 (deftest test/query/select/member-4 ()
   (test-query (:select-count 1 :record-count 0 :fixture fill-data-1)
-    (let ((topics (prc::select-objects topic-test)))
+    (let ((topics (prc::select-instances topic-test)))
       (execute-query
        (make-query
         `(select ((m message-test))
@@ -265,7 +265,7 @@
 
 (deftest test/query/select/member-5 ()
   (test-query (:select-count 3 :record-count 1 :fixture fill-data-1)
-    (let ((list (append (select-objects topic-test) (select-objects spam-test))))
+    (let ((list (append (select-instances topic-test) (select-instances spam-test))))
       (execute-query
        (make-query
         `(select ((m message-test))

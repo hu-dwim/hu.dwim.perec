@@ -26,7 +26,7 @@
 
 (defixture fixture/persistent/purge
   (with-transaction
-    (purge-objects 'purge-a-test)
+    (purge-instances 'purge-a-test)
     (make-instance 'purge-a-test)
     (make-instance 'purge-b-test)
     (make-instance 'purge-c-test)
@@ -38,15 +38,15 @@
   (with-fixture fixture/persistent/purge
     (with-transaction
       (let ((last-delete-counter (delete-counter-of (command-counter-of *transaction*)))
-            (total-instance-counter (length (select-objects purge-a-test)))
-            (purged-instance-counter (count-if #L(typep !1 class-name) (select-objects purge-a-test))))
-        (purge-objects class-name)
+            (total-instance-counter (length (select-instances purge-a-test)))
+            (purged-instance-counter (count-if #L(typep !1 class-name) (select-instances purge-a-test))))
+        (purge-instances class-name)
         (is (= (- (delete-counter-of (command-counter-of *transaction*)) last-delete-counter)
                delete-counter))
-        (is (= (count-if #L(typep !1 class-name) (select-objects purge-a-test))
+        (is (= (count-if #L(typep !1 class-name) (select-instances purge-a-test))
                0))
         (is (= (- total-instance-counter purged-instance-counter)
-               (length (select-objects purge-a-test))))))))
+               (length (select-instances purge-a-test))))))))
 
 (defmacro def-purge-test (name class-name delete-counter)
   `(deftest ,name ()

@@ -42,7 +42,7 @@
           (with-transaction
             ,form-1)))
     (with-transaction
-      (revive-object -object-)
+      (revive-instance -object-)
       ,@forms-2)))
 
 (defmacro with-one-and-two-transactions (form-1 &body forms-2)

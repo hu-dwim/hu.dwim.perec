@@ -4,8 +4,8 @@
 
 (defmacro with-student-and-course-in-transaction (&body body)
   `(with-transaction
-    (purge-objects 'course-test)
-    (purge-objects 'student-test)
+    (purge-instances 'course-test)
+    (purge-instances 'student-test)
     (bind ((student (make-instance 'student-test))
            (course (make-instance 'course-test)))
       ,@body)))

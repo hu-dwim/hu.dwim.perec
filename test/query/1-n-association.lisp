@@ -4,8 +4,8 @@
 
 (defmacro with-parent-and-child-in-transaction (&body body)
   `(with-transaction
-    (purge-objects 'child-test)
-    (purge-objects 'parent-test)
+    (purge-instances 'child-test)
+    (purge-instances 'parent-test)
     (bind ((parent (make-instance 'parent-test))
            (child (make-instance 'child-test)))
       ,@body)))
