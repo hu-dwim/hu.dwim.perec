@@ -313,12 +313,12 @@ wraps the compiled code with a runtime check of the result."))
 
 (defun emit-query-variable-bindings (variables row prefetchp)
   (iter (for variable in variables)
-        (for properties = (when prefetchp (prefetched-properties-for variable)))
-        (for column-count = (reduce '+ properties
+        (for slots = (when prefetchp (prefetched-slots-for variable)))
+        (for column-count = (reduce '+ slots
                                     :key 'column-count-of
                                     :initial-value (length +oid-column-names+)))
         (for i initially 0 then (+ i column-count))
-        (collect `(,(name-of variable) (cache-object-with-prefetched-properties ,row ,i ',properties)))))
+        (collect `(,(name-of variable) (cache-object-with-prefetched-slots ,row ,i ',slots)))))
 
 (defun emit-ignorable-variables-declaration (variables)
   `(declare (ignorable ,@(mapcar 'name-of variables))))

@@ -132,7 +132,7 @@
 
 (defgeneric sql-select-list-for (element)
   (:method ((query query))
-           ;; select oids and prefetched properties
+           ;; select oids and prefetched slots
            ;; TODO: if no prefetch, select the expressions in the collect clause
            (mapcan
             (lambda (variable) (sql-columns-for-variable variable (prefetchp query)))
@@ -144,10 +144,10 @@
         (nconc
          (sql-oid-column-references-for variable)
          (mapcan #L(sql-column-references-for !1 table-alias)
-                 (prefetched-properties-for variable)))
+                 (prefetched-slots-for variable)))
         (sql-oid-column-references-for variable))))
 
-(defun prefetched-properties-for (variable)
+(defun prefetched-slots-for (variable)
   (bind ((type (xtype-of variable)))
     (when (persistent-class-p type)
       (collect-if #L(eq (table-of !1) (primary-table-of type))

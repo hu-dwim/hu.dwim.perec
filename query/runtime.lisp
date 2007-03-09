@@ -34,7 +34,7 @@
 ;;;
 ;;; Caching
 ;;;
-(defun cache-object-with-prefetched-properties (row start prefetched-slots)
+(defun cache-object-with-prefetched-slots (row start prefetched-slots)
   "Caches the objects whose oid and slots are contained by ROW starting at START."
   (bind ((oid-width (length +oid-column-names+))
          (oid (subseq row start (+ start oid-width)))

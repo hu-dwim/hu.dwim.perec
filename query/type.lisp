@@ -103,20 +103,20 @@
            (find-slot-by-owner-type (arg-of access)
                                         (effective-association-ends-for-accessor (accessor-of access)))))
 
-(defun find-slot-by-owner-type (owner properties)
+(defun find-slot-by-owner-type (owner slots)
   (bind ((owner-type (xtype-of owner)))
     (cond
-      ((length=1 properties)
-       (first properties))
+      ((length=1 slots)
+       (first slots))
       ((persistent-class-p owner-type)
-       (find owner-type properties :key 'slot-definition-class :test 'subtypep))
+       (find owner-type slots :key 'slot-definition-class :test 'subtypep))
       (t
        (warn "Cannot determine the type of ~A at compile time.
 Chosing slot ~A randomly from ~A."
              owner
-             (slot-qualified-name (first properties))
-             (mapcar 'slot-qualified-name properties))
-       (first properties)))))
+             (slot-qualified-name (first slots))
+             (mapcar 'slot-qualified-name slots))
+       (first slots)))))
 
 (defun slot-qualified-name (slot)
   (concatenate-symbol (class-name (slot-definition-class slot)) ":" (slot-definition-name slot)))
