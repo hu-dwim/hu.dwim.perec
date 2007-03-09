@@ -10,7 +10,7 @@
            (course (make-instance 'course-test)))
       ,@body)))
 
-#+nil(deftest test/query/select/association/m-n/1 ()
+(deftest test/query/select/association/m-n/1 ()
   (with-student-and-course-in-transaction
     (is (null (select ((s student-test))
                 (assert (member s (students-of course)))

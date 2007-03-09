@@ -531,3 +531,12 @@
 (define-aggregate-function 'max 'sql-max)
 (define-aggregate-function 'sum 'sql-sum)
 (define-aggregate-function 'avg 'sql-avg)
+
+;;;
+;;; Literals
+;;;
+(defun sql-false-literal ()
+  (sql-literal :value #f :type (make-instance 'cl-rdbms::sql-boolean-type)))
+
+(defun sql-true-literal ()
+  (sql-literal :value #t :type (make-instance 'cl-rdbms::sql-booelan-type)))

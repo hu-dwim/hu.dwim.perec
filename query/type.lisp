@@ -124,8 +124,14 @@ Chosing property ~A randomly from ~A."
 (defgeneric backquote-type-syntax (type)
   (:documentation "Generates a type expression that evaluates to the type.")
 
+  (:method ((self-evaluating t))
+           self-evaluating)
+  
   (:method ((class persistent-class))
            class)
+
+  (:method ((type-name symbol))
+           `(quote ,type-name))
 
   (:method ((type syntax-object))
            type)

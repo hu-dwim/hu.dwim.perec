@@ -15,7 +15,7 @@
     (is (null (select ((p parent-test))
                 (assert (eq p (parent-of child)))
                 (collect p))))
-    #+nil(is (null (select ((c child-test))
+    (is (null (select ((c child-test))
                      (assert (member c (children-of parent)))
                      (collect c))))))
 

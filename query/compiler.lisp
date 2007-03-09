@@ -519,7 +519,7 @@ forms with joined variables.")
            (literal-to-sql (value-of literal) (xtype-of literal) literal))
 
   (:method ((variable lexical-variable))
-           `(value->sql-literal ,(name-of variable) ',(xtype-of variable)))
+           `(value->sql-literal ,(name-of variable) ,(backquote-type-syntax (xtype-of variable))))
 
   (:method ((variable query-variable))
            (sql-id-column-reference-for variable))
@@ -546,13 +546,13 @@ forms with joined variables.")
   (:method (value type literal)
            (cond
              ((keywordp value) value)
-             ((syntax-object-p type) `(value->sql-literal ,literal ',type))
+             ((syntax-object-p type) `(value->sql-literal ,literal ,(backquote-type-syntax type)))
              (t (value->sql-literal value type)))))
 
 (defgeneric attribute-access-to-sql (accessor arg access)
   (:method (accessor arg access)
            (if (free-of-query-variables-p access)
-               `(value->sql-literal ,access ,(xtype-of access))
+               `(value->sql-literal ,access ,(backquote-type-syntax (xtype-of access)))
                (sql-map-failed)))
 
   (:method (accessor (variable query-variable) access)
@@ -565,7 +565,7 @@ forms with joined variables.")
 (defgeneric association-end-access-to-sql (accessor arg access)
   (:method (accessor arg access)
            (if (free-of-query-variables-p access)
-               `(value->sql-literal ,access ,(xtype-of access))
+               `(value->sql-literal ,access ,(backquote-type-syntax (xtype-of access)))
                (sql-map-failed)))
 
   (:method (accessor (variable query-variable) access)
@@ -586,42 +586,42 @@ forms with joined variables.")
                     (sql-subselect-for-m-n-association association-end variable))))
                (sql-map-failed))))
 
-(defgeneric function-call-to-sql (fn n-args arg-1 arg-2 call)
+(defgeneric function-call-to-sql (fn n-args arg1 arg2 call)
 
-  (:method (fn n-args arg-1 arg-2 call)
+  (:method (fn n-args arg1 arg2 call)
            (cond
              ;; (<aggregate-fn> (<n-ary-association-end-accessor> <query-var>))
              ;; e.g. (length (messages-of topic)) -->
              ;;         (select count(_m.id) from _message _m where _m.topic_id = _topic.id)
              ((and (sql-aggregate-function-name-p fn) (= n-args 1)
-                   (association-end-access-p arg-1) (association-end-of arg-1)
-                   (query-variable-p (arg-of arg-1)))
-              (ecase (association-kind-of (association-of (association-end-of arg-1)))
+                   (association-end-access-p arg1) (association-end-of arg1)
+                   (query-variable-p (arg-of arg1)))
+              (ecase (association-kind-of (association-of (association-end-of arg1)))
                 (:1-1
                  (sql-map-failed))
                 (:1-n
                  (sql-aggregate-subselect-for-variable
                   (sql-aggregate-function-for fn)
-                  (association-end-of arg-1)
-                  (arg-of arg-1)))
+                  (association-end-of arg1)
+                  (arg-of arg1)))
                 (:m-n
                  (sql-aggregate-subselect-for-m-n-association-end
                   (sql-aggregate-function-for fn)
-                  (association-end-of arg-1)
-                  (arg-of arg-1)))))
+                  (association-end-of arg1)
+                  (arg-of arg1)))))
              ;; eq,eql and friends: compare with NULL can be true
              ((member fn '(eq eql equal))
               (sql-equal
-               (syntax-to-sql arg-1)
-               (syntax-to-sql arg-2)
-               :check-nils (and (or (not (xtype-of arg-1)) (subtypep 'null (xtype-of arg-1)))
-                                (or (not (xtype-of arg-2)) (subtypep 'null (xtype-of arg-2))))))
+               (syntax-to-sql arg1)
+               (syntax-to-sql arg2)
+               :check-nils (and (or (not (xtype-of arg1)) (subtypep 'null (xtype-of arg1)))
+                                (or (not (xtype-of arg2)) (subtypep 'null (xtype-of arg2))))))
              ((eq fn 'string=)
               (sql-string=
-               (syntax-to-sql arg-1)
-               (syntax-to-sql arg-2)
-               :check-nils (and (or (not (xtype-of arg-1)) (subtypep 'null (xtype-of arg-1)))
-                                (or (not (xtype-of arg-2)) (subtypep 'null (xtype-of arg-2))))))
+               (syntax-to-sql arg1)
+               (syntax-to-sql arg2)
+               :check-nils (and (or (not (xtype-of arg1)) (subtypep 'null (xtype-of arg1)))
+                                (or (not (xtype-of arg2)) (subtypep 'null (xtype-of arg2))))))
              ;; (<fn> <arg> ...), where <fn> has SQL counterpart
              ;; e.g. (+ 1 2) --> (1 + 2)
              ((sql-operator-p fn)
@@ -630,14 +630,23 @@ forms with joined variables.")
              ;; evaluate it at runtime and insert its value into the SQL query.
              ;; The persistent-objects in the value are converted to object ids.
              ((every 'free-of-query-variables-p (args-of call))
-              `(value->sql-literal ,call ',(xtype-of call)))
+              `(value->sql-literal ,call ,(backquote-type-syntax (xtype-of call))))
              ;; Otherwise the assert containing the function call cannot be mapped to SQL.
              (t
               (sql-map-failed))))
 
   ;; member form -> in (ignore keyword args, TODO)
-  (:method ((fn (eql 'member)) n-args arg-1 arg-2 call)
-           `(sql-in ,(syntax-to-sql arg-1) ,(syntax-to-sql arg-2)))
+  (:method ((fn (eql 'member)) n-args arg1 arg2 call)
+           (cond
+             ((literal-value-p arg2)
+              (if (null (value-of arg2))
+                  (sql-false-literal)
+                  `(sql-in ,(syntax-to-sql arg1) ,(syntax-to-sql arg2))))
+             ((free-of-query-variables-p arg2)
+              `(if (null ,(unparse-query-syntax arg2))
+                (sql-false-literal)
+                ,(unparse-query-syntax `(sql-in ,(syntax-to-sql arg1) ,(syntax-to-sql arg2)))))
+             (t `(sql-in ,(syntax-to-sql arg1) ,(syntax-to-sql arg2)))))
 
   ;; (member <object> (<association-end-accessor> <query-variable>))
   ;; e.g. (member m1 (messages-of topic)) --> (_m1.topic_id = _topic.id)
@@ -702,25 +711,25 @@ forms with joined variables.")
   ;; null form
   ;;   example:
   ;;   (null (messages-of t)) -> exists(select 1 from message m where m.topic_id = t.id)
-#|  
-  (:method ((fn (eql 'null)) (n-args (eql 1)) (access association-end-access) arg-2 call)
-           (bind ((association-end (association-end-of access))
-                  (variable (arg-of access)))
-             (if (and (query-variable-p variable)
-                      association-end
-                      (to-many-association-end-p association-end))
-                 `(sql-not ,(sql-exists-subselect-for-association-end variable association-end))
-                 (call-next-method))))
-|#
+                                        #|  
+  (:method ((fn (eql 'null)) (n-args (eql 1)) (access association-end-access) arg2 call)
+  (bind ((association-end (association-end-of access))
+  (variable (arg-of access)))
+  (if (and (query-variable-p variable)
+  association-end
+  (to-many-association-end-p association-end))
+  `(sql-not ,(sql-exists-subselect-for-association-end variable association-end))
+  (call-next-method))))
+  |#
   )
 
-(defgeneric macro-call-to-sql (macro n-args arg-1 arg-2 call)
-  (:method (macro n-args arg-1 arg-2 call)
+(defgeneric macro-call-to-sql (macro n-args arg1 arg2 call)
+  (:method (macro n-args arg1 arg2 call)
            (cond
              ((sql-operator-p macro)
               `(funcall ',(sql-operator-for macro) ,@(mapcar 'syntax-to-sql (args-of call))))
              ((every 'free-of-query-variables-p (args-of call))
-              `(value->sql-literal ,call ',(xtype-of call)))
+              `(value->sql-literal ,call ,(backquote-type-syntax (xtype-of call))))
              (t
               (sql-map-failed)))))
 
@@ -774,7 +783,10 @@ forms with joined variables.")
 
 (defun generate-joined-variable-name (type)
   "Generates a name for a joined variable of type TYPE."
-  (gensym (symbol-name (class-name type))))
+  (typecase type
+    (persistent-class (gensym (symbol-name (class-name type))))
+    (symbol (gensym (symbol-name type)))
+    (otherwise (gensym "joined"))))
 
 (defgeneric collect-persistent-object-literals (element &optional result)
   (:method ((query simple-query) &optional result)
