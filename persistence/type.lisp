@@ -27,7 +27,9 @@
   (bind ((common-lisp-type-p (eq (symbol-package name) (find-package :common-lisp)))
          (allow-nil-args-p (or (null args)
                                (eq '&optional (first args))
-                               (eq '&rest (first args)))))
+                               (eq '&rest (first args))))
+         (documentation (when (stringp (first body))
+                          (pop body))))
     `(progn
       ,(when args
              `(defclass* ,(type-class-name-for name) (persistent-type)
@@ -49,6 +51,7 @@
                  (setf (name-of type) ',name)
                  (setf (args-of type) ',args)
                  (setf (body-of type) ',body)
+                 (setf (documentation-of type) ',documentation)
                  (setf (substituter-of type) substituter)
                  (setf (find-type ',name) type)
                  type)))
