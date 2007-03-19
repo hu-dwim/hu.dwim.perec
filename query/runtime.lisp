@@ -94,15 +94,15 @@
 
   ;; Infer type from value
 
-  (:method ((value persistent-object) (type null) &optional args)
+  (:method ((value persistent-object) (type (eql +unknown-type+)) &optional args)
            (assert (null args))
            (value->sql-literal value (type-of value)))
  
-  (:method ((value string) (type null) &optional args) ; TODO
+  (:method ((value string) (type (eql +unknown-type+)) &optional args) ; TODO
            (assert (null args))
            (value->sql-literal value 'string))
 
-  (:method ((value number) (type null) &optional args) ; TODO BIT
+  (:method ((value number) (type (eql +unknown-type+)) &optional args) ; TODO BIT
            (assert (null args))
            (value->sql-literal value 'number))
 
@@ -113,7 +113,7 @@
            (assert (every #L(typep !1 type) value))
            (sql-literal :value (mapcar 'id-of value)))
 
-  (:method ((value list) (type null) &optional args) ; FIXME list of unknown type, hopefully not a form
+  (:method ((value list) (type (eql +unknown-type+)) &optional args) ; FIXME hopefully not a form
            (assert (null args))
            (sql-literal :value (mapcar #L(value->sql-literal !1 type) value))))
 

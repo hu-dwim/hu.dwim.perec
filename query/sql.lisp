@@ -177,7 +177,7 @@
                 (error "No persistent class named '~A~%" class-name)))
 
   (:method ((variable query-variable) (alias symbol))
-           (assert (xtype-of variable))
+           (assert (not (eq (xtype-of variable) +unknown-type+)))
            (sql-table-reference-for-type (xtype-of variable) alias))
 
   (:method ((syntax syntax-object) (alias symbol))

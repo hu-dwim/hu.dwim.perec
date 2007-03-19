@@ -87,8 +87,10 @@ Be careful when using in different situations, because it modifies *readtable*."
 ;;; AST nodes
 ;;;
 
+(defconstant +unknown-type+ :unknown)
+
 (define-syntax-node syntax-object ()
-  ((xtype nil)))
+  ((xtype +unknown-type+)))
 
 (define-syntax-node unparsed-form (syntax-object)
   ((form)))

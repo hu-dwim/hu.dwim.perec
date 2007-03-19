@@ -103,8 +103,8 @@
             :components
             ((:file "copy")
              (:file "macro")
-             (:file "runtime")
              (:file "syntax")
+             (:file "runtime" :depends-on ("syntax"))
              (:file "scroll")
              (:file "result-set" :depends-on ("scroll"))
              (:file "api")

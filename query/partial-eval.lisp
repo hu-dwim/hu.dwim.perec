@@ -66,7 +66,7 @@ if it was fully evaluated.")
   ;;    when the types t1 and (xtype-of query-variable) does not have common subtypes
   (:method ((fn (eql 'typep)) (n-args (eql 2)) (variable query-variable) (type persistent-class) args call)
            (let ((variable-type (xtype-of variable)))
-             (if (and (typep variable-type 'persistent-class)
+             (if (and (persistent-class-p variable-type)
                       (null (intersection (adjoin type (persistent-effective-sub-classes-of type))
                                           (adjoin variable-type (persistent-effective-sub-classes-of variable-type)))))
                  nil

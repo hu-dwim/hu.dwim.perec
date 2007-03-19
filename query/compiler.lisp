@@ -745,7 +745,7 @@ forms with joined variables.")
       (make-new-joined-variable query object association-end type)))
 
 (defun ensure-type (query object type)
-  (if (not (xtype-of object))
+  (if (eq (xtype-of object) +unknown-type+)
       (progn (setf (xtype-of object) type) object)
       (or (and (eq (xtype-of object) type) object)
           (find-joined-variable-by-definition query object nil type)

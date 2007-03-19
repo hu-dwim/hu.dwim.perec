@@ -64,9 +64,7 @@
            (setf (slot-of access) (slot-for-slot-access access))
            (when (slot-of access)
              (setf (xtype-of access)
-                   (if (attribute-access-p access)
-                       (slot-definition-type (slot-of access))
-                       (associated-class-of (slot-of access))))))
+                   (normalized-type-for* (slot-definition-type (slot-of access))))))
 
   ;; toplevel (eq <obj1> <obj2>) -> (type-of <obj1>) == (type-of <obj2>)
   (:method ((call function-call) query &optional toplevel)
@@ -87,6 +85,13 @@
            (typep (value-of type) 'persistent-class))
       (value-of type)
       type))
+
+(defun normalized-type-for* (type)
+  (awhen (normalized-type-for type)
+    (cond
+      ((set-type-p it) (find-class (set-type-class-for it)))
+      ((persistent-class-name-p it) (find-class it))
+      (t type))))
 
 (defun restrict-variable-type (variable type)
   (let ((orig-type (xtype-of variable)))
