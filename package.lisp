@@ -72,6 +72,7 @@
            #:find-type
            #:normalized-type-of
            #:parse-type
+           #:primitive-type-p
            #:destructure-type
            #:def-member-type
 
@@ -136,6 +137,8 @@
            #:mark-transaction-for-rollback-only
            #:transaction-timestamp
            #:transaction-mixin
+           #:transaction-with-commit-hooks-mixin
+           #:register-commit-hook
 
            ;; managing persistent instances
            #:with-making-persistent-instances
@@ -180,6 +183,7 @@
            #:select-similar-instance
            #:select-similar-instances
            #:make-query
+           #:current-query-variable-of
            #:add-lexical-variable
            #:add-query-variable
            #:add-assert
