@@ -70,7 +70,10 @@
 ;;;
 ;;; Conversion between lisp and sql values
 ;;;
-(defgeneric value->sql-literal (value type &optional args)
+(defun value->sql-literal (value type)
+  (value->sql-literal* value (normalized-type-for* type)))
+
+(defgeneric value->sql-literal* (value type &optional args)
 
   ;; Runtime cast error
   
@@ -90,21 +93,21 @@
 
   (:method (value (type cons) &optional args)
            (assert (null args))
-           (value->sql-literal value (first type) (rest type)))
+           (value->sql-literal* value (first type) (rest type)))
 
   ;; Infer type from value
 
   (:method ((value persistent-object) (type (eql +unknown-type+)) &optional args)
            (assert (null args))
-           (value->sql-literal value (type-of value)))
+           (value->sql-literal* value (type-of value)))
  
   (:method ((value string) (type (eql +unknown-type+)) &optional args) ; TODO
            (assert (null args))
-           (value->sql-literal value 'string))
+           (value->sql-literal* value 'string))
 
   (:method ((value number) (type (eql +unknown-type+)) &optional args) ; TODO BIT
            (assert (null args))
-           (value->sql-literal value 'number))
+           (value->sql-literal* value 'number))
 
   ;; Iterate on lists
 
@@ -115,7 +118,7 @@
 
   (:method ((value list) (type (eql +unknown-type+)) &optional args) ; FIXME hopefully not a form
            (assert (null args))
-           (sql-literal :value (mapcar #L(value->sql-literal !1 type) value))))
+           (sql-literal :value (mapcar #L(value->sql-literal* !1 type) value))))
 
 (defun value->sql-value (value type type-args)
   (assert type)

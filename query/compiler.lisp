@@ -368,7 +368,7 @@ wraps the compiled code with a runtime check of the result."))
                    (asserts-of query))))
 
 (defun conjuncts-of (syntax)
-  "Return a list of the conjuncts in this sentence."
+  "Return a list of the conjuncts in SYNTAX."
   (pattern-case syntax
     (#M(macro-call :macro and) (args-of syntax))
     (#M(literal-value :value #t) nil)
@@ -614,14 +614,14 @@ forms with joined variables.")
               (sql-equal
                (syntax-to-sql arg1)
                (syntax-to-sql arg2)
-               :check-nils (and (or (not (xtype-of arg1)) (subtypep 'null (xtype-of arg1)))
-                                (or (not (xtype-of arg2)) (subtypep 'null (xtype-of arg2))))))
+               :check-nils (and (maybe-null-subtype-p (xtype-of arg1))
+                                (maybe-null-subtype-p (xtype-of arg2)))))
              ((eq fn 'string=)
               (sql-string=
                (syntax-to-sql arg1)
                (syntax-to-sql arg2)
-               :check-nils (and (or (not (xtype-of arg1)) (subtypep 'null (xtype-of arg1)))
-                                (or (not (xtype-of arg2)) (subtypep 'null (xtype-of arg2))))))
+               :check-nils (and (maybe-null-subtype-p (xtype-of arg1))
+                                (maybe-null-subtype-p (xtype-of arg2)))))
              ;; (<fn> <arg> ...), where <fn> has SQL counterpart
              ;; e.g. (+ 1 2) --> (1 + 2)
              ((sql-operator-p fn)
@@ -737,7 +737,7 @@ forms with joined variables.")
    query
    (arg-of access)
    (association-end-of access)
-   (xtype-of access)))
+   (normalized-type-for* (xtype-of access))))
 
 (defun ensure-joined-variable (query object association-end type)
   (or (and (query-variable-p object) (eq (xtype-of object) type) object)

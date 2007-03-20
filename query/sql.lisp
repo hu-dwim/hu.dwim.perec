@@ -32,7 +32,8 @@
          :where ,(where-clause-of query))))))
 
 (defun sql-select-oids-for-class (class-name)
-  (bind ((tables (rest (primary-tables-of (find-class class-name)))))
+  "Generates a select for the oids of instances of the class named CLASS-NAME."
+  (bind ((tables (rest (primary-tables-of (find-class class-name))))) ; TODO: APPEND/UNION
     (sql-select-oids-from-tables tables 'sql-union)))
 
 (defun sql-select-oids-from-tables (tables set-operation)
@@ -44,6 +45,7 @@
     (otherwise (apply set-operation (mapcar 'sql-select-oids-from-table tables)))))
 
 (defgeneric sql-select-oids-from-table (table)
+  (:documentation "Generates a select for the oids in TABLE.")
   (:method ((table table))
            (sql-select :columns +oid-column-names+ :tables (list (name-of table))))
   (:method ((table sql-table-alias))
@@ -85,6 +87,7 @@
        (length=1 (tables-for-delete (xtype-of (first (query-variables-of query)))))))
 
 (defun sql-delete-for-subselect (table subselect)
+  "Generate a delete command for records in TABLE whose oid is in the set returned by SUBSELECT."
   (sql-delete-from-table
    table
    :where `(sql-in
@@ -92,6 +95,7 @@
             ,subselect)))
 
 (defun sql-delete-from-table (table &key where)
+  "Generate a delete command for records in TABLE that satisfies the WHERE clause."
   `(sql-delete
     :table ,(sql-table-reference-for table nil)
     :where ,where))
@@ -116,6 +120,8 @@
 (defvar *suppress-alias-names* nil)
 
 (defgeneric sql-alias-for (element)
+  (:documentation "Generates a table alias for the given ELEMENT. Alias names may be supressed
+by setting *SUPRESS-ALIAS-NAMES* to true.")
   (:method ((name symbol))
            (unless *suppress-alias-names*
              (rdbms-name-for name)))
@@ -203,8 +209,11 @@
                    (sql-subquery :query (sql-select-oids-from-tables tables 'sql-union))
                    alias)))))
 
-  (:method ((class-name symbol) &optional alias)
-           (sql-table-reference-for-type (find-class class-name) alias))
+  (:method ((type-name symbol) &optional alias)
+           (bind ((class (find-class type-name #f)))
+             (typecase class
+               (persistent-class (sql-table-reference-for-type class alias))
+               (otherwise nil))))
 
   (:method ((type syntax-object) &optional alias) ;; type unknown at compile time
            (make-function-call
@@ -212,26 +221,38 @@
             :args (list (backquote-type-syntax type) `',alias)))
 
   (:method ((combined-type list) &optional alias)
-           (flet ((ensure-sql-query (table-ref)
-                    (assert (not (syntax-object-p table-ref)))
-                    (etypecase table-ref
-                      (sql-table-alias (sql-subquery :query (sql-select-oids-from-table table-ref)))
-                      (sql-derived-table (cl-rdbms::subquery-of table-ref))))) ; TODO export
-             (bind ((operands (mapcar 'sql-table-reference-for-type (rest combined-type))))
-               (if (some 'syntax-object-p operands) ;; some type unknown at compile time
-                   (make-function-call
-                    :fn 'sql-table-reference-for-type
-                    :args (list (backquote-type-syntax combined-type) `',alias))
-                   (ecase (car combined-type)
-                     (or (sql-table-reference-for
-                          (sql-subquery
-                           :query (apply 'sql-union (mapcar #L(ensure-sql-query !1) operands)))
-                          alias))
-                     (and (sql-table-reference-for
-                           (sql-subquery
-                            :query (apply 'sql-intersect (mapcar #L(ensure-sql-query !1) operands)))
-                           alias))
-                     (not (not-yet-implemented))))))))
+           (if (contains-syntax-p combined-type)
+               ;; delay evaluation until run-time
+               (make-function-call
+                :fn 'sql-table-reference-for-type
+                :args (list (backquote-type-syntax combined-type) `',alias))
+               ;; and/or/not types
+               (labels ((ensure-sql-query (table-ref)
+                          (assert (not (syntax-object-p table-ref)))
+                          (etypecase table-ref
+                            (sql-table-alias (sql-subquery :query (sql-select-oids-from-table table-ref)))
+                            (sql-derived-table (cl-rdbms::subquery-of table-ref)))) ; TODO missing export
+                        (ensure-alias (table-ref)
+                          (when (or (typep table-ref 'sql-table-alias)
+                                    (typep table-ref 'sql-derived-table))
+                            (setf (cl-rdbms::alias-of table-ref) alias))
+                          table-ref)
+                        (combine-types (sql-set-operation types)
+                          (bind ((operands (delete nil
+                                                   (mapcar 'sql-table-reference-for-type types))))
+                           (case (length operands)
+                             (0 nil)
+                             (1 (ensure-alias (first operands)))
+                             (t (sql-table-reference-for
+                                 (sql-subquery
+                                  :query (apply sql-set-operation
+                                                (mapcar #'ensure-sql-query operands)))
+                                 alias))))))
+                 (case (car combined-type)
+                   (or (combine-types 'sql-union (rest combined-type)))
+                   (and (combine-types 'sql-intersect (rest combined-type)))
+                   (not (not-yet-implemented))
+                   (t (error "Unsupported type constructor in ~A" combined-type)))))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Column references
@@ -258,9 +279,6 @@
 (defgeneric sql-column-references-for (element qualifier)
   (:method ((column-names list) qualifier)
            (mapcar #L(sql-column-reference-for !1 qualifier) column-names))
-
-  (:method ((association-end persistent-association-end-slot-definition) qualifier)
-           (sql-column-references-for (columns-of association-end) qualifier))
 
   (:method ((slot persistent-slot-definition) qualifier)
            (sql-column-references-for (columns-of slot) qualifier)))
@@ -411,41 +429,40 @@
 (defun define-sql-operator (lisp-operator sql-operator)
   (setf (gethash lisp-operator *sql-operators*) sql-operator))
 
-(defun define-chained-sql-operator (lisp-operator sql-operator)
-  (define-sql-operator lisp-operator
-      (lambda (first-arg &rest more-args)
-        (if (null more-args)
-            #t
-            (apply 'sql-and (iter (for arg in more-args)
-                                  (for prev-arg previous arg initially first-arg)
-                                  (collect (funcall sql-operator prev-arg arg))))))))
+(defun chained-operator (binary-operator &optional default)
+  (lambda (first-arg &rest more-args)
+    (if (null more-args)
+        default
+        (apply 'sql-and
+               (iter (for arg in more-args)
+                     (for prev-arg previous arg initially first-arg)
+                     (collect (funcall binary-operator prev-arg arg)))))))
 
-(defun define-pairwise-sql-operator (lisp-operator sql-operator)
-  (define-sql-operator lisp-operator
-      (lambda (first-arg &rest more-args)
-        (if (null more-args)
-            #t
-            (apply 'sql-and
-                   (iter outer (for rest-args on more-args)
-                         (for first previous (car rest-args) initially first-arg)
-                         (iter (for second in rest-args)
-                               (in outer (collect (funcall sql-operator first second))))))))))
+(defun pairwise-operator (binary-operator &optional default)
+  (lambda (first-arg &rest more-args)
+    (if (null more-args)
+        default
+        (apply 'sql-and
+               (iter outer (for rest-args on more-args)
+                     (for first previous (car rest-args) initially first-arg)
+                     (iter (for second in rest-args)
+                           (in outer (collect (funcall binary-operator first second)))))))))
 
 (define-sql-operator 'eq 'sql-equal)
 (define-sql-operator 'eql 'sql-equal)
 (define-sql-operator 'equal 'sql-equal)
-(define-chained-sql-operator '= 'sql-=)
+(define-sql-operator '= (chained-operator 'sql-= #t))
 (define-sql-operator 'string= 'sql-string=)
 
 (define-sql-operator 'and 'sql-and)
 (define-sql-operator 'or 'sql-or)
 (define-sql-operator 'not 'sql-not)
 
-(define-chained-sql-operator '> 'sql->)
-(define-chained-sql-operator '< 'sql-<)
-(define-chained-sql-operator '>= 'sql->=)
-(define-chained-sql-operator '<= 'sql-<=)
-(define-pairwise-sql-operator '/= 'sql-<>)
+(define-sql-operator '> (chained-operator 'sql-> #t))
+(define-sql-operator '< (chained-operator 'sql-< #t))
+(define-sql-operator '>= (chained-operator 'sql->= #t))
+(define-sql-operator '<= (chained-operator 'sql-<= #t))
+(define-sql-operator '/= (pairwise-operator 'sql-<> #t))
 
 (define-sql-operator '+ 'sql-+)
 (define-sql-operator '- 'sql--)
@@ -503,14 +520,6 @@
 (defun sql-length (str)
   (sql-function-call :name "char_length" :arguments (list str)))
 
-(defun sql-null-literal-p (sql) ; FIXME: 'false'?
-  (or (null sql)
-      (and (typep sql 'sql-literal)
-           (null (cl-rdbms::value-of sql)))))
-
-(defun sql-literal-p (sql)
-  (typep sql 'cl-rdbms::sql-literal*))
-
 ;;;----------------------------------------------------------------------------
 ;;; Aggregate functions
 
@@ -532,9 +541,19 @@
 (define-aggregate-function 'sum 'sql-sum)
 (define-aggregate-function 'avg 'sql-avg)
 
-;;;
+;;;----------------------------------------------------------------------------
 ;;; Literals
 ;;;
+(defun sql-null-literal-p (sql)
+  (or (null sql)
+      (and (typep sql 'sql-literal)
+           (null (cl-rdbms::value-of sql))
+           (or (null (cl-rdbms::type-of sql))
+               (not (typep (cl-rdbms::type-of sql) 'cl-rdbms::sql-boolean-type))))))
+
+(defun sql-literal-p (sql)
+  (typep sql 'cl-rdbms::sql-literal*))
+
 (defun sql-false-literal ()
   (sql-literal :value #f :type (make-instance 'cl-rdbms::sql-boolean-type)))
 

@@ -64,7 +64,7 @@
            (setf (slot-of access) (slot-for-slot-access access))
            (when (slot-of access)
              (setf (xtype-of access)
-                   (normalized-type-for* (slot-definition-type (slot-of access))))))
+                   (slot-definition-type (slot-of access)))))
 
   ;; toplevel (eq <obj1> <obj2>) -> (type-of <obj1>) == (type-of <obj2>)
   (:method ((call function-call) query &optional toplevel)
@@ -87,11 +87,13 @@
       type))
 
 (defun normalized-type-for* (type)
-  (awhen (normalized-type-for type)
-    (cond
-      ((set-type-p it) (find-class (set-type-class-for it)))
-      ((persistent-class-name-p it) (find-class it))
-      (t type))))
+  (if (eq type +unknown-type+)
+      +unknown-type+
+      (awhen (normalized-type-for type)
+        (cond
+          ((set-type-p it) (find-class (set-type-class-for it)))
+          ((persistent-class-name-p it) (find-class it))
+          (t type)))))
 
 (defun restrict-variable-type (variable type)
   (let ((orig-type (xtype-of variable)))
@@ -103,25 +105,29 @@
 (defgeneric slot-for-slot-access (access)
   (:method ((access attribute-access))
            (find-slot-by-owner-type (arg-of access)
-                                        (effective-slots-for-accessor (accessor-of access))))
+                                    (effective-slots-for-accessor (accessor-of access))
+                                    (accessor-of access)))
   (:method ((access association-end-access))
            (find-slot-by-owner-type (arg-of access)
-                                        (effective-association-ends-for-accessor (accessor-of access)))))
+                                    (effective-association-ends-for-accessor (accessor-of access))
+                                    (accessor-of access))))
 
-(defun find-slot-by-owner-type (owner slots)
-  (bind ((owner-type (xtype-of owner)))
-    (cond
+(defun find-slot-by-owner-type (owner slots accessor)
+  (bind ((owner-type (normalized-type-for* (xtype-of owner))))
+    (acond
       ((length=1 slots)
        (first slots))
-      ((persistent-class-p owner-type)
-       (find owner-type slots :key 'slot-definition-class :test 'subtypep))
+      ((and (not (eq owner-type +unknown-type+))
+            (not (contains-syntax-p owner-type))
+            (find owner-type slots :key 'slot-definition-class :test 'subtypep))
+       it)
       (t
-       (warn "Cannot determine the type of ~A at compile time.
-Chosing slot ~A randomly from ~A."
-             owner
-             (slot-qualified-name (first slots))
-             (mapcar 'slot-qualified-name slots))
-       (first slots)))))
+       (warn "Cannot find the slot for the acccessor ~A.
+Possible candidates are ~A, owner type is ~A."
+             accessor
+             (mapcar 'slot-qualified-name slots)
+             owner-type)
+       nil))))
 
 (defun slot-qualified-name (slot)
   (concatenate-symbol (class-name (slot-definition-class slot)) ":" (slot-definition-name slot)))
@@ -150,3 +156,12 @@ Chosing slot ~A randomly from ~A."
   (eq (xtype-of syntax)
       (funcall (slot-definition-initfunction
                 (find-slot (class-name (class-of syntax)) 'xtype)))))
+
+(defun contains-syntax-p (type)
+  (or (typep type 'syntax-object)
+      (and (consp type)
+           (some #'contains-syntax-p type))))
+
+(defun maybe-null-subtype-p (type)
+  (or (eq type +unknown-type+)
+      (null-subtype-p type)))
