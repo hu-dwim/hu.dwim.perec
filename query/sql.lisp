@@ -268,7 +268,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (sql-column-reference-for (id-column-of association-end) qualifier))
 
   (:method ((slot persistent-slot-definition) qualifier)
-           (sql-column-reference-for (first (columns-of slot)) qualifier))
+           (sql-column-reference-for (last1 (columns-of slot)) qualifier))
 
   (:method (element qualifier)
            (sql-column-reference-for element (sql-alias-for qualifier))))

@@ -70,66 +70,75 @@
 ;;;
 ;;; Conversion between lisp and sql values
 ;;;
-(defun value->sql-literal (value type)
-  (value->sql-literal* value (normalized-type-for* type)))
-
-(defgeneric value->sql-literal* (value type &optional args)
+(defgeneric value->sql-literal (value type &optional args)
 
   ;; Runtime cast error
   
   (:method (value type &optional args)
-           (declare (ignore args))
-           (error "Can not cast ~A to ~A" value type))
+           (error "Can not cast ~A to ~A" value (compose-type type args)))
 
   ;; Supported types
   
   (:method (value (type symbol) &optional args)
-           (sql-literal :value (value->sql-value value type args)))
+           (sql-literal :value (value->sql-value value (compose-type type args))))
 
   (:method (value (type persistent-class) &optional args)
            (assert (null args))
            (assert (typep value type))
-           (sql-literal :value (id-of value)))
+           (value->sql-literal value (class-name type)))
 
   (:method (value (type cons) &optional args)
            (assert (null args))
-           (value->sql-literal* value (first type) (rest type)))
+           (value->sql-literal value (first type) (rest type)))
 
   ;; Infer type from value
 
   (:method ((value persistent-object) (type (eql +unknown-type+)) &optional args)
            (assert (null args))
-           (value->sql-literal* value (type-of value)))
+           (value->sql-literal value (type-of value)))
  
   (:method ((value string) (type (eql +unknown-type+)) &optional args) ; TODO
            (assert (null args))
-           (value->sql-literal* value 'string))
+           (value->sql-literal value 'string))
 
   (:method ((value number) (type (eql +unknown-type+)) &optional args) ; TODO BIT
            (assert (null args))
-           (value->sql-literal* value 'number))
+           (value->sql-literal value 'number))
 
   ;; Iterate on lists
 
-  (:method ((value list) (type persistent-class) &optional args)
-           (assert (null args))
-           (assert (every #L(typep !1 type) value))
-           (sql-literal :value (mapcar 'id-of value)))
+  (:method ((value list) (type (eql 'set)) &optional args)
+           (assert (not (null args)))
+           (assert (every #L(typep !1 (first args)) value))
+           (sql-literal :value (mapcar #L(value->sql-literal !1 (first args)) value)))
 
   (:method ((value list) (type (eql +unknown-type+)) &optional args) ; FIXME hopefully not a form
            (assert (null args))
-           (sql-literal :value (mapcar #L(value->sql-literal* !1 type) value))))
+           (sql-literal :value (mapcar #L(value->sql-literal !1 type) value))))
 
-(defun value->sql-value (value type type-args)
-  (assert type)
-  (first ;; FIXME
-   (value->sql-values value type type-args)))
+(defun value->sql-value (value type)
+  (assert (not (eq type +unknown-type+)))
+  (bind ((sql-values (value->sql-values value type)))
+    (case (length sql-values)
+      (1 (first sql-values))
+      (2 (cond
+           ((persistent-class-type-p (normalized-type-for type)) ; only id column used
+            (first sql-values))
+           ((and (null-subtype-p type) (unbound-subtype-p type))
+            (assert (first sql-values))     ; check if BOUND
+            (second sql-values))            ; omit BOUND column
+           (t
+            (error "unsupported multi-column type: ~A" type))))
+      (t (error "unsupported multi-column type: ~A" type)))))
 
-(defun value->sql-values (value type type-args)
-  (assert type)
+(defun value->sql-values (value type)
+  (assert (not (eq type +unknown-type+)))
   (funcall
-    (compute-writer nil (if type-args (cons type type-args) type))
+   (compute-writer nil type)
     value))
+
+(defun compose-type (type args)
+  (if args (cons type args) type))
 
   
 

@@ -287,8 +287,6 @@ wraps the compiled code with a runtime check of the result."))
                   ,(generate-lessp-body order-by)))))
           form))))
 
-
-
 (defun add-mapping-for-collects (query form)
   (bind ((variables (query-variables-of query))
          (collects (collects-of query))
@@ -560,7 +558,7 @@ forms with joined variables.")
            (bind ((attribute (attribute-of access)))
              (if (and attribute (persistent-slot-p attribute))
                  (sql-column-reference-for attribute variable)
-                (call-next-method)))))
+                 (sql-map-failed)))))
 
 (defgeneric association-end-access-to-sql (accessor arg access)
   (:method (accessor arg access)

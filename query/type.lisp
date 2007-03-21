@@ -113,8 +113,12 @@
                                     (accessor-of access))))
 
 (defun find-slot-by-owner-type (owner slots accessor)
-  (bind ((owner-type (normalized-type-for* (xtype-of owner))))
-    (acond
+  (flet ((qualified-name-of (slot)
+           (concatenate-symbol (class-name (slot-definition-class slot))
+                               ":"
+                               (slot-definition-name slot))))
+    (bind ((owner-type (normalized-type-for* (xtype-of owner))))
+     (acond
       ((length=1 slots)
        (first slots))
       ((and (not (eq owner-type +unknown-type+))
@@ -125,12 +129,9 @@
        (warn "Cannot find the slot for the acccessor ~A.
 Possible candidates are ~A, owner type is ~A."
              accessor
-             (mapcar 'slot-qualified-name slots)
+             (mapcar #'qualified-name-of slots)
              owner-type)
-       nil))))
-
-(defun slot-qualified-name (slot)
-  (concatenate-symbol (class-name (slot-definition-class slot)) ":" (slot-definition-name slot)))
+       nil)))))
 
 (defgeneric backquote-type-syntax (type)
   (:documentation "Generates a type expression that evaluates to the type.")
