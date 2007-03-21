@@ -452,7 +452,8 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (define-sql-operator 'eql 'sql-equal)
 (define-sql-operator 'equal 'sql-equal)
 (define-sql-operator '= (chained-operator 'sql-= #t))
-(define-sql-operator 'string= 'sql-string=)
+;; (define-sql-operator 'string= 'sql-string=) ; sql-string= tricky to implement because string=
+                                               ; accepts chars and symbols too, use equal instead
 
 (define-sql-operator 'and 'sql-and)
 (define-sql-operator 'or 'sql-or)
@@ -491,18 +492,6 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
      `(sql-= ,first ,second))
     (t
      `(sql-or (sql-= ,first ,second) (sql-and (sql-is-null ,first) (sql-is-null ,second))))))
-
-(defun sql-string= (string1 string2 &key (start1 0) end1 (start2 0) end2 check-nils)
-  (cond
-    ((sql-null-literal-p string1)
-     `(sql-is-null ,string2))
-    ((sql-null-literal-p string2)
-     `(sql-is-null ,string1))
-    ((or (sql-literal-p string1) (sql-literal-p string2) (not check-nils))
-     `(sql-= ,(sql-subseq string1 start1 end1) ,(sql-subseq string2 start2 end2)))
-    (t
-     `(sql-or (sql-and (sql-is-null ,string1) (sql-is-null ,string2))
-              (sql-= ,(sql-subseq string1 start1 end1) ,(sql-subseq string2 start2 end2))))))
 
 (defun sql-subseq (seq start &optional end)
   "TODO: other sequnce types"

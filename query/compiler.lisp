@@ -509,7 +509,7 @@ wraps the compiled code with a runtime check of the result."))
   
   (:method (syntax)
            (if (free-of-query-variables-p syntax)
-               syntax
+               `(value->sql-literal ,syntax ,(backquote-type-syntax (xtype-of syntax)))
                (sql-map-failed)))
 
   (:method ((literal literal-value))
@@ -601,12 +601,6 @@ wraps the compiled code with a runtime check of the result."))
              ;; eq,eql and friends: compare with NULL can be true
              ((member fn '(eq eql equal))
               (sql-equal
-               (syntax-to-sql arg1)
-               (syntax-to-sql arg2)
-               :check-nils (and (maybe-null-subtype-p (xtype-of arg1))
-                                (maybe-null-subtype-p (xtype-of arg2)))))
-             ((eq fn 'string=)
-              (sql-string=
                (syntax-to-sql arg1)
                (syntax-to-sql arg2)
                :check-nils (and (maybe-null-subtype-p (xtype-of arg1))
