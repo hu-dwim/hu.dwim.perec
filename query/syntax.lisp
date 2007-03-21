@@ -20,8 +20,8 @@
 ;;;; Query variable
 ;;;;   name
 ;;;;
-;;;; Attribute access form
-;;;;   attribute
+;;;; Slot access form
+;;;;   slot
 ;;;;   arg
 ;;;;
 ;;;; Association-end access form
@@ -129,9 +129,6 @@ Be careful when using in different situations, because it modifies *readtable*."
   ((operator :initarg :accessor :accessor accessor-of)
    (slot nil)))
 
-(define-syntax-node attribute-access (slot-access)
-  ((slot :initarg :attribute :accessor attribute-of)))
-
 (define-syntax-node association-end-access (slot-access)
   ((slot :initarg :association-end :accessor association-end-of)))
 
@@ -194,8 +191,8 @@ Be careful when using in different situations, because it modifies *readtable*."
     (make-association-end-access :accessor (first form)
                                  :args (list (parse-query-form (second form) variables))))
    ((and (symbolp (first form)) (slot-accessor-p (first form)))
-    (make-attribute-access :accessor (first form)
-                           :args (list (parse-query-form (second form) variables))))
+    (make-slot-access :accessor (first form)
+                      :args (list (parse-query-form (second form) variables))))
    ((and (symbolp (first form)) (macro-function (first form)))
     (make-macro-call :macro (first form)
                      :args (if (parse-args-p (first form))

@@ -11,7 +11,7 @@
 ;;;;   persistent-class (type of persistent classes)
 ;;;;   persistent classes (types of persistent objects)
 ;;;;   names of persistent classes
-;;;;   lisp type specifiers for attributes
+;;;;   lisp type specifiers for slots
 ;;;;   and,or,not combinations
 ;;;;
 ;;;; Type expression:
@@ -103,7 +103,7 @@
       (t (setf (xtype-of variable) (list 'and orig-type type))))))
 
 (defgeneric slot-for-slot-access (access)
-  (:method ((access attribute-access))
+  (:method ((access slot-access))
            (find-slot-by-owner-type (arg-of access)
                                     (effective-slots-for-accessor (accessor-of access))
                                     (accessor-of access)))

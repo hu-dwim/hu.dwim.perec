@@ -417,15 +417,14 @@ wraps the compiled code with a runtime check of the result."))
   (mapc #L(when (syntax-object-p !1) (introduce-joined-variables-for !1 query)) (order-by-of query)))
 
 (defgeneric introduce-joined-variables-for (syntax query)
-  (:documentation "Substitutes the arguments of association-end accessors and attribute accessors
-forms with joined variables.")
+  (:documentation "Substitutes the arguments of slot accessor forms with joined variables.")
   ;; atoms, unparsed
   (:method (syntax query)
            (values))
   ;; recurse on compound forms
   (:method ((syntax compound-form) query)
            (mapc #L(introduce-joined-variables-for !1 query) (operands-of syntax)))  
-  ;; attribute/association-end access -> ensure that arg is a query variable with the correct type
+  ;; slot access -> ensure that arg is a query variable with the correct type
   (:method ((access slot-access) query)
            (call-next-method)
            (when (association-end-access-p (arg-of access))
@@ -522,11 +521,8 @@ forms with joined variables.")
   (:method ((variable query-variable))
            (sql-id-column-reference-for variable))
 
-  (:method ((access attribute-access))
-           (attribute-access-to-sql (accessor-of access) (arg-of access) access))
-
-  (:method ((access association-end-access))
-           (association-end-access-to-sql (accessor-of access) (arg-of access) access))
+  (:method ((access slot-access))
+           (slot-access-to-sql (accessor-of access) (arg-of access) access))
 
   (:method ((call function-call))
            (bind ((fn (fn-of call))
@@ -547,26 +543,20 @@ forms with joined variables.")
              ((syntax-object-p type) `(value->sql-literal ,literal ,(backquote-type-syntax type)))
              (t (value->sql-literal value type)))))
 
-(defgeneric attribute-access-to-sql (accessor arg access)
+(defgeneric slot-access-to-sql (accessor arg access)
   (:method (accessor arg access)
            (if (free-of-query-variables-p access)
                `(value->sql-literal ,access ,(backquote-type-syntax (xtype-of access)))
                (sql-map-failed)))
 
-  (:method (accessor (variable query-variable) access)
-           ;; attribute accessor
-           (bind ((attribute (attribute-of access)))
-             (if (and attribute (persistent-slot-p attribute))
-                 (sql-column-reference-for attribute variable)
-                 (sql-map-failed)))))
+  (:method (accessor (variable query-variable) (access slot-access))
+           ;; slot accessor
+           (bind ((slot (slot-of access)))
+             (if (and slot (persistent-slot-p slot))
+                 (sql-column-reference-for slot variable)
+                 (sql-map-failed))))
 
-(defgeneric association-end-access-to-sql (accessor arg access)
-  (:method (accessor arg access)
-           (if (free-of-query-variables-p access)
-               `(value->sql-literal ,access ,(backquote-type-syntax (xtype-of access)))
-               (sql-map-failed)))
-
-  (:method (accessor (variable query-variable) access)
+  (:method (accessor (variable query-variable) (access association-end-access))
            ;; association-end accessor
            (if (association-end-of access)
                (bind ((association-end (association-end-of access))
@@ -583,6 +573,7 @@ forms with joined variables.")
                    (:m-n
                     (sql-subselect-for-m-n-association association-end variable))))
                (sql-map-failed))))
+
 
 (defgeneric function-call-to-sql (fn n-args arg1 arg2 call)
 
