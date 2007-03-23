@@ -598,13 +598,17 @@ wraps the compiled code with a runtime check of the result."))
                   (sql-aggregate-function-for fn)
                   (association-end-of arg1)
                   (arg-of arg1)))))
-             ;; eq,eql and friends: compare with NULL can be true
+             ;; eq,eql and friends
+             ;;   special cases: one or both of the args is NIL
+             ;;                  one or both of the args is unbound
              ((member fn '(eq eql equal))
               (sql-equal
                (syntax-to-sql arg1)
                (syntax-to-sql arg2)
-               :check-nils (and (maybe-null-subtype-p (xtype-of arg1))
-                                (maybe-null-subtype-p (xtype-of arg2)))))
+               :unbound-check-1 (unbound-check-for arg1)
+               :unbound-check-2 (unbound-check-for arg2)
+               :null-check-1 (null-check-for arg1)
+               :null-check-2 (null-check-for arg2)))
              ;; (<fn> <arg> ...), where <fn> has SQL counterpart
              ;; e.g. (+ 1 2) --> (1 + 2)
              ((sql-operator-p fn)
@@ -683,14 +687,33 @@ wraps the compiled code with a runtime check of the result."))
   (:method ((fn (eql 'eq)) (n-args (eql 2)) object (access association-end-access) call)
            (function-call-to-sql fn 2 access object call))
 
-  ;; typep form
+  ;; (typep variable type)
   ;;   example:
   ;;   (typep o #<class user>) -> exists(select 1 from user u where u.id = o.id)
   (:method ((fn (eql 'typep)) (n-args (eql 2)) (variable query-variable) (type literal-value) call)
            (if (persistent-class-p (value-of type))
                (sql-exists-subselect-for-variable variable (value-of type))
                (call-next-method)))
-  )
+
+  ;; (null (accessor variable))
+  (:method ((fn (eql 'null)) (n-args (eql 1)) (access slot-access) arg2 call)
+           (bind ((slot (slot-of access)))
+             (if (and slot
+                      (not (typep slot 'persistent-association-end-effective-slot-definition))
+                      (query-variable-p (arg-of access)))
+                 (sql-slot-is-null (arg-of access) slot)
+                 (call-next-method))))
+
+  ;; (slot-boundp variable slot-name)
+  (:method ((fn (eql 'slot-boundp)) (n-args (eql 2)) (variable query-variable) (slot-name literal-value) call)
+           ;; TODO: accept non-literal slot-name
+           (bind ((slot-name (when (symbolp (value-of slot-name)) (value-of slot-name)))
+                  (slot (when slot-name (find-slot-definition variable slot-name))))
+             (if (and slot (typep slot 'persistent-effective-slot-definition))
+                 (sql-slot-boundp variable slot)
+                 (sql-map-failed)))))
+
+
 
 (defgeneric macro-call-to-sql (macro n-args arg1 arg2 call)
   (:method (macro n-args arg1 arg2 call)
@@ -711,6 +734,41 @@ wraps the compiled code with a runtime check of the result."))
                (free-of-query-variables-p (cdr syntax))))
     (otherwise #t)))
 
+(defun find-slot-definition (owner slot-name)
+  (find-slot-by-owner-type owner (effective-slots-for-slot-name slot-name) nil))
+
+(defgeneric unbound-check-for (syntax)
+  (:method (syntax)
+           nil)
+
+  (:method ((access slot-access))
+           (bind ((type (xtype-of access))
+                  (slot (slot-of access))
+                  (variable (arg-of access)))
+             (when (and slot (query-variable-p variable))
+               (cond
+                ((complex-type-p type) `(sql-is-null ,(sql-bound-column-reference-for slot variable)))
+                ((unbound-subtype-p type) `(sql-is-null ,(sql-column-reference-for slot variable)))
+                (t nil)))))
+
+  (:method ((access association-end-access))
+           nil))
+
+(defgeneric null-check-for (syntax)
+  (:method (syntax)
+           nil)
+
+  (:method ((access slot-access))
+           (bind ((type (xtype-of access))
+                  (slot (slot-of access))
+                  (variable (arg-of access)))
+             (if (and slot (query-variable-p variable) (maybe-null-subtype-p type))
+                 `(sql-is-null ,(sql-column-reference-for slot variable))
+                 nil)))
+
+  (:method ((access association-end-access))
+           nil))
+
 ;;;----------------------------------------------------------------------------
 ;;; Helpers
 ;;;
@@ -720,7 +778,7 @@ wraps the compiled code with a runtime check of the result."))
    query
    (arg-of access)
    (association-end-of access)
-   (normalized-type-for* (xtype-of access))))
+   (base-type-for (xtype-of access))))
 
 (defun ensure-joined-variable (query object association-end type)
   (or (and (query-variable-p object) (eq (xtype-of object) type) object)
@@ -741,6 +799,15 @@ wraps the compiled code with a runtime check of the result."))
           (equal object (object-of !1))
           (eq (xtype-of !1) type))
    (query-variables-of query)))
+
+(defun base-type-for (type)
+  (bind ((normalized-type (normalized-type-for* type)))
+    (if (eq normalized-type +unknown-type+)
+       +unknown-type+
+       (cond
+          ((set-type-p normalized-type) (find-class (set-type-class-for normalized-type)))
+          ((persistent-class-name-p normalized-type) (find-class normalized-type))
+          (t normalized-type)))))
 
 (defun make-new-joined-variable (query object association-end type)
   "Creates a new joined variable."
@@ -788,3 +855,4 @@ wraps the compiled code with a runtime check of the result."))
 
   (:method ((form compound-form) &optional result)
            (collect-persistent-object-literals (operands-of form) result)))
+

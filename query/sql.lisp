@@ -276,6 +276,9 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defun sql-id-column-reference-for (qualifier)
   (sql-column-reference-for +id-column-name+ qualifier))
 
+(defun sql-bound-column-reference-for (slot qualifier)
+  (sql-column-reference-for (bound-column-of slot) qualifier))
+
 (defgeneric sql-column-references-for (element qualifier)
   (:method ((column-names list) qualifier)
            (mapcar #L(sql-column-reference-for !1 qualifier) column-names))
@@ -413,6 +416,35 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
         :tables (list (sql-identifier :name ',(name-of table)))
         :where ,(sql-join-condition-for object-1 object-2 association-end-2))))))
 
+;;;----------------------------------------------------------------------------
+;;; Boundp check
+;;;
+(defgeneric sql-slot-boundp (variable slot)
+
+  (:method ((variable query-variable) (slot persistent-effective-slot-definition))
+           (bind ((slot-type (slot-definition-type slot)))
+             (cond
+               ((complex-type-p slot-type)
+                (sql-is-not-null (sql-bound-column-reference-for slot variable)))
+               ((unbound-subtype-p slot-type)
+                (sql-is-not-null (sql-column-reference-for slot variable)))
+               (t ;; TODO: should be handled by partial eval
+                (sql-true-literal)))))
+  )
+
+(defgeneric sql-slot-is-null (variable slot)
+
+  (:method ((variable query-variable) (slot persistent-effective-slot-definition))
+           (bind ((slot-type (slot-definition-type slot)))
+             (cond
+               ((complex-type-p slot-type)
+                (sql-and
+                 (sql-is-not-null (sql-bound-column-reference-for slot variable))
+                 (sql-is-null (sql-column-reference-for slot variable))))
+               ((null-subtype-p slot-type)
+                (sql-is-null (sql-column-reference-for slot variable)))
+               (t                                ;; TODO: partial eval
+                (sql-false-literal))))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Operators
@@ -482,16 +514,63 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 
 (define-sql-operator 'null 'sql-is-null)
 
-(defun sql-equal (first second &key check-nils)
-  (cond
-    ((sql-null-literal-p first)
-     `(sql-is-null ,second))
-    ((sql-null-literal-p second)
-     `(sql-is-null ,first))
-    ((or (sql-literal-p first) (sql-literal-p second) (not check-nils))
-     `(sql-= ,first ,second))
-    (t
-     `(sql-or (sql-= ,first ,second) (sql-and (sql-is-null ,first) (sql-is-null ,second))))))
+(defun sql-equal (sql-expr-1 sql-expr-2 &key unbound-check-1 unbound-check-2 null-check-1 null-check-2)
+  "Generates an equality test for the two sql expression and the corresponding boundness checks.
+If one of the values is unbound, the test yields NULL, otherwise it yields true or false (two NULL
+value is equal, when they represent the NIL lisp value)."
+  (flet ((sql-is-null (sql unbound-check null-check)
+           (cond
+             ((sql-null-literal-p sql)
+              (sql-true-literal))
+             ((and unbound-check null-check)
+              `(sql-if ,unbound-check
+                       (sql-null-literal)
+                       ,null-check))
+             (unbound-check
+              `(sql-if ,unbound-check
+                       (sql-null-literal)
+                       (sql-false-literal)))
+             (null-check
+              null-check)
+             (t
+              (sql-false-literal))))
+         (wrap-with-null-check (eq-check)
+           (cond
+             ((and null-check-1 null-check-2)
+              `(sql-or
+                (sql-and ,null-check-1 ,null-check-2)
+                (sql-and (sql-not ,null-check-1) (sql-not ,null-check-2) ,eq-check)))
+             (null-check-1
+              `(sql-and (sql-not ,null-check-1) ,eq-check))
+             (null-check-2
+              `(sql-and (sql-not ,null-check-2) ,eq-check))
+             (t
+              eq-check)))
+         (wrap-with-unbound-check (eq-check)
+           (cond
+             ((and unbound-check-1 unbound-check-2)
+              `(sql-if (sql-or ,unbound-check-1 ,unbound-check-2)
+                       (sql-null-literal)
+                       ,eq-check))
+             (unbound-check-1
+              `(sql-if ,unbound-check-1
+                       (sql-null-literal)
+                       ,eq-check))
+             (unbound-check-2
+              `(sql-if ,unbound-check-2
+                       (sql-null-literal)
+                       ,eq-check))
+             (t
+              eq-check))))
+    (cond
+      ((sql-null-literal-p sql-expr-1)
+       (sql-is-null sql-expr-2 unbound-check-2 null-check-2))
+      ((sql-null-literal-p sql-expr-2)
+       (sql-is-null sql-expr-1 unbound-check-1 null-check-1))
+      (t
+       (wrap-with-unbound-check
+        (wrap-with-null-check
+         `(sql-= ,sql-expr-1 ,sql-expr-2)))))))
 
 (defun sql-subseq (seq start &optional end)
   "TODO: other sequnce types"
@@ -542,6 +621,9 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 
 (defun sql-literal-p (sql)
   (typep sql 'cl-rdbms::sql-literal*))
+
+(defun sql-null-literal ()
+  (sql-literal :value nil))
 
 (defun sql-false-literal ()
   (sql-literal :value #f :type (make-instance 'cl-rdbms::sql-boolean-type)))

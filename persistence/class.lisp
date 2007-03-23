@@ -501,6 +501,11 @@
   (and (not (eq 'member type))
        (subtypep 'null type)))
 
+(defun complex-type-p (type)
+  (bind (((values normalized-type null-subtype-p unbound-subtype-p) (destructure-type type)))
+    (declare (ignore normalized-type))
+    (and null-subtype-p unbound-subtype-p)))
+
 (defmethod matches-type* (value (type symbol))
   (and (typep value type)
        (or (not (persistent-class-type-p type))
@@ -571,6 +576,11 @@
           (collect (prog1 (find-slot class (slot-definition-name it))
                      (assert it))))))
 
+(defun effective-slots-for-slot-name (slot-name)
+  (iter (for (class-name class) in-hashtable *persistent-classes*)
+        (for slot = (find-slot class slot-name))
+        (when slot (collect slot))))
+
 (defun make-oid-columns ()
   "Creates a list of RDBMS columns that will be used to store the oid data of the objects in this table."
   (list
@@ -595,3 +605,9 @@
      (make-instance 'column
                     :name class-name-column-name
                     :type +oid-class-name-sql-type+))))
+
+(defun bound-column-of (slot)
+  (bind ((column (first (columns-of slot))))
+    (assert (ends-with (string-upcase (symbol-name (cl-rdbms::name-of column))) "BOUND"))
+    (assert (typep (cl-rdbms::type-of column) 'sql-boolean-type))
+    column))

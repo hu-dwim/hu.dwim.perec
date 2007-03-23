@@ -8,15 +8,19 @@
 
 ;;;; Type specifier:
 ;;;;
-;;;;   persistent-class (type of persistent classes)
 ;;;;   persistent classes (types of persistent objects)
 ;;;;   names of persistent classes
-;;;;   lisp type specifiers for slots
+;;;;   type specifiers for slots (see persistence/standard-type.lisp)
 ;;;;   and,or,not combinations
 ;;;;
 ;;;; Type expression:
 ;;;;   an expression that evaluates to a type specifier
 ;;;;
+
+
+;;;----------------------------------------------------------------------------
+;;; Type inference
+;;;
 
 (defun infer-types (query)
   "Annotates types to the SYNTAX nodes of the query."
@@ -70,7 +74,7 @@
   (:method ((call function-call) query &optional toplevel)
            (call-next-method)
            (when (and toplevel
-                      (member (fn-of call) '(eq eql equal = string=))
+                      (member (fn-of call) '(eq eql equal =))
                       (= (length (args-of call)) 2))
              (bind ((obj1 (first (args-of call)))
                     (obj2 (second (args-of call))))
@@ -79,21 +83,6 @@
                   (setf (xtype-of obj2) (xtype-of obj1)))
                  ((and (has-default-type-p obj1) (not (has-default-type-p obj2)))
                   (setf (xtype-of obj1) (xtype-of obj2))))))))
-
-(defun type-syntax->type (type)
-  (if (and (literal-value-p type)
-           (typep (value-of type) 'persistent-class))
-      (value-of type)
-      type))
-
-(defun normalized-type-for* (type)
-  (if (eq type +unknown-type+)
-      +unknown-type+
-      (awhen (normalized-type-for type)
-        (cond
-          ((set-type-p it) (find-class (set-type-class-for it)))
-          ((persistent-class-name-p it) (find-class it))
-          (t type)))))
 
 (defun restrict-variable-type (variable type)
   (let ((orig-type (xtype-of variable)))
@@ -126,12 +115,49 @@
             (find owner-type slots :key 'slot-definition-class :test 'subtypep))
        it)
       (t
-       (warn "Cannot find the slot for the acccessor ~A.
-Possible candidates are ~A, owner type is ~A."
-             accessor
-             (mapcar #'qualified-name-of slots)
-             owner-type)
+       (warn "Cannot find the slot for the acccessor ~A.~%Candidates are ~A, owner type is ~A."
+             accessor (mapcar #'qualified-name-of slots) owner-type)
        nil)))))
+
+;;;----------------------------------------------------------------------------
+;;; Type utils
+;;;
+
+(defun type-syntax->type (type)
+  (if (and (literal-value-p type)
+           (typep (value-of type) 'persistent-class))
+      (value-of type)
+      type))
+
+(defun subtypep* (sub super)
+  (if (or (eq sub +unknown-type+)
+          (eq super +unknown-type+)
+          (contains-syntax-p sub)
+          (contains-syntax-p super))
+      (values nil nil)
+      (subtypep sub super)))
+
+(defun normalized-type-for* (type)
+  (if (or (eq type +unknown-type+)
+          (contains-syntax-p type))
+      type
+      (normalized-type-for type)))
+
+(defun has-default-type-p (syntax)
+  (eq (xtype-of syntax)
+      (funcall (slot-definition-initfunction
+                (find-slot (class-name (class-of syntax)) 'xtype)))))
+
+(defun contains-syntax-p (type)
+  (or (typep type 'syntax-object)
+      (and (consp type)
+           (some #'contains-syntax-p type))))
+
+(defun maybe-null-subtype-p (type)
+  (or (eq type +unknown-type+)
+      (bind (((values normalized-type null-subtype-p unbound-subtype-p) (destructure-type type)))
+        (declare (ignore normalized-type unbound-subtype-p))
+        null-subtype-p)))
 
 (defgeneric backquote-type-syntax (type)
   (:documentation "Generates a type expression that evaluates to the type.")
@@ -153,16 +179,3 @@ Possible candidates are ~A, owner type is ~A."
              ',(first combined-type)
              ,@(mapcar 'backquote-type-syntax (rest combined-type)))))
 
-(defun has-default-type-p (syntax)
-  (eq (xtype-of syntax)
-      (funcall (slot-definition-initfunction
-                (find-slot (class-name (class-of syntax)) 'xtype)))))
-
-(defun contains-syntax-p (type)
-  (or (typep type 'syntax-object)
-      (and (consp type)
-           (some #'contains-syntax-p type))))
-
-(defun maybe-null-subtype-p (type)
-  (or (eq type +unknown-type+)
-      (null-subtype-p type)))
