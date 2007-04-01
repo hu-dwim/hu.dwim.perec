@@ -287,7 +287,16 @@
         (call-next-method)))
 
   (defmethod swank::inspect-for-emacs ((object persistent-object) inspector)
-    (bind (((values nil body) (call-next-method)))
-      (values (if (debug-persistent-p object) "A persistent object." "A transient object.")
-              (append `("Transaction: " (:value ,(when (instance-in-transaction-p object) (transaction-of object))) (:newline))
-                      body)))))
+    (bind ((result (multiple-value-list (call-next-method))))
+      (if (= (length result) 1)
+          (progn
+            (setf result (first result))
+            (bind ((content (getf result :content)))
+              (setf (getf result :content)
+                    (append `("Transaction: " (:value ,(when (instance-in-transaction-p object) (transaction-of object))) (:newline))
+                            content))
+              (setf (getf result :title)
+                    (if (debug-persistent-p object) "A persistent object" "A transient object"))
+              result))
+          ;; we do nothing with the old inspect protocol...
+          (values-list result)))))
