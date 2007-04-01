@@ -23,12 +23,13 @@
 (in-package :cl-user)
 
 (defpackage :cl-perec-system
-  (:use :cl :asdf))
+  (:use :common-lisp :asdf)
+  (:export #:*test-database-connection-specification*))
+
+(in-package :cl-perec-system)
 
 (defvar *test-database-connection-specification*
   '(:host "localhost" :database "dwim" :user-name "root" :password "admin123"))
-
-(in-package :cl-perec-system)
 
 (defvar *load-with-debug-p* t)
 
@@ -90,4 +91,5 @@
             (setf *database*
                   (make-instance 'postgresql-pg
                                  :transaction-mixin 'cl-perec:transaction-mixin
-                                 :connection-specification cl-user::*test-database-connection-specification*)))")))
+                                 :connection-specification cl-perec-system::*test-database-connection-specification*)))"))
+  (warn "Pushed :debug in *features*, set (declaim (optimize (debug 3))) and set *database*."))

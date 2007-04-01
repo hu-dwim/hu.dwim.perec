@@ -118,13 +118,7 @@
 (defmethod perform ((op test-op) (system (eql (find-system :cl-perec))))
   (operate 'load-op :cl-perec-test)
   (in-package :cl-perec-test)
-  (eval (read-from-string
-         "(progn
-            (setf *database*
-                  (make-instance 'postgresql-pg
-                                 :transaction-mixin 'cl-perec:transaction-mixin
-                                 :connection-specification cl-user::*test-database-connection-specification*))
-            (retest))")))
+  (eval (read-from-string "(stefil:funcall-test-with-feedback-message 'retest)")))
 
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :cl-perec))))
   nil)
