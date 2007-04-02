@@ -72,6 +72,7 @@
            #:find-type
            #:normalized-type-of
            #:parse-type
+           #:unparse-type
            #:primitive-type-p
            #:destructure-type
            #:def-member-type
@@ -121,6 +122,7 @@
            #:form
            #:member
            #:set
+           #:disjunct-set
            #:or
 
            ;; persistent classes, all persistent-classes are valid slot types

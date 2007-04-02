@@ -226,7 +226,8 @@
 
 (defun parse-type (type-specifier)
   (etypecase type-specifier
-    (symbol (find-type type-specifier))
+    (symbol (or (find-type type-specifier)
+                (find-persistent-class type-specifier)))
     (list
      (let ((type (make-instance (type-class-name-for (first type-specifier)))))
        (apply #'reinitialize-instance type
@@ -237,20 +238,22 @@
                     (t (parse-positional-type-parameters type (rest type-specifier)))))))
     (persistent-type type-specifier)))
 
-;;;;;;;;;;;;;;;;
-;;; Type printer
+;;;;;;;;;;;;;;;;;
+;;; Type unparser
 
-;; TODO:
+;; TODO: unparse it into a list
+(defun unparse-type (type)
+  (declare (ignore type))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;
 ;;; Destructure type
 
 (defun destructure-type (type)
-  "Returns (values normalized-type null-subtype-p unbound-subtype-p)."
+  "Returns (values normalized-type null-subtype-p unbound-subtype-p) corresponding to the given type."
   (bind ((normalized-type (normalized-type-for type))
          (mapped-type (mapped-type-for normalized-type))
-         (unbound-subtype-p (and (not (unbound-subtype-p mapped-type))
-                                 (unbound-subtype-p type)))
+         (unbound-subtype-p (unbound-subtype-p type))
          (null-subtype-p (and (not (null-subtype-p mapped-type))
                               (null-subtype-p type))))
     (values normalized-type null-subtype-p unbound-subtype-p)))

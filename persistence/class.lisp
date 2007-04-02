@@ -240,7 +240,7 @@
                *mapped-type-precedence-list*)))
 
 (defun normalized-type-for (type)
-  (let ((*canonical-types* *mapped-type-precedence-list*))
+  (let ((*canonical-types* (append *mapped-type-precedence-list* *canonical-types*)))
     (canonical-type-for
      `(and (not null)
            (not unbound)
@@ -433,10 +433,9 @@
                       (type (slot-definition-type slot))
                       (normalized-type (normalized-type-of slot))
                       (mapped-type (mapped-type-for normalized-type))
-                      (complex-type-p (and (null-subtype-p type)
-                                           (unbound-subtype-p type)
-                                           (not (null-subtype-p mapped-type))
-                                           (not (unbound-subtype-p mapped-type))))
+                      (complex-type-p (and (unbound-subtype-p type)
+                                           (null-subtype-p type)
+                                           (not (null-subtype-p mapped-type))))
                       (class (slot-definition-class slot))
                       (class-name (class-name class)))
                  (when normalized-type
@@ -488,7 +487,8 @@
 (defun set-type-p (type)
   "Returns true for persistent set types."
   (and (not (subtypep type 'list))
-       (subtypep type '(set persistent-object))))
+       (or (subtypep type '(set persistent-object))
+           (subtypep type '(disjunct-set persistent-object)))))
 
 (defun set-type-class-for (type)
   (second (find 'set type :key #L(first (ensure-list !1)))))

@@ -14,6 +14,7 @@
   '(or list persistent-slot-set-container))
 
 ;; TODO: distinguish between set type and disjunct set type (the latter used in 1-n associations for example)
+;; TODO: assert 1-n associations use disjunct-set type
 (defptype disjunct-set (&optional sub-type)
   (declare (ignore sub-type))
   '(or list persistent-slot-set-container))

@@ -6,7 +6,8 @@
 (defparameter *lazy-collections* #f
   "True means slot-value-using-class will by default return lazy collections.")
 
-(defstruct unbound-value)
+(defstruct unbound-value
+  "This structure is used for the unbound slot value marker. The type for that marker must be a subtype of t and cannot be a subtype of any other type.")
 
 (defparameter +unbound-slot-value+
   (make-unbound-value)
@@ -74,7 +75,6 @@
               (make-instance 'persistent-slot-set-container :object object :slot slot)
               (restore-slot-set object slot)))
          (t
-          ;; TODO enters and fails with #<DWIM-META-MODEL::EFFECTIVE-PROPERTY-AND-COMPUTED-EFFECTIVE-SLOT-DEFINITION-AND-PERSISTENT-EFFECTIVE-SLOT-DEFINITION FULL-NAME {F7BED59}>
           (bind ((record
                   (first
                    (select-records (columns-of slot)
