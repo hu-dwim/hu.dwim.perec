@@ -219,7 +219,7 @@
   
   (:method (type type-parameters)
            (let ((args (argument-names-for (args-of type))))
-             ;; TODO: eliminate this eval by storing the lambde in the defptype
+             ;; TODO: eliminate this eval by storing the lambde in defptype
              (eval `(apply (lambda ,(args-of type)
                              (list ,@(mappend #L(list (intern (symbol-name !1) (find-package :keyword)) !1) args)))
                      ',type-parameters)))))
