@@ -25,7 +25,8 @@
 (defpackage :cl-perec-system
   (:use :cl :asdf)
 
-  (:export #:*load-with-debug-p*))
+  (:export #:*load-with-debug-p*
+           #:*test-database-connection-specification*))
 
 (in-package :cl-perec-system)
 

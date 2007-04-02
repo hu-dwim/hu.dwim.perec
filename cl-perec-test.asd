@@ -22,9 +22,8 @@
 
 (in-package :cl-user)
 
-(defpackage :cl-perec-system
-  (:use :common-lisp :asdf)
-  (:export #:*test-database-connection-specification*))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (asdf:find-system :cl-perec))
 
 (in-package :cl-perec-system)
 
