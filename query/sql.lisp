@@ -604,10 +604,11 @@ value is equal, when they represent the NIL lisp value)."
   (setf (gethash lisp-function-name *aggregate-functions*) sql-function-name))
 
 (define-aggregate-function 'length 'sql-count)
-(define-aggregate-function 'min 'sql-min)
-(define-aggregate-function 'max 'sql-max)
-(define-aggregate-function 'sum 'sql-sum)
-(define-aggregate-function 'avg 'sql-avg)
+;;; TODO
+;;;(define-aggregate-function 'min 'sql-min)
+;;;(define-aggregate-function 'max 'sql-max)
+;;;(define-aggregate-function 'sum 'sql-sum)
+;;;(define-aggregate-function 'avg 'sql-avg)
 
 ;;;----------------------------------------------------------------------------
 ;;; Literals
