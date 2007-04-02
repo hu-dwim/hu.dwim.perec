@@ -74,6 +74,7 @@
               (make-instance 'persistent-slot-set-container :object object :slot slot)
               (restore-slot-set object slot)))
          (t
+          ;; TODO enters and fails with #<DWIM-META-MODEL::EFFECTIVE-PROPERTY-AND-COMPUTED-EFFECTIVE-SLOT-DEFINITION-AND-PERSISTENT-EFFECTIVE-SLOT-DEFINITION FULL-NAME {F7BED59}>
           (bind ((record
                   (first
                    (select-records (columns-of slot)
