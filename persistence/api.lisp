@@ -37,11 +37,11 @@
                        :initargs (,initarg))
                      association-end)))
          (add-initfunction (association-end)
-           (let ((initform (getf association-end :initform)))
-             `(list ,@(mapcar #L`',!1 association-end)
-               :initfunction
-               (lambda ()
-                 ,initform)))))
+           `(list ,@(mapcar #L`',!1 association-end)
+             ,@(when (hasf association-end :initform)
+                     `(:initfunction
+                       (lambda ()
+                         ,(getf association-end :initform)))))))
     (bind ((options (cdr association-ends))
            (metaclass (or (second (find :metaclass options :key #'first))
                           'persistent-association))
