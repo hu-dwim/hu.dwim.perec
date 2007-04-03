@@ -96,7 +96,7 @@
    (type-check
     :type (member :always :on-commit)
     :computed-in compute-as
-    :documentation "On commit type check means that during the transaction the slot may have null and unbound value and the type check will be done when the transaction commits."))
+    :documentation "On commit type check means that during the transaction the slot may have null and/or unbound value and the type check will be done when the transaction commits."))
   (:documentation "Base class for both persistent direct and effective slot definitions."))
 
 (defcclass* persistent-direct-slot-definition
@@ -162,8 +162,10 @@
     (compute-as #f)
     :documentation "The unique option is inherited among direct slots according to the class precedence list with defaulting to false.")
    (type-check
-    (compute-as :always)
-    :documentation "The type check option is inherited among direct slots according to the class precedence list with defaulting to :always."))
+    (compute-as (if (persistent-class-type-p (normalized-type-of -self-))
+                    :on-commit
+                    :always))
+    :documentation "The type check option is inherited among direct slots according to the class precedence list with defaulting to :always. for primitive types and :on-commit for class types."))
   (:documentation "Class for persistent effective slot definitions."))
 
 (defcclass* class-primary-table (table)
