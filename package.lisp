@@ -66,6 +66,8 @@
            #:defassociation
            #:defassociation*
            #:find-association
+           #:to-one-association-end-p
+           #:to-many-association-end-p
 
            ;; defining persistent types
            #:defptype
