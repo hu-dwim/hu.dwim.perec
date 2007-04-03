@@ -268,6 +268,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (sql-column-reference-for (id-column-of association-end) qualifier))
 
   (:method ((slot persistent-slot-definition) qualifier)
+           (assert (columns-of slot))
            (sql-column-reference-for (last1 (columns-of slot)) qualifier))
 
   (:method (element qualifier)
@@ -590,7 +591,6 @@ value is equal, when they represent the NIL lisp value)."
 
 ;;;----------------------------------------------------------------------------
 ;;; Aggregate functions
-
 (defvar *aggregate-functions* (make-hash-table)
   "Map from lisp function symbol to the corresponing SQL aggregate function.")
 

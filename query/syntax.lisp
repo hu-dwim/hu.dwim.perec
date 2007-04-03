@@ -266,3 +266,25 @@ Be careful when using in different situations, because it modifies *readtable*."
            compound)
 
   )
+
+(defgeneric syntax-fold (syntax f g)
+
+  (:method (syntax f g)
+           (funcall f syntax))
+
+  (:method ((compound compound-form) f g)
+           (funcall g (funcall f compound) (syntax-fold (operands-of compound) f g)))
+
+  (:method ((unparsed unparsed-form) f g)
+           (funcall g (funcall f unparsed) (syntax-fold (form-of unparsed))))
+
+  (:method ((cons cons) f g)
+           (funcall g (funcall f cons) (syntax-fold (car cons) f g) (syntax-fold (cdr cons) f g))))
+
+
+(defun find-if-syntax (predicate syntax)
+  (syntax-fold
+   syntax
+   (lambda (node) (when (funcall predicate node) node))
+   (lambda (parent &rest children) (or parent (some #'identity children)))))
+

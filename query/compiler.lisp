@@ -115,6 +115,16 @@ with the result of the naively compiled query.")
              query
              `(make-list-result-set (nreverse ,result-list)))))))))
 
+(defun add-unique-filter (query form)
+  (if (uniquep query)
+      `(make-unique-result-set ,form)
+      form))
+
+(defun add-conversion-to-result-type (query form)
+  (ecase (result-type-of query)
+    (list `(to-list ,form ,(flatp query)))
+    (scroll `(to-scroll ,form))))
+
 ;;;;
 ;;;; Debug query compiler
 ;;;;
@@ -187,8 +197,8 @@ wraps the compiled code with a runtime check of the result."))
                 `(execute ,(sql-select-for-query query)
                   :visitor
                   (lambda (,row)
-                    (let ,(emit-query-variable-bindings variables row #f)
-                      ,(emit-ignorable-variables-declaration variables)
+                    (let ,(query-variable-bindings variables row #f)
+                      ,(ignorable-variables-declaration variables)
                       (when (and ,@asserts)
                         (make-transient ,(first (action-args-of query)))))))
                 substitutions))))
@@ -206,120 +216,14 @@ wraps the compiled code with a runtime check of the result."))
 
 (defun emit-select (query)
   "Emits code that for the compiled query."
-  (bind ((lexical-variables (lexical-variables-of query)))
-    (if (contradictory-p query)
-        `(lambda ,lexical-variables
-          (declare (ignorable ,@lexical-variables))
-          ,(empty-result query))
-        (bind ((substitutions (generate-persistent-object-substitutions query)))
-          `(lambda ,lexical-variables
-           (declare (ignorable ,@lexical-variables))
-           (let (,@(emit-persistent-object-bindings substitutions))
-             ,(substitute-syntax
-               (add-conversion-to-result-type
-                query
-                (add-unique-filter
-                 query
-                 (add-mapping-for-collects
-                  query
-                  (add-sorter-for-order-by
-                   query
-                   (add-filter-for-asserts
-                    query
-                    `(open-result-set
-                      ',(result-type-of query)
-                      ,(partial-eval (sql-select-for-query query) query)))))))
-               substitutions)))))))
-
-(defun empty-result (query)
-  (ecase (result-type-of query)
-    (list nil)
-    (scroll '(make-instance 'simple-scroll))))
-
-(defun add-filter-for-asserts (query form)
-  (bind ((variables (query-variables-of query))
-         (asserts (asserts-of query))
-         (prefetchp (prefetchp query)))
-    (with-unique-names (row)
-      (if asserts
-          `(make-filtered-result-set
-            ,form
-            (lambda (,row)
-              (let (,@(emit-query-variable-bindings variables row prefetchp))
-                ,(emit-ignorable-variables-declaration variables)
-                (and ,@asserts))))
-          form))))
-
-(defun add-sorter-for-order-by (query form)
-  (bind ((variables (query-variables-of query))
-         (order-by (order-by-of query))
-         (prefetchp (prefetchp query)))
-    (labels ((rename-query-variables (expr suffix)
-               "Adds the SUFFIX to each query variable symbol in EXPR."
-               (sublis (mapcar #L(cons (name-of !1) (concatenate-symbol (name-of !1) suffix))
-                               variables)
-                       expr))
-             (generate-variable-bindings (row suffix)
-               (rename-query-variables (emit-query-variable-bindings variables row prefetchp)
-                                       suffix))
-             (generate-lessp-body (order-by)
-               "Builds the body of the lessp predicate."
-               (bind ((lessp (ecase (first order-by) (:asc 'lessp) (:desc 'greaterp)))
-                      (expr1 (rename-query-variables (second order-by) "1"))
-                      (expr2 (rename-query-variables (second order-by) "2")))
-                 (if (null (cddr order-by))
-                     `(,lessp ,expr1 ,expr2)
-                     (with-unique-names (obj1 obj2)
-                       `(let ((,obj1 ,expr1)
-                              (,obj2 ,expr2))
-                         (or
-                          (,lessp ,obj1 ,obj2)
-                          (and
-                           (equal ,obj1 ,obj2)
-                           ,(generate-lessp-body (cddr order-by))))))))))
-      (if (and order-by (or (member :asc order-by) (member :desc order-by)))
-          (with-unique-names (row1 row2)
-            `(make-ordered-result-set
-              ,form
-              (lambda (,row1 ,row2)
-                (let (,@(generate-variable-bindings row1 "1")
-                        ,@(generate-variable-bindings row2 "2"))
-                  ,(generate-lessp-body order-by)))))
-          form))))
-
-(defun add-mapping-for-collects (query form)
-  (bind ((variables (query-variables-of query))
-         (collects (collects-of query))
-         (prefetchp (prefetchp query)))
-    (with-unique-names (row)
-      `(make-mapped-result-set
-        ,form
-        (lambda (,row)
-          (let (,@(emit-query-variable-bindings variables row prefetchp))
-            ,(emit-ignorable-variables-declaration variables)
-            (list ,@collects)))))))
-
-(defun add-unique-filter (query form)
-  (if (uniquep query)
-      `(make-unique-result-set ,form)
-      form))
-
-(defun add-conversion-to-result-type (query form)
-  (ecase (result-type-of query)
-    (list `(to-list ,form ,(flatp query)))
-    (scroll `(to-scroll ,form))))
-
-(defun emit-query-variable-bindings (variables row prefetchp)
-  (iter (for variable in variables)
-        (for slots = (when prefetchp (prefetched-slots-for variable)))
-        (for column-count = (reduce '+ slots
-                                    :key 'column-count-of
-                                    :initial-value (length +oid-column-names+)))
-        (for i initially 0 then (+ i column-count))
-        (collect `(,(name-of variable) (cache-object-with-prefetched-slots ,row ,i ',slots)))))
-
-(defun emit-ignorable-variables-declaration (variables)
-  `(declare (ignorable ,@(mapcar 'name-of variables))))
+  (bind ((lexical-variables (lexical-variables-of query))
+         (substitutions (generate-persistent-object-substitutions query)))
+    `(lambda ,lexical-variables
+      (declare (ignorable ,@lexical-variables))
+      (let (,@(emit-persistent-object-bindings substitutions))
+        ,(substitute-syntax
+          (compile-plan (generate-plan query))
+          substitutions)))))
 
 (defun generate-persistent-object-substitutions (query)
   (bind ((objects (collect-persistent-object-literals query))
@@ -438,11 +342,6 @@ wraps the compiled code with a runtime check of the result."))
 (defun partial-eval-asserts (query)
   (setf (asserts-of query)
         (mapcar #L(partial-eval !1 query) (asserts-of query))))
-
-(defun contradictory-p (query)
-  (is-false-literal
-   (simplify-boolean-syntax
-    (make-macro-call :macro 'and :args (asserts-of query)))))
 
 (defun build-sql (query)
   "Converts assert conditions and order by specifications to SQL."
@@ -745,13 +644,13 @@ wraps the compiled code with a runtime check of the result."))
            (bind ((type (xtype-of access))
                   (slot (slot-of access))
                   (variable (arg-of access)))
-             (debug-only (assert (not (eq type +unknown-type+))))
              (debug-only (assert (not (contains-syntax-p type))))
              (when (and slot (query-variable-p variable))
                (cond
-                ((complex-type-p type) `(sql-is-null ,(sql-bound-column-reference-for slot variable)))
-                ((unbound-subtype-p type) `(sql-is-null ,(sql-column-reference-for slot variable)))
-                (t nil)))))
+                 ((eq type +unknown-type+) (sql-map-failed))
+                 ((complex-type-p type) `(sql-is-null ,(sql-bound-column-reference-for slot variable)))
+                 ((unbound-subtype-p type) `(sql-is-null ,(sql-column-reference-for slot variable)))
+                 (t nil)))))
 
   (:method ((access association-end-access))
            nil))
@@ -764,7 +663,6 @@ wraps the compiled code with a runtime check of the result."))
            (bind ((type (xtype-of access))
                   (slot (slot-of access))
                   (variable (arg-of access)))
-             (debug-only (assert (not (eq type +unknown-type+))))
              (debug-only (assert (not (contains-syntax-p type))))
              (if (and slot (query-variable-p variable) (maybe-null-subtype-p type))
                  `(sql-is-null ,(sql-column-reference-for slot variable))

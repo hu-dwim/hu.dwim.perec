@@ -114,6 +114,7 @@
              (:file "sql" :depends-on ("query"))
              (:file "type" :depends-on ("syntax" "query"))
              (:file "partial-eval" :depends-on ("query"))
+             (:file "plan" :depends-on ("query" "sql" "result-set" "partial-eval"))
              (:file "compiler" :depends-on ("query" "copy" "result-set" "sql" "macro" "partial-eval" "runtime"))))))
 
 (defmethod perform ((op test-op) (system (eql (find-system :cl-perec))))

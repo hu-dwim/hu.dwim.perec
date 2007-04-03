@@ -19,6 +19,7 @@
            (setf pattern (regex-replace-all "(?<!\\\\)%" pattern ".*"))))
     (if (scan (like-pattern->regex pattern) str) #t #f)))
 
+
 (defun sum (seq)
   "Returns the sum of non NIL elements of SEQ."
   (iter (for val in-sequence seq)
