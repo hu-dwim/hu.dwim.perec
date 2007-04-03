@@ -61,6 +61,8 @@
            #:index-p
            #:unique-p
            #:required-p
+           #:reader-name-of
+           #:writer-name-of
 
            ;; defining persistent associations
            #:defassociation
@@ -198,6 +200,8 @@
            #:result-set
            #:result-type-of
            #:define-query-macro
+           #:order-by
+           #:group-by
            #:like
            #:avg
            #:sum

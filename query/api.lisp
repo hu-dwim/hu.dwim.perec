@@ -94,10 +94,9 @@
   (bind ((class (find-class type)))
     (iter (for (initarg value) on rest by 'cddr)
           (collect `(equal (,(first
-                              (some #'slot-definition-readers
-                                    (direct-slots-of
-                                     (find initarg (class-slots class)
-                                           :key #L(first (slot-definition-initargs !1))))))
+                              (reader-name-of
+                               (find initarg (class-slots class)
+                                     :key #L(first (slot-definition-initargs !1)))))
                             -object-)
                      ,value)))))
 

@@ -676,7 +676,7 @@ wraps the compiled code with a runtime check of the result."))
                          (make-function-call ;; reverse
                           :fn fn
                           :args (list (make-association-end-access :association-end other-end
-                                                                   :accessor (first (slot-definition-readers (first (direct-slots-of other-end))))
+                                                                   :accessor (reader-name-of other-end)
                                                                    :args (list object))
                                       variable)))))
                    (:1-n

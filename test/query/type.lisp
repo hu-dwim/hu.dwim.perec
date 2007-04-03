@@ -15,7 +15,7 @@
           (purge-instances 'query-type-test))
         (bind ((,slot (prc::find-slot (find-class 'query-type-test) ',name))
                (,init-arg (first (slot-definition-initargs ,slot)))
-               (,accessor (first (slot-definition-readers (first (prc::direct-slots-of ,slot))))))
+               (,accessor (reader-name-of ,slot)))
           (declare (ignorable ,init-arg ,accessor))
           (flet ((make-object ()
                    (apply #'make-instance

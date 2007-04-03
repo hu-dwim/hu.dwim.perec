@@ -225,7 +225,7 @@
                       (class-direct-slots class)))))
 
 (defun ensure-slot-reader* (class slot)
-  (bind ((reader (concatenate-symbol (first (some #'slot-definition-readers (direct-slots-of slot))) "*"))
+  (bind ((reader (concatenate-symbol (reader-name-of slot) "*"))
          (reader-gf (ensure-generic-function reader :lambda-list '(object))))
     (ensure-method reader-gf
                    `(lambda (object)
@@ -237,3 +237,9 @@
   (when (slot-boundp object slot-name)
     (list (first (slot-definition-initargs (find-slot (class-of object) slot-name)))
           (slot-value object slot-name))))
+
+(defun reader-name-of (effective-slot)
+  (first (some #'slot-definition-readers (direct-slots-of effective-slot))))
+
+(defun writer-name-of (effective-slot)
+  (first (some #'slot-definition-writers (direct-slots-of effective-slot))))
