@@ -93,10 +93,9 @@
 (defun select-similar-assert-for (type rest)
   (bind ((class (find-class type)))
     (iter (for (initarg value) on rest by 'cddr)
-          (collect `(equal (,(first
-                              (reader-name-of
-                               (find initarg (class-slots class)
-                                     :key #L(first (slot-definition-initargs !1)))))
+          (collect `(equal (,(reader-name-of
+                              (find initarg (class-slots class)
+                                    :key #L(first (slot-definition-initargs !1))))
                             -object-)
                      ,value)))))
 
