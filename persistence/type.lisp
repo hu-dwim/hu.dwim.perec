@@ -233,7 +233,11 @@
        (apply #'reinitialize-instance type
               (cond ((= 0 (length type-specifier))
                      nil)
-                    ((find-if #'keywordp (cdr type-specifier))
+                    ((find-if #L(and (keywordp !1)
+                                     (member !1 (mapcar #L(intern (symbol-name !1)
+                                                                  (find-package :keyword))
+                                                        (args-of type))))
+                              (cdr type-specifier))
                      (parse-keyword-type-parameters type (rest type-specifier)))
                     (t (parse-positional-type-parameters type (rest type-specifier)))))))
     (persistent-type type-specifier)))
