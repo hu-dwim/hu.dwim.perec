@@ -77,7 +77,11 @@
   (:documentation "This class serves a very special purpose, namely being able to return the very same instance in make-instance for slot definition meta objects."))
 
 (defcclass* persistent-slot-definition (standard-slot-definition)
-  ((prefetch
+  ((always-checked-type
+    (compute-as (compute-always-checked-type -self-))
+    :type list
+    :documentation "When type-check is :always then this type will be checked whenever a new value is set during the transaction.")
+   (prefetch
     :type boolean
     :computed-in compute-as
     :documentation "Prefetched slots are loaded from and stored into the database at once. A prefetched slot must be in a table which can be accessed using a where clause matching to the id of the object thus it must be in a data table. The default prefetched slot semantics can be overriden on a per direct slot basis.")
@@ -133,11 +137,11 @@
     :type sql-column
     :documentation "This is the id column of the oid reference when appropriarte for the slot type.")
    (reader
-    (compute-as (compute-reader -self- (slot-definition-type -self-)))
+    (compute-as (compute-reader -self- (always-checked-type-of -self-)))
     :type (or null function)
     :documentation "A one parameter function which transforms RDBMS data received as a list to the corresponding lisp object. This is present only for data table slots.")
    (writer
-    (compute-as (compute-writer -self- (slot-definition-type -self-)))
+    (compute-as (compute-writer -self- (always-checked-type-of -self-)))
     :type (or null function)
     :documentation "A one parameter function which transforms a lisp object to the corresponding RDBMS data. This is present only for data table slots.")
    (primary-table-slot
@@ -213,6 +217,14 @@
 
 ;;;;;;;;;;;;
 ;;; Computed
+
+(defgeneric compute-always-checked-type (slot)
+  (:method ((slot persistent-slot-definition))
+           (bind ((type (slot-definition-type slot)))
+             (if (and (eq :on-commit (type-check-of slot))
+                      (not (slot-definition-initfunction slot)))
+                 `(or unbound ,type)
+                 type))))
 
 (defgeneric compute-persistent-effective-super-classes (class)
   (:method ((class persistent-class))
