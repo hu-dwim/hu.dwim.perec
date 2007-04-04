@@ -63,6 +63,7 @@
            #:required-p
            #:reader-name-of
            #:writer-name-of
+           #:association-end-query-of
 
            ;; defining persistent associations
            #:defassociation

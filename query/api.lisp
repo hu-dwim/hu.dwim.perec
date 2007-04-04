@@ -93,9 +93,10 @@
 (defun select-similar-assert-for (type rest)
   (bind ((class (find-class type)))
     (iter (for (initarg value) on rest by 'cddr)
-          (collect `(equal (,(reader-name-of
-                              (find initarg (class-slots class)
-                                    :key #L(first (slot-definition-initargs !1))))
+          (collect `(equal (,(first
+                              (reader-name-of
+                               (find initarg (class-slots class)
+                                     :key #L(first (slot-definition-initargs !1)))))
                             -object-)
                      ,value)))))
 
@@ -163,3 +164,17 @@ Query variables can be referenced in the asserts and collects of the QUERY."))
 (defgeneric set-order-by (query expression &optional direction)
   (:documentation
    "Set an order-by clause specified by EXPRESSION and DIRECTION to the QUERY."))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Association end querying
+
+(defmethod compute-association-end-query ((association-end persistent-association-end-effective-slot-definition))
+  (prog1-bind query (make-query nil)
+    (add-query-variable query 'associated-object)
+    (add-lexical-variable query 'object)
+    (add-assert query `(typep associated-object ',(class-name (associated-class-of association-end))))    
+    (let ((other-association-end (other-association-end-of association-end)))
+      (if (eq (cardinality-kind-of other-association-end) :1)
+          (add-assert query `(eq object (,(reader-name-of other-association-end) associated-object)))
+          (add-assert query `(member associated-object (,(reader-name-of association-end) object)))))
+    (add-collect query 'associated-object)))

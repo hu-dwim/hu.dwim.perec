@@ -45,6 +45,9 @@
                       (find-class (set-type-class-for it))
                       (find-class it))))
     :type persistent-class)
+   (association-end-query
+    (compute-as (compute-association-end-query -self-))
+    :type t)
    (min-cardinality
     (compute-as 0)
     :type integer
@@ -135,6 +138,8 @@
                 (columns-of (other-association-end-of slot))))
       (:m-n (make-columns-for-reference-slot (class-name (slot-definition-class slot))
                                              (set-type-class-for (normalized-type-for (slot-definition-type slot))))))))
+
+(defgeneric compute-association-end-query (association-end))
 
 (defcclass* association-primary-table (table)
   ()
