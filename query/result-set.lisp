@@ -302,6 +302,8 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
   (with-slots (sql-query) result-set
     (bind ((columns (cl-rdbms::columns-of sql-query)))
       (setf (cl-rdbms::columns-of sql-query) (list (cl-rdbms::sql-count-*))
+            (cl-rdbms::offset-of sql-query) nil
+            (cl-rdbms::limit-of sql-query) nil
             (record-count-of result-set) (first (first (execute sql-query)))
             (cl-rdbms::columns-of sql-query) columns)))
   (values))

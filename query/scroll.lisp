@@ -108,7 +108,6 @@
          (start-offset (* page page-size))
          (end-offset (min (* (1+ page) page-size)
                           (element-count scroll))))
-    
     (make-array (- end-offset start-offset)
                 :displaced-to (elements-of scroll)
                 :displaced-index-offset start-offset)))

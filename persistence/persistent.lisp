@@ -9,9 +9,9 @@
 (defun object-exists-in-database-p (object)
   "Returns true if the object can be found in the database"
   (and (oid-of object)
-       (select-records '(1)
-                       (list (name-of (primary-table-of (class-of object))))
-                       (id-column-matcher-where-clause object))))
+       (not (null (select-records '(1)
+                                  (list (name-of (primary-table-of (class-of object))))
+                                  (id-column-matcher-where-clause object))))))
 
 (defun debug-persistent-p (object)
   "Same as persistent-p except it never prefetches slot values. Use for debug purposes."
