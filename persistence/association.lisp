@@ -49,7 +49,11 @@
     (compute-as (compute-association-end-query -self-))
     :type t)
    (min-cardinality
-    (compute-as 0)
+    (compute-as (bind ((type (slot-definition-type -self-)))
+                  (if (and (not (null-subtype-p type))
+                           (not (unbound-subtype-p type)))
+                      1
+                      0)))
     :type integer
     :documentation "The minimum number of objects present in an association for this end.")
    (max-cardinality
