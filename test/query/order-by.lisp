@@ -56,7 +56,7 @@
     (check-ordered
      (select ((o order-by-test))
        (collect o)
-       (prc::order-by :asc (int-attr-of o)))
+       (order-by :asc (int-attr-of o)))
      (list :asc 'int-attr))))
 
 (deftest test/query/select/order-by/integer/desc ()
@@ -64,7 +64,7 @@
     (check-ordered
      (select ((o order-by-test))
        (collect o)
-       (prc::order-by :desc (int-attr-of o)))
+       (order-by :desc (int-attr-of o)))
      (list :desc 'int-attr))))
 
 (deftest test/query/select/order-by/string/asc ()
@@ -72,7 +72,7 @@
     (check-ordered
      (select ((o order-by-test))
        (collect o)
-       (prc::order-by :asc (str-attr-of o)))
+       (order-by :asc (str-attr-of o)))
      (list :asc 'str-attr))))
 
 (deftest test/query/select/order-by/string/desc ()
@@ -80,7 +80,7 @@
     (check-ordered
      (select ((o order-by-test))
        (collect o)
-       (prc::order-by :desc (str-attr-of o)))
+       (order-by :desc (str-attr-of o)))
      (list :desc 'str-attr))))
 
 (deftest test/query/select/order-by/all ()
@@ -88,7 +88,7 @@
     (check-ordered
      (select ((o order-by-test))
        (collect o)
-       (prc::order-by :asc (int-attr-of o) :desc (str-attr-of o)))
+       (order-by :asc (int-attr-of o) :desc (str-attr-of o)))
      (list :asc 'int-attr :desc 'str-attr))))
 
 (deftest test/query/select/order-by/expression ()
@@ -96,7 +96,7 @@
     (check-ordered
      (select ((o order-by-test))
        (collect o)
-       (prc::order-by :asc (- (int-attr-of o))))
+       (order-by :asc (- (int-attr-of o))))
      (list :desc 'int-attr))))
 
 (deftest test/query/select/order-by/error ()
@@ -104,5 +104,5 @@
     (signals error
       (select ((o order-by-test))
         (collect o)
-        (prc::order-by :asc (int-attr-of 'o))))))
+        (order-by :asc (int-attr-of 'o))))))
 
