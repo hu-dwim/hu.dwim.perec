@@ -34,10 +34,16 @@
 (defun sql-select-count*-for-query (query)
   (assert (eq (action-of query) :collect))
   `(sql-select
-    ;; TODO distinct
     :columns (list (cl-rdbms::sql-count-*))
-    :tables (list ,@(sql-table-references-for query))
-    :where ,(sql-where-of query)))
+    :tables (list (sql-table-reference-for
+                   (sql-subquery
+                    :query
+                    (sql-select
+                     :distinct ,(uniquep query)
+                     :columns (list ,@(sql-select-list-for query))
+                     :tables (list ,@(sql-table-references-for query))
+                     :where ,(sql-where-of query)))
+                   'records)))) ; Postgres needs an alias
 
 (defun sql-select-oids-for-class (class-name)
   "Generates a select for the oids of instances of the class named CLASS-NAME."
