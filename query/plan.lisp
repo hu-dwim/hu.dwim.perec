@@ -15,7 +15,8 @@
 
 (defclass* sql-query-node (plan-node)
   ((result-type)
-   (sql-query))
+   (sql-query)
+   (sql-count-query))
   (:documentation "Creates a result-set from the records returned by an SQL query."))
 
 (defclass* unary-operation-node (plan-node)
@@ -88,7 +89,8 @@
 (defun generate-sql-query (query)
   (make-instance 'sql-query-node
                  :result-type (result-type-of query)
-                 :sql-query (partial-eval (sql-select-for-query query) query)))
+                 :sql-query (partial-eval (sql-select-for-query query) query)
+                 :sql-count-query (partial-eval (sql-select-count*-for-query query) query)))
 
 (defun add-filter (input query)
   (bind ((asserts (asserts-of query)))
@@ -153,8 +155,8 @@
              `(make-list-result-set ',list)))
 
   (:method ((sql-query sql-query-node))
-           (with-slots (result-type sql-query) sql-query
-             `(open-result-set ',result-type ,sql-query)))
+           (with-slots (result-type sql-query sql-count-query) sql-query
+             `(open-result-set ',result-type ,sql-query ,sql-count-query)))
 
   (:method ((filter filter-operation))
            (with-slots (input bindings condition) filter

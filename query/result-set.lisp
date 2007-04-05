@@ -22,7 +22,7 @@
 (defclass* result-set ()
   ())
 
-(defgeneric open-result-set (type sql-query)
+(defgeneric open-result-set (type sql-query &optional sql-count-query)
   (:documentation "Returns a new result-set which is the result of the sql-query."))
 
 (defgeneric close-result-set (result-set)
@@ -276,7 +276,8 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
   ((sql-query))
   (:documentation "Retrieves all records at once as a list."))
 
-(defmethod open-result-set ((type (eql 'list)) sql-query)
+(defmethod open-result-set ((type (eql 'list)) sql-query &optional sql-count-query)
+  (declare (ignore sql-count-query))
   (bind ((instance (make-instance 'simple-result-set :sql-query sql-query)))
     (revive-result-set! instance)
     instance))
@@ -289,22 +290,22 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
 ;;;
 (defclass* scrolled-result-set (result-set)
   ((record-count :type integer)
-   (sql-query))
+   (sql-query)
+   (sql-count-query))
   (:documentation "Retrieves the records using OFFSET and LIMIT in the SQL query."))
 
-(defmethod open-result-set ((type (eql 'scroll)) sql-query)
-  (bind ((instance (make-instance 'scrolled-result-set :sql-query sql-query)))
+(defmethod open-result-set ((type (eql 'scroll)) sql-query &optional sql-count-query)
+  (assert sql-count-query)
+  (bind ((instance (make-instance 'scrolled-result-set
+                                  :sql-query sql-query
+                                  :sql-count-query sql-count-query)))
     (revive-result-set! instance)
     instance))
 
 (defmethod revive-result-set! ((result-set scrolled-result-set))
-  (with-slots (sql-query) result-set
-    (bind ((columns (cl-rdbms::columns-of sql-query)))
-      (setf (cl-rdbms::columns-of sql-query) (list (cl-rdbms::sql-count-*))
-            (cl-rdbms::offset-of sql-query) nil
-            (cl-rdbms::limit-of sql-query) nil
-            (record-count-of result-set) (first (first (execute sql-query)))
-            (cl-rdbms::columns-of sql-query) columns)))
+  (with-slots (sql-count-query) result-set
+    (setf (record-count-of result-set)
+          (first (first (execute sql-count-query)))))
   (values))
 
 (defmethod records-of ((result-set scrolled-result-set) &optional start end)
@@ -312,40 +313,3 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
         (cl-rdbms::limit-of (sql-query-of result-set)) (- end start))
   (execute (sql-query-of result-set)))
 
-;;;
-;;; Lazy SQL result-set (postgres only)
-;;;
-;; TODO: resurrect
-#|
-(defclass* lazy-result-set (result-set)
-  ((clsql-result-set :type clsql-postgresql::postgresql-result-set)
-   (current-record :type list))
-  (:documentation "Retrieves the records using an SQL cursor."))
-
-(defmethod open-result-set ((type (eql 'lazy)) sql-query)
-  (assert (typep *database* 'postgresql))
-  (bind (((values clsql-result-set num-of-columns num-of-rows)
-          (clsql-sys:database-query-result-set sql-query database
-                                               :full-set t
-                                               :result-types :auto)))
-    (make-instance 'lazy-result-set
-                   :clsql-result-set clsql-result-set
-                   :current-record (make-list num-of-columns))))
-
-(defmethod close-result-set ((result-set lazy-result-set))
-  (clsql-sys:database-dump-result-set (clsql-result-set-of result-set)
-                                      (database-of result-set)))
-
-(defmethod record-count-of ((result-set lazy-result-set))
-  (clsql-postgresql::postgresql-result-set-num-tuples (clsql-result-set-of result-set)))
-
-(defmethod records-of ((result-set lazy-result-set) &optional start end)
-  (iter (for i from start below end)
-        (setf (clsql-postgresql::postgresql-result-set-tuple-index
-               (clsql-result-set-of result-set))
-              i)
-        (clsql-sys:database-store-next-row (clsql-result-set-of result-set)
-                                           (database-of result-set)
-                                           (current-record-of result-set))
-        (collect (copy-list (current-record-of result-set)))))
-|#
