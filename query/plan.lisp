@@ -95,7 +95,7 @@
     (if asserts
        (make-instance 'filter-operation
                       :input input
-                      :bindings (query-variable-bindings query asserts)
+                      :bindings (query-variable-bindings query)
                       :condition `(and ,@asserts))
        input)))
 
@@ -104,7 +104,7 @@
     (if (and order-by (or (member :asc order-by) (member :desc order-by)))
         (make-instance 'sort-operation
                        :input input
-                       :bindings (query-variable-bindings query order-by)
+                       :bindings (query-variable-bindings query)
                        :sort-spec order-by)
         input)))
 
@@ -119,12 +119,12 @@
                         :bindings (field-bindings field-names)
                         :input (make-instance 'group-operation
                                               :input input
-                                              :bindings (query-variable-bindings query collects)
+                                              :bindings (query-variable-bindings query)
                                               :group-by nil
                                               :exprs aggregates)
                         :values new-collects))
         (make-instance 'projection-operation
-                       :bindings (query-variable-bindings query collects)
+                       :bindings (query-variable-bindings query)
                        :input input
                        :values (collects-of query)))))
 
@@ -162,8 +162,7 @@
                `(make-filtered-result-set
                  ,(compile-plan input)
                  (lambda (,row)
-                   (let (,@(funcall bindings row))
-                     ;;,(ignorable-variables-declaration variables)
+                   (let (,@(funcall bindings row :referenced-by condition))
                      ,condition))))))
 
   (:method ((projection projection-operation))
@@ -172,7 +171,7 @@
                `(make-mapped-result-set
                  ,(compile-plan input)
                  (lambda (,row)
-                   (let (,@(funcall bindings row))
+                   (let (,@(funcall bindings row :referenced-by values))
                      ;;,(ignorable-variables-declaration variables)
                      (list ,@values)))))))
 
@@ -182,8 +181,8 @@
                `(make-ordered-result-set
                  ,(compile-plan input)
                  (lambda (,row1 ,row2)
-                   (let (,@(funcall bindings row1 "1")
-                           ,@(funcall bindings row2 "2"))
+                   (let (,@(funcall bindings row1 :suffix "1" :referenced-by sort-spec)
+                           ,@(funcall bindings row2 :suffix "2" :referenced-by sort-spec))
                      ,(generate-comparator sort-spec)))))))
 
   (:method ((delta unique-operation))
@@ -197,13 +196,16 @@
                `(make-grouped-result-set
                  ,(compile-plan input)
                  (lambda (,row)
-                   (let (,@(funcall bindings row))
+                   (declare (ignorable ,row))
+                   (let (,@(funcall bindings row :referenced-by group-by))
                      (list ,@group-by)))
+                 (lambda ()
+                   ,(aggregate-init-fn-body-for exprs))
                  (lambda (,row ,acc)
-                   (let (,@(funcall bindings row))
-                     ,(accumulator-fn-body-for exprs)))
+                   (let (,@(funcall bindings row :referenced-by exprs))
+                     ,(aggregate-collect-fn-body-for acc exprs)))
                  (lambda (,acc)
-                   ,(aggregate-value-fn-body-for exprs))))))
+                   ,(aggregate-map-fn-body-for acc exprs))))))
 
   (:method ((conversion conversion-operation))
            (with-slots (input result-type flatp) conversion
@@ -221,31 +223,32 @@
       (gensym "AGGR")))
 
 (defun field-bindings (field-names)
-  (lambda (row &optional suffix)
+  (lambda (row &key suffix referenced-by)
+    (declare (ignore referenced-by))
     (flet ((name-for (field)
              (if suffix (concatenate-symbol field suffix) field)))
       (iter (for field in field-names)
            (for i from 0)
            (collect `(,(name-for field) (nth ,i ,row)))))))
 
-(defun query-variable-bindings (query exprs)
+(defun query-variable-bindings (query)
   (bind ((variables (query-variables-of query))
-         (referenced-variables (collect-query-variables exprs))
          (prefetchp (prefetchp query)))
-    (lambda (row &optional suffix)
-      (flet ((name-for (variable)
-               (if suffix
-                   (concatenate-symbol (name-of variable) suffix)
-                   (name-of variable))))
-        (iter (for variable in variables)
-              (for slots = (when prefetchp (prefetched-slots-for variable)))
-              (for column-count = (reduce '+ slots
-                                          :key 'column-count-of
-                                          :initial-value (length +oid-column-names+)))
-              (for i initially 0 then (+ i column-count))
-              (if (member variable referenced-variables)
-                  (collect `(,(name-for variable)
-                             (cache-object-with-prefetched-slots ,row ,i ',slots)))))))))
+    (lambda (row &key suffix referenced-by)
+      (bind ((referenced-variables (collect-query-variables referenced-by)))
+        (flet ((name-for (variable)
+                (if suffix
+                    (concatenate-symbol (name-of variable) suffix)
+                    (name-of variable))))
+         (iter (for variable in variables)
+               (for slots = (when prefetchp (prefetched-slots-for variable)))
+               (for column-count = (reduce '+ slots
+                                           :key 'column-count-of
+                                           :initial-value (length +oid-column-names+)))
+               (for i initially 0 then (+ i column-count))
+               (if (member variable referenced-variables)
+                   (collect `(,(name-for variable)
+                              (cache-object-with-prefetched-slots ,row ,i ',slots))))))))))
 
 (defun ignorable-variables-declaration (variables)
   `(declare (ignorable ,@(mapcar 'name-of variables))))
@@ -276,7 +279,7 @@ If true then all query variables must be under some aggregate call."
   (some 'aggregate-expression-p exprs))
 
 (defun aggregate-function-name-p (name)
-  (member name '(sum avg))) ; TODO
+  (member name '(count sum avg min max)))
 
 (defun collect-aggregate-calls (expr)
   "Returns the list of aggregate function calls in EXPR.
@@ -310,11 +313,60 @@ If the result is not NIL, then each query variable must be aggregated,
          (first children)
          (reduce #'union children :initial-value nil)))))
 
-(defun accumulator-fn-body-for (exprs)
-  (declare (ignore exprs))
-  nil) ;TODO
+(defun aggregate-init-fn-body-for (exprs)
+  `(list
+    ,@(mapcan
+       (lambda (expr)
+         (ecase (fn-of expr)
+           (count (list 0))
+           ((sum min max) (list nil))
+           (avg (list 0 nil))))
+       exprs)))
 
-(defun aggregate-value-fn-body-for (exprs)
-  (declare (ignore exprs))
-  nil) ; TODO
+(defun aggregate-collect-fn-body-for (acc-var exprs)
+  (with-unique-names (count sum min max val)
+    `(nconc
+      ,@(mapcar
+         (lambda (expr)
+           (ecase (fn-of expr)
+             (count
+              `(let ((,count (pop ,acc-var))
+                     (,val ,(first (args-of expr))))
+                (list (if ,val (1+ ,count) ,count))))
+             (sum
+              `(let ((,sum (pop ,acc-var))
+                     (,val ,(first (args-of expr))))
+                (list (if ,val (if ,sum (+ ,sum ,val) ,val) ,sum))))
+             (avg
+              `(let ((,count (pop ,acc-var))
+                     (,sum (pop ,acc-var))
+                     (,val ,(first (args-of expr))))
+                (list
+                 (if ,val (1+ ,count) ,count)
+                 (if ,val (if ,sum (+ ,sum ,val) ,val) ,sum))))
+             (min
+              `(let ((,min (pop ,acc-var))
+                     (,val ,(first (args-of expr))))
+                (list (if ,val (if ,min (min ,min ,val) ,val) ,min))))
+             (max
+              `(let ((,max (pop ,acc-var))
+                     (,val ,(first (args-of expr))))
+                (list (if ,val (if ,max (max ,max ,val) ,val) ,max))))))
+         exprs))))
+
+(defun aggregate-map-fn-body-for (acc-var exprs)
+  (with-unique-names (count sum)
+    `(list
+     ,@(mapcar
+        (lambda (expr)
+          (ecase (fn-of expr)
+            (avg
+             `(let ((,count (pop ,acc-var))
+                    (,sum (pop ,acc-var)))
+               (if (> ,count 0)
+                   (/ ,sum ,count)
+                   nil)))
+            ((count sum min max)
+             `(pop ,acc-var))))
+        exprs))))
 

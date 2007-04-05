@@ -2,11 +2,11 @@
 
 (defsuite* (test/query/aggregate :in test/query))
 
-#|
+
 (defpclass* aggregate-test ()
-  ((int-attr :type integer-32)
-   (str-attr :type (text 50))
-   (date-attr :type date)))
+  ((int-attr :type (or null integer-32))
+   (str-attr :type (or null (text 50)))
+   (date-attr :type (or null date))))
 
 (defixture aggregate-data
   (with-transaction
@@ -23,7 +23,11 @@
     (make-instance 'aggregate-test
                    :int-attr 3
                    :str-attr "3"
-                   :date-attr (encode-local-time 0 0 0 0 3 1 2001 :timezone +utc-zone+))))
+                   :date-attr (encode-local-time 0 0 0 0 3 1 2001 :timezone +utc-zone+))
+    (make-instance 'aggregate-test
+                   :int-attr nil
+                   :str-attr nil
+                   :date-attr nil)))
 
 (deftest test/query/aggregate/int ()
   (with-setup aggregate-data
@@ -31,6 +35,7 @@
       (is
        (equal
         (select ((o aggregate-test))
-          (collect (min (int-attr-of o)) (max (int-attr-of o)) (avg (int-attr-of o))))
-        '(1 3 2))))))
-|#
+          (collect (count (int-attr-of o)) (sum (int-attr-of o))
+                   (min (int-attr-of o)) (max (int-attr-of o)) (avg (int-attr-of o))))
+        '((3 6 1 3 2)))))))
+

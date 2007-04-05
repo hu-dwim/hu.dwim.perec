@@ -21,7 +21,7 @@
           :distinct ,(uniquep query)
           :columns (list ,@(sql-select-list-for query))
           :tables  (list ,@(sql-table-references-for query))
-          :where ,(where-clause-of query)
+          :where ,(sql-where-of query)
           :order-by (list ,@(sql-order-by-of query))))
     (:purge
      (bind ((variable (first (action-args-of query))))
@@ -29,7 +29,7 @@
        `(sql-select
          :columns (list ,(sql-id-column-reference-for variable))
          :tables (list ,@(sql-table-references-for query))
-         :where ,(where-clause-of query))))))
+         :where ,(sql-where-of query))))))
 
 (defun sql-select-oids-for-class (class-name)
   "Generates a select for the oids of instances of the class named CLASS-NAME."
@@ -60,7 +60,7 @@
          (tables (when (persistent-class-p type) (tables-for-delete type))))
     (if (simple-purge-p query)
       (bind ((table (first tables)))
-        `(list ,(sql-delete-from-table table :where (where-clause-of query))))
+        `(list ,(sql-delete-from-table table :where (sql-where-of query))))
       (bind ((temp-table (rdbms-name-for 'deleted-ids))
              (create-table `(sql-create-table
                              :name ',temp-table
@@ -631,3 +631,4 @@ value is equal, when they represent the NIL lisp value)."
 
 (defun sql-true-literal ()
   (sql-literal :value #t :type (make-instance 'cl-rdbms::sql-booelan-type)))
+

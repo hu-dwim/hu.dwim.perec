@@ -122,14 +122,14 @@
     nil
     :type list
     :documentation "Format: (:asc <sql-expr-1> :desc <sql-expr-2> ...)")
-   (where-clause
+   (sql-where
     nil))
   (:documentation "SIMPLE-QUERY only contains (assert ...) forms and one (collect ...) and
  optionally an ORDER-BY clause form at top-level."))
 
 (define-copy-method copy-inner-class progn ((self simple-query) copy copy-htable)
   (with-slot-copying (copy copy-htable self)
-    (copy-slots asserts action action-args order-by where-clause)))
+    (copy-slots asserts action action-args order-by sql-order-by sql-where)))
 
 (defgeneric collects-of (query)
   (:method ((query simple-query))
@@ -158,13 +158,13 @@
 (defgeneric add-where-clause (query where-clause)
   (:method ((query simple-query) where-clause)
            (cond
-             ((not (where-clause-of query))
-              (setf (where-clause-of query) where-clause))
-             ((and (listp (where-clause-of query)) (eq (car (where-clause-of query)) 'sql-and))
-              (appendf (where-clause-of query) (list where-clause)))
+             ((not (sql-where-of query))
+              (setf (sql-where-of query) where-clause))
+             ((and (listp (sql-where-of query)) (eq (car (sql-where-of query)) 'sql-and))
+              (appendf (sql-where-of query) (list where-clause)))
              (t
-              (setf (where-clause-of query)
-                    `(sql-and ,(where-clause-of query) ,where-clause))))))
+              (setf (sql-where-of query)
+                    `(sql-and ,(sql-where-of query) ,where-clause))))))
 
 (defmethod body-of ((query simple-query))
   `(,@(mapcar #L(`(assert ,!1)) (asserts-of query))

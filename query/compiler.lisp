@@ -57,7 +57,20 @@ with the result of the naively compiled query.")
      compiler
      (transform-query
       compiler
-      query)))))
+      (macroexpand-query
+       compiler
+       query))))))
+
+(defgeneric macroexpand-query (compiler query)
+  (:documentation "Expands macros in the body of the query.")
+
+  (:method (compiler (query simple-query))
+           (setf (asserts-of query) (mapcar 'query-macroexpand (asserts-of query)))
+           query)
+
+  (:method (compiler (query query))
+           (setf (body-of query) (mapcar 'query-macroexpand (body-of query)))
+           query))
 
 (defgeneric transform-query (compiler query)
   (:documentation "TODO")
@@ -83,18 +96,11 @@ with the result of the naively compiled query.")
 
 (defmethod emit-query ((compiler trivial-query-compiler) query)
   (bind ((lexical-variables (lexical-variables-of query))
-         (variables (get-query-variable-names query))
-         (body (body-of query))
-         (body (mapcar 'query-macroexpand body))
-         (persistent-object-literals (collect-persistent-object-literals body))
-         (persistent-object-variables (mapcar #L(gensym (symbol-name (class-name (class-of !1))))
-                                              persistent-object-literals)))
+         (variables (get-query-variable-names query)))
     (with-unique-names (objects result-list)
       `(lambda ,lexical-variables
         (declare (ignorable ,@lexical-variables))
-        ,@(mapcar #L(`(load-instance ,!1)) persistent-object-literals)
-        (let (,@(mapcar #L(`(,!1 (load-instance ,!2))) persistent-object-variables persistent-object-literals)
-              (,objects (mapcar 'cache-object
+        (let ((,objects (mapcar 'cache-object
                                 (execute ,(sql-select-oids-for-class 'persistent-object))))
               (,result-list nil))
           (flet ((assert! (cond) (when (not cond) (throw 'fail nil)))
@@ -102,13 +108,11 @@ with the result of the naively compiled query.")
                  (purge (&rest objects) (mapc 'make-transient objects))
                  (order-by (&rest order-spec) nil)) ; TODO
             (declare (ignorable (function assert!) (function collect) (function purge) (function order-by)))
-            (bind-cartesian-product ((,@variables) ,objects)
+            (bind-cartesian-product (,variables ,objects)
               (catch 'fail
-                (progn
-                  ,@(sublis
-                     (cons '(assert . assert!)
-                           (mapcar 'cons persistent-object-literals persistent-object-variables))
-                     body)))))
+                ,(with-reloading-persistent-objects
+                  query
+                  `(progn ,@(sublis '((assert . assert!)) (body-of query)))))))
           ,(add-conversion-to-result-type
             query
             (add-unique-filter
@@ -183,62 +187,53 @@ wraps the compiled code with a runtime check of the result."))
 (defun emit-purge (query)
   (bind ((lexical-variables (lexical-variables-of query))
          (asserts (asserts-of query))
-         (variables (query-variables-of query))
-         (purge-var (first (action-args-of query)))
-         (type (xtype-of purge-var))
-         (substitutions (generate-persistent-object-substitutions query)))
+         (variables (query-variables-of query)))
     (if asserts
         ;; execute deletes from lisp filter
         (with-unique-names (row)
           `(lambda ,lexical-variables
             (declare (ignorable ,@lexical-variables))
-            (let (,@(emit-persistent-object-bindings substitutions))
-              ,(substitute-syntax
-                `(execute ,(sql-select-for-query query)
-                  :visitor
-                  (lambda (,row)
-                    (let ,(query-variable-bindings variables row #f)
-                      ,(ignorable-variables-declaration variables)
-                      (when (and ,@asserts)
-                        (make-transient ,(first (action-args-of query)))))))
-                substitutions))))
+            ,(with-reloading-persistent-objects
+              query
+              `(execute ,(sql-select-for-query query)
+                :visitor
+                (lambda (,row)
+                  (let ,(funcall (query-variable-bindings query) row)
+                    ,(ignorable-variables-declaration variables)
+                    (when (and ,@asserts)
+                      (make-transient ,(first (action-args-of query))))))))))
         ;; execute deletes from sql
         (bind (((values deletes cleanup) (sql-deletes-for-query query)))
           `(lambda ,lexical-variables
             (declare (ignorable ,@lexical-variables))
-            (let (,@(emit-persistent-object-bindings substitutions))
-              (invalidate-persistent-flag-of-cached-objects (find-persistent-class* ,type))
-              ,(substitute-syntax
-                (if cleanup
-                    `(unwind-protect (mapc 'execute ,deletes) (execute ,cleanup))
-                    `(mapc 'execute ,deletes))
-                substitutions)))))))
+            ,(with-reloading-persistent-objects
+              query
+              (if cleanup
+                  `(unwind-protect (mapc 'execute ,deletes) (execute ,cleanup))
+                  `(mapc 'execute ,deletes))))))))
 
 (defun emit-select (query)
   "Emits code that for the compiled query."
-  (bind ((lexical-variables (lexical-variables-of query))
-         (substitutions (generate-persistent-object-substitutions query)))
+  (bind ((lexical-variables (lexical-variables-of query)))
     `(lambda ,lexical-variables
       (declare (ignorable ,@lexical-variables))
-      (let (,@(emit-persistent-object-bindings substitutions))
-        ,(substitute-syntax
-          (compile-plan (generate-plan query))
-          substitutions)))))
+      ,(with-reloading-persistent-objects query (compile-plan (generate-plan query))))))
 
-(defun generate-persistent-object-substitutions (query)
+(defun with-reloading-persistent-objects (query form)
   (bind ((objects (collect-persistent-object-literals query))
-         (variables (mapcar #L(gensym (symbol-name (class-name (class-of !1)))) objects)))
-    (mapcar 'cons objects variables)))
-
-(defun emit-persistent-object-bindings (substitutions)
-  (mapcar #L(`(,(cdr !1) (load-instance ,(car !1)))) substitutions))
+         (variables (mapcar #L(gensym (symbol-name (class-name (class-of !1)))) objects))
+         (substitutions (mapcar 'cons objects variables))
+         (bindings (mapcar #L(`(,(cdr !1) (load-instance ,(car !1)))) substitutions)))
+    (if objects
+        `(let ,bindings
+          ,(substitute-syntax form substitutions))
+        form)))
 
 ;;;;---------------------------------------------------------------------------
 ;;;; Transformations
 ;;;;
 (defmethod transform-query ((compiler simple-query-compiler) (query simple-query))
   "Transforms the QUERY by pushing down the asserts to the SQL query."
-  (macroexpand-query query)
   (parse-query query)
   (normalize-query query)
   (infer-types query)
@@ -248,11 +243,6 @@ wraps the compiled code with a runtime check of the result."))
     (let ((*suppress-alias-names* (simple-purge-p query)))
       (build-sql query)))
   query)
-
-(defun macroexpand-query (query)
-  "Expands query macros in QUERY."
-  (setf (asserts-of query)
-        (mapcar 'query-macroexpand (asserts-of query))))
 
 (defun parse-query (query)
   (bind ((variables (get-variables query)))
@@ -387,9 +377,8 @@ wraps the compiled code with a runtime check of the result."))
     (?otherwise
      syntax)))
 
-
 ;;;----------------------------------------------------------------------------
-;;; SQL mapping
+;;; SQL mapping of expressions
 ;;;
 (defun transform-to-sql (condition)
   "Transforms the CONDITION of an assert to an SQL expression."
@@ -613,8 +602,6 @@ wraps the compiled code with a runtime check of the result."))
                  (sql-slot-boundp variable slot)
                  (sql-map-failed)))))
 
-
-
 (defgeneric macro-call-to-sql (macro n-args arg1 arg2 call)
   (:method (macro n-args arg1 arg2 call)
            (cond
@@ -672,6 +659,7 @@ wraps the compiled code with a runtime check of the result."))
   (:method ((access association-end-access))
            nil))
 
+
 ;;;----------------------------------------------------------------------------
 ;;; Helpers
 ;;;
@@ -728,6 +716,10 @@ wraps the compiled code with a runtime check of the result."))
     (otherwise (gensym "joined"))))
 
 (defgeneric collect-persistent-object-literals (element &optional result)
+
+  (:method ((query query) &optional result)
+           (collect-persistent-object-literals (body-of query) result))
+  
   (:method ((query simple-query) &optional result)
            (collect-persistent-object-literals
             (order-by-of query)

@@ -190,31 +190,30 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
 ;;;
 
 (defclass* grouped-result-set (list-container result-set-transformer)
-  ((group-by :type function)
+  ((group-by-fn :type function)
+   (init-fn :type function)
    (collect-fn :type function)
    (map-fn :type function)))
 
-(defun make-grouped-result-set (result-set group-by collect-fn map-fn)
-  (bind ((instance (make-instance 'grouped-result-set :inner result-set :group-by group-by
-                                  :collect-fn collect-fn :map-fn map-fn)))
+(defun make-grouped-result-set (result-set group-by-fn init-fn collect-fn map-fn)
+  (bind ((instance (make-instance 'grouped-result-set :inner result-set :group-by-fn group-by-fn
+                                  :init-fn init-fn :collect-fn collect-fn :map-fn map-fn)))
     (update-contents! instance)
     instance))
 
 (defmethod update-contents! ((result-set grouped-result-set))
-  (with-slots (contents inner group-by collect-fn map-fn) result-set
+  (with-slots (contents inner group-by-fn init-fn collect-fn map-fn) result-set
     (bind ((ht (make-hash-table :test 'equal)))
       (labels ((aggregate (key record)
-                 (bind ((val (gethash key ht (funcall collect-fn)))
-                        (new-val (funcall collect-fn val record)))
-                   (setf (gethash key ht) new-val))))
-       (iter (for record in-sequence (records-of inner))
-             (for key = (funcall group-by record))
-             (aggregate key record))
-       (setf contents
-             (iter (for record in-sequence (records-of inner))
-                   (for key = (funcall group-by record))
-                   (for aggregated-values = (gethash key ht (funcall collect-fn)))
-                   (collect (funcall map-fn record aggregated-values))))))))
+                 (bind ((acc (gethash key ht (funcall init-fn)))
+                        (new-acc (funcall collect-fn record acc)))
+                   (setf (gethash key ht) new-acc))))
+        (iter (for record in-sequence (records-of inner))
+              (for key = (funcall group-by-fn record))
+              (aggregate key record))
+        (setf contents
+              (iter (for (key acc) in-hashtable ht)
+                    (collect (funcall map-fn acc))))))))
 
 ;;;
 ;;; Unique filtered result-set
