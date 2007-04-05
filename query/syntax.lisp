@@ -238,13 +238,17 @@ Be careful when using in different situations, because it modifies *readtable*."
 ;;;; Substitute
 ;;;;
 (defgeneric substitute-syntax (syntax subs)
+
+  (:method :around (syntax subs)
+           (aif (assoc syntax subs)
+                (cdr it)
+                (call-next-method)))
+  
   (:method ((syntax t) (subs null))
            syntax)
 
   (:method ((syntax t) (subs cons))
-           (aif (assoc syntax subs)
-                (cdr it)
-                syntax))
+           syntax)
 
   (:method ((literal literal-value) (subs cons)) ; FIXME
            (bind ((value (substitute-syntax (value-of literal) subs)))
@@ -280,7 +284,6 @@ Be careful when using in different situations, because it modifies *readtable*."
 
   (:method ((cons cons) f g)
            (funcall g (funcall f cons) (syntax-fold (car cons) f g) (syntax-fold (cdr cons) f g))))
-
 
 (defun find-if-syntax (predicate syntax)
   (syntax-fold
