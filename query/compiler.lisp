@@ -44,7 +44,7 @@ with the result of the naively compiled query.")
 
 (defclass* query-compiler ()
   ()
-  (:documentation "Generic query compiler, which can transform to sql to any select form."))
+  (:documentation "Generic query compiler, which can transform to sql any select form."))
 
 (defgeneric %compile-query (compiler query)
   (:documentation "Compiles the query with the specified compiler."))
@@ -130,7 +130,7 @@ with the result of the naively compiled query.")
 ;;;;
 (defclass* debug-query-compiler (query-compiler)
   ()
-  (:documentation "Generic query compiler, which can transform to sql to any select form and
+  (:documentation "Generic query compiler, which can transform to sql any select form and
 wraps the compiled code with a runtime check of the result."))
 
 (defmethod %compile-query ((compiler debug-query-compiler) (query query))
