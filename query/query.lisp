@@ -118,6 +118,10 @@
     nil
     :type list
     :documentation "Format: (:asc <expr1> :desc <expr2> ...)")
+   (sql-order-by
+    nil
+    :type list
+    :documentation "Format: (:asc <sql-expr-1> :desc <sql-expr-2> ...)")
    (where-clause
     nil))
   (:documentation "SIMPLE-QUERY only contains (assert ...) forms and one (collect ...) and

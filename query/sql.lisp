@@ -22,7 +22,7 @@
           :columns (list ,@(sql-select-list-for query))
           :tables  (list ,@(sql-table-references-for query))
           :where ,(where-clause-of query)
-          :order-by (list ,@(order-by-of query))))
+          :order-by (list ,@(sql-order-by-of query))))
     (:purge
      (bind ((variable (first (action-args-of query))))
        (assert variable)

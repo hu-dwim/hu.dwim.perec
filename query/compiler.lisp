@@ -354,14 +354,15 @@ wraps the compiled code with a runtime check of the result."))
                 (if success
                     (add-where-clause query sql)
                     (collect condition)))))
-  (bind ((new-order-by (iter (for (dir expr) on (order-by-of query) by 'cddr)
-                             (bind (((values sort-key success) (transform-to-sql expr))
-                                    (ordering (ecase dir (:asc :ascending) (:desc :descending))))
-                               (if success
-                                   (collect `(sql-sort-spec :sort-key ,sort-key :ordering ,ordering))
-                                   (leave))))))
-    (when new-order-by
-      (setf (order-by-of query) new-order-by))))
+  (setf (sql-order-by-of query)
+        (iter (for (dir expr) on (order-by-of query) by 'cddr)
+              (bind (((values sort-key success) (transform-to-sql expr))
+                     (ordering (ecase dir (:asc :ascending) (:desc :descending))))
+                (if success
+                    (collect `(sql-sort-spec :sort-key ,sort-key :ordering ,ordering))
+                    (leave)))))
+  (when (sql-order-by-of query)
+    (setf (order-by-of query) nil)))
 
 ;;;----------------------------------------------------------------------------
 ;;; Optimize
