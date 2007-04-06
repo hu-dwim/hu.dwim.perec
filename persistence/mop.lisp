@@ -147,6 +147,7 @@
 
 (defmethod compute-slots :after ((class persistent-class))
   "Invalidates the cached slot value of persistent-effective-slots whenever the effective slots are recomputed, so that all dependent computed state will be invalidated and recomputed when requested."
+  (invalidate-computed-slot class 'persistent-direct-slots)
   (invalidate-computed-slot class 'persistent-effective-slots))
 
 ;;;;;;;;;;;
