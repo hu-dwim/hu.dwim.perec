@@ -235,7 +235,9 @@
            #:without-bypassing-database-access
 
            ;; utils
-           #:parse-date))
+           ;; TODO: move these
+           #:parse-date
+           #:today))
 
 (in-package :cl-perec)
 

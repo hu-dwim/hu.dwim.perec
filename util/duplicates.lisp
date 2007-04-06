@@ -174,6 +174,11 @@
      (append list-or-item (list item)))
     (t (list op list-or-item item))))
 
+;; TODO: move this into local-time
 (defun parse-date (str)
-  (let ((*default-timezone* +utc-zone+)) (parse-timestring str)))
+  (let ((*default-timezone* +utc-zone+))
+    (parse-timestring str)))
 
+;; TODO: move this into local-time
+(defun today ()
+  (minimize-time-part (now) :timezone +utc-zone+))
