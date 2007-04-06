@@ -201,7 +201,7 @@ Be careful when using in different situations, because it modifies *readtable*."
    ((and (symbolp (first form)) (special-operator-p (first form)))
     (make-special-form :operator (first form)
                        :operands (mapcar #L(make-unparsed-form :form !1) (rest form))))
-   ((and (symbolp (first form)) (fboundp (first form)))
+   ((and (symbolp (first form)) (or (fboundp (first form)) (member (first form) '(sum avg)))) ; TODO
     (make-function-call :fn (first form)
                         :args (mapcar #L(parse-query-form !1 variables) (rest form))))
    (t (error "Syntax error: ~S~%" form))))
