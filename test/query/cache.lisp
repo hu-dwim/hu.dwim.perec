@@ -28,14 +28,14 @@
 (deftest test/query/cache-1 ()
   (run-cache-test
     (is (= counter 0))
-    (select ((o query-cache-test)) (collect o))
+    (select (o) (from (o query-cache-test)))
     (is (= counter 1))
-    (select ((o query-cache-test)) (collect o))
+    (select (o) (from (o query-cache-test)))
     (is (= counter 1))))
 
 (deftest test/query/cache-2 ()
   (run-cache-test
-    (bind ((query (make-query `(select ((o query-cache-test)) (collect o)))))
+    (bind ((query (make-query `(select (o) (from (o query-cache-test))))))
       (is (= counter 0))
       (execute-query query)
       (is (= counter 1))
@@ -45,7 +45,7 @@
    
 (deftest test/query/cache-3 ()
   (run-cache-test
-    (bind ((query (make-query `(select ((o query-cache-test)) (collect o))))
+    (bind ((query (make-query `(select (o) (from (o query-cache-test)))))
            (result (execute-query query)))
       (add-assert query `(equal (attr-1-of o) 1))
       (is (not (equal result (execute-query query)))))))
@@ -54,7 +54,7 @@
   (progn
     (fill-data-3)
     (bind ((class (find-class 'query-cache-2-test))
-           (query (make-query '(select ((o query-cache-2-test)) (collect o)))))
+           (query (make-query '(select (o) (from (o query-cache-2-test))))))
       (prc::clear-compiled-query-cache)
       (prc::reset-compile-query-counter)
       (symbol-macrolet ((counter prc::*compile-query-counter*))

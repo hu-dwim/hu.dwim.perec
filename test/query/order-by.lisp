@@ -54,55 +54,55 @@
 (deftest test/query/select/order-by/integer/asc ()
   (run-order-by-test
     (check-ordered
-     (select ((o order-by-test))
-       (collect o)
+     (select (o)
+       (from (o order-by-test))
        (order-by :asc (int-attr-of o)))
      (list :asc 'int-attr))))
 
 (deftest test/query/select/order-by/integer/desc ()
   (run-order-by-test
     (check-ordered
-     (select ((o order-by-test))
-       (collect o)
+     (select (o)
+       (from (o order-by-test))
        (order-by :desc (int-attr-of o)))
      (list :desc 'int-attr))))
 
 (deftest test/query/select/order-by/string/asc ()
   (run-order-by-test
     (check-ordered
-     (select ((o order-by-test))
-       (collect o)
+     (select (o)
+       (from (o order-by-test))
        (order-by :asc (str-attr-of o)))
      (list :asc 'str-attr))))
 
 (deftest test/query/select/order-by/string/desc ()
   (run-order-by-test
     (check-ordered
-     (select ((o order-by-test))
-       (collect o)
+     (select (o)
+       (from (o order-by-test))
        (order-by :desc (str-attr-of o)))
      (list :desc 'str-attr))))
 
 (deftest test/query/select/order-by/all ()
   (run-order-by-test
     (check-ordered
-     (select ((o order-by-test))
-       (collect o)
+     (select (o)
+       (from (o order-by-test))
        (order-by :asc (int-attr-of o) :desc (str-attr-of o)))
      (list :asc 'int-attr :desc 'str-attr))))
 
 (deftest test/query/select/order-by/expression ()
   (run-order-by-test
     (check-ordered
-     (select ((o order-by-test))
-       (collect o)
+     (select (o)
+       (from (o order-by-test))
        (order-by :asc (- (int-attr-of o))))
      (list :desc 'int-attr))))
 
 (deftest test/query/select/order-by/error ()
   (run-order-by-test
     (signals error
-      (select ((o order-by-test))
-        (collect o)
+      (select (o)
+        (from (o order-by-test))
         (order-by :asc (int-attr-of 'o))))))
 

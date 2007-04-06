@@ -181,6 +181,11 @@
            #:query-builder
            #:simple-query-builder
            #:select
+           #:purge
+           #:from
+           #:where
+           #:order-by
+           #:group-by
            #:select-first-matching
            #:select-last-matching
            #:select-instance
@@ -199,12 +204,9 @@
            #:result-set
            #:result-type-of
            #:define-query-macro
-           #:order-by
-           #:group-by
            #:like
            #:avg
            #:sum
-           #:purge
 
            ;; scroll
            #:scroll

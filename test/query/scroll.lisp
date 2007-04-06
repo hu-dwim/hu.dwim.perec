@@ -28,7 +28,7 @@
 
 (deftest test/query/select/scroll/counts ()
   (run-scroll-test
-    (bind ((scroll (select (:result-type scroll) ((o scroll-test)) (collect (attr-1-of o)))))
+    (bind ((scroll (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test)))))
       (is (= (element-count scroll) 10))
       (setf (page-size scroll) 3)
       (is (= (page-count scroll) 4))
@@ -39,7 +39,7 @@
    
 (deftest test/query/select/scroll/forward ()
   (run-scroll-test
-    (bind ((scroll (select (:result-type scroll) ((o scroll-test)) (collect (attr-1-of o)))))
+    (bind ((scroll (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test)))))
       (setf (page-size scroll) 3)
       (first-page! scroll)
       (iter (for i from 0 below 10 by 3)
@@ -48,7 +48,7 @@
 
 (deftest test/query/select/scroll/backward ()
   (run-scroll-test
-    (bind ((scroll (select (:result-type scroll) ((o scroll-test)) (collect (attr-1-of o)))))
+    (bind ((scroll (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test)))))
       (setf (page-size scroll) 3)
       (last-page! scroll)
       (iter (for i from 9 downto 0 by 3)
@@ -57,7 +57,7 @@
 
 (deftest test/query/select/scroll/random ()
   (run-scroll-test
-    (bind ((scroll (select (:result-type scroll) ((o scroll-test)) (collect (attr-1-of o)))))
+    (bind ((scroll (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test)))))
       (setf (page-size scroll) 3)
       (setf (page scroll) 1)
       (check-page (elements scroll) 3 6)
@@ -71,7 +71,7 @@
 (deftest test/query/select/scroll/transactions ()
   (with-fixture fill-data-5
       (bind ((scroll (with-transaction
-                       (select (:result-type scroll) ((o scroll-test)) (collect (attr-1-of o))))))
+                       (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test))))))
         (setf (page-size scroll) 3)
         (run-queries
           (first-page! scroll)
@@ -81,7 +81,7 @@
 
 (deftest test/query/select/scroll/modify ()
   (run-scroll-test
-    (bind ((scroll (select (:result-type scroll) ((o scroll-test)) (collect (attr-1-of o)))))
+    (bind ((scroll (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test)))))
       (setf (page-size scroll) 3)
       (check-page (elements scroll) 0 3)
       (purge-instance (select-first-matching scroll-test))

@@ -18,9 +18,6 @@
    (query-variables
     nil
     :type (list query-variable))
-   (body
-    nil
-    :type list)
    (flatp
     :writer (setf flatp)
     :type boolean)
@@ -46,11 +43,6 @@
 
 (defun query-hash-key-for (query)
   (list (mapcar 'name-of (lexical-variables-of query)) (select-form-of query)))
-
-(defgeneric select-form-of (query)
-  (:method ((query query))
-           `(select ,(options-of query) ,(get-query-variable-names query)
-             ,@(body-of query))))
 
 (defgeneric options-of (query)
   (:method ((query query))
@@ -131,6 +123,26 @@
   (with-slot-copying (copy copy-htable self)
     (copy-slots asserts action action-args order-by sql-order-by sql-where)))
 
+(defgeneric select-form-of (query)
+  (:method ((query simple-query))
+           (flet ((optional (clause)
+                    (when clause (list clause))))
+             (bind ((action (ecase (action-of query) (:collect 'select) (:purge 'purge)))
+                    (action-list (action-args-of query))
+                    (options (options-of query))
+                    (variables (get-query-variable-names query))
+                    (asserts (asserts-of query))
+                    (where-clause (case (length asserts)
+                                    (0 nil)
+                                    (1 `(where ,(first asserts)))
+                                    (t `(where (and ,@asserts)))))
+                    (order-by-clause (when (order-by-of query) `(order-by ,@(order-by-of query)))))
+             `(,action ,options ,action-list
+                 (from ,@variables)
+                 ,@(optional where-clause)
+                 ,@(optional order-by-clause))))))
+
+
 (defgeneric collects-of (query)
   (:method ((query simple-query))
            (debug-only (assert (eq (action-of query) :collect)))
@@ -165,14 +177,6 @@
              (t
               (setf (sql-where-of query)
                     `(sql-and ,(sql-where-of query) ,where-clause))))))
-
-(defmethod body-of ((query simple-query))
-  `(,@(mapcar #L(`(assert ,!1)) (asserts-of query))
-    ,(if (eq (action-of query) :collect)
-         `(collect ,@(collects-of query))
-         `(purge ,@(action-args-of query)))
-    ,@(when (order-by-of query)
-            `(order-by ,@(order-by-of query)))))
 
 (defmethod flatp ((query simple-query))
   (if (slot-boundp query 'flatp)
@@ -218,15 +222,15 @@
           (add-lexical-variable query variable))
     query))
 
-(defmethod make-query ((select-form cons) &optional lexical-variables)
+(defmethod make-query ((form cons) &optional lexical-variables)
 
-  (labels ((select-macro-expand (select-form)
-             (if (eq (first select-form) 'select)
-                 select-form
-                 (bind (((values select-form expanded-p) (macroexpand-1 select-form)))
+  (labels ((query-macro-expand (form)
+             (if (member (first form) '(select purge))
+                 form
+                 (bind (((values form expanded-p) (macroexpand-1 form)))
                    (if expanded-p
-                       (select-macro-expand select-form)
-                       select-form))))
+                       (query-macro-expand form)
+                       form))))
            (make-lexical-variables (variable-names)
              (iter (for variable-name in variable-names)
                    (collect (make-lexical-variable :name variable-name))))
@@ -236,42 +240,70 @@
                      (symbol (collect (make-query-variable :name variable-spec)))
                      (cons (collect (make-query-variable :name (car variable-spec))))
                      (otherwise (error "Symbol or symbol/type pair expected, found ~S in select: ~:W"
-                                       variable-spec select-form)))))
-           (add-variable-type-asserts (variable-specs body)
-             (dolist (variable-spec variable-specs body)
-               (when (and (listp variable-spec) (>= (length variable-spec) 2))
-                 (push `(assert (typep ,(first variable-spec) ',(second variable-spec))) body))))
-           (make-query (options vars body)
+                                       variable-spec form)))))
+           (make-asserts (where-clause variable-specs)
+             (append
+              (iter (for variable-spec in variable-specs)
+                    (when (and (listp variable-spec) (>= (length variable-spec) 2))
+                      (collect `(typep ,(first variable-spec) ',(second variable-spec)))))
+              (when where-clause
+                (bind ((where-cond (second where-clause)))
+                  (if (and (listp where-cond) (eq 'and (car where-cond)))
+                      (rest where-cond)
+                      (list where-cond))))))
+           (make-select (options select-list clauses)
              (bind ((lexical-variables (make-lexical-variables lexical-variables))
-                    (query-variables (make-query-variables vars))
-                    (body (add-variable-type-asserts vars body))
-                    (collect-form (find 'collect body :key 'first :test 'eq))
-                    (purge-form (find 'purge body :key 'first :test 'eq))
-                    (order-by-form (find 'order-by body :key 'first :test 'eq))
-                    (other-forms (remove order-by-form (remove purge-form (remove collect-form body))))
-                    (simple-query-p (and (or collect-form purge-form)
-                                         (every #L(eql (car !1) 'assert) other-forms))))
+                    (from-clause (find 'from clauses :key #'first))
+                    (where-clause (find 'where clauses :key #'first))
+                    (order-by-clause (find 'order-by clauses :key #'first))
+                    (query-variables (make-query-variables (rest from-clause)))
+                    (asserts (make-asserts where-clause (rest from-clause)))
+                    (other-clauses (remove from-clause (remove where-clause (remove order-by-clause clauses)))))
+               (unless from-clause
+                 (error "Missing FROM clause in: ~:W" form))
+               (when other-clauses
+                 (error "Unrecognized or duplicated clauses ~:W in query ~:W"
+                        other-clauses form))
 
-               (if simple-query-p
-                   (apply 'make-instance 'simple-query
-                          :lexical-variables lexical-variables
-                          :query-variables query-variables
-                          :body body
-                          :asserts (mapcar 'second other-forms)
-                          :action (if collect-form :collect :purge)
-                          :action-args (if collect-form (cdr collect-form) (cdr purge-form))
-                          :order-by (cdr order-by-form)
-                          options)
-                   (apply 'make-instance 'query
-                          :lexical-variables lexical-variables
-                          :query-variables query-variables
-                          :body body
-                          options)))))
+               (apply 'make-instance 'simple-query
+                      :lexical-variables lexical-variables
+                      :query-variables query-variables
+                      :asserts asserts
+                      :action :collect
+                      :action-args select-list
+                      :order-by (rest order-by-clause)
+                      options)))
+           (make-purge (options purge-list clauses)
+             (bind ((lexical-variables (make-lexical-variables lexical-variables))
+                    (from-clause (find 'from clauses :key 'first))
+                    (where-clause (find 'where clauses :key 'first))
+                    (query-variables (make-query-variables (rest from-clause)))
+                    (asserts (make-asserts where-clause (rest from-clause)))
+                    (other-clauses (remove from-clause (remove where-clause clauses))))
+               (unless from-clause
+                 (error "Missing FROM clause in: ~:W" form))
+               (when other-clauses
+                 (error "Unrecognized or duplicated clauses ~:W in query ~:W"
+                        other-clauses form))
+
+               (apply 'make-instance 'simple-query
+                      :lexical-variables lexical-variables
+                      :query-variables query-variables
+                      :asserts asserts
+                      :action :purge
+                      :action-args purge-list
+                      options))))
     
-    (pattern-case (select-macro-expand select-form)
-      ((select (?and ((?is ?k keywordp) . ?rest) ?options) (?is ?variable-specs listp) . ?body)
-       (make-query ?options ?variable-specs ?body))
-      ((select (?is ?variable-specs listp) . ?body)
-       (make-query nil ?variable-specs ?body))
+    (pattern-case (query-macro-expand form)
+      ((select (?and (?or nil ((?is ?k keywordp) . ?rest)) ?options) (?is ?select-list listp) .
+               ?clauses)
+       (make-select ?options ?select-list ?clauses))
+      ((select (?is ?select-list listp) . ?clauses)
+       (make-select nil ?select-list ?clauses))
+      ((purge (?and (?or nil ((?is ?k keywordp) . ?rest)) ?options) (?is ?purge-list listp) .
+              ?clauses)
+       (make-purge ?options ?purge-list ?clauses))
+      ((purge  (?is ?purge-list listp) . ?clauses)
+       (make-purge nil ?purge-list ?clauses))
       (?otherwise
-       (error "Malformed select statement: ~:W" select-form)))))
+       (error "Malformed query: ~:W" form)))))

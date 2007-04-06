@@ -34,24 +34,26 @@
 (deftest test/query/table-ref/none ()
   (type-test
     (select (o)
-      (collect o))))
+      (from o))))
 
 (deftest test/query/table-ref/and-self ()
   (type-test
     (select (o)
-      (assert (typep o 'super-1-test))
-      (assert (typep o 'super-1-test))
-      (collect o))))
+      (from o)
+      (where (and
+              (typep o 'super-1-test)
+              (typep o 'super-1-test))))))
 
 (deftest test/query/table-ref/and-supers ()
   (type-test
     (select (o)
-      (assert (typep o 'super-1-test))
-      (assert (typep o 'super-2-test))
-      (collect o))))
+      (from o)
+      (where (and
+              (typep o 'super-1-test)
+              (typep o 'super-2-test))))))
 
 (deftest test/query/table-ref/or-supers ()
   (type-test
     (select (o)
-      (assert (typep o '(or super-1-test super-2-test)))
-      (collect o))))
+      (from o)
+      (where (typep o '(or super-1-test super-2-test))))))

@@ -66,10 +66,6 @@ with the result of the naively compiled query.")
 
   (:method (compiler (query simple-query))
            (setf (asserts-of query) (mapcar 'query-macroexpand (asserts-of query)))
-           query)
-
-  (:method (compiler (query query))
-           (setf (body-of query) (mapcar 'query-macroexpand (body-of query)))
            query))
 
 (defgeneric transform-query (compiler query)
@@ -96,28 +92,30 @@ with the result of the naively compiled query.")
 
 (defmethod emit-query ((compiler trivial-query-compiler) query)
   (bind ((lexical-variables (lexical-variables-of query))
-         (variables (get-query-variable-names query)))
+         (variables (get-query-variable-names query))
+         (asserts (asserts-of query))
+         (action (case (action-of query)
+                   (:collect `(collect ,@(action-args-of query)))
+                   (:purge `(collect ,@(action-args-of query)))))
+         (body (if asserts
+                   `(if (and ,@asserts) ,action)
+                   action)))
     (with-unique-names (objects result-list)
       `(lambda ,lexical-variables
         (declare (ignorable ,@lexical-variables))
         (let ((,objects (mapcar 'cache-object
                                 (execute ,(sql-select-oids-for-class 'persistent-object))))
               (,result-list nil))
-          (flet ((assert! (cond) (when (not cond) (throw 'fail nil)))
-                 (collect (&rest exprs) (push exprs ,result-list))
-                 (purge (&rest objects) (mapc 'make-transient objects))
-                 (order-by (&rest order-spec) nil)) ; TODO
-            (declare (ignorable (function assert!) (function collect) (function purge) (function order-by)))
+          (flet ((collect (&rest exprs) (push exprs ,result-list))
+                 (purge (&rest objects) (mapc 'make-transient objects)))
+            (declare (ignorable (function collect) (function purge)))
             (bind-cartesian-product (,variables ,objects)
-              (catch 'fail
-                ,(with-reloading-persistent-objects
-                  query
-                  `(progn ,@(sublis '((assert . assert!)) (body-of query)))))))
+              ,(with-reloading-persistent-objects query body)))
           ,(add-conversion-to-result-type
             query
             (add-unique-filter
              query
-             `(make-list-result-set (nreverse ,result-list)))))))))
+             `(make-list-result-set (nreverse ,result-list))))))))) ;; TODO order-by
 
 (defun add-unique-filter (query form)
   (if (uniquep query)
@@ -717,9 +715,6 @@ wraps the compiled code with a runtime check of the result."))
 
 (defgeneric collect-persistent-object-literals (element &optional result)
 
-  (:method ((query query) &optional result)
-           (collect-persistent-object-literals (body-of query) result))
-  
   (:method ((query simple-query) &optional result)
            (collect-persistent-object-literals
             (order-by-of query)

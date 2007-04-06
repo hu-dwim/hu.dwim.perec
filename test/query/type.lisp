@@ -26,12 +26,12 @@
                         (execute-query
                          (make-query
                           ,(if test-value-p
-                               ``(select ((o query-type-test))
-                                  (assert (equal (,,accessor o) ',,value))
-                                  (collect o))
-                               ``(select ((o query-type-test))
-                                  (assert (not (slot-boundp o ',',name)))
-                                  (collect o)))))))))
+                               ``(select (o)
+                                  (from (o query-type-test))
+                                  (where (equal (,,accessor o) ',,value)))
+                               ``(select (o)
+                                  (from (o query-type-test))
+                                  (where (not (slot-boundp o ',',name)))))))))))
             (with-transaction
               (make-object)
               (test-object))))))))

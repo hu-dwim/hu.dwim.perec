@@ -24,9 +24,9 @@
          (accessor (read-from-string (format nil "int-attr-~d-of" class-id))))
     `(deftest ,name ()
       (run-purge-test
-        (select ((o ,class))
-          ,@(when attr-value (list `(assert (= (,accessor o) ,attr-value))))
-          (purge o))
+        (purge (o)
+          (from (o ,class))
+          ,@(when attr-value (list `(where (= (,accessor o) ,attr-value)))))
         (apply 'check-existing-records ,(first expected))))))
 
 ;;;

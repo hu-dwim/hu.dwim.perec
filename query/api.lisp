@@ -9,28 +9,30 @@
 ;;;;;;;;;;;;;;;;;
 ;; Query frontend
 
-(defmacro select (&whole select-form (&rest variables) &body body &environment env)
+(defmacro select (&whole select-form (&rest select-list) &body clauses &environment env)
   "Selects object from the model.
 
   Syntax:
 
-     select [<options>] (<var-spec>*) <assert-clause>* <collect-clause> [<order-by-clause>]
+     select [<options>] <select-list> <from clause> [<where-clause>] [<order-by-clause>]
 
      <options>:         (&key result-type flatp uniquep)
-     <var-spec>:        <symbol> | (<symbol> <type-expr>)
-     <assert-clause>:   (assert <bool-expr>)
-     <collect-clause>:  (collect <expr>*)
+     <select-list>:     (<expr>*)
+     <from-clause>:     (<variable-spec>*)
+     <variable-spec>:   <symbol> | (<symbol> <type-expr>)
+     <where-clause>:    (where <bool-expr>)
      <order-by-clause>: (order-by <order-spec>*)
      <order-spec>:      :asc|:desc <expr>
 
   Semantics:
 
-     The symbols of the form are bound to all objects in the database sequentially.
-     Then the asserts are evaluated. If all asserts are satisfied then the expressions
-     of the collect clause are added to the result. Finally the result is sorted according
-     to the order-by-clause.
+     Analogous to SQL:
+       First the cartesian product of the set of objects specified by the FROM clause
+       is created. Then the product is filtered by the WHERE clause and projected
+       according to the SELECT-LIST. Finally the result is sorted according to the 
+       ORDER-BY clause.
 
-     Options may modify how the result is collected:
+     Options may modify the result:
 
      result-type: (member 'list 'scroll)
         If the value is 'scroll then the result of the query returned as an instance
@@ -39,11 +41,11 @@
 
      flatp: generalized-boolean
         If true and the result-type is 'list then result is a flattened list, i.e. the 
-        lists returned by the collect clause are appended rather than added to the result.
-        Default is true for one element collect clauses, false otherwise.
+        select list expressions are appended rather than added to the result.
+        Default is true for one element select lists, false otherwise.
 
      uniquep: generalized-boolean
-        If true then the value of the collect clause will not be added to the result,
+        If true then the value of the select list will not be added to the result,
         when it is equal to a previously seen value.
 
      prefetchp: generalized-boolean
@@ -53,15 +55,23 @@
   Example:
 
      (let ((yesterday (day-before-today)))
-       (select ((topic topic) message) 
-         (assert (typep message 'message))
-         (assert (eq (topic-of message) topic))
-         (assert (after (date-of message) yesterday))
-         (collect (name-of topic) message)))"
-  (declare (ignore variables body))
+       (select ((name-of topic) message)
+         (from (topic topic) message)
+         (where (and (typep message 'message)
+                     (eq (topic-of message) topic)
+                     (after (date-of message) yesterday)))))"
+  (declare (ignore select-list clauses))
   (let* ((lexical-variables (remove-duplicates (arnesi::lexical-variables env))))
     `(execute-query
       (make-query ',select-form ',lexical-variables)
+      ,@lexical-variables)))
+
+(defmacro purge (&whole purge-form (&rest purge-list) &body clauses &environment env)
+  "TODO"
+  (declare (ignore purge-list clauses))
+  (let* ((lexical-variables (remove-duplicates (arnesi::lexical-variables env))))
+    `(execute-query
+      (make-query ',purge-form ',lexical-variables)
       ,@lexical-variables)))
 
 (defmacro simple-select (options variable &body body)
@@ -71,10 +81,9 @@
             (symbol `(-object- ,variable))
             (t variable)))
          (variable-name (first (ensure-list variable-specification))))
-    `(select ,options (,variable-specification)
-      ,@(append
-         (mapcar #L`(assert ,!1) body)
-         `((collect ,variable-name))))))
+    `(select ,options (,variable-name)
+      (from ,variable-specification)
+      (where (and ,@body)))))
 
 (defmacro select-first-matching (&optional variable &body body)
   `(let ((scroll (simple-select (:result-type scroll) ,variable ,@body)))

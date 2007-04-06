@@ -34,8 +34,8 @@
     (with-transaction
       (is
        (equal
-        (select ((o aggregate-test))
-          (collect (count (int-attr-of o)) (sum (int-attr-of o))
-                   (min (int-attr-of o)) (max (int-attr-of o)) (avg (int-attr-of o))))
+        (select ((count (int-attr-of o)) (sum (int-attr-of o))
+                 (min (int-attr-of o)) (max (int-attr-of o)) (avg (int-attr-of o)))
+          (from (o aggregate-test)))
         '((3 6 1 3 2)))))))
 
