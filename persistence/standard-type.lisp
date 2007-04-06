@@ -387,7 +387,7 @@
         (satisfies date-p)
         (satisfies time-p)))
 
-(defmapping timestamp (sql-timestamp-type)
+(defmapping timestamp (sql-timestamp-type :with-timezone #t)
   'integer->local-time-reader
   'local-time->string-writer)
 

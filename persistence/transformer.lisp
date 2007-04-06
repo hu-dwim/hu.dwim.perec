@@ -285,6 +285,7 @@
    (format-timestring slot-value :date-time-separator #\Space :use-zulu-p #f)))
 
 (defun integer->local-time-reader (rdbms-values)
+  ;; NOTE: assuming that the database server is configured to UTC time zone
   (local-time :universal (first rdbms-values) :timezone +utc-zone+))
 
 (defun local-time->integer-writer (slot-value)
