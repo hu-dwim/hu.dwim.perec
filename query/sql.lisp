@@ -303,7 +303,6 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defun sql-oid-column-references-for (qualifier)
   (sql-column-references-for +oid-column-names+ qualifier))
 
-
 ;;;----------------------------------------------------------------------------
 ;;; Subselects
 
@@ -607,21 +606,57 @@ value is equal, when they represent the NIL lisp value)."
 (defvar *aggregate-functions* (make-hash-table)
   "Map from lisp function symbol to the corresponing SQL aggregate function.")
 
-(defun sql-aggregate-function-name-p (function-name)
+(defstruct aggregate-function
+  (sql)
+  (initial-state nil :type function)
+  (accumulate nil :type function)
+  (extract nil :type function))
+
+(defun aggregate-function-name-p (function-name)
   (gethash function-name *aggregate-functions*))
 
-(defun sql-aggregate-function-for (function-name)
+(defun aggregate-function-for (function-name)
   (gethash function-name *aggregate-functions*))
 
-(defun define-aggregate-function (lisp-function-name sql-function-name)
-  (setf (gethash lisp-function-name *aggregate-functions*) sql-function-name))
+(defmacro define-aggregate-function (function-name &rest args)
+  `(setf (gethash ',function-name *aggregate-functions*)
+         (make-aggregate-function ,@args)))
 
-(define-aggregate-function 'length 'sql-count)
-;;; TODO
-;;;(define-aggregate-function 'min 'sql-min)
-;;;(define-aggregate-function 'max 'sql-max)
-;;;(define-aggregate-function 'sum 'sql-sum)
-;;;(define-aggregate-function 'avg 'sql-avg)
+(define-aggregate-function count
+    :sql 'sql-count
+    :initial-state (constantly 0)
+    :accumulate (lambda (val state) (if val (1+ state) state))
+    :extract #'identity)
+
+(define-aggregate-function min
+    :sql 'sql-min
+    :initial-state (constantly nil)
+    :accumulate (lambda (val state) (if (or (null state) (and val (lessp val state))) val state))
+    :extract #'identity)
+
+(define-aggregate-function max
+    :sql 'sql-max
+    :initial-state (constantly nil)
+    :accumulate (lambda (val state) (if (or (null state) (and val (greaterp val state))) val state))
+    :extract #'identity)
+
+(define-aggregate-function sum
+    :sql 'sql-sum
+    :initial-state (constantly nil)
+    :accumulate (lambda (val state) (if val (if state (+ state val) val) state))
+    :extract #'identity)
+
+(define-aggregate-function avg
+    :sql 'sql-avg
+    :initial-state (constantly (cons 0 0))
+    :accumulate (lambda (val state) (if val
+                                        (cons (1+ (car state))
+                                              (+ (cdr state) val))
+                                        state))
+    :extract (lambda (state) (if (> (car state) 0)
+                                 (/ (cdr state) (car state))
+                                 nil)))
+
 
 ;;;----------------------------------------------------------------------------
 ;;; Literals

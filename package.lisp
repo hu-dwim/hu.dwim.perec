@@ -232,7 +232,10 @@
 
            ;; database and cache access
            #:with-bypassing-database-access
-           #:without-bypassing-database-access))
+           #:without-bypassing-database-access
+
+           ;; utils
+           #:parse-date))
 
 (in-package :cl-perec)
 

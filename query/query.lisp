@@ -47,12 +47,12 @@
     nil
     :type list
     :documentation "Format: (:asc <expr1> :desc <expr2> ...)")
+   (sql-where
+    nil)
    (sql-order-by
     nil
     :type list
-    :documentation "Format: (:asc <sql-expr-1> :desc <sql-expr-2> ...)")
-   (sql-where
-    nil)))
+    :documentation "Format: (:asc <sql-expr-1> :desc <sql-expr-2> ...)")))
 
 (define-copy-method copy-inner-class progn ((self query) copy copy-htable)
   (with-slot-copying (copy copy-htable self)

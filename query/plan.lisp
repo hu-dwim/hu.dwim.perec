@@ -280,9 +280,6 @@
 If true then all query variables must be under some aggregate call."
   (some 'aggregate-expression-p exprs))
 
-(defun aggregate-function-name-p (name)
-  (member name '(count sum avg min max)))
-
 (defun collect-aggregate-calls (expr)
   "Returns the list of aggregate function calls in EXPR.
 If the result is not NIL, then each query variable must be aggregated,
@@ -316,59 +313,26 @@ If the result is not NIL, then each query variable must be aggregated,
          (reduce #'union children :initial-value nil)))))
 
 (defun aggregate-init-fn-body-for (exprs)
-  `(list
-    ,@(mapcan
-       (lambda (expr)
-         (ecase (fn-of expr)
-           (count (list 0))
-           ((sum min max) (list nil))
-           (avg (list 0 nil))))
-       exprs)))
+  `'(,@(mapcar
+        (lambda (expr)
+          (funcall (aggregate-function-initial-state (aggregate-function-for (fn-of expr)))))
+        exprs)))
 
 (defun aggregate-collect-fn-body-for (acc-var exprs)
-  (with-unique-names (count sum min max val)
-    `(nconc
-      ,@(mapcar
-         (lambda (expr)
-           (ecase (fn-of expr)
-             (count
-              `(let ((,count (pop ,acc-var))
-                     (,val ,(first (args-of expr))))
-                (list (if ,val (1+ ,count) ,count))))
-             (sum
-              `(let ((,sum (pop ,acc-var))
-                     (,val ,(first (args-of expr))))
-                (list (if ,val (if ,sum (+ ,sum ,val) ,val) ,sum))))
-             (avg
-              `(let ((,count (pop ,acc-var))
-                     (,sum (pop ,acc-var))
-                     (,val ,(first (args-of expr))))
-                (list
-                 (if ,val (1+ ,count) ,count)
-                 (if ,val (if ,sum (+ ,sum ,val) ,val) ,sum))))
-             (min
-              `(let ((,min (pop ,acc-var))
-                     (,val ,(first (args-of expr))))
-                (list (if ,val (if ,min (min ,min ,val) ,val) ,min))))
-             (max
-              `(let ((,max (pop ,acc-var))
-                     (,val ,(first (args-of expr))))
-                (list (if ,val (if ,max (max ,max ,val) ,val) ,max))))))
-         exprs))))
+  `(list
+    ,@(mapcar
+       (lambda (expr)
+         `(funcall
+           ,(aggregate-function-accumulate (aggregate-function-for (fn-of expr)))
+           ,(first (args-of expr)) (pop ,acc-var)))
+       exprs)))
 
 (defun aggregate-map-fn-body-for (acc-var exprs)
-  (with-unique-names (count sum)
-    `(list
-     ,@(mapcar
-        (lambda (expr)
-          (ecase (fn-of expr)
-            (avg
-             `(let ((,count (pop ,acc-var))
-                    (,sum (pop ,acc-var)))
-               (if (> ,count 0)
-                   (/ ,sum ,count)
-                   nil)))
-            ((count sum min max)
-             `(pop ,acc-var))))
-        exprs))))
+  `(list
+    ,@(mapcar
+       (lambda (expr)
+         `(funcall
+           ,(aggregate-function-extract (aggregate-function-for (fn-of expr)))
+           (pop ,acc-var)))
+       exprs)))
 

@@ -15,27 +15,52 @@
     (make-instance 'aggregate-test
                    :int-attr 1
                    :str-attr "1"
-                   :date-attr (encode-local-time 0 0 0 0 1 1 2001 :timezone +utc-zone+))
+                   :date-attr (parse-date "2001-01-01"))
     (make-instance 'aggregate-test
                    :int-attr 2
                    :str-attr "2"
-                   :date-attr (encode-local-time 0 0 0 0 2 1 2001 :timezone +utc-zone+))
+                   :date-attr (parse-date "2001-01-02"))
     (make-instance 'aggregate-test
                    :int-attr 3
                    :str-attr "3"
-                   :date-attr (encode-local-time 0 0 0 0 3 1 2001 :timezone +utc-zone+))
+                   :date-attr (parse-date "2001-01-03"))
     (make-instance 'aggregate-test
                    :int-attr nil
                    :str-attr nil
                    :date-attr nil)))
 
-(deftest test/query/aggregate/int ()
-  (with-setup aggregate-data
-    (with-transaction
-      (is
-       (equal
-        (select ((count (int-attr-of o)) (sum (int-attr-of o))
-                 (min (int-attr-of o)) (max (int-attr-of o)) (avg (int-attr-of o)))
-          (from (o aggregate-test)))
-        '((3 6 1 3 2)))))))
+(defmacro def-aggregate-test (name (&rest args) &body body)
+  `(deftest ,name ,args
+    (with-setup aggregate-data
+      (with-transaction
+        ,@body))))
 
+(def-aggregate-test test/query/aggregate/int ()
+  (is
+   (equal
+    (select ((count (int-attr-of o))
+             (sum (int-attr-of o))
+             (min (int-attr-of o))
+             (max (int-attr-of o))
+             (avg (int-attr-of o)))
+      (from (o aggregate-test)))
+    '((3 6 1 3 2)))))
+
+(def-aggregate-test test/query/aggregate/string ()
+  (is
+   (equal
+    (select ((count (str-attr-of o))
+             (min (str-attr-of o))
+             (max (str-attr-of o)) )
+      (from (o aggregate-test)))
+    '((3 "1" "3")))))
+
+(def-aggregate-test test/query/aggregate/date ()
+  (bind ((result (first (select ((count (date-attr-of o))
+                                 (min (date-attr-of o))
+                                 (max (date-attr-of o)))
+                          (from (o aggregate-test))))))
+    (is
+     (and (= (first result) 3)
+          (local-time= (second result) (parse-date "2001-01-01"))
+          (local-time= (third result) (parse-date "2001-01-03"))))))

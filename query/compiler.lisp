@@ -465,7 +465,7 @@ with the result of the naively compiled query.")
              ;; (<aggregate-fn> (<n-ary-association-end-accessor> <query-var>))
              ;; e.g. (length (messages-of topic)) -->
              ;;         (select count(_m.id) from _message _m where _m.topic_id = _topic.id)
-             ((and (sql-aggregate-function-name-p fn) (= n-args 1)
+             ((and (eq fn 'length) (= n-args 1)
                    (association-end-access-p arg1) (association-end-of arg1)
                    (query-variable-p (arg-of arg1)))
               (ecase (association-kind-of (association-of (association-end-of arg1)))
@@ -473,12 +473,12 @@ with the result of the naively compiled query.")
                  (sql-map-failed))
                 (:1-n
                  (sql-aggregate-subselect-for-variable
-                  (sql-aggregate-function-for fn)
+                  'sql-count
                   (association-end-of arg1)
                   (arg-of arg1)))
                 (:m-n
                  (sql-aggregate-subselect-for-m-n-association-end
-                  (sql-aggregate-function-for fn)
+                  'sql-count
                   (association-end-of arg1)
                   (arg-of arg1)))))
              ;; eq,eql and friends

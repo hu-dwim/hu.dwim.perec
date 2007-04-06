@@ -143,25 +143,29 @@
   (typecase obj1
     (real (< obj1 obj2))
     (string (string< obj1 obj2))
-    (character (char< obj1 obj2))))
+    (character (char< obj1 obj2))
+    (local-time (local-time< obj1 obj2))))
 
 (defun less-or-equal-p (obj1 obj2)
   (typecase obj1
     (real (<= obj1 obj2))
     (string (string<= obj1 obj2))
-    (character (char<= obj1 obj2))))
+    (character (char<= obj1 obj2))
+    (local-time (local-time<= obj1 obj2))))
 
 (defun greaterp (obj1 obj2)
   (typecase obj1
     (real (> obj1 obj2))
     (string (string> obj1 obj2))
-    (character (char> obj1 obj2))))
+    (character (char> obj1 obj2))
+    (local-time (local-time> obj1 obj2))))
 
 (defun greater-or-equal-p (obj1 obj2)
   (typecase obj1
     (real (>= obj1 obj2))
     (string (string>= obj1 obj2))
-    (character (char>= obj1 obj2))))
+    (character (char>= obj1 obj2))
+    (local-time (local-time>= obj1 obj2))))
 
 (defun combine-with (op list-or-item item)
   (cond
@@ -169,3 +173,7 @@
     ((and (listp list-or-item) (eq (car list-or-item) op))
      (append list-or-item (list item)))
     (t (list op list-or-item item))))
+
+(defun parse-date (str)
+  (let ((*default-timezone* +utc-zone+)) (parse-timestring str)))
+

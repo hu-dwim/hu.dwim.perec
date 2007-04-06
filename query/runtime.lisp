@@ -19,19 +19,6 @@
            (setf pattern (regex-replace-all "(?<!\\\\)%" pattern ".*"))))
     (if (scan (like-pattern->regex pattern) str) #t #f)))
 
-
-(defun sum (seq)
-  "Returns the sum of non NIL elements of SEQ."
-  (iter (for val in-sequence seq)
-        (sum (or val 0))))
-
-(defun avg (seq)
-  "Returns the average of non NIL elements of SEQ."
-  (iter (for val in-sequence seq)
-        (sum (or val 0) into sum)
-        (counting val into count)
-        (finally (return (if (> count 0) (/ sum count) 0)))))
-
 ;;;
 ;;; Caching
 ;;;
