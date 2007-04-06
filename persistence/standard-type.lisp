@@ -148,7 +148,7 @@
         (satisfies maximum-serialized-size-p)))
 
 (defmapping serialized (if (consp type-specification)
-                           (sql-character-varying-type :size (second type-specification))
+                           (sql-character-varying-type :size (byte-size-of (parse-type type-specification)))
                            (sql-character-large-object-type))
   'base64->object-reader
   'object->base64-writer)
@@ -286,7 +286,7 @@
   `(string ,length))
 
 (defmapping string (if (consp type-specification)
-                       (sql-character-type :size (second type-specification))
+                       (sql-character-type :size (length-of (parse-type type-specification)))
                        (sql-character-large-object-type))
   'identity-reader
   'identity-writer)
@@ -307,7 +307,7 @@
         (satisfies maximum-length-p)))
 
 (defmapping text (if (consp type-specification)
-                     (sql-character-varying-type :size (second type-specification))
+                     (sql-character-varying-type :size (maximum-length-of (parse-type type-specification)))
                      (sql-character-large-object-type))
   'identity-reader
   'identity-writer)
