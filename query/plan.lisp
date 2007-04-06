@@ -59,7 +59,7 @@
 (defgeneric generate-plan (query)
   (:documentation "Generates a PLAN for the QUERY.")
 
-  (:method ((query simple-query))
+  (:method ((query query))
 
            (if (contradictory-p query)
                (add-conversion

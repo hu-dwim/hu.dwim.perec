@@ -162,3 +162,10 @@
     (real (>= obj1 obj2))
     (string (string>= obj1 obj2))
     (character (char>= obj1 obj2))))
+
+(defun combine-with (op list-or-item item)
+  (cond
+    ((null list-or-item) item)
+    ((and (listp list-or-item) (eq (car list-or-item) op))
+     (append list-or-item (list item)))
+    (t (list op list-or-item item))))

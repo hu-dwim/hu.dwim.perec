@@ -94,8 +94,7 @@
 
 (defun simple-purge-p (query)
   "The purge is simple if it deletes records from one table only and no need to join other tables for the condition."
-  (and (typep query 'simple-query)
-       (eq (action-of query) :purge)
+  (and (eq (action-of query) :purge)
        (length=1 (query-variables-of query))
        (persistent-class-p (xtype-of (first (query-variables-of query))))
        (length=1 (tables-for-delete (xtype-of (first (query-variables-of query)))))))

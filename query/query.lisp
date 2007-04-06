@@ -31,11 +31,33 @@
     :type boolean)
    (result-type
     'list
-    :type (member 'list 'scroll))))
+    :type (member 'list 'scroll))
+   (asserts
+    nil
+    :type list
+    :documentation "List of conditions of assert forms.")
+   (action
+    :collect
+    :type (member :collect :purge))
+   (action-args
+    nil
+    :type list
+    :documentation "List of expressions of the action form.")
+   (order-by
+    nil
+    :type list
+    :documentation "Format: (:asc <expr1> :desc <expr2> ...)")
+   (sql-order-by
+    nil
+    :type list
+    :documentation "Format: (:asc <sql-expr-1> :desc <sql-expr-2> ...)")
+   (sql-where
+    nil)))
 
 (define-copy-method copy-inner-class progn ((self query) copy copy-htable)
   (with-slot-copying (copy copy-htable self)
-    (copy-slots lexical-variables query-variables body flatp uniquep prefetchp result-type)))
+    (copy-slots lexical-variables query-variables body flatp uniquep prefetchp result-type
+                asserts action action-args order-by sql-order-by sql-where)))
 
 (defmethod print-object ((query query) stream)
   (print-unreadable-object (query stream :type t)
@@ -58,8 +80,9 @@
 
 (defgeneric flatp (query)
   (:method ((query query))
-    (and (slot-boundp query 'flatp)
-         (slot-value query 'flatp))))
+           (if (slot-boundp query 'flatp)
+               (slot-value query 'flatp)
+               (<= (length (collects-of query)) 1))))
 
 (defmethod add-lexical-variable ((query query) variable-name)
   (aprog1 (make-lexical-variable :name variable-name)
@@ -68,16 +91,6 @@
 (defmethod add-query-variable ((query query) variable-name)
   (aprog1 (make-query-variable :name variable-name)
     (push it (query-variables-of query))))
-
-(defun find-query-variable (query variable-name)
-  (find variable-name (query-variables-of query) :key 'name-of))
-
-(defun find-lexical-variable (query variable-name)
-  (find variable-name (lexical-variables-of query) :key 'name-of))
-
-(defun find-variable (query variable-name)
-  (or (find-query-variable query variable-name)
-      (find-lexical-variable query variable-name)))
 
 (defun get-query-variable-names (query)
   (mapcar 'name-of (query-variables-of query)))
@@ -91,40 +104,8 @@
 (defun get-variables (query)
   (append (lexical-variables-of query) (query-variables-of query)))
 
-;;;
-;;; Simple query
-;;;
-(defclass* simple-query (query)
-  ((asserts
-    nil
-    :type list
-    :documentation "List of conditions of assert forms.")
-   (action
-    :collect
-    :type (member :collect :purge))
-   (action-args
-    nil
-    :type list
-    :documentation "List of expressions of the action form.")
-   (order-by
-    nil
-    :type list
-    :documentation "Format: (:asc <expr1> :desc <expr2> ...)")
-   (sql-order-by
-    nil
-    :type list
-    :documentation "Format: (:asc <sql-expr-1> :desc <sql-expr-2> ...)")
-   (sql-where
-    nil))
-  (:documentation "SIMPLE-QUERY only contains (assert ...) forms and one (collect ...) and
- optionally an ORDER-BY clause form at top-level."))
-
-(define-copy-method copy-inner-class progn ((self simple-query) copy copy-htable)
-  (with-slot-copying (copy copy-htable self)
-    (copy-slots asserts action action-args order-by sql-order-by sql-where)))
-
 (defgeneric select-form-of (query)
-  (:method ((query simple-query))
+  (:method ((query query))
            (flet ((optional (clause)
                     (when clause (list clause))))
              (bind ((action (ecase (action-of query) (:collect 'select) (:purge 'purge)))
@@ -144,44 +125,33 @@
 
 
 (defgeneric collects-of (query)
-  (:method ((query simple-query))
-           (debug-only (assert (eq (action-of query) :collect)))
+  (:method ((query query))
+           (assert (eq (action-of query) :collect))
            (action-args-of query)))
 
 (defgeneric (setf collects-of) (value query)
-  (:method (value (query simple-query))
-           (debug-only (assert (eq (action-of query) :collect)))
+  (:method (value (query query))
+           (assert (eq (action-of query) :collect))
            (setf (action-args-of query) value)))
 
-(defmethod add-assert ((query simple-query) condition)
+(defmethod add-assert ((query query) condition)
   (appendf (asserts-of query) (list condition)))
 
-(defmethod add-collect ((query simple-query) expression)
+(defmethod add-collect ((query query) expression)
   (appendf (collects-of query) (list expression)))
 
-(defmethod add-order-by ((query simple-query) expression &optional (direction :asc))
+(defmethod add-order-by ((query query) expression &optional (direction :asc))
   (assert (member direction '(:asc :desc)))
   (nconcf (order-by-of query) (list direction expression)))
 
-(defmethod set-order-by ((query simple-query) expression &optional (direction :asc))
+(defmethod set-order-by ((query query) expression &optional (direction :asc))
   (assert (member direction '(:asc :desc)))
   (setf (order-by-of query) (list direction expression)))
 
 (defgeneric add-where-clause (query where-clause)
-  (:method ((query simple-query) where-clause)
-           (cond
-             ((not (sql-where-of query))
-              (setf (sql-where-of query) where-clause))
-             ((and (listp (sql-where-of query)) (eq (car (sql-where-of query)) 'sql-and))
-              (appendf (sql-where-of query) (list where-clause)))
-             (t
-              (setf (sql-where-of query)
-                    `(sql-and ,(sql-where-of query) ,where-clause))))))
-
-(defmethod flatp ((query simple-query))
-  (if (slot-boundp query 'flatp)
-      (call-next-method)
-      (<= (length (collects-of query)) 1)))
+  (:method ((query query) where-clause)
+           (setf (sql-where-of query)
+                 (combine-with 'sql-and (sql-where-of query) where-clause))))
 
 ;;;
 ;;; Query builder
@@ -193,7 +163,7 @@
   (with-slot-copying (copy copy-htable self)
     (copy-slots current-query-variable)))
 
-(defclass* simple-query-builder (query-builder simple-query)
+(defclass* simple-query-builder (query-builder query)
   ())
 
 (defun preprocess-query-expression (query expression)
@@ -265,7 +235,7 @@
                  (error "Unrecognized or duplicated clauses ~:W in query ~:W"
                         other-clauses form))
 
-               (apply 'make-instance 'simple-query
+               (apply 'make-instance 'query
                       :lexical-variables lexical-variables
                       :query-variables query-variables
                       :asserts asserts
@@ -286,7 +256,7 @@
                  (error "Unrecognized or duplicated clauses ~:W in query ~:W"
                         other-clauses form))
 
-               (apply 'make-instance 'simple-query
+               (apply 'make-instance 'query
                       :lexical-variables lexical-variables
                       :query-variables query-variables
                       :asserts asserts

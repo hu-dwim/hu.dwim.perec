@@ -35,9 +35,6 @@ with the result of the naively compiled query.")
   (incf *compile-query-counter*))
 
 (defmethod compile-query ((query query))
-  (%compile-query (make-instance 'trivial-query-compiler) query))
-
-(defmethod compile-query ((query simple-query))
   (if *test-query-compiler*
       (%compile-query (make-instance 'debug-query-compiler) query)
       (%compile-query (make-instance 'simple-query-compiler) query)))
@@ -64,7 +61,7 @@ with the result of the naively compiled query.")
 (defgeneric macroexpand-query (compiler query)
   (:documentation "Expands macros in the body of the query.")
 
-  (:method (compiler (query simple-query))
+  (:method (compiler (query query))
            (setf (asserts-of query) (mapcar 'query-macroexpand (asserts-of query)))
            query))
 
@@ -88,7 +85,7 @@ with the result of the naively compiled query.")
 ;;;;
 (defclass* trivial-query-compiler (query-compiler)
   ()
-  (:documentation "Query compiler that can compile any select form, but does not optimize sql queries."))
+  (:documentation "Query compiler that does not optimize sql queries."))
 
 (defmethod emit-query ((compiler trivial-query-compiler) query)
   (bind ((lexical-variables (lexical-variables-of query))
@@ -96,7 +93,7 @@ with the result of the naively compiled query.")
          (asserts (asserts-of query))
          (action (case (action-of query)
                    (:collect `(collect ,@(action-args-of query)))
-                   (:purge `(collect ,@(action-args-of query)))))
+                   (:purge `(purge ,@(action-args-of query)))))
          (body (if asserts
                    `(if (and ,@asserts) ,action)
                    action)))
@@ -132,8 +129,7 @@ with the result of the naively compiled query.")
 ;;;;
 (defclass* debug-query-compiler (query-compiler)
   ()
-  (:documentation "Generic query compiler, which can transform to sql any select form and
-wraps the compiled code with a runtime check of the result."))
+  (:documentation "Query compiler which wraps the compiled code with a runtime check of the result."))
 
 (defmethod %compile-query ((compiler debug-query-compiler) (query query))
   "Emits code that checks that the result of COMPILED-FORM equals
@@ -175,9 +171,9 @@ wraps the compiled code with a runtime check of the result."))
 ;;;;
 (defclass* simple-query-compiler (query-compiler)
   ()
-  (:documentation "Query compiler that can transform to sql to simple select forms."))
+  (:documentation "Query compiler that can transform queries to SQL."))
 
-(defmethod emit-query ((compiler simple-query-compiler) (query simple-query))
+(defmethod emit-query ((compiler simple-query-compiler) (query query))
   (ecase (action-of query)
     (:collect (emit-select query))
     (:purge (emit-purge query))))
@@ -230,7 +226,7 @@ wraps the compiled code with a runtime check of the result."))
 ;;;;---------------------------------------------------------------------------
 ;;;; Transformations
 ;;;;
-(defmethod transform-query ((compiler simple-query-compiler) (query simple-query))
+(defmethod transform-query ((compiler simple-query-compiler) (query query))
   "Transforms the QUERY by pushing down the asserts to the SQL query."
   (parse-query query)
   (normalize-query query)
@@ -715,7 +711,7 @@ wraps the compiled code with a runtime check of the result."))
 
 (defgeneric collect-persistent-object-literals (element &optional result)
 
-  (:method ((query simple-query) &optional result)
+  (:method ((query query) &optional result)
            (collect-persistent-object-literals
             (order-by-of query)
             (collect-persistent-object-literals
