@@ -357,7 +357,7 @@
 
 (defmapping date (sql-date-type)
   'integer->local-time-reader
-  'local-time->string-writer)
+  'date->string-writer)
 
 ;;;;;;;;
 ;;; Time
@@ -375,7 +375,7 @@
 
 (defmapping time (sql-time-type)
   'string->local-time-reader
-  'local-time->string-writer)
+  'time->string-writer)
 
 ;;;;;;;;;;;;;
 ;;; Timestamp
@@ -389,7 +389,7 @@
 
 (defmapping timestamp (sql-timestamp-type :with-timezone #t)
   'integer->local-time-reader
-  'local-time->string-writer)
+  'timestamp->string-writer)
 
 ;;;;;;;;;;;;
 ;;; Duration

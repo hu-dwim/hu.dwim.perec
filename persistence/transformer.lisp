@@ -280,13 +280,22 @@
   (bind ((*default-timezone* +utc-zone+))
     (parse-timestring (first rdbms-values) :date-time-separator #\Space)))
 
-(defun local-time->string-writer (slot-value)
-  (list
-   (format-timestring slot-value :date-time-separator #\Space :use-zulu-p #f)))
-
 (defun integer->local-time-reader (rdbms-values)
   ;; NOTE: assuming that the database server is configured to UTC time zone
   (local-time :universal (first rdbms-values) :timezone +utc-zone+))
+
+(defun date->string-writer (slot-value)
+  (assert (eq (timezone-of slot-value) +utc-zone+))
+  (list
+   (format-timestring slot-value :omit-time-part-p #t)))
+
+(defun time->string-writer (slot-value)
+  (list
+   (format-timestring slot-value :omit-date-part-p #t :omit-timezone-part-p #t)))
+
+(defun timestamp->string-writer (slot-value)
+  (list
+   (format-timestring slot-value :date-time-separator #\Space :use-zulu-p #f)))
 
 (defun local-time->integer-writer (slot-value)
   (list
