@@ -30,6 +30,8 @@
 
 (in-package :cl-perec-system)
 
+(find-system :cl-rdbms) ; make sure all the cl-rdbms systems get defined
+
 (defvar *load-with-debug-p* nil)
 
 (defclass local-cl-source-file (cl-source-file)
@@ -68,7 +70,7 @@
                :cl-ppcre
                :cl-store
                :cl-containers
-               :cl-rdbms)
+               :cl-rdbms.pg)
   :serial t
   :components
   ((:file "package")
