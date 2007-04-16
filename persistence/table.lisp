@@ -65,6 +65,9 @@
       (setf name-as-string
             (strcat (subseq name-as-string 0 60)
                     (write-to-string (mod (sxhash name-as-string) 1000)))))
-    (if (symbol-package name)
-        (intern name-as-string (symbol-package name))
-        (make-symbol name-as-string))))
+    (aif (symbol-package name)
+         ;; TODO: find a better place for cl symbols?
+         (intern name-as-string (if (eq it #.(find-package :common-lisp))
+                                    (find-package :cl-rdbms)
+                                    it))
+         (make-symbol name-as-string))))
