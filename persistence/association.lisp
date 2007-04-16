@@ -92,7 +92,9 @@
 (defcclass* persistent-association-end-effective-slot-definition
     (persistent-association-end-slot-definition persistent-effective-slot-definition)
   ((other-association-end
-    (compute-as (other-effective-association-end-for (associated-class-of (first (direct-slots-of -self-))) -self-))
+    (compute-as (bind ((class (associated-class-of (first (direct-slots-of -self-)))))
+                  (ensure-finalized class)
+                  (other-effective-association-end-for class -self-)))
     :type persistent-association-end-direct-slot-definition)))
 
 ;;;;;;;;;;
