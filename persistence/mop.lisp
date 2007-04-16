@@ -84,7 +84,9 @@
              (initargs (append slot-initargs standard-initargs))
              (effective-slot-class (apply #'effective-slot-definition-class class :persistent #t initargs)))
         (prog1-bind effective-slot-definition
-            (apply #'make-instance effective-slot-class :direct-slots direct-slot-definitions initargs)
+            (if (subtypep effective-slot-class 'persistent-effective-slot-definition)
+                (apply #'make-instance effective-slot-class :direct-slots direct-slot-definitions initargs)
+                (apply #'make-instance effective-slot-class initargs))
           (bind ((type (slot-definition-type effective-slot-definition))
                  (normalized-type (normalized-type-for type))
                  (mapped-type (mapped-type-for normalized-type))
@@ -121,6 +123,12 @@
                                                                 specific-direct-slot-definitions)))))
 
 (defgeneric compute-persistent-effective-slot-definition-option (class direct-slot slot-option-name direct-slot-definitions)
+  (:method ((class persistent-class)
+            direct-slot-definition
+            slot-option-name
+            direct-slot-definitions)
+           nil)
+
   (:method ((class persistent-class)
             (direct-slot persistent-direct-slot-definition)
             slot-option-name
