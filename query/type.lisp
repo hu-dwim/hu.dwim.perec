@@ -74,7 +74,9 @@
   (:method ((call function-call) query &optional toplevel)
            (call-next-method)
            (when (and toplevel
-                      (member (fn-of call) '(eq eql equal =))
+                      (member (fn-of call) '(eq eql equal =
+                                             local-time= local-time/= ; TODO these are n-ary
+                                             local-time< local-time> local-time<= local-time>=))
                       (= (length (args-of call)) 2))
              (bind ((obj1 (first (args-of call)))
                     (obj2 (second (args-of call))))

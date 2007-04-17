@@ -447,6 +447,13 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (define-sql-operator '<= (chained-operator 'sql-<= #t))
 (define-sql-operator '/= (pairwise-operator 'sql-<> #t))
 
+(define-sql-operator 'local-time= (chained-operator 'sql-= #t))
+(define-sql-operator 'local-time/= (chained-operator 'sql-/= #t))
+(define-sql-operator 'local-time> (chained-operator 'sql-> #t))
+(define-sql-operator 'local-time< (chained-operator 'sql-< #t))
+(define-sql-operator 'local-time>= (chained-operator 'sql->= #t))
+(define-sql-operator 'local-time<= (chained-operator 'sql-<= #t))
+
 (define-sql-operator '+ 'sql-+)
 (define-sql-operator '- 'sql--)
 (define-sql-operator '* 'sql-*)
