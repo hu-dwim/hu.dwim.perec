@@ -19,7 +19,8 @@
         :stefil
         :cl-rdbms
         :cl-perec
-        :cl-ppcre)
+        :cl-ppcre
+        :metacopy-with-contextl)
 
   (:shadow #:name
            #:parent)

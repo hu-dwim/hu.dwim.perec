@@ -41,7 +41,9 @@
                :local-time
                :stefil
                :cl-rdbms
-               :cl-perec)
+               :cl-perec
+               :contextl
+               :metacopy)
   :components
   ((:module :test
             :serial t

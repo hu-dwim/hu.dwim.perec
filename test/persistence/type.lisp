@@ -91,6 +91,9 @@
 (defclass* standard-class-type-test ()
   ((slot 0)))
 
+(define-copy-method (copy-one copy-query) ((thing standard-class-type-test) htable)
+  thing)
+
 (defpclass* persistent-class-type-test ()
   ((slot 0 :type integer)))
 

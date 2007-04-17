@@ -58,8 +58,8 @@
 
 (define-copy-method copy-inner-class progn ((self query) copy copy-htable)
   (with-slot-copying (copy copy-htable self)
-    (copy-slots lexical-variables query-variables body flatp uniquep prefetchp result-type
-                asserts action action-args order-by sql-order-by sql-where)))
+    (copy-slots lexical-variables query-variables flatp uniquep prefetchp result-type
+                asserts action action-args order-by sql-select-list sql-where sql-order-by)))
 
 (defmethod print-object ((query query) stream)
   (print-unreadable-object (query stream :type t)

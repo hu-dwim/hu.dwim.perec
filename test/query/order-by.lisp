@@ -32,7 +32,8 @@
 
 (defpclass* order-by-test ()
   ((int-attr :type integer-32)
-   (str-attr :type (text 10))))
+   (str-attr :type (text 10))
+   (date-attr :type date)))
 
 (defixture fill-data-6
   (with-transaction
@@ -40,7 +41,10 @@
     (purge-instances 'order-by-test)
     (bind ((count 10)
            (int-values (iter (for i from 0 below count) (collect i)))
-           (str-values (iter (for i from 0 below count) (collect (string (digit-char i))))))
+           (str-values (iter (for i from 0 below count) (collect (string (digit-char i)))))
+           (date-values (iter (for i from 0 below count) (collect (make-local-time
+                                                                   :day i
+                                                                   :timezone +utc-zone+)))))
       (macrolet ((random-element (list)
                    (with-unique-names (element)
                      `(let ((,element (nth (random (length ,list)) ,list)))
@@ -49,7 +53,8 @@
         (iter (for i from 0 below count)
               (make-instance 'order-by-test
                              :int-attr (random-element int-values)
-                             :str-attr (random-element str-values)))))))
+                             :str-attr (random-element str-values)
+                             :date-attr (random-element date-values)))))))
 
 (deftest test/query/select/order-by/integer/asc ()
   (run-order-by-test
@@ -82,6 +87,22 @@
        (from (o order-by-test))
        (order-by :desc (str-attr-of o)))
      (list :desc 'str-attr))))
+
+(deftest test/query/select/order-by/date/asc ()
+  (run-order-by-test
+    (check-ordered
+     (select (o)
+       (from (o order-by-test))
+       (order-by :asc (date-attr-of o)))
+     (list :asc 'date-attr))))
+
+(deftest test/query/select/order-by/date/desc ()
+  (run-order-by-test
+    (check-ordered
+     (select (o)
+       (from (o order-by-test))
+       (order-by :desc (date-attr-of o)))
+     (list :desc 'date-attr))))
 
 (deftest test/query/select/order-by/all ()
   (run-order-by-test

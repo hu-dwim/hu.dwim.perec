@@ -307,12 +307,20 @@
   (:method ((sort sort-operation))
            (with-slots (input bindings sort-spec) sort
              (with-unique-names (row1 row2)
-               `(make-ordered-result-set
-                 ,(compile-plan input)
-                 (lambda (,row1 ,row2)
-                   (let (,@(funcall bindings row1 :suffix "1" :referenced-by sort-spec)
-                           ,@(funcall bindings row2 :suffix "2" :referenced-by sort-spec))
-                     ,(generate-comparator sort-spec)))))))
+               (flet ((rename-variables (expr suffix)
+                        (bind ((variables (collect-query-variables expr))
+                               (subs (mapcar #L(cons !1 (concatenate-symbol (name-of !1) suffix))
+                                             variables)))
+                          (substitute-syntax expr subs))))
+                 (bind ((bindings1 (funcall bindings row1 :suffix "1" :referenced-by sort-spec))
+                       (bindings2 (funcall bindings row2 :suffix "2" :referenced-by sort-spec))
+                       (sort-spec1 (rename-variables (copy-query sort-spec) "1"))
+                       (sort-spec2 (rename-variables (copy-query sort-spec) "2")))
+                  `(make-ordered-result-set
+                    ,(compile-plan input)
+                    (lambda (,row1 ,row2)
+                      (let (,@bindings1 ,@bindings2)
+                        ,(generate-comparator sort-spec1 sort-spec2)))))))))
 
   (:method ((delta unique-operation))
            (with-slots (input) delta
@@ -440,25 +448,20 @@
 (defun ignorable-variables-declaration (variables)
   `(declare (ignorable ,@(mapcar 'name-of variables))))
 
-(defun generate-comparator (variables sort-spec)
-  (labels ((rename-variables (expr suffix)
-             "Adds the SUFFIX to each query variable symbol in EXPR."
-             (sublis (mapcar #L(cons (name-of !1) (concatenate-symbol (name-of !1) suffix))
-                             variables)
-                     expr)))
-    (bind ((lessp (ecase (first sort-spec) (:asc 'lessp) (:desc 'greaterp)))
-           (expr1 (rename-variables (second sort-spec) "1"))
-           (expr2 (rename-variables (second sort-spec) "2")))
-      (if (null (cddr sort-spec)) ; last
-          `(,lessp ,expr1 ,expr2)
-          (with-unique-names (obj1 obj2)
-            `(let ((,obj1 ,expr1)
-                   (,obj2 ,expr2))
-              (or
-               (,lessp ,obj1 ,obj2)
-               (and
-                (equal ,obj1 ,obj2)
-                ,(generate-comparator variables (cddr sort-spec))))))))))
+(defun generate-comparator (sort-spec-1 sort-spec-2)
+  (bind ((lessp (ecase (first sort-spec-1) (:asc 'lessp) (:desc 'greaterp)))
+         (expr1 (second sort-spec-1))
+         (expr2 (second sort-spec-2)))
+    (if (null (cddr sort-spec-1))       ; last
+        `(,lessp ,expr1 ,expr2)
+        (with-unique-names (obj1 obj2)
+          `(let ((,obj1 ,expr1)
+                 (,obj2 ,expr2))
+            (or
+             (,lessp ,obj1 ,obj2)
+             (and
+              (equal ,obj1 ,obj2)
+              ,(generate-comparator (cddr sort-spec-1) (cddr sort-spec-2)))))))))
 
 (defun check-aggregate-calls (exprs)
   "Returns true if some expression contains a call to an aggregate function.
