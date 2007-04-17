@@ -13,38 +13,6 @@
 ;;;----------------------------------------------------------------------------
 ;;; Selects
 
-(defun sql-select-for-query (query)
-  "Emits code for the QUERY."
-  (ecase (action-of query)
-    (:collect
-        `(sql-select
-          :distinct ,(uniquep query)
-          :columns (list ,@(sql-select-list-for query))
-          :tables  (list ,@(sql-table-references-for query))
-          :where ,(sql-where-of query)
-          :order-by (list ,@(sql-order-by-of query))))
-    (:purge
-     (bind ((variable (first (action-args-of query))))
-       (assert variable)
-       `(sql-select
-         :columns (list ,(sql-id-column-reference-for variable))
-         :tables (list ,@(sql-table-references-for query))
-         :where ,(sql-where-of query))))))
-
-(defun sql-select-count*-for-query (query)
-  (assert (eq (action-of query) :collect))
-  `(sql-select
-    :columns (list (cl-rdbms::sql-count-*))
-    :tables (list (sql-table-reference-for
-                   (sql-subquery
-                    :query
-                    (sql-select
-                     :distinct ,(uniquep query)
-                     :columns (list ,@(sql-select-list-for query))
-                     :tables (list ,@(sql-table-references-for query))
-                     :where ,(sql-where-of query)))
-                   'records)))) ; Postgres needs an alias
-
 (defun sql-select-oids-for-class (class-name)
   "Generates a select for the oids of instances of the class named CLASS-NAME."
   (bind ((tables (rest (primary-tables-of (find-class class-name))))) ; TODO: APPEND/UNION
@@ -67,37 +35,6 @@
 
 ;;;----------------------------------------------------------------------------
 ;;; Deletes
-(defun sql-deletes-for-query (query)
-  "Returns two values, the first is a list of SQL statements that deletes the records, the second is a cleanup form."
-  (bind ((variable (first (action-args-of query)))
-         (type (xtype-of variable))
-         (tables (when (persistent-class-p type) (tables-for-delete type))))
-    (if (simple-purge-p query)
-      (bind ((table (first tables)))
-        `(list ,(sql-delete-from-table table :where (sql-where-of query))))
-      (bind ((temp-table (rdbms-name-for 'deleted-ids))
-             (create-table `(sql-create-table
-                             :name ',temp-table
-                             :temporary #t
-                             :columns (list (sql-identifier :name ',+id-column-name+))
-                             :as (sql-subquery :query ,(sql-select-for-query query))))
-             (delete-where `(sql-subquery
-                             :query
-                             (sql-select
-                              :columns (list ',+id-column-name+)
-                              :tables (list ',temp-table))))
-             (deletes (mapcar #L(sql-delete-for-subselect !1 delete-where) tables))
-             (drop-table `(sql-drop-table
-                           :name ',temp-table)))
-        (values `(list ,create-table ,@deletes)
-                drop-table)))))
-
-(defun simple-purge-p (query)
-  "The purge is simple if it deletes records from one table only and no need to join other tables for the condition."
-  (and (eq (action-of query) :purge)
-       (length=1 (query-variables-of query))
-       (persistent-class-p (xtype-of (first (query-variables-of query))))
-       (length=1 (tables-for-delete (xtype-of (first (query-variables-of query)))))))
 
 (defun sql-delete-for-subselect (table subselect)
   "Generate a delete command for records in TABLE whose oid is in the set returned by SUBSELECT."

@@ -47,6 +47,8 @@
     nil
     :type list
     :documentation "Format: (:asc <expr1> :desc <expr2> ...)")
+   (sql-select-list
+    nil)
    (sql-where
     nil)
    (sql-order-by

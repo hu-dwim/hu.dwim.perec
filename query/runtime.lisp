@@ -56,6 +56,16 @@
    (objects-of (current-object-cache))))
 
 ;;;
+;;;
+;;;
+(defun execute-protected (init body cleanup)
+  (unwind-protect
+       (progn
+         (when init (execute init))
+         (mapc 'execute body))
+       (when cleanup (execute cleanup))))
+
+;;;
 ;;; Conversion between lisp and sql values
 ;;;
 (defgeneric value->sql-literal (value type &optional args)

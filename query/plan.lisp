@@ -7,7 +7,7 @@
 
 
 (defclass* plan-node ()
-  ())
+  ((query)))
 
 (defclass* list-result-node (plan-node)
   ((list :type list))
@@ -15,8 +15,11 @@
 
 (defclass* sql-query-node (plan-node)
   ((result-type)
-   (sql-query)
-   (sql-count-query))
+   (distinct nil)
+   (columns)
+   (tables)
+   (where nil)
+   (order-by nil))
   (:documentation "Creates a result-set from the records returned by an SQL query."))
 
 (defclass* unary-operation-node (plan-node)
@@ -50,10 +53,14 @@
    (flatp))
   (:documentation "Converts the result-set to the expected result type."))
 
+(defclass* delete-operation (unary-operation-node)
+  ((variables)))
+
+
 ;;; TODO: union,intersection,difference,product,join
 
 ;;;
-;;;
+;;; Generate initial plan for the query.
 ;;;
 
 (defgeneric generate-plan (query)
@@ -61,41 +68,61 @@
 
   (:method ((query query))
 
-           (if (contradictory-p query)
-               (add-conversion
-                (generate-list-result-set nil)
-                query)
-               (add-conversion
-                (add-unique
-                 (add-projection
-                  (add-sorter
-                   (add-filter
-                    (generate-sql-query query)
-                    query)
-                   query)
-                  query)
-                 query)
-                query))))
+           (case (action-of query)
+             (:collect
+                 (if (contradictory-p query)
+                     (add-conversion
+                      (generate-list-result-set nil query)
+                      query)
+                     (add-conversion
+                      (add-unique
+                       (add-projection
+                        (add-sorter
+                         (add-filter
+                          (generate-sql-query query)
+                          query)
+                         query)
+                        query)
+                       query)
+                      query)))
+             (:purge
+                 (if (contradictory-p query)
+                     nil
+                     (add-lisp-delete
+                      (add-filter
+                       (generate-sql-query query)
+                       query)
+                      query))))))
 
 (defun contradictory-p (query)
   (is-false-literal
    (simplify-boolean-syntax
     (make-macro-call :macro 'and :args (asserts-of query)))))
 
-(defun generate-list-result-set (list)
+(defun generate-list-result-set (list query)
   (make-instance 'list-result-node
+                 :query query
                  :list list))
 
 (defun generate-sql-query (query)
-  (make-instance 'sql-query-node
-                 :result-type (result-type-of query)
-                 :sql-query (partial-eval (sql-select-for-query query) query)
-                 :sql-count-query (partial-eval (sql-select-count*-for-query query) query)))
+  (bind ((instance (make-instance 'sql-query-node
+                                  :query query
+                                  :result-type (result-type-of query)
+                                  :distinct (uniquep query)
+                                  :columns (sql-select-list-for query)
+                                  :tables  (sql-table-references-for query))))
+    (dolist (variable (query-variables-of query))
+      (when (joined-variable-p variable)
+        (add-sql-where-conditions
+         instance
+         (list (sql-join-condition-for-joined-variable variable)))))
+    instance))
 
 (defun add-filter (input query)
   (bind ((asserts (asserts-of query)))
     (if asserts
        (make-instance 'filter-operation
+                      :query query
                       :input input
                       :bindings (query-variable-bindings query)
                       :condition `(and ,@asserts))
@@ -105,6 +132,7 @@
   (bind ((order-by (order-by-of query)))
     (if (and order-by (or (member :asc order-by) (member :desc order-by)))
         (make-instance 'sort-operation
+                       :query query
                        :input input
                        :bindings (query-variable-bindings query)
                        :sort-spec order-by)
@@ -118,14 +146,17 @@
                (substitution (mapcar #'cons aggregates field-names))
                (new-collects (substitute-syntax collects substitution)))
           (make-instance 'projection-operation
-                        :bindings (field-bindings field-names)
-                        :input (make-instance 'group-operation
-                                              :input input
-                                              :bindings (query-variable-bindings query)
-                                              :group-by nil
-                                              :exprs aggregates)
-                        :values new-collects))
+                         :query query
+                         :bindings (field-bindings field-names)
+                         :input (make-instance 'group-operation
+                                               :query query
+                                               :input input
+                                               :bindings (query-variable-bindings query)
+                                               :group-by nil
+                                               :exprs aggregates)
+                         :values new-collects))
         (make-instance 'projection-operation
+                       :query query
                        :bindings (query-variable-bindings query)
                        :input input
                        :values (collects-of query)))))
@@ -133,15 +164,89 @@
 (defun add-unique (input query)
   (if (uniquep query)
       (make-instance 'unique-operation
+                     :query query
                      :input input)
       input))
 
 (defun add-conversion (input query)
   (make-instance 'conversion-operation
+                 :query query
                  :input input
                  :result-type (result-type-of query)
                  :flatp (flatp query)))
 
+(defun add-lisp-delete (input query)
+  (bind ((bindings (query-variable-bindings query))
+         (variables (action-args-of query)))
+    (make-instance 'delete-operation
+                   :query query
+                   :bindings bindings
+                   :variables variables
+                   :input input)))
+
+;;;
+;;; Optimize the plan
+;;;
+
+(defgeneric optimize-plan (plan)
+
+  (:method (plan-node)
+           plan-node)
+  
+  (:method ((op unary-operation-node))
+           (setf (input-of op) (optimize-plan (input-of op)))
+           op)
+
+  (:method ((delete delete-operation))
+           (let ((*suppress-alias-names* #t)) ;FIXME
+             (call-next-method)))
+
+  (:method ((filter filter-operation))
+           (call-next-method)
+           (if (typep (input-of filter) 'sql-query-node)
+               (bind ((sql-query (input-of filter))
+                      ((values sql-conditions lisp-conditions) (to-sql (rest (condition-of filter)))))
+                 (add-sql-where-conditions sql-query sql-conditions)
+                 (if lisp-conditions
+                     (progn
+                       (setf (condition-of filter) `(and ,@lisp-conditions))
+                       filter)
+                     sql-query))
+               filter))
+
+  (:method ((sort sort-operation))
+           (call-next-method)
+           (if (typep (input-of sort) 'sql-query-node)
+               (bind ((sql-query (input-of sort))
+                      (sql-order-by (order-by-to-sql (sort-spec-of sort))))
+                 (if sql-order-by
+                     (progn
+                       (setf (order-by-of sql-query) sql-order-by)
+                       sql-query)
+                     sort))
+               sort))
+
+  (:method ((grouping group-operation))
+           (call-next-method))
+
+  (:method ((projection projection-operation))
+           (call-next-method)))
+
+(defun order-by-to-sql (order-by)
+  (iter (for (dir expr) on order-by by 'cddr)
+        (bind (((values sort-key success) (transform-to-sql expr))
+               (ordering (ecase dir (:asc :ascending) (:desc :descending))))
+          (if success
+              (collect `(sql-sort-spec :sort-key ,sort-key :ordering ,ordering))
+              (leave)))))
+
+(defun to-sql (list)
+  (iter (for form in list)
+        (bind (((values sql success) (transform-to-sql form)))
+          (if success
+              (collect sql into sql-forms)
+              (collect form into lisp-forms)))
+        (finally (return-from to-sql (values sql-forms lisp-forms)))))
 
 ;;;
 ;;; Compile plan to lisp code.
@@ -155,8 +260,30 @@
              `(make-list-result-set ',list)))
 
   (:method ((sql-query sql-query-node))
-           (with-slots (result-type sql-query sql-count-query) sql-query
-             `(open-result-set ',result-type ,sql-query ,sql-count-query)))
+           (with-slots (query result-type distinct columns tables where order-by) sql-query
+             `(open-result-set
+               ',result-type
+               ,(partial-eval
+                 `(sql-select
+                   :distinct ,distinct
+                   :columns (list ,@columns)
+                   :tables  (list ,@tables)
+                   :where ,where
+                   :order-by (list ,@order-by))
+                 query)
+               ,(partial-eval
+                 `(sql-select
+                   :columns (list (cl-rdbms::sql-count-*))
+                   :tables (list (sql-table-reference-for
+                                  (sql-subquery
+                                   :query
+                                   (sql-select
+                                    :distinct ,distinct
+                                    :columns (list ,@columns)
+                                    :tables (list ,@tables)
+                                    :where ,where))
+                                  'records)))
+                 query))))
 
   (:method ((filter filter-operation))
            (with-slots (input bindings condition) filter
@@ -213,7 +340,65 @@
            (with-slots (input result-type flatp) conversion
              (ecase result-type
                (list `(to-list ,(compile-plan input) ,flatp))
-               (scroll `(to-scroll ,(compile-plan input)))))))
+               (scroll `(to-scroll ,(compile-plan input))))))
+
+  (:method ((delete delete-operation))
+           (with-slots (input bindings variables) delete
+             (etypecase input
+               ;;
+               ;; There are list filter conditions:
+               ;;   execute the filter+delete by iterating on the objects to be deleted
+               ;;   use execute :visitor because it's implemented with cursors
+               (filter-operation
+                (bind ((input2 (input-of input))
+                       (condition (condition-of input2)))
+                  (assert (typep input2 'sql-query-node))
+                  (with-unique-names (row)
+                    `(execute ,(compile-plan input2)
+                      :visitor
+                      (lambda (,row)
+                        (let ,(funcall bindings row :referenced-by (append variables condition))
+                          (when ,condition
+                            ,@(mapcar
+                               (lambda (variable) `(make-transient ,variable))
+                               variables))))))))
+               ;; sql deletes
+               (sql-query-node
+                (assert (length=1 variables)) ; FIXME
+                (bind ((variable (first (variables-of delete)))
+                       (type (xtype-of variable))
+                       (tables (when (persistent-class-p type) (tables-for-delete type))))
+                  (if (length=1 tables) ; simple delete
+                      `(execute ,(sql-delete-from-table (first tables) :where (where-of input)))
+                      (bind ((temp-table (rdbms-name-for 'deleted-ids))
+                             (select-deleted-ids `(sql-select
+                                                   :columns (list
+                                                             ,(sql-id-column-reference-for
+                                                                variable))
+                                                   :tables  (list
+                                                             ,@(tables-of input))
+                                                   :where ,(where-of input)))
+                             (create-table `(sql-create-table
+                                             :name ',temp-table
+                                             :temporary #t
+                                             :columns (list
+                                                       (sql-identifier :name ',+id-column-name+))
+                                             :as (sql-subquery :query ,select-deleted-ids)))
+                             (delete-where `(sql-subquery
+                                             :query
+                                             (sql-select
+                                              :columns (list ',+id-column-name+)
+                                              :tables (list ',temp-table))))
+                             (deletes (mapcar
+                                       (lambda (table)
+                                         (sql-delete-for-subselect table delete-where))
+                                       tables))
+                             (drop-table `(sql-drop-table
+                                           :name ',temp-table)))
+                        `(execute-protected
+                          ,create-table
+                          (list ,@deletes)
+                          ,drop-table)))))))))
 
 ;;;
 ;;; Helpers
@@ -335,4 +520,14 @@ If the result is not NIL, then each query variable must be aggregated,
            ,(aggregate-function-extract (aggregate-function-for (fn-of expr)))
            (pop ,acc-var)))
        exprs)))
+
+(defun add-sql-where-conditions (sql-query conditions)
+  (when conditions
+    (bind ((where (where-of sql-query)))
+      (if (null where)
+          (progn
+            (setf (where-of sql-query) `(sql-and ,@conditions)))
+          (progn
+            (assert (and (consp where) (eq (first where) 'sql-and)))
+            (setf (where-of sql-query) (nconc where conditions)))))))
 
