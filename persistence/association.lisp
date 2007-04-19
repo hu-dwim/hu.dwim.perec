@@ -143,7 +143,20 @@
                 (call-next-method)
                 (columns-of (other-association-end-of slot))))
       (:m-n (make-columns-for-reference-slot (class-name (slot-definition-class slot))
-                                             (set-type-class-for (normalized-type-for (slot-definition-type slot))))))))
+                                             (strcat (slot-definition-name slot)
+                                                     "-for-"
+                                                     (set-type-class-for (normalized-type-for (slot-definition-type slot)))))))))
+
+(defmethod compute-data-table-slot-p ((slot persistent-association-end-effective-slot-definition))
+  (bind ((association (association-of slot)))
+    (ecase (association-kind-of association)
+      (:1-1 (if (primary-association-end-p slot)
+                (call-next-method)
+                #f))
+      (:1-n (if (eq :1 (cardinality-kind-of slot))
+                (call-next-method)
+                #f))
+      (:m-n #f))))
 
 (defgeneric compute-association-end-query (association-end))
 

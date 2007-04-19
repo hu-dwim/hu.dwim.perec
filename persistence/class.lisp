@@ -147,11 +147,11 @@
    (primary-table-slot
     (compute-as (compute-primary-table-slot-p -self-))
     :type boolean
-    :documentation "True means the slot can be loaded from the primary table of its class.")
+    :documentation "True means the slot can be loaded from the primary table of its class with a where clause matching to the object's oid.")
    (data-table-slot
     (compute-as (compute-data-table-slot-p -self-))
     :type boolean
-    :documentation "True means the slot can be loaded from one of the data tables of its class.")
+    :documentation "True means the slot can be loaded from one of the data tables of its class with a where clause matching to the object's oid.")
    (prefetch
     (compute-as (data-table-slot-p -self-))
     :documentation "The prefetched option is inherited among direct slots according to the class precedence list. If no direct slot has prefetched specification then the default behaviour is to prefetch data tabe slot.")

@@ -2,9 +2,18 @@
 
 (defsuite* (test/persistence/association :in test/persistence))
 
+(defvar *association-1-1-brother-class-name* 'brother-test)
+
+(defvar *association-1-1-sister-class-name* 'sister-test)
+
 (defsuite* test/persistence/association/1-1
-  (with-and-without-caching-slot-values
-    (run-child-tests)))
+  (flet ((body ()
+           (with-and-without-caching-slot-values
+             (run-child-tests))))
+    (body)
+    (bind ((*association-1-1-brother-class-name* '1-1-self-association-test)
+           (*association-1-1-sister-class-name* '1-1-self-association-test))
+      (body))))
 
 (defpclass* brother-test ()
   ())
@@ -16,15 +25,24 @@
   ((:class brother-test :slot sister :type (or null sister-test))
    (:class sister-test :slot brother :type (or null brother-test))))
 
+(defpclass 1-1-self-association-test ()
+  ())
+
+(defassociation*
+  ((:class 1-1-self-association-test :slot sister :type (or null 1-1-self-association-test))
+   (:class 1-1-self-association-test :slot brother :type (or null 1-1-self-association-test))))
+
 (defmacro with-sister-and-brother-transaction (&body body)
   `(with-transaction
-    (bind ((sister (make-instance 'sister-test))
-           (brother (make-instance 'brother-test)))
+    (bind ((sister (make-instance *association-1-1-sister-class-name*))
+           (brother (make-instance *association-1-1-brother-class-name*)))
       ,@body)))
 
 (deftest test/persistence/association/1-1/class ()
-  (let ((sister-slot (prc::find-slot 'brother-test 'sister))
-        (brother-slot (prc::find-slot 'sister-test 'brother)))
+  (prc::ensure-exported (find-class *association-1-1-brother-class-name*))
+  (prc::ensure-exported (find-class *association-1-1-sister-class-name*))
+  (let ((sister-slot (prc::find-slot *association-1-1-brother-class-name* 'sister))
+        (brother-slot (prc::find-slot *association-1-1-sister-class-name* 'brother)))
     (is (prc::primary-table-slot-p sister-slot))
     (is (prc::data-table-slot-p sister-slot))
     (is (not (prc::primary-table-slot-p brother-slot)))
@@ -39,14 +57,14 @@
 
 (deftest test/persistence/association/1-1/initial-value/2 ()
   (with-transaction
-    (bind ((sister (make-instance 'sister-test))
-           (brother (make-instance 'brother-test :sister sister)))
+    (bind ((sister (make-instance *association-1-1-sister-class-name*))
+           (brother (make-instance *association-1-1-brother-class-name* :sister sister)))
       (is (eq (sister-of brother) sister)))))
 
 (deftest test/persistence/association/1-1/initial-value/3 ()
   (with-transaction
-    (bind ((brother (make-instance 'brother-test))
-           (sister (make-instance 'sister-test :brother brother)))
+    (bind ((brother (make-instance *association-1-1-brother-class-name*))
+           (sister (make-instance *association-1-1-sister-class-name* :brother brother)))
       (is (eq (brother-of sister) brother)))))
 
 (deftest test/persistence/association/1-1/store-value/1 ()
@@ -86,8 +104,10 @@
 (deftest test/persistence/association/1-1/referential-integrity/5 ()
   (with-sister-and-brother-transaction
     (setf (sister-of brother) sister)
-    (setf (sister-of brother) (make-instance 'sister-test))
+    (setf (sister-of brother) (make-instance *association-1-1-sister-class-name*))
     (is (eq nil (brother-of sister)))
     (setf (brother-of sister) brother)
-    (setf (brother-of sister) (make-instance 'brother-test))
+    (setf (brother-of sister) (make-instance *association-1-1-brother-class-name*))
     (is (eq nil (sister-of brother)))))
+
+

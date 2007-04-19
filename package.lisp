@@ -55,6 +55,7 @@
            #:defpclass
            #:defpclass*
            #:find-class
+           #:find-persistent-class
            #:abstract-p
            #:cache-p
            #:prefetch-p
