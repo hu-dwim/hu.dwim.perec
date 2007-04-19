@@ -136,10 +136,19 @@
       (parent-of child)
       (is (= (counter+ select-counter 1) (current-select-counter))))))
 
+
+(defpclass* brother1-test ()
+  ())
+   
+(defpclass* sister1-test ()
+  ())
+
+(defassociation*
+  ((:class brother1-test :slot sister :type sister1-test)
+   (:class sister1-test :slot brother :type brother1-test)))
+
 (deftest test/persistence/cache/association/1-1/write-unbound ()
   (with-transaction
-    (bind ((sister (make-instance 'sister-test)))
-      (cl-perec::cached-slot-makunbound-using-class
-       (find-class 'sister-test)
-       sister
-       (first (cl-perec::effective-slots-for-accessor 'brother-of))))))
+    (bind ((brother (make-instance 'brother1-test)))
+      (select (b)
+        (from (b brother1-test))))))
