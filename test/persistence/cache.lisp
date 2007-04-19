@@ -135,3 +135,11 @@
       (setf select-counter (current-select-counter))
       (parent-of child)
       (is (= (counter+ select-counter 1) (current-select-counter))))))
+
+(deftest test/persistence/cache/association/1-1/write-unbound ()
+  (with-transaction
+    (bind ((sister (make-instance 'sister-test)))
+      (cl-perec::cached-slot-makunbound-using-class
+       (find-class 'sister-test)
+       sister
+       (first (cl-perec::effective-slots-for-accessor 'brother-of))))))
