@@ -148,7 +148,7 @@
                                (cache-p restored-slot))
                       (setf (cached-slot-boundp-or-value-using-class class object restored-slot) restored-slot-value)))))
           ;; simple existence test
-          (setf (slot-value-using-class class object slot) (object-exists-in-database-p object)))
+          (setf (slot-value-using-class class object slot) (instance-exists-in-database-p object)))
       (call-next-method)))
 
 (defun slot-boundp-or-value-using-class (class object slot call-next-method return-with)
@@ -199,7 +199,7 @@
       (store-slot object slot new-value)
       (unless (modified-p object)
         (setf (modified-p object) #t)
-        (insert-item (current-modified-objects) object)))
+        (insert-item (current-modified-instances) object)))
     ;; update slot value cache if appropriate
     (when (and persistent
                *propagate-cache-changes*)

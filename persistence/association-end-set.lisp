@@ -34,11 +34,12 @@
            (if (eq (cardinality-kind-of slot) :n)
                (invalidate-cached-1-n-association-end-set-slot other-slot))))))
 
+;; TODO: this is hell slow for huge transactions, what if this kind of caching is turned off after some limit?
 (defun invalidate-cached-1-n-association-end-set-slot (slot)
   (bind ((class (slot-definition-class slot)))
-    (iter (for (id object) in-hashtable (current-objects))
-          (when (typep object class)
-            (invalidate-cached-slot object (find-slot (class-of object) (slot-definition-name slot)))))))
+    (map-cached-instances
+     #L(when (typep !1 class)
+         (invalidate-cached-slot !1 (find-slot (class-of !1) (slot-definition-name slot)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lazy association end set containers

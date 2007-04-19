@@ -93,7 +93,7 @@
              (:file "mop")
              (:file "object")
              (:file "transaction")
-             (:file "object-cache")
+             (:file "instance-cache")
              (:file "store")
              (:file "slot-value")
              (:file "persistent")

@@ -22,8 +22,8 @@
 ;;;
 ;;; Caching
 ;;;
-(defun cache-object-with-prefetched-slots (row start prefetched-slots)
-  "Caches the objects whose oid and slots are contained by ROW starting at START."
+(defun cache-instance-with-prefetched-slots (row start prefetched-slots)
+  "Caches the instances whose oid and slots are contained by ROW starting at START."
   (bind ((oid-width (length +oid-column-names+))
          (oid (subseq row start (+ start oid-width)))
          (rdbms-values
@@ -31,30 +31,28 @@
                 (for width = (column-count-of slot))
                 (for index initially (+ start oid-width) then (+ index width))
                 (collect (subseq row index (+ index width))))))
-    (cache-object* oid prefetched-slots rdbms-values)))
+    (cache-instance* oid prefetched-slots rdbms-values)))
 
-(defun cache-object* (oid slots rdbms-values)
-  "Caches the objects whose oid and slots are contained by ROW starting at START."
-  (bind ((object (cache-object oid)))
+(defun cache-instance* (oid slots rdbms-values)
+  "Caches the instances whose oid and slots are contained by ROW starting at START."
+  (bind ((instance (cache-instance oid)))
     (when *cache-slot-values*
       (mapc (lambda (slot rdbms-value)
-              ;; we use the slot-name here because we can't guarantee that the effective slot will match with the class of the object
-              (setf (cached-slot-boundp-or-value object (slot-definition-name slot))
+              ;; we use the slot-name here because we can't guarantee that the effective slot will match with the class of the instance
+              (setf (cached-slot-boundp-or-value instance (slot-definition-name slot))
                     (restore-slot-value slot rdbms-value)))
             slots rdbms-values))
-    object))
+    instance))
 
 (defun column-count-of (slot)
   (length (columns-of slot)))
 
-(defun invalidate-persistent-flag-of-cached-objects (class)
+(defun invalidate-persistent-flag-of-cached-instances (class)
   "Sets the persistent slot to unbound for instances of class in the transaction cache."
-  (maphash
-   (lambda (oid object)
-     (declare (ignore oid))
-     (when (typep object class)
-       (slot-makunbound object 'persistent)))
-   (objects-of (current-object-cache))))
+  (map-cached-instances
+   (lambda (instance)
+     (when (typep instance class)
+       (slot-makunbound instance 'persistent)))))
 
 ;;;
 ;;;

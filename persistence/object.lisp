@@ -28,6 +28,7 @@
     :type t
     :persistent #f
     :documentation "A weak reference to the transaction to this object is currently attached to.")
+   ;; TODO: revise created/modified/deleted, maybe one state variable would be enough, because they are disjunct?
    (created
     #f
     :type boolean

@@ -443,7 +443,7 @@
                (for i initially 0 then (+ i column-count))
                (if (member variable referenced-variables)
                    (collect `(,(name-for variable)
-                              (cache-object-with-prefetched-slots ,row ,i ',slots))))))))))
+                              (cache-instance-with-prefetched-slots ,row ,i ',slots))))))))))
 
 (defun ignorable-variables-declaration (variables)
   `(declare (ignorable ,@(mapcar 'name-of variables))))

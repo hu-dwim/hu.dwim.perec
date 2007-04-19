@@ -65,6 +65,7 @@
                        (:file "1-n-association")
                        (:file "m-n-association")
                        (:file "cache")
+                       (:file "instance")
                        (:file "purge")))
              (:module :query
                       :serial t
@@ -92,6 +93,7 @@
          "(progn
             (setf *database*
                   (make-instance 'postgresql-pg
-                                 :transaction-mixin 'cl-perec:transaction-mixin
+                                 :generated-transaction-class-name 'transaction
+                                 :transaction-mixin 'transaction-mixin
                                  :connection-specification cl-perec-system::*test-database-connection-specification*)))"))
   (warn "Pushed :debug in *features*, set (declaim (optimize (debug 3))) and set *database*."))
