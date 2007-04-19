@@ -26,35 +26,37 @@
 (defmacro defptype (name args &body body)
   (bind ((common-lisp-type-p (eq (symbol-package name) (find-package :common-lisp)))
          (allow-nil-args-p (or (null args)
-                               (eq '&optional (first args))
-                               (eq '&rest (first args))))
+                               (member (first args) '(&rest &optional))))
          (documentation (when (stringp (first body))
-                          (pop body))))
+                          (pop body)))
+         (type-class-name (type-class-name-for name)))
     `(progn
-      ,(when args
-             `(defclass* ,(type-class-name-for name) (persistent-type)
-               ,(append
-                 `((name ',name)
-                   (args ',args)
-                   (body ',body))
-                 (mapcar #L(list !1 nil) (argument-names-for args)))
-               (:export-class-name-p #t)
-               (:export-accessor-names-p #t)))
-      ,(when (or allow-nil-args-p
-                 (not common-lisp-type-p))
+      (defclass* ,type-class-name
+          (,(if allow-nil-args-p
+                (type-super-class-name-for name (apply (compile nil `(lambda ,args ,@body)) nil))
+                'persistent-type))
+        ,(append
+          `((name ',name)
+            (args ',args)
+            (body ',body))
+          (mapcar #L(list !1 nil) (argument-names-for args)))
+        (:export-class-name-p #t)
+        (:export-accessor-names-p #t))
+      ,(when allow-nil-args-p
              `(eval-when (:load-toplevel :execute)
                (bind ((substituter (lambda ,args ,@body))
                       (type ,(when allow-nil-args-p
                                    `(parse-type (apply substituter nil)))))
-                 (unless type
-                   (setf type (make-instance 'persistent-type)))
+                 (if type
+                     ,(when args
+                            `(change-class type ',type-class-name))
+                     (setf type (make-instance ',type-class-name)))
                  (setf (name-of type) ',name)
                  (setf (args-of type) ',args)
                  (setf (body-of type) ',body)
                  (setf (documentation-of type) ',documentation)
                  (setf (substituter-of type) substituter)
-                 (setf (find-type ',name) type)
-                 type)))
+                 (setf (find-type ',name) type))))
       ,(if common-lisp-type-p
            `',name
            `(deftype ,name ,args ,@body)))))
@@ -71,6 +73,18 @@
                           (find-package :cl-perec)
                           (symbol-package type))
                       type "-type"))
+
+(defun type-super-class-name-for (name type)
+  (if (and (consp type)
+           (not (eq name (first type))))
+      (let ((el (first type)))
+        (cond ((eq 'and el)
+               (type-class-name-for (find-if #'symbolp (cdr type))))
+              ((member el '(or not))
+               'persistent-type)
+              (t
+               (type-class-name-for el))))
+      'persistent-type))
 
 (defun argument-names-for (args)
   (remove-if #L(or (eq !1 '&optional)

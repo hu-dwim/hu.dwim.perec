@@ -233,6 +233,7 @@
 ;;;
 ;;; non float -> (type-error)
 
+;; TODO: minimum-value maximum-value
 (defptype float-32 ()
   'float)
 
@@ -245,6 +246,7 @@
 ;;;
 ;;; non float -> (type-error)
 
+;; TODO: minimum-value maximum-value
 (defptype float-64 ()
   'float)
 
@@ -408,6 +410,19 @@
 (defmapping duration (sql-character-varying-type :size 32)
   'identity-reader
   'identity-writer)
+
+;;;;;;;;
+;;; List
+;;;
+;;; non form -> (type-error)
+
+(defptype list (&optional byte-size)
+  (declare (ignore byte-size))
+  'list)
+
+(defmapping list (sql-character-varying-type)
+  'string->list-reader
+  'list->string-writer)
 
 ;;;;;;;;
 ;;; Form
