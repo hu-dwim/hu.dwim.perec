@@ -25,6 +25,16 @@
   ((:class brother-test :slot sister :type (or null sister-test))
    (:class sister-test :slot brother :type (or null brother-test))))
 
+(defpclass* strict-brother-test ()
+  ())
+   
+(defpclass* strict-sister-test ()
+  ())
+
+(defassociation*
+  ((:class strict-brother-test :slot sister :type strict-sister-test)
+   (:class strict-sister-test :slot brother :type strict-brother-test)))
+
 (defpclass 1-1-self-association-test ()
   ())
 

@@ -108,6 +108,17 @@
       (sister-of brother)
       (is (= (counter+ select-counter 1) (current-select-counter))))))
 
+(deftest test/persistence/cache/association/1-1/write-unbound ()
+  (with-transaction
+    (finishes
+      (bind ((brother (make-instance 'strict-brother-test)))
+        (select (b)
+          (from (b strict-brother-test)))))
+    (finishes
+      (bind ((sister (make-instance 'strict-sister-test)))
+        (select (b)
+          (from (b strict-sister-test)))))))
+
 (deftest test/persistence/cache/association/1-n/read-initial-value ()
   (with-transaction
     (bind ((parent (make-instance 'parent-test))
@@ -135,20 +146,3 @@
       (setf select-counter (current-select-counter))
       (parent-of child)
       (is (= (counter+ select-counter 1) (current-select-counter))))))
-
-
-(defpclass* brother1-test ()
-  ())
-   
-(defpclass* sister1-test ()
-  ())
-
-(defassociation*
-  ((:class brother1-test :slot sister :type sister1-test)
-   (:class sister1-test :slot brother :type brother1-test)))
-
-(deftest test/persistence/cache/association/1-1/write-unbound ()
-  (with-transaction
-    (bind ((brother (make-instance 'brother1-test)))
-      (select (b)
-        (from (b brother1-test))))))
