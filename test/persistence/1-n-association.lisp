@@ -19,7 +19,7 @@
 (defpclass* child-test ()
   ())
 
-(defpclass 1-n-self-association-test ()
+(defpclass* 1-n-self-association-test ()
   ())
 
 (defassociation*

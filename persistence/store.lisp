@@ -164,10 +164,12 @@
   (cond ((and (typep slot 'persistent-association-end-effective-slot-definition)
 	      (eq (association-kind-of (association-of slot)) :1-1)
               (secondary-association-end-p slot))
-         (when-bind other-object (slot-value-using-class (class-of object) object slot)
+         (when-bind other-object (and (slot-boundp-using-class (class-of object) object slot)
+                                      (slot-value-using-class (class-of object) object slot))
            (bind ((other-slot (other-effective-association-end-for (class-of other-object) slot)))
              (store-slot other-object other-slot nil)))
-         (when value
+         (when (and value
+                    (not (unbound-slot-value-p value)))
            (bind ((other-slot (other-effective-association-end-for (class-of value) slot)))
              (store-slot value other-slot object))))
         ((and (typep slot 'persistent-association-end-effective-slot-definition)

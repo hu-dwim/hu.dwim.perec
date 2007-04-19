@@ -23,7 +23,7 @@
   ((:class student-test :slot courses :type (set course-test))
    (:class course-test :slot students :type (set student-test))))
 
-(defpclass m-n-self-association-test ()
+(defpclass* m-n-self-association-test ()
   ())
 
 (defassociation*

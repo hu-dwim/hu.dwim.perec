@@ -35,7 +35,7 @@
   ((:class strict-brother-test :slot sister :type strict-sister-test)
    (:class strict-sister-test :slot brother :type strict-brother-test)))
 
-(defpclass 1-1-self-association-test ()
+(defpclass* 1-1-self-association-test ()
   ())
 
 (defassociation*

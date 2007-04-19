@@ -17,10 +17,12 @@
            ;; object <-> new-value
            ;; old-other-new-value -> nil
            (when (slot-value-cached-p object slot)
-             (when-bind old-other-object (cached-slot-value-using-class class object slot)
+             (when-bind old-other-object (and (cached-slot-boundp-using-class class object slot)
+                                              (cached-slot-value-using-class class object slot))
                (when (slot-value-cached-p old-other-object other-slot)
                  (setf (cached-slot-value-using-class (class-of old-other-object) old-other-object other-slot) nil))))
            (when (and new-value
+                      (not (unbound-slot-value-p new-value))
                       (slot-value-cached-p new-value other-slot))
              (when-bind old-other-new-value
                  (cached-slot-value-using-class (class-of new-value) new-value other-slot)

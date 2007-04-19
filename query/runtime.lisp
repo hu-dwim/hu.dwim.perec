@@ -36,11 +36,12 @@
 (defun cache-object* (oid slots rdbms-values)
   "Caches the objects whose oid and slots are contained by ROW starting at START."
   (bind ((object (cache-object oid)))
-    (mapc (lambda (slot rdbms-value)
-            ;; we use the slot-name here because we can't guarantee that the effective slot will match with the class of the object
-            (setf (cached-slot-boundp-or-value object (slot-definition-name slot))
-                  (restore-slot-value slot rdbms-value)))
-          slots rdbms-values)
+    (when *cache-slot-values*
+      (mapc (lambda (slot rdbms-value)
+              ;; we use the slot-name here because we can't guarantee that the effective slot will match with the class of the object
+              (setf (cached-slot-boundp-or-value object (slot-definition-name slot))
+                    (restore-slot-value slot rdbms-value)))
+            slots rdbms-values))
     object))
 
 (defun column-count-of (slot)
