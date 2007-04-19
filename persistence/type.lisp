@@ -31,10 +31,7 @@
                           (pop body)))
          (type-class-name (type-class-name-for name)))
     `(progn
-      (defclass* ,type-class-name
-          (,(if allow-nil-args-p
-                (type-super-class-name-for name (apply (compile nil `(lambda ,args ,@body)) nil))
-                'persistent-type))
+      (defclass* ,type-class-name (persistent-type)
         ,(append
           `((name ',name)
             (args ',args)
@@ -42,21 +39,25 @@
           (mapcar #L(list !1 nil) (argument-names-for args)))
         (:export-class-name-p #t)
         (:export-accessor-names-p #t))
-      ,(when allow-nil-args-p
-             `(eval-when (:load-toplevel :execute)
-               (bind ((substituter (lambda ,args ,@body))
-                      (type ,(when allow-nil-args-p
-                                   `(parse-type (apply substituter nil)))))
-                 (if type
-                     ,(when args
-                            `(change-class type ',type-class-name))
-                     (setf type (make-instance ',type-class-name)))
-                 (setf (name-of type) ',name)
-                 (setf (args-of type) ',args)
-                 (setf (body-of type) ',body)
-                 (setf (documentation-of type) ',documentation)
-                 (setf (substituter-of type) substituter)
-                 (setf (find-type ',name) type))))
+      (bind ((substituter (lambda ,args ,@body)))
+        (eval-when (:load-toplevel :execute)
+          ,(when allow-nil-args-p
+                 `(bind ((type ,(when allow-nil-args-p
+                                      `(parse-type (apply substituter nil)))))
+                   (if type
+                       ,(when args
+                              `(change-class type ',type-class-name))
+                       (setf type (make-instance ',type-class-name)))
+                   (setf (name-of type) ',name)
+                   (setf (args-of type) ',args)
+                   (setf (body-of type) ',body)
+                   (setf (documentation-of type) ',documentation)
+                   (setf (substituter-of type) substituter)
+                   (setf (find-type ',name) type)))
+          (ensure-class ',type-class-name :direct-superclasses
+                        ,(if allow-nil-args-p
+                             `(list (type-super-class-name-for ',name (apply substituter nil)))
+                             ''(persistent-type)))))
       ,(if common-lisp-type-p
            `',name
            `(deftype ,name ,args ,@body)))))
