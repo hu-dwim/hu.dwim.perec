@@ -247,7 +247,7 @@
     (otherwise #t)))
 
 (defun find-slot-definition (owner slot-name)
-  (find-slot-by-owner-type owner (effective-slots-for-slot-name slot-name) nil))
+  (find-slot-by-owner-type owner (effective-slots-for-slot-name slot-name)))
 
 (defgeneric unbound-check-for (syntax)
   (:method (syntax)
