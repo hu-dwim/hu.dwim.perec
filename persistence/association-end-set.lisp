@@ -25,7 +25,8 @@
                       (not (unbound-slot-value-p new-value))
                       (slot-value-cached-p new-value other-slot))
              (when-bind old-other-new-value
-                 (cached-slot-value-using-class (class-of new-value) new-value other-slot)
+                 (and (cached-slot-boundp-using-class (class-of new-value) new-value other-slot)
+                      (cached-slot-value-using-class (class-of new-value) new-value other-slot))
                (when old-other-new-value
                  (setf (cached-slot-value-using-class (class-of old-other-new-value) old-other-new-value slot) nil)))
              (setf (cached-slot-value-using-class (class-of new-value) new-value other-slot) object)))

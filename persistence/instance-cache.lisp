@@ -57,18 +57,32 @@
 (defun map-deleted-instances (function &optional (instance-cache (current-instance-cache)))
   (iterate-nodes (deleted-instances-of instance-cache) function))
 
-(defun current-instances ()
-  "Returns the set of instances in the current transaction."
-  (instances-of (current-instance-cache)))
+(defun update-cache-for-created-instance (instance &optional (instance-cache (current-instance-cache)))
+  (cond ((created-p instance))
+        ((or (modified-p instance)
+             (deleted-p instance))
+         (error "Inconsistent cache"))
+        (t
+         (setf (created-p instance) #t)
+         (insert-item (created-instances-of instance-cache) instance))))
 
-(defun current-created-instances ()
-  "Returns the set of created instances in the current transaction."
-  (created-instances-of (current-instance-cache)))
+(defun update-cache-for-modified-instance (instance &optional (instance-cache (current-instance-cache)))
+  (when (and (not (created-p instance))
+             (not (modified-p instance))
+             (not (deleted-p instance)))
+    (setf (modified-p instance) #t)
+    (insert-item (modified-instances-of instance-cache) instance)))
 
-(defun current-modified-instances ()
-  "Returns the set of modified instances in the current transaction."
-  (modified-instances-of (current-instance-cache)))
-
-(defun current-deleted-instances ()
-  "Returns the set of deleted instances in the current transaction."
-  (deleted-instances-of (current-instance-cache)))
+(defun update-cache-for-deleted-instance (instance &optional (instance-cache (current-instance-cache)))
+  (cond ((created-p instance)
+         (setf (created-p instance) #f)
+         (delete-item (created-instances-of instance-cache) instance))
+        ((modified-p instance)
+         (setf (modified-p instance) #f)
+         (delete-item (modified-instances-of instance-cache) instance)
+         (setf (deleted-p instance) #t)
+         (insert-item (deleted-instances-of instance-cache) instance))
+        ((deleted-p instance))
+        (t
+         (setf (deleted-p instance) #t)
+         (insert-item (deleted-instances-of instance-cache) instance))))

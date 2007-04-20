@@ -28,22 +28,21 @@
     :type t
     :persistent #f
     :documentation "A weak reference to the transaction to this object is currently attached to.")
-   ;; TODO: revise created/modified/deleted, maybe one state variable would be enough, because they are disjunct?
    (created
     #f
     :type boolean
     :persistent #f
-    :documentation "True means the object was created in the current transaction.")
+    :documentation "True means the object was created in the current transaction. At most one of created, modified or deleted might be true.")
    (modified
     #f
     :type boolean
     :persistent #f
-    :documentation "True means the object was modified in the current transaction.")
+    :documentation "True means the object was not created but modified in the current transaction.")
    (deleted
     #f
     :type boolean
     :persistent #f
-    :documentation "True means the object was deleted in the current transaction.")
+    :documentation "True means the object was already present at the very beginning but got deleted in the current transaction.")
    (cached-slots
     nil
     :type (list persistent-effective-slot-definition)

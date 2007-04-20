@@ -145,8 +145,8 @@
            #:transaction-mixin
            #:transaction-with-commit-hooks-mixin
            #:register-commit-hook
-           #:before-committing
-           #:after-committed
+           #:before-committing-instance
+           #:after-instance-committed
 
            ;; managing persistent instances
            #:with-making-persistent-instances

@@ -1,47 +1,47 @@
 (in-package :cl-perec-test)
 
-(defsuite* (test/persistence/event :in test/persistence))
+(defsuite* (test/persistence/instance :in test/persistence))
 
-(defpclass* event-test ()
+(defpclass* instance-test ()
   ((code :type (or null integer-16))))
 
-(deftest test/persistence/event/created/1 ()
+(deftest test/persistence/instance/created/1 ()
   (with-transaction
-    (let ((instance (make-instance 'event-test)))
+    (let ((instance (make-instance 'instance-test)))
       (is (created-p instance))
       (is (not (modified-p instance)))
       (is (not (deleted-p instance))))))
 
-(deftest test/persistence/event/created/2 ()
+(deftest test/persistence/instance/created/2 ()
   (with-transaction
-    (let ((instance (make-instance 'event-test)))
+    (let ((instance (make-instance 'instance-test)))
       (purge-instance instance)
       (is (not (created-p instance)))
       (is (not (modified-p instance)))
       (is (not (deleted-p instance))))))
 
-(deftest test/persistence/event/created/3 ()
+(deftest test/persistence/instance/created/3 ()
   (with-transaction
-    (let ((instance (make-instance 'event-test)))
+    (let ((instance (make-instance 'instance-test)))
       (make-transient instance)
       (is (not (created-p instance)))
       (is (not (modified-p instance)))
       (is (not (deleted-p instance))))))
 
-(deftest test/persistence/event/not-modified/1 ()
+(deftest test/persistence/instance/not-modified/1 ()
   (let ((instance
          (with-transaction
-           (make-instance 'event-test))))
+           (make-instance 'instance-test))))
     (with-transaction
       (revive-instance instance)
       (is (not (created-p instance)))
       (is (not (modified-p instance)))
       (is (not (deleted-p instance))))))
 
-(deftest test/persistence/event/modified/1 ()
+(deftest test/persistence/instance/modified/1 ()
   (let ((instance
          (with-transaction
-           (make-instance 'event-test))))
+           (make-instance 'instance-test))))
     (with-transaction
       (revive-instance instance)
       (setf (code-of instance) 1)
@@ -49,10 +49,10 @@
       (is (modified-p instance))
       (is (not (deleted-p instance))))))
 
-(deftest test/persistence/event/modified/2 ()
+(deftest test/persistence/instance/modified/2 ()
   (let ((instance
          (with-transaction
-           (make-instance 'event-test))))
+           (make-instance 'instance-test))))
     (with-transaction
       (revive-instance instance)
       (setf (code-of instance) 1)
@@ -61,10 +61,10 @@
       (is (not (modified-p instance)))
       (is (deleted-p instance)))))
 
-(deftest test/persistence/event/deleted/1 ()
+(deftest test/persistence/instance/deleted/1 ()
   (let ((instance
          (with-transaction
-           (make-instance 'event-test))))
+           (make-instance 'instance-test))))
     (with-transaction
       (revive-instance instance)
       (purge-instance instance)

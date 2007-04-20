@@ -55,6 +55,13 @@ if it was fully evaluated.")
   (:method ((form special-form) query static-vars)
            (%partial-eval-special-form (operator-of form) (operands-of form) form query static-vars)))
 
+;; TODO: partial eval should not allow partial evaluation of functions by default
+;; TODO: there should be a positive list of partial evaluatable functions such as sql-* in the RDBMS package
+;; TODO: some CL symbols, such as list, append, etc.
+;; TODO: authorization will have to take care what could be partial evaluated and what not based on meta data on the
+;; TODO: subject and related entities
+;; TODO: query cache should be separated per session
+
 (defgeneric %partial-eval-function-call (fn n-args arg-1 arg-2 args call)
 
   (:method (fn n-args arg-1 arg-2 args call)

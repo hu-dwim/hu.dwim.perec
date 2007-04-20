@@ -41,14 +41,14 @@
                (eq (eq event :modified) (modified-p instance))
                (eq (eq event :deleted) (deleted-p instance)))))
 
-(defgeneric before-committing (instance event)
+(defgeneric before-committing-instance (instance event)
   (:method (instance event)
            (values))
   #+debug
   (:method :around (instance event)
            (assert-consistent-event instance event)))
 
-(defgeneric after-committed (instance event)
+(defgeneric after-instance-committed (instance event)
   (:method (instance event)
            (values))
 
@@ -57,10 +57,10 @@
            (assert-consistent-event instance event)))
 
 (defmethod cl-rdbms::commit-transaction :around (database (transaction transaction-mixin))
-  (map-created-instances (rcurry #'before-committing :created))
-  (map-modified-instances (rcurry #'before-committing :modified))
-  (map-deleted-instances (rcurry #'before-committing :deleted))
+  (map-created-instances (rcurry #'before-committing-instance :created))
+  (map-modified-instances (rcurry #'before-committing-instance :modified))
+  (map-deleted-instances (rcurry #'before-committing-instance :deleted))
   (call-next-method)
-  (map-created-instances (rcurry #'after-committed :created))
-  (map-modified-instances (rcurry #'after-committed :modified))
-  (map-deleted-instances (rcurry #'after-committed :deleted)))
+  (map-created-instances (rcurry #'after-instance-committed :created))
+  (map-modified-instances (rcurry #'after-instance-committed :modified))
+  (map-deleted-instances (rcurry #'after-instance-committed :deleted)))
