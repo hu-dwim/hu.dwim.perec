@@ -124,6 +124,7 @@
            #:timestamp
            #:duration
            #:form
+           #:unsigned-byte-vector
            #:member
            #:set
            #:disjunct-set

@@ -197,6 +197,8 @@
 (def-type-test form/1 form '(progn 1 (print "Hello") 2))
 (def-type-test form/2 (form 100) '(progn 1 (print "Hello") 2))
 
+(def-type-test unsigned-byte-vector/1 unsigned-byte-vector (make-array 8 :element-type '(unsigned-byte 8) :initial-element 42))
+
 (def-type-test or-null-string/1 (or null string) nil)
 (def-type-test or-null-string/2 (or null string) "something")
 

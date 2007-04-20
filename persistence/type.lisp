@@ -196,6 +196,7 @@
     date
     time
     form
+    unsigned-byte-vector
     member
     symbol*
     symbol

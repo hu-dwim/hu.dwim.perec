@@ -437,3 +437,26 @@
 (defmapping form (sql-character-varying-type)
   'string->list-reader
   'list->string-writer)
+
+;;;;;;;;;;;;;;;;;
+;;;
+;;; Unsigned byte
+
+(defptype unsigned-byte (&optional size)
+  `(unsigned-byte ,size))
+
+;;;;;;;;;;
+;;; Vector
+
+(defptype vector (&optional element-type size)
+  `(vector ,element-type ,size))
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Unsigned byte vector
+
+(defptype unsigned-byte-vector ()
+  '(vector (unsigned-byte 8)))
+
+(defmapping unsigned-byte-vector (sql-binary-large-object-type)
+  'identity-reader
+  'identity-writer)
