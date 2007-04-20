@@ -211,6 +211,8 @@
            #:like
            #:avg
            #:sum
+           #:volatile
+           #:static
 
            ;; scroll
            #:scroll

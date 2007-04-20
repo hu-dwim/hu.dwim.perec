@@ -8,52 +8,62 @@
 
 (enable-pattern-reader #\M)
 
+(defvar *enable-partial-eval* #t)
+
 ;;;
 ;;; Partial eval
 ;;;
-(defun partial-eval (syntax query &optional static-vars)
+(defun partial-eval (syntax query)
   "Returns the partially evaluated SYNTAX. The SYNTAX can be a SYNTAX-OBJECT or a lisp form
  containing syntax objects. The result is always a SYNTAX-OBJECT."
-  (syntax-from-value (%partial-eval-syntax syntax query static-vars) syntax))
+  (syntax-from-value (%partial-eval-syntax syntax query) syntax))
 
-(defgeneric %partial-eval-syntax (syntax query static-vars)
+(defgeneric %partial-eval-syntax (syntax query)
   (:documentation
    "Partially evaluates SYNTAX and returns a partially evaluated SYNTAX-OBJECT or the value
 if it was fully evaluated.")
 
-  (:method (syntax query static-vars)
-           (%partial-eval-syntax (parse-query-form syntax (get-variables query)) query static-vars))
+  (:method :around ((syntax syntax-object) query)
+           (if (slot-boundp syntax 'volatilep)
+               (bind ((*enable-partial-eval* (not (volatilep syntax))))
+                 (call-next-method))
+               (call-next-method)))
 
-  (:method ((syntax syntax-object) query static-vars)
+  (:method (syntax query)
+           (%partial-eval-syntax (parse-query-form syntax (get-variables query)) query))
+
+  (:method ((syntax syntax-object) query)
            (error "Unknown syntax: ~S~%" syntax))
 
-  (:method ((unparsed unparsed-form) query static-vars)
+  (:method ((unparsed unparsed-form) query)
            unparsed)
 
-  (:method ((literal literal-value) query static-vars)
-           (value-of literal))
+  (:method ((literal literal-value) query)
+           (if *enable-partial-eval*
+               (value-of literal)
+               literal))
 
-  (:method ((variable variable) query static-vars)
+  (:method ((variable variable) query)
            variable)
 
-  (:method ((variable dynamic-variable) query static-vars)
+  (:method ((variable dynamic-variable) query)
            (bind ((variable-name (name-of variable)))
-             (if (and (boundp variable-name) (member variable-name static-vars))
+             (if (and *enable-partial-eval* (boundp variable-name))
                  (symbol-value variable-name)
                  variable)))
 
-  (:method ((call macro-call) query static-vars)
+  (:method ((call macro-call) query)
            (bind ((args (args-of call)))
              (%partial-eval-macro-call
-              (macro-of call) (length args) (first args) (second args) args call query static-vars)))
+              (macro-of call) (length args) (first args) (second args) args call query)))
 
-  (:method ((call function-call) query static-vars)
-           (bind ((args (mapcar #L(%partial-eval-syntax !1 query static-vars) (args-of call))))
+  (:method ((call function-call) query)
+           (bind ((args (mapcar #L(%partial-eval-syntax !1 query) (args-of call))))
              (%partial-eval-function-call
               (fn-of call) (length args) (first args) (second args) args call)))
 
-  (:method ((form special-form) query static-vars)
-           (%partial-eval-special-form (operator-of form) (operands-of form) form query static-vars)))
+  (:method ((form special-form) query)
+           (%partial-eval-special-form (operator-of form) (operands-of form) form query)))
 
 ;; TODO: partial eval should not allow partial evaluation of functions by default
 ;; TODO: there should be a positive list of partial evaluatable functions such as sql-* in the RDBMS package
@@ -65,9 +75,10 @@ if it was fully evaluated.")
 (defgeneric %partial-eval-function-call (fn n-args arg-1 arg-2 args call)
 
   (:method (fn n-args arg-1 arg-2 args call)
-           (if (some 'syntax-object-p args)
-               (progn (setf (args-of call) (mapcar 'syntax-from-value args (args-of call))) call)
-               (apply fn args)))
+           (if (and *enable-partial-eval* (notany 'syntax-object-p args))
+               (apply fn args)
+               (progn (setf (args-of call) (mapcar 'syntax-from-value args (args-of call)))
+                      call)))
 
   ;; (typep query-variable t1) -> nil
   ;;    when the types t1 and (xtype-of query-variable) does not have common subtypes
@@ -90,27 +101,27 @@ if it was fully evaluated.")
                (t (setf args (list object list))
                   (call-next-method 'member 2 object list args call))))))
 
-(defgeneric %partial-eval-macro-call (macro n-args arg-1 arg-2 args call query static-vars)
+(defgeneric %partial-eval-macro-call (macro n-args arg-1 arg-2 args call query)
 
-  (:method (macro n-args arg-1 arg-2 args call query static-vars)
+  (:method (macro n-args arg-1 arg-2 args call query)
            call)
 
-  (:method ((macro (eql 'and)) n-args arg-1 arg-2 args call query static-vars)
-           (%partial-eval-and/or call query static-vars))
+  (:method ((macro (eql 'and)) n-args arg-1 arg-2 args call query)
+           (%partial-eval-and/or call query))
 
-  (:method ((macro (eql 'or)) n-args arg-1 arg-2 args call query static-vars)
-           (%partial-eval-and/or call query static-vars)))
+  (:method ((macro (eql 'or)) n-args arg-1 arg-2 args call query)
+           (%partial-eval-and/or call query)))
 
-(defun %partial-eval-and/or (call query static-vars)
-  (bind ((args (mapcar #L(%partial-eval-syntax !1 query static-vars) (args-of call))))
-             (if (some 'syntax-object-p args)
-                (progn (setf (args-of call) (mapcar 'syntax-from-generalized-boolean args))
-                       (simplify-boolean-syntax call))
-                (eval (cons (macro-of call) (mapcar 'boolean-from-generalized-boolean args))))))
+(defun %partial-eval-and/or (call query)
+  (bind ((args (mapcar #L(%partial-eval-syntax !1 query) (args-of call))))
+    (if (and *enable-partial-eval* (notany 'syntax-object-p args))
+        (eval (cons (macro-of call) (mapcar 'boolean-from-generalized-boolean args)))
+        (progn (setf (args-of call) (mapcar 'syntax-from-generalized-boolean args))
+               (simplify-boolean-syntax call)))))
 
-(defgeneric %partial-eval-special-form (operator args form query static-vars)
+(defgeneric %partial-eval-special-form (operator args form query)
   ;; special forms (currently not evaluated, TODO) 
-  (:method (operator args form query static-vars)
+  (:method (operator args form query)
            form))
 
 (defun syntax-from-value (value orig-syntax)

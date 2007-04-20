@@ -83,7 +83,8 @@
                        (:file "table-ref")
                        (:file "polymorph")
                        (:file "type")
-                       (:file "aggregate")))))))
+                       (:file "aggregate")
+                       (:file "partial-eval")))))))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
   (in-package :cl-perec-test)

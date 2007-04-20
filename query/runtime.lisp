@@ -20,6 +20,15 @@
     (if (scan (like-pattern->regex pattern) str) #t #f)))
 
 ;;;
+;;; Markers for partial eval
+;;;
+(defun volatile (x)
+  x)
+
+(defun static (x)
+  x)
+
+;;;
 ;;; Caching
 ;;;
 (defun cache-instance-with-prefetched-slots (row start prefetched-slots)

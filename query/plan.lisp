@@ -271,19 +271,20 @@
                    :where ,where
                    :order-by (list ,@order-by))
                  query)
-               ,(partial-eval
-                 `(sql-select
-                   :columns (list (cl-rdbms::sql-count-*))
-                   :tables (list (sql-table-reference-for
-                                  (sql-subquery
-                                   :query
-                                   (sql-select
-                                    :distinct ,distinct
-                                    :columns (list ,@columns)
-                                    :tables (list ,@tables)
-                                    :where ,where))
-                                  'records)))
-                 query))))
+               ,@(when (eq result-type 'scroll)
+                       (list (partial-eval
+                              `(sql-select
+                                :columns (list (cl-rdbms::sql-count-*))
+                                :tables (list (sql-table-reference-for
+                                               (sql-subquery
+                                                :query
+                                                (sql-select
+                                                 :distinct ,distinct
+                                                 :columns (list ,@columns)
+                                                 :tables (list ,@tables)
+                                                 :where ,where))
+                                               'records)))
+                              query))))))
 
   (:method ((filter filter-operation))
            (with-slots (input bindings condition) filter
@@ -313,14 +314,14 @@
                                              variables)))
                           (substitute-syntax expr subs))))
                  (bind ((bindings1 (funcall bindings row1 :suffix "1" :referenced-by sort-spec))
-                       (bindings2 (funcall bindings row2 :suffix "2" :referenced-by sort-spec))
-                       (sort-spec1 (rename-variables (copy-query sort-spec) "1"))
-                       (sort-spec2 (rename-variables (copy-query sort-spec) "2")))
-                  `(make-ordered-result-set
-                    ,(compile-plan input)
-                    (lambda (,row1 ,row2)
-                      (let (,@bindings1 ,@bindings2)
-                        ,(generate-comparator sort-spec1 sort-spec2)))))))))
+                        (bindings2 (funcall bindings row2 :suffix "2" :referenced-by sort-spec))
+                        (sort-spec1 (rename-variables (copy-query sort-spec) "1"))
+                        (sort-spec2 (rename-variables (copy-query sort-spec) "2")))
+                   `(make-ordered-result-set
+                     ,(compile-plan input)
+                     (lambda (,row1 ,row2)
+                       (let (,@bindings1 ,@bindings2)
+                         ,(generate-comparator sort-spec1 sort-spec2)))))))))
 
   (:method ((delta unique-operation))
            (with-slots (input) delta
@@ -382,7 +383,7 @@
                              (select-deleted-ids `(sql-select
                                                    :columns (list
                                                              ,(sql-id-column-reference-for
-                                                                variable))
+                                                               variable))
                                                    :tables  (list
                                                              ,@(tables-of input))
                                                    :where ,(where-of input)))
