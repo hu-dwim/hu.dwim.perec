@@ -24,12 +24,6 @@
                                   (ends-with !1 "test"))
                            (list-tables)))))
 
-;; TODO: exporting classes must be done by the query compiler
-(defun export-all-classes ()
-  (with-transaction
-    (maphash #L(prc::ensure-exported !2)
-             prc::*persistent-classes*)))
-
 (defmacro with-and-without-caching-slot-values (&body forms)
   `(progn
     (without-caching-slot-values
@@ -55,7 +49,6 @@
 
 (defun retest ()
   (drop-all-test-tables)
-  (export-all-classes)
   (test))
 
 (in-root-suite)

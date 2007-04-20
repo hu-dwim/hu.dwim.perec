@@ -65,7 +65,6 @@
 
 (defixture purge-query-fixture
   (with-transaction
-    (export-all-classes)
     (purge-instances 'purge-0-test)
     (purge-instances 'purge-1-test)
     (purge-instances 'purge-2-test)

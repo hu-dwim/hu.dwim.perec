@@ -37,7 +37,6 @@
 
 (defixture fill-data-6
   (with-transaction
-    (export-all-classes)
     (purge-instances 'order-by-test)
     (bind ((count 10)
            (int-values (iter (for i from 0 below count) (collect i)))

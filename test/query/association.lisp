@@ -33,7 +33,6 @@
 
 (defixture association-test-fixture
   (with-transaction
-    (export-all-classes)
     (purge-instances 'movie-test)
     (purge-instances 'person-test)
     (let ((oceans-twelwe (make-instance 'movie-test :title "Ocean's Twelwe"))

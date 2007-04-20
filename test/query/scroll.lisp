@@ -15,7 +15,6 @@
 
 (defixture fill-data-5
   (with-transaction
-    (export-all-classes)
     (purge-instances 'scroll-test)
     (iter (for i from 0 below 10)
           (make-instance 'scroll-test :attr-1 i))))

@@ -29,6 +29,7 @@
 (defgeneric sql-select-oids-from-table (table)
   (:documentation "Generates a select for the oids in TABLE.")
   (:method ((table table))
+           (ensure-exported table)
            (sql-select :columns +oid-column-names+ :tables (list (name-of table))))
   (:method ((table sql-table-alias))
            (sql-select :columns +oid-column-names+ :tables (list table))))
@@ -52,6 +53,7 @@
 
 (defun tables-for-delete (class)
   "Returns the tables where instances of CLASS are stored."
+  (ensure-exported class)
   (bind ((super-classes (persistent-effective-super-classes-of class))
          (sub-classes (persistent-effective-sub-classes-of class))
          (class-primary-table (primary-table-of class))
@@ -119,6 +121,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 
 (defgeneric sql-table-reference-for (element alias)
   (:method ((table table) (alias symbol))
+           (ensure-exported table)
            (sql-table-alias :name (name-of table) :alias alias))
 
   (:method ((subquery sql-subquery) (alias symbol))
@@ -136,6 +139,11 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (assert (not (eq (xtype-of variable) +unknown-type+)))
            (sql-table-reference-for-type (xtype-of variable) alias))
 
+  (:method ((association persistent-association) (alias symbol))
+           (assert (eq (association-kind-of association) :m-n))
+           (ensure-exported association)
+           (sql-table-reference-for (primary-table-of association) alias))
+
   (:method ((syntax syntax-object) (alias symbol))
            (make-function-call :fn 'sql-table-reference-for :args (list syntax alias)))
 
@@ -151,6 +159,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defgeneric sql-table-reference-for-type (type &optional alias)
   
   (:method ((class persistent-class) &optional alias)
+           (ensure-exported class)
            (bind ((tables (rest (primary-tables-of class)))) ; TODO handle UNION/APPEND
              (case (length tables)
                (0 (error "No primary table for persistent class: ~A" class))
@@ -280,14 +289,15 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 
 (defun sql-aggregate-subselect-for-m-n-association-end (aggregate-function association-end variable)
   (bind ((other-end (other-association-end-of association-end))
-         (table (primary-table-of (association-of association-end))))
+         (association (association-of association-end))
+         (table (primary-table-of association)))
     `(sql-subquery
       :query
       (sql-select
        :columns (list (,aggregate-function ,(sql-column-reference-for association-end table)))
-       :tables (list (sql-identifier :name ',(name-of table)))
+       :tables (list ,(sql-table-reference-for association (name-of table)))
        :where (sql-=
-               ,(sql-column-reference-for other-end table)
+               ,(sql-column-reference-for other-end (name-of table))
                ,(sql-id-column-reference-for variable))))))
 
 (defun sql-subselect-for-secondary-association-end (association-end variable)
@@ -304,14 +314,15 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 
 (defun sql-subselect-for-m-n-association (association-end variable)
   (bind ((other-end (other-association-end-of association-end))
-         (table (primary-table-of (association-of association-end))))
+         (association (association-of association-end))
+         (table (primary-table-of association)))
     `(sql-subquery
       :query
       (sql-select
        :columns (list ,(sql-column-reference-for association-end table))
-       :tables (list (sql-identifier :name ',(name-of table)))
+       :tables (list ,(sql-table-reference-for association (name-of table)))
        :where (sql-=
-               ,(sql-column-reference-for other-end table)
+               ,(sql-column-reference-for other-end (name-of table))
                ,(sql-id-column-reference-for variable))))))
 
 

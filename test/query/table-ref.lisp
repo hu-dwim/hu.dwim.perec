@@ -16,7 +16,6 @@
 
 (defixture create-type-test-data
   (with-transaction
-    (export-all-classes)
     (purge-instances 'super-1-test)
     (purge-instances 'super-2-test)
     (purge-instances 'sub-1-test)

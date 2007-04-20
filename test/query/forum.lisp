@@ -38,7 +38,6 @@
 ;; PORT:
 (defixture forum-data
   (with-transaction
-    (export-all-classes)
     (purge-instances 'owner-test)
     (purge-instances 'topic-test)
     (purge-instances 'message-test)

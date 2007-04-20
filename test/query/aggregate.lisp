@@ -10,7 +10,6 @@
 
 (defixture aggregate-data
   (with-transaction
-    (export-all-classes)
     (purge-instances 'aggregate-test)
     (make-instance 'aggregate-test
                    :int-attr 1
