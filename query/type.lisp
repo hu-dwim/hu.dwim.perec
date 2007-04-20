@@ -68,7 +68,7 @@
                    (slot-definition-type (slot-of access)))))
 
   ;; toplevel (eq <obj1> <obj2>)    -> (type-of <obj1>) == (type-of <obj2>)
-  ;; toplevel (member <obj1> <obj2>) -> (type-of <obj1>) <= (element-type-of <obj2>)
+  ;; toplevel (member <obj1> <obj2>) -> (type-of <obj1>) <= (x-element-type-of <obj2>)
   (:method ((call function-call) query &optional toplevel)
            (call-next-method)
            (when (and toplevel (= (length (args-of call)) 2))
@@ -91,7 +91,7 @@
                      (setf (xtype-of obj2) `(set ,(xtype-of obj1)))
                      (%infer-types obj2 query))
                     ((and (has-default-type-p obj1) (not (has-default-type-p obj2)))
-                     (setf (xtype-of obj1) (element-type-of (xtype-of obj2)))
+                     (setf (xtype-of obj1) (x-element-type-of (xtype-of obj2)))
                      (%infer-types obj1 query)))))))))
 
 (defun restrict-variable-type (variable type)
@@ -128,7 +128,7 @@
           (not (contains-syntax-p type)))
      (find type slots :key 'slot-definition-type :test #L(subtypep (normalized-type-for* !2) !1)))))
 
-(defun element-type-of (type)
+(defun x-element-type-of (type)
   (if (and (consp type)
            (eq (first type) 'set))
       (or (second type) +unknown-type+)

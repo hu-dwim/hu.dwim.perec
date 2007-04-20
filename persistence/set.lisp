@@ -9,21 +9,21 @@
 ;;;;;;;
 ;;; Set
 
-(defptype set (&optional sub-type)
-  (declare (ignore sub-type))
+(defptype set (&optional element-type)
+  (declare (ignore element-type))
   '(or list persistent-slot-set-container))
 
-(defmethod shared-initialize :around ((type set-type) slot-names &rest args &key sub-type &allow-other-keys)
-  (apply #'call-next-method type slot-names :sub-type (parse-type sub-type) (remove-keywords args :sub-type)))
+(defmethod shared-initialize :around ((type set-type) slot-names &rest args &key element-type &allow-other-keys)
+  (apply #'call-next-method type slot-names :element-type (parse-type element-type) (remove-keywords args :element-type)))
 
 ;; TODO: distinguish between set type and disjunct set type (the latter used in 1-n associations for example)
 ;; TODO: assert 1-n associations use disjunct-set type
-(defptype disjunct-set (&optional sub-type)
-  (declare (ignore sub-type))
+(defptype disjunct-set (&optional element-type)
+  (declare (ignore element-type))
   '(or list persistent-slot-set-container))
 
-(defmethod shared-initialize :around ((type disjunct-set-type) slot-names &rest args &key sub-type &allow-other-keys)
-  (apply #'call-next-method type slot-names :sub-type (parse-type sub-type) (remove-keywords args :sub-type)))
+(defmethod shared-initialize :around ((type disjunct-set-type) slot-names &rest args &key element-type &allow-other-keys)
+  (apply #'call-next-method type slot-names :element-type (parse-type element-type) (remove-keywords args :element-type)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lazy slot set container
