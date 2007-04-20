@@ -122,6 +122,15 @@
 ;;;;;;;;;;;;;;
 ;;; Serialized
 
+(defun byte-vector->object-reader (rdbms-values)
+  (with-input-from-sequence (stream (first rdbms-values))
+    (restore stream)))
+
+(defun object->byte-vector-writer (slot-value)
+  (list
+   (with-output-to-sequence (stream)
+     (store slot-value stream))))
+
 (defun base64->object-reader (rdbms-values)
   (with-input-from-sequence (stream
     (with-input-from-string (base64 (first rdbms-values))
