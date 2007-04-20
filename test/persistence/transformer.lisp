@@ -13,12 +13,12 @@
 (defparameter +transformer-integer-test-value+ 42)
 
 (defun is-equal-using-writer (type slot-value rdbms-value)
-  (is (equal rdbms-value
-             (funcall (prc::compute-writer nil type) slot-value))))
+  (is (equalp rdbms-value
+              (funcall (prc::compute-writer nil type) slot-value))))
 
 (defun is-equal-using-reader (type slot-value rdbms-values)
-  (is (equal slot-value
-             (funcall (prc::compute-reader nil type) rdbms-values))))
+  (is (equalp slot-value
+              (funcall (prc::compute-reader nil type) rdbms-values))))
 
 (defun is-equal-using-transformers (type slot-value rdbms-values)
   (is-equal-using-reader type slot-value rdbms-values)
@@ -177,9 +177,9 @@
 (deftest test/persistence/transformer/t/nil ()
   (is-equal-using-transformers t
                                nil
-                               (list "Q2xzVAojAQNOSUwjAQtDT01NT04tTElTUA==")))
+                               (list #(67 108 115 84 10 35 1 3 78 73 76 35 1 11 67 79 77 77 79 78 45 76 73 83 80))))
 
 (deftest test/persistence/transformer/t/something ()
   (is-equal-using-transformers t
                                'something
-                               (list "Q2xzVAoFAQlTT01FVEhJTkcFAQ1DTC1QRVJFQy1URVNU")))
+                               (list #(67 108 115 84 10 5 1 9 83 79 77 69 84 72 73 78 71 5 1 13 67 76 45 80 69 82 69 67 45 84 69 83 84))))

@@ -121,21 +121,21 @@
 ;;; 
 ;;; unbound -> NULL, NULL
 ;;; nil -> true, NULL
-;;; other -> true, (base64)
+;;; other -> true, (byte-vector)
 
 (defptype t ()
   t)
 
-(defmapping t (sql-character-large-object-type)
-  'base64->object-reader
-  'object->base64-writer)
+(defmapping t (sql-binary-large-object-type)
+  'byte-vector->object-reader
+  'object->byte-vector-writer)
 
 ;;;;;;;;;;;;;;
 ;;; Serialized
 ;;; 
 ;;; unbound -> (type-error)
 ;;; nil -> (type-error)
-;;; other -> (base64)
+;;; other -> (byte-vector)
 
 (defun maximum-serialized-size-p (serialized)
   (declare (ignore serialized))
@@ -148,10 +148,10 @@
         (satisfies maximum-serialized-size-p)))
 
 (defmapping serialized (if (consp type-specification)
-                           (sql-character-varying-type :size (byte-size-of (parse-type type-specification)))
-                           (sql-character-large-object-type))
-  'base64->object-reader
-  'object->base64-writer)
+                           (sql-binary-large-object-type :size (byte-size-of (parse-type type-specification)))
+                           (sql-binary-large-object-type))
+  'byte-vector->object-reader
+  'object->byte-vector-writer)
 
 ;;;;;;;;;;;
 ;;; Boolean
