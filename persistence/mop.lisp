@@ -16,7 +16,7 @@
   (declare (ignore persistent))
   (apply #'call-next-method slot slot-names args))
 
-(defmethod make-instance ((object identity-preserving-class) &key instance &allow-other-keys)
+(defmethod make-instance ((instance identity-preserving-class) &key instance &allow-other-keys)
   ;; used in class finalization protocol when instantiating direct slot definitions
   ;; this allows associations to be defined independently of direct slot definitions
   ;; and ensure-class to be called without loosing the old non association direct slot definitions
@@ -235,17 +235,17 @@
 
 (defun ensure-slot-reader* (class slot)
   (bind ((reader (concatenate-symbol (reader-name-of slot) "*"))
-         (reader-gf (ensure-generic-function reader :lambda-list '(object))))
+         (reader-gf (ensure-generic-function reader :lambda-list '(instance))))
     (ensure-method reader-gf
-                   `(lambda (object)
+                   `(lambda (instance)
                      (with-lazy-collections
-                       (slot-value-using-class ,class object ,slot)))
+                       (slot-value-using-class ,class instance ,slot)))
                    :specializers (list class))))
 
-(defun slot-initarg-and-value (object slot-name)
-  (when (slot-boundp object slot-name)
-    (list (first (slot-definition-initargs (find-slot (class-of object) slot-name)))
-          (slot-value object slot-name))))
+(defun slot-initarg-and-value (instance slot-name)
+  (when (slot-boundp instance slot-name)
+    (list (first (slot-definition-initargs (find-slot (class-of instance) slot-name)))
+          (slot-value instance slot-name))))
 
 (defun reader-name-of (effective-slot)
   (first (some #'slot-definition-readers (direct-slots-of effective-slot))))

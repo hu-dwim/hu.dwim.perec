@@ -282,8 +282,8 @@
 
 (defvar *matches-type-cut-function*)
 
-(defun default-matches-type-cut (object slot type)
-  (declare (ignore object slot))
+(defun default-matches-type-cut (instance slot type)
+  (declare (ignore instance slot))
   (or (persistent-object-p type)
       (set-type-p type)))
 
@@ -307,8 +307,8 @@
    (value-type
     :type the-type)))
 
-(defcondition* object-slot-type-violation (type-violation)
-  ((object
+(defcondition* instance-slot-type-violation (type-violation)
+  ((instance
     :type persistent-object)
    (slot
     :type persistent-effective-slot-definition)))

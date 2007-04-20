@@ -10,5 +10,6 @@
 (defrestore-cl-store (persistent-object stream)
   (load-instance (oid-of (cl-store::restore-type-object stream)) :skip-existence-check #t))
 
-(defmethod serializable-slots-using-class ((object persistent-object) class)
+(defmethod serializable-slots-using-class ((instance persistent-object) class)
+  (declare (ignore instance))
   (list (find-slot class 'oid)))

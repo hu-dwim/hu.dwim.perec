@@ -7,7 +7,7 @@
 (in-package :cl-perec)
 
 (defstruct oid
-  "The oid holds sufficient information to access the same persistent object at any time in the database unless it has been deleted. The oid of an object is constant for the whole lifetime of the object and cannot be changed. It is assigned when the persistent object is first time stored in the database."
+  "The oid holds sufficient information to access the same persistent instance at any time in the database unless it has been deleted. The oid of an instance is constant for the whole lifetime of the instance and cannot be changed. It is assigned when the persistent instance is first time stored in the database."
   (id
    nil
    :type (or null integer))
@@ -16,7 +16,7 @@
    :type (or null symbol)))
 
 (defparameter +oid-sequence-name+ "_OID"
-  "The name of the oid sequence in the relational database used to generate life time unique identifiers for all persistent objects.")
+  "The name of the oid sequence in the relational database used to generate life time unique identifiers for all persistent instances.")
 
 (defparameter +id-column-name+ '_id
   "The RDBMS table column name for the oid's id slot.")

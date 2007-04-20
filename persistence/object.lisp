@@ -17,40 +17,40 @@
     nil
     :type (or null oid)
     :persistent #f
-    :documentation "Life time unique identifier of the object which can be remembered and may be used the load the object later.")
+    :documentation "Life time unique identifier of the instance which can be remembered and may be used the load the instance later.")
    (persistent
     :type boolean
     :persistent #f
-    :documentation "True means the object is known to be persistent, false means the object is known to be transient, unbound means the state is not yet determined. Actually, in the latter case slot-value-using-class will automatically determine whether the object is in the database or not. Therefore reading the persistent slot will always return either true or false.")
+    :documentation "True means the instance is known to be persistent, false means the instance is known to be transient, unbound means the state is not yet determined. Actually, in the latter case slot-value-using-class will automatically determine whether the instance is in the database or not. Therefore reading the persistent slot will always return either true or false.")
    (transaction
     nil
     :accessor #f
     :type t
     :persistent #f
-    :documentation "A weak reference to the transaction to this object is currently attached to.")
+    :documentation "A weak reference to the transaction to this instance is currently attached to.")
    (created
     #f
     :type boolean
     :persistent #f
-    :documentation "True means the object was created in the current transaction. At most one of created, modified or deleted might be true.")
+    :documentation "True means the instance was created in the current transaction. At most one of created, modified or deleted might be true.")
    (modified
     #f
     :type boolean
     :persistent #f
-    :documentation "True means the object was not created but modified in the current transaction.")
+    :documentation "True means the instance was not created but modified in the current transaction.")
    (deleted
     #f
     :type boolean
     :persistent #f
-    :documentation "True means the object was already present at the very beginning but got deleted in the current transaction.")
+    :documentation "True means the instance was already present at the very beginning but got deleted in the current transaction.")
    (cached-slots
     nil
     :type (list persistent-effective-slot-definition)
     :persistent #f
-    :documentation "A list of slots for which the slot values are currently cached in the object in the lisp VM. This list must be updated when database update happens outside of slot access (batch update, trigger, etc."))
+    :documentation "A list of slots for which the slot values are currently cached in the instance in the lisp VM. This list must be updated when database update happens outside of slot access (batch update, trigger, etc."))
   (:default-initargs :persistent *make-persistent-instances*)
   (:abstract #t)
-  (:documentation "Base class for all persistent classes. If this class is not inherited by a persistent class then it is automatically added to the direct superclasses. There is only one persistent object instance in a transaction with a give oid therefore eq will return true iff the oids are equal."))
+  (:documentation "Base class for all persistent classes. If this class is not inherited by a persistent class then it is automatically added to the direct superclasses. There is only one persistent instance in a transaction with a give oid therefore eq will return true iff the oids are equal."))
 
 (defmacro with-making-persistent-instances (&body forms)
   `(let ((*make-persistent-instances* #t))
@@ -63,15 +63,15 @@
 ;;;;;;;;;;;;;;;
 ;;; MOP methods
 
-(defmethod initialize-instance :around ((object persistent-object) &rest args &key persistent &allow-other-keys)
+(defmethod initialize-instance :around ((instance persistent-object) &rest args &key persistent &allow-other-keys)
   (when persistent
-    (ensure-exported (class-of object)))
-  (prog1 (apply #'call-next-method object :persistent #f args)
+    (ensure-exported (class-of instance)))
+  (prog1 (apply #'call-next-method instance :persistent #f args)
     (when (eq persistent #t)
-      (make-persistent object)
-      (setf (created-p object) #t)
-      (setf (cached-slots-of object)
-            (collect-if #'cache-p (persistent-effective-slots-of (class-of object)))))))
+      (make-persistent instance)
+      (setf (created-p instance) #t)
+      (setf (cached-slots-of instance)
+            (collect-if #'cache-p (persistent-effective-slots-of (class-of instance)))))))
 
 (defmethod make-instance :before ((class persistent-class) &key &allow-other-keys)
   (when (abstract-p class)
@@ -82,53 +82,53 @@
 
 (defvar +persistent-object-class+ (find-class 'persistent-object))
 
-(defun persistent-object-p (object)
-  (typep object 'persistent-object))
+(defun persistent-object-p (instance)
+  (typep instance 'persistent-object))
 
-(defun p-eq (object-1 object-2)
-  "Tests if two object references the same persistent object. Normally there at most one persistent object for each oid in a transaction so eq may be safely used. On the other hand huge transactions may require to throw away objects form the object cache which results in several instances for the same oid within the same transaction."
-  (or (eq object-1 object-2)
-      (= (id-of object-1)
-         (id-of object-2))))
+(defun p-eq (instance-1 instance-2)
+  "Tests if two instances are the same persistent instance. Normally there at most one persistent instance for each oid in a transaction so eq may be safely used. On the other hand huge transactions may require to throw away instances form the instance cache which results in several instances for the same oid within the same transaction."
+  (or (eq instance-1 instance-2)
+      (= (id-of instance-1)
+         (id-of instance-2))))
 
-(defun print-persistent-instance (object)
-  (declare (type persistent-object object))
+(defun print-persistent-instance (instance)
+  (declare (type persistent-object instance))
   (princ ":persistent ")
-  (princ (cond ((not (slot-boundp object 'persistent))
+  (princ (cond ((not (slot-boundp instance 'persistent))
                 "#? ")
-               ((persistent-p object)
+               ((persistent-p instance)
                 "#t ")
                (t "#f ")))
-  (if (and (slot-boundp object 'oid)
-           (oid-of object))
-      (princ (id-of object))
+  (if (and (slot-boundp instance 'oid)
+           (oid-of instance))
+      (princ (id-of instance))
       (princ "nil")))
 
 (defprint-object (self persistent-object)
-  "Prints the oid of the object and whether the object is known to be persistent or transient."
+  "Prints the oid of the instance and whether the instance is known to be persistent or transient."
   (print-persistent-instance self))
 
-(defun ensure-oid (object)
-  "Makes sure that the object has a valid oid."
-  (unless (oid-of object)
-    (setf (oid-of object) (make-new-oid (class-name-of object)))))
+(defun ensure-oid (instance)
+  "Makes sure that the instance has a valid oid."
+  (unless (oid-of instance)
+    (setf (oid-of instance) (make-new-oid (class-name-of instance)))))
 
-(defun id-of (object)
-  "Shortcut for the unique identifier number of the object."
-  (oid-id (oid-of object)))
+(defun id-of (instance)
+  "Shortcut for the unique identifier number of the instance."
+  (oid-id (oid-of instance)))
 
-(defun (setf class-name-of) (new-value object)
-  "Shortcut for the setter of the class name of the object."
-  (setf (oid-class-name (oid-of object)) new-value))
+(defun (setf class-name-of) (new-value instance)
+  "Shortcut for the setter of the class name of the instance."
+  (setf (oid-class-name (oid-of instance)) new-value))
 
-(defun id-value (object)
+(defun id-value (instance)
   "Returns the RDBMS representation."
-  (id-of object))
+  (id-of instance))
 
-(defun class-name-value (object)
+(defun class-name-value (instance)
   "Returns the RDBMS representation."
-  (canonical-symbol-name (class-name-of object)))
+  (canonical-symbol-name (class-name-of instance)))
 
-(defun oid-values (object)
-  "Returns a list representation of the object oid in the order of the corresponding RDBMS columns."
-  (list (id-value object) (class-name-value object)))
+(defun oid-values (instance)
+  "Returns a list representation of the instance oid in the order of the corresponding RDBMS columns."
+  (list (id-value instance) (class-name-value instance)))

@@ -29,14 +29,16 @@
 ;;; Lazy slot set container
 
 (defclass* persistent-slot-set-container (set-container)
-  ((object)
-   (slot)))
+  ((instance
+    :type persistent-object)
+   (slot
+    :type persistent-effective-slot-definition)))
 
 (defmethod insert-item ((set persistent-slot-set-container) (item persistent-object))
   (bind ((slot (slot-of set)))
     (update-records (name-of (table-of slot))
                     (columns-of slot)
-                    (object-writer (object-of set))
+                    (object-writer (instance-of set))
                     (id-column-matcher-where-clause item))))
 
 (defmethod delete-item ((set persistent-slot-set-container) (item persistent-object))
@@ -53,19 +55,19 @@
   (bind ((slot (slot-of set)))
     (caar (execute (sql `(select (count *)
                           ,(name-of (table-of slot))
-                          ,(id-column-matcher-where-clause (object-of set) (id-column-of slot))))))))
+                          ,(id-column-matcher-where-clause (instance-of set) (id-column-of slot))))))))
 
 (defmethod empty-p ((set persistent-slot-set-container))
   (= 0 (size set)))
 
 (defmethod empty! ((set persistent-slot-set-container))
-  (delete-slot-set (object-of set) (slot-of set)))
+  (delete-slot-set (instance-of set) (slot-of set)))
 
 (defmethod list-of ((set persistent-slot-set-container))
-  (restore-slot-set (object-of set) (slot-of set)))
+  (restore-slot-set (instance-of set) (slot-of set)))
 
 (defmethod (setf list-of) (new-value (set persistent-slot-set-container))
-  (store-slot-set (object-of set) (slot-of set) new-value))
+  (store-slot-set (instance-of set) (slot-of set) new-value))
 
 (defmethod iterate-items ((set persistent-slot-set-container) fn)
   (mapc fn (list-of set)))

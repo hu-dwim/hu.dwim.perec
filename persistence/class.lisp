@@ -6,8 +6,8 @@
 
 (in-package :cl-perec)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Persistent class and slot meta objects
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Persistent class and slot meta instances
 
 (defcclass* persistent-class (standard-class exportable)
   ((abstract
@@ -57,7 +57,7 @@
    (prefetched-slots
     (compute-as (collect-if #'prefetch-p (persistent-effective-slots-of -self-)))
     :type (list persistent-effective-slot-definition)
-    :documentation "The list of effective slots which will be loaded from and stored to the database at once when loading an instance of this class. Moreover when a persistent object is revived its prefetched slots will be loaded.")
+    :documentation "The list of effective slots which will be loaded from and stored to the database at once when loading an instance of this class. Moreover when a persistent instance is revived its prefetched slots will be loaded.")
    (non-prefetched-slots
     (compute-as (remove-if #'prefetch-p (persistent-effective-slots-of -self-)))
     :type (list effective-slot)
@@ -70,11 +70,11 @@
     (compute-as nil)
     :type (list persistent-class)
     :documentation "The list of persistent classes which must look at this class when computing RDBMS meta data."))
-  (:documentation "Persistent class is a class meta object for classes. Standard defclass forms may be used to define persistent classes. A persistent class will have persistent slots unless marked with :persistent #f. A persistent slot should have type specification to be efficient both in storage and speed. The special type unbound must be used to mark slots which might be unbound."))
+  (:documentation "Persistent class is a class meta instance for classes. Standard defclass forms may be used to define persistent classes. A persistent class will have persistent slots unless marked with :persistent #f. A persistent slot should have type specification to be efficient both in storage and speed. The special type unbound must be used to mark slots which might be unbound."))
 
 (defclass identity-preserving-class (computed-class)
   ()
-  (:documentation "This class serves a very special purpose, namely being able to return the very same instance in make-instance for slot definition meta objects."))
+  (:documentation "This class serves a very special purpose, namely being able to return the very same instance in make-instance for slot definition meta instances."))
 
 (defcclass* persistent-slot-definition (standard-slot-definition)
   ((always-checked-type
@@ -84,11 +84,11 @@
    (prefetch
     :type boolean
     :computed-in compute-as
-    :documentation "Prefetched slots are loaded from and stored into the database at once. A prefetched slot must be in a table which can be accessed using a where clause matching to the id of the object thus it must be in a data table. The default prefetched slot semantics can be overriden on a per direct slot basis.")
+    :documentation "Prefetched slots are loaded from and stored into the database at once. A prefetched slot must be in a table which can be accessed using a where clause matching to the id of the instance thus it must be in a data table. The default prefetched slot semantics can be overriden on a per direct slot basis.")
    (cache
     :type boolean
     :computed-in compute-as
-    :documentation "All prefetched slots are cached slots but the opposite may not be true. When a cached slot is loaded it's value will be stored in the CLOS object for fast subsequent read operations. Also whenever a cached slot is set the value will be remembered. The default cached slot semantics can be overriden on a per direct slot basis.")
+    :documentation "All prefetched slots are cached slots but the opposite may not be true. When a cached slot is loaded it's value will be stored in the CLOS instance for fast subsequent read operations. Also whenever a cached slot is set the value will be remembered. The default cached slot semantics can be overriden on a per direct slot basis.")
    (index
     :type boolean
     :computed-in compute-as
@@ -139,26 +139,26 @@
    (reader
     (compute-as (compute-reader -self- (always-checked-type-of -self-)))
     :type (or null function)
-    :documentation "A one parameter function which transforms RDBMS data received as a list to the corresponding lisp object. This is present only for data table slots.")
+    :documentation "A one parameter function which transforms RDBMS data received as a list to the corresponding lisp instance. This is present only for data table slots.")
    (writer
     (compute-as (compute-writer -self- (always-checked-type-of -self-)))
     :type (or null function)
-    :documentation "A one parameter function which transforms a lisp object to the corresponding RDBMS data. This is present only for data table slots.")
+    :documentation "A one parameter function which transforms a lisp instance to the corresponding RDBMS data. This is present only for data table slots.")
    (primary-table-slot
     (compute-as (compute-primary-table-slot-p -self-))
     :type boolean
-    :documentation "True means the slot can be loaded from the primary table of its class with a where clause matching to the object's oid.")
+    :documentation "True means the slot can be loaded from the primary table of its class with a where clause matching to the instance's oid.")
    (data-table-slot
     (compute-as (compute-data-table-slot-p -self-))
     :type boolean
-    :documentation "True means the slot can be loaded from one of the data tables of its class with a where clause matching to the object's oid.")
+    :documentation "True means the slot can be loaded from one of the data tables of its class with a where clause matching to the instance's oid.")
    (prefetch
     (compute-as (data-table-slot-p -self-))
     :documentation "The prefetched option is inherited among direct slots according to the class precedence list. If no direct slot has prefetched specification then the default behaviour is to prefetch data tabe slot.")
    (cache
     (compute-as (or (prefetch-p -self-)
                     (persistent-class-type-p (normalized-type-of -self-))))
-    :documentation "The cached option is inherited among direct slots according to the class precedence list. If no direct slot has cached specification then the default behaviour is to cache prefetched slots and single object references.")
+    :documentation "The cached option is inherited among direct slots according to the class precedence list. If no direct slot has cached specification then the default behaviour is to cache prefetched slots and single instance references.")
    (index
     (compute-as #f)
     :documentation "The index option is inherited among direct slots according to the class precedence list with defaulting to false.")
@@ -191,13 +191,13 @@
 (eval-always
   (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:persistent :prefetch :cache :index :unique :type-check)))
 
-(defmethod describe-object ((object persistent-class) stream)
+(defmethod describe-object ((instance persistent-class) stream)
   (call-next-method)
-  (aif (primary-table-of object)
+  (aif (primary-table-of instance)
        (progn
          (princ "The primary table is the following: ")
          (describe-object it stream))
-       (princ (format nil "The primary tables are: ~A" (primary-tables-of object)) stream)))
+       (princ (format nil "The primary tables are: ~A" (primary-tables-of instance)) stream)))
 
 (defprint-object (slot persistent-slot-definition)
   (princ (slot-definition-name slot)))
@@ -340,7 +340,8 @@
 
   (:method ((type symbol) type-specification)
            (declare (ignore type-specification))
-           (if (persistent-class-type-p type)'object-reader
+           (if (persistent-class-type-p type)
+               'object-reader
                (call-next-method)))
 
   (:method ((type persistent-class) type-specification)
@@ -531,7 +532,7 @@
                             (bind ((slot-value (slot-value-using-class class value slot)))
                               (aprog1 (matches-type* slot-value type)
                                 (unless it
-                                  (error (make-condition 'object-slot-type-violation :object value :slot slot)))))
+                                  (error (make-condition 'instance-slot-type-violation :instance value :slot slot)))))
                             (not (unbound-subtype-p type))))))
                   (persistent-effective-slots-of type)))))
 
@@ -539,7 +540,7 @@
 ;;; Utility
 
 (defparameter *persistent-classes* (make-hash-table)
-  "A mapping from persistent class names to persistent objects.")
+  "A mapping from persistent class names to persistent instances.")
 
 (defun find-persistent-class (name)
   (gethash name *persistent-classes*))
@@ -596,7 +597,7 @@
         (when slot (collect slot))))
 
 (defun make-oid-columns ()
-  "Creates a list of RDBMS columns that will be used to store the oid data of the objects in this table."
+  "Creates a list of RDBMS columns that will be used to store the oid data of the instances in this table."
   (list
    (make-instance 'column
                   :name +id-column-name+

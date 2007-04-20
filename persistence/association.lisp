@@ -55,13 +55,13 @@
                       1
                       0)))
     :type integer
-    :documentation "The minimum number of objects present in an association for this end.")
+    :documentation "The minimum number of instances present in an association for this end.")
    (max-cardinality
     (compute-as (if (set-type-p (slot-definition-type -self-))
                     :n
                     1))
     :type integer
-    :documentation "The maximum number of objects present in an association for this end. Unbound means the maximum number is not defined.")
+    :documentation "The maximum number of instances present in an association for this end. Unbound means the maximum number is not defined.")
    (cardinality-kind
     (compute-as (if (and (slot-boundp -self- 'max-cardinality)
                          (eq (max-cardinality-of -self-) 1))
@@ -168,7 +168,7 @@
 ;;; Utility
 
 (defparameter *persistent-associations* (make-hash-table)
-  "A mapping from association names to association objects.")
+  "A mapping from association names to association instances.")
 
 (defun find-association (name)
   (gethash name *persistent-associations*))
