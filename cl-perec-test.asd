@@ -94,8 +94,9 @@
   (eval (read-from-string
          "(progn
             (setf *database*
-                  (make-instance 'postgresql-pg
+                  (make-instance 'postgresql-postmodern
                                  :generated-transaction-class-name 'transaction
+                                 :muffle-warnings t
                                  :transaction-mixin 'transaction-mixin
                                  :connection-specification cl-perec-system::*test-database-connection-specification*)))"))
   (warn "Pushed :debug in *features*, set (declaim (optimize (debug 3))) and set *database*."))
