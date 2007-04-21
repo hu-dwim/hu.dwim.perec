@@ -164,6 +164,8 @@
            #:p-eq
            #:load-instance
            #:revive-instance
+           #:with-revived-instance
+           #:with-revived-instances
            #:purge-instance
            #:purge-instances
            #:print-persistent-instance

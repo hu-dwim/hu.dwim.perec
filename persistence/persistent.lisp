@@ -153,6 +153,20 @@
                         *transaction*)))
         (setf ,place (load-instance ,instance ,@args))))))
 
+(defmacro with-revived-instances (instances &body body)
+  "Rebind the variables specified in INSTANCES, revive them in the current transaction and execute BODY in this lexical environment."
+  (unless (every #'symbolp instances)
+    (error "with-revived-instances works only on variables"))
+  `(rebind (,@instances)
+    ,@(iter (for instance :in instances)
+            (collect `(revive-instance ,instance)))
+    ,@body))
+
+(defmacro with-revived-instance (instance &body body)
+  "See WITH-REVIVED-INSTANCES."
+  `(with-revived-instances (,instance)
+    ,@body))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Making instances persistent and transient
 
