@@ -17,6 +17,16 @@
           (return-from equaln #f)))
   #t)
 
+(defun is-sequence-of-constant (seq value &optional length)
+  (declare (type (or null array-total-size-limit) length)
+           (optimize (speed 3)))
+  (if length
+      (iter (for el :in-sequence seq)
+            (repeat length)
+            (always (eql el value)))
+      (iter (for el :in-sequence seq)
+            (always (eql el value)))))
+
 (defcondition* slot-type-error (type-error)
   ((slot
     :type persistent-effective-slot-definition))
@@ -34,11 +44,10 @@
     ,@forms))
 
 (def-transformer-wrapper unbound-reader
-  (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil))))
-    (lambda (rdbms-values)
-      (if (equaln unbound-rdbms-value rdbms-values column-number)
-          +unbound-slot-value+
-          (funcall function rdbms-values)))))
+  (lambda (rdbms-values)
+    (if (is-sequence-of-constant rdbms-values :null column-number)
+        +unbound-slot-value+
+        (funcall function rdbms-values))))
 
 (def-transformer-wrapper non-unbound-reader
   (lambda (rdbms-values)
@@ -49,7 +58,7 @@
             (error 'type-error :datum slot-value :expected-type type))))))
 
 (def-transformer-wrapper unbound-writer
-  (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil))))
+  (bind ((unbound-rdbms-value (iter (repeat column-number) (collect :null))))
     (lambda (slot-value)
       (if (eq +unbound-slot-value+ slot-value)
           unbound-rdbms-value
@@ -67,11 +76,10 @@
 ;;; Null
 
 (def-transformer-wrapper null-reader
-  (bind ((nil-rdbms-value (iter (repeat column-number) (collect nil))))
-    (lambda (rdbms-values)
-      (if (equaln nil-rdbms-value rdbms-values column-number)
-          nil
-          (funcall function rdbms-values)))))
+  (lambda (rdbms-values)
+    (if (is-sequence-of-constant rdbms-values :null column-number)
+        nil
+        (funcall function rdbms-values))))
 
 (def-transformer-wrapper non-null-reader
   (lambda (rdbms-values)
@@ -82,7 +90,7 @@
             (error 'type-error :datum slot-value :expected-type type))))))
 
 (def-transformer-wrapper null-writer
-  (bind ((nil-rdbms-value (iter (repeat column-number) (collect nil))))
+  (bind ((nil-rdbms-value (iter (repeat column-number) (collect :null))))
     (lambda (slot-value)
       (if slot-value
           (funcall function slot-value)
@@ -100,8 +108,9 @@
 ;;; Unbound or null
 
 (def-transformer-wrapper unbound-or-null-reader
-  (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil)))
-         (nil-rdbms-value (list* #t (cdr unbound-rdbms-value))))
+  (bind ((rdbms-column-values (iter (repeat (1- column-number)) (collect :null)))
+         (unbound-rdbms-value (list* #f rdbms-column-values))
+         (nil-rdbms-value     (list* #t rdbms-column-values)))
     (lambda (rdbms-values)
       (cond ((equaln unbound-rdbms-value rdbms-values column-number)
              +unbound-slot-value+)
@@ -110,8 +119,9 @@
             (t (funcall function (cdr rdbms-values)))))))
 
 (def-transformer-wrapper unbound-or-null-writer
-  (bind ((unbound-rdbms-value (iter (repeat column-number) (collect nil)))
-         (nil-rdbms-value (list* #t (cdr unbound-rdbms-value))))
+  (bind ((rdbms-column-values (iter (repeat (1- column-number)) (collect :null)))
+         (unbound-rdbms-value (list* #f rdbms-column-values))
+         (nil-rdbms-value     (list* #t rdbms-column-values)))
     (lambda (slot-value)
       (cond ((eq +unbound-slot-value+ slot-value)
              unbound-rdbms-value)

@@ -358,7 +358,7 @@
         (satisfies date-p)))
 
 (defmapping date (sql-date-type)
-  'integer->local-time-reader
+  'identity-reader
   'date->string-writer)
 
 ;;;;;;;;
@@ -376,7 +376,7 @@
         (satisfies time-p)))
 
 (defmapping time (sql-time-type)
-  'string->local-time-reader
+  'identity-reader
   'time->string-writer)
 
 ;;;;;;;;;;;;;
@@ -390,7 +390,7 @@
         (satisfies time-p)))
 
 (defmapping timestamp (sql-timestamp-type :with-timezone #t)
-  'integer->local-time-reader
+  'identity-reader
   'timestamp->string-writer)
 
 ;;;;;;;;;;;;
