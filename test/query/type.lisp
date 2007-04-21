@@ -112,11 +112,12 @@
 (def-query-type-test symbol/2 symbol 'cl-perec-test::something)
 (def-query-type-test symbol/3 (symbol* 30) 'cl-user::something)
 
-(def-query-type-test date/1 date (let ((*default-timezone* +utc-zone+)) (parse-timestring "2006-06-06")))
+(def-query-type-test date/1 date (parse-timestring "2006-06-06TZ"))
 
-(def-query-type-test time/1 time (let ((*default-timezone* +utc-zone+)) (parse-timestring "06:06:06")))
+(def-query-type-test time/1 time (parse-timestring "06:06:06Z"))
 
 (def-query-type-test timestamp/1 timestamp (parse-timestring "2006-06-06T06:06:06Z"))
+(def-query-type-test timestamp/2 timestamp (parse-timestring "2006-06-06T06:06:06.12345Z"))
 
 (def-query-type-test duration/1 duration "06:06:06")
 (def-query-type-test duration/2 duration "1-01-01 06:06:06")

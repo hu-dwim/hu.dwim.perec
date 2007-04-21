@@ -40,7 +40,7 @@
 (deftest test/persistence/transformer/or-unbound-boolean/unbound ()
   (is-equal-using-transformers '(or unbound boolean)
                                prc::+unbound-slot-value+
-                               (list nil)))
+                               (list :null)))
 
 (deftest test/persistence/transformer/or-unbound-boolean/t ()
   (is-equal-using-transformers '(or unbound boolean)
@@ -63,7 +63,7 @@
 (deftest test/persistence/transformer/or-null-integer/nil ()
   (is-equal-using-transformers '(or null integer)
                                nil
-                               (list nil)))
+                               (list :null)))
 
 (deftest test/persistence/transformer/or-null-integer/integer ()
   (is-equal-using-transformers '(or null integer)
@@ -73,7 +73,7 @@
 (deftest test/persistence/transformer/or-unbound-integer/unbound ()
   (is-equal-using-transformers '(or unbound integer)
                                prc::+unbound-slot-value+
-                               (list nil)))
+                               (list :null)))
 
 (deftest test/persistence/transformer/or-unbound-integer/integer ()
   (is-equal-using-transformers '(or unbound integer)
@@ -83,17 +83,17 @@
 (deftest test/persistence/transformer/or-unbound-null-integer/unbound ()
   (is-equal-using-transformers '(or unbound null integer)
                                prc::+unbound-slot-value+
-                               (list nil nil)))
+                               (list #f :null)))
 
 (deftest test/persistence/transformer/or-unbound-null-integer/null ()
   (is-equal-using-transformers '(or unbound null integer)
                                nil
-                               (list t nil)))
+                               (list #t :null)))
 
 (deftest test/persistence/transformer/or-unbound-null-integer/integer ()
   (is-equal-using-transformers '(or unbound null integer)
                                +transformer-integer-test-value+
-                               (list t +transformer-integer-test-value+)))
+                               (list #t +transformer-integer-test-value+)))
 
 ;;;;;;;;;;
 ;;; String
@@ -106,7 +106,7 @@
 (deftest test/persistence/transformer/or-null-string/nil ()
   (is-equal-using-transformers '(or null string)
                                nil
-                               (list nil)))
+                               (list :null)))
 
 (deftest test/persistence/transformer/or-null-string/string ()
   (is-equal-using-transformers '(or null string)
@@ -116,7 +116,7 @@
 (deftest test/persistence/transformer/or-unbound-string/unbound ()
   (is-equal-using-transformers '(or unbound string)
                                prc::+unbound-slot-value+
-                               (list nil)))
+                               (list :null)))
 
 (deftest test/persistence/transformer/or-unbound-string/string ()
   (is-equal-using-transformers '(or unbound string)
@@ -126,17 +126,17 @@
 (deftest test/persistence/transformer/or-unbound-null-string/unbound ()
   (is-equal-using-transformers '(or unbound null string)
                                prc::+unbound-slot-value+
-                               (list nil nil)))
+                               (list #f :null)))
 
 (deftest test/persistence/transformer/or-unbound-null-string/null ()
   (is-equal-using-transformers '(or unbound null string)
                                nil
-                               (list t nil)))
+                               (list #t :null)))
 
 (deftest test/persistence/transformer/or-unbound-null-string/string ()
   (is-equal-using-transformers '(or unbound null string)
                                +transformer-string-test-value+
-                               (list t +transformer-string-test-value+)))
+                               (list #t +transformer-string-test-value+)))
 
 ;;;;;;;;;;;
 ;;; Symbol
@@ -154,7 +154,7 @@
 (deftest test/persistence/transformer/or-unbound-symbol/unbound ()
   (is-equal-using-transformers '(or unbound symbol)
                                prc::+unbound-slot-value+
-                               (list nil)))
+                               (list :null)))
 
 (deftest test/persistence/transformer/or-unbound-symbol/nil ()
   (is-equal-using-transformers '(or unbound symbol)
@@ -172,7 +172,7 @@
 (deftest test/persistence/transformer/t/unbound ()
   (is-equal-using-transformers t
                                prc::+unbound-slot-value+
-                               (list nil)))
+                               (list :null)))
 
 (deftest test/persistence/transformer/t/nil ()
   (is-equal-using-transformers t
