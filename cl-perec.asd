@@ -38,9 +38,14 @@
   ())
 
 (defmethod perform :around ((op operation) (component local-cl-source-file))
-  (let ((*features* *features*))
+  (let ((*features* *features*)
+        (*readtable* (copy-readtable *readtable*)))
     (when *load-with-debug-p*
       (pushnew :debug *features*))
+    (ignore-errors
+      (let ((setup-readtable-fn (read-from-string "cl-perec::setup-readtable")))
+        (funcall setup-readtable-fn)
+        t))
     (call-next-method)))
 
 (defsystem :cl-perec
@@ -74,6 +79,7 @@
   :serial t
   :components
   ((:file "package")
+   (:file "configuration")
    (:module :util
             :serial t
             :components

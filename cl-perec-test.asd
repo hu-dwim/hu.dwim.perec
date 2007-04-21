@@ -44,6 +44,7 @@
                :cl-perec
                :contextl
                :metacopy)
+  :default-component-class local-cl-source-file
   :components
   ((:module :test
             :serial t

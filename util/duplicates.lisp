@@ -8,22 +8,6 @@
 
 ;;; THE CONTENT OF THIS FILE IS COPIED OVER FROM SOME OTHER LIBRARIES TO DECREASE THE NUMBER OF DEPENDENCIES
 
-(set-dispatch-macro-character
- #\# #\t
- (lambda (s c n)
-   (declare (ignore s c n))
-   t))
-
-(set-dispatch-macro-character
- #\# #\f
- (lambda (s c n)
-   (declare (ignore s c n))
-   nil))
-
-(defmacro debug-only (&body body)
-  #+debug`(progn ,@body)
-  #-debug(declare (ignore body)))
-
 (defun canonical-symbol-name (symbol)
   "Returns the package name and symbol name concatenated."
   (strcat
