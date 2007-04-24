@@ -36,7 +36,7 @@
           `((name ',name)
             (args ',args)
             (body ',body))
-          (mapcar #L(list !1 nil) (argument-names-for args)))
+          (lambda-list-to-variable-list args :include-&rest #t))
         (:export-class-name-p #t)
         (:export-accessor-names-p #t))
       (bind ((substituter (lambda ,args ,@body)))
@@ -86,13 +86,6 @@
               (t
                (type-class-name-for el))))
       'persistent-type))
-
-(defun argument-names-for (args)
-  (remove-if #L(or (eq !1 '&optional)
-                   (eq !1 '&key)
-                   (eq !1 '&rest)
-                   (eq !1 '&allow-other-keys))
-             args))
 
 (defun type-specifier-p (type)
   (find-type type))
@@ -234,7 +227,7 @@
            nil)
   
   (:method (type type-parameters)
-           (let ((args (argument-names-for (args-of type))))
+           (let ((args (lambda-list-to-variable-list (args-of type))))
              ;; TODO: eliminate this eval by storing the lambde in defptype
              (eval `(apply (lambda ,(args-of type)
                              (list ,@(mappend #L(list (intern (symbol-name !1) (find-package :keyword)) !1) args)))

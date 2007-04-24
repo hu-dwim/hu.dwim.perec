@@ -448,7 +448,7 @@
 ;;;;;;;;;;
 ;;; Vector
 
-(defptype vector (&optional element-type size)
+(defptype vector (&optional (element-type '*) (size '*))
   `(vector ,element-type ,size))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
