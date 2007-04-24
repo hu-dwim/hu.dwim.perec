@@ -454,6 +454,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Unsigned byte vector
 
+;; TODO add max size and assert for it in the reader/wirter
 (defptype unsigned-byte-vector ()
   '(vector (unsigned-byte 8)))
 
