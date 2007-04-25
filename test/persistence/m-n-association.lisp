@@ -4,7 +4,7 @@
 
 (defvar *association-m-n-course-class-name* 'course-test)
 
-(defsuite* (test/persistence/association/m-n :in test/persistence/association)
+(defsuite* (test/persistence/association/m-n :in test/persistence/association) ()
   (flet ((body ()
            (with-and-without-caching-slot-values
              (run-child-tests))))

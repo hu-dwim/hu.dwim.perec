@@ -6,7 +6,7 @@
 
 (defvar *association-1-1-sister-class-name* 'sister-test)
 
-(defsuite* test/persistence/association/1-1
+(defsuite* test/persistence/association/1-1 ()
   (flet ((body ()
            (with-and-without-caching-slot-values
              (run-child-tests))))
