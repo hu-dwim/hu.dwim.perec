@@ -32,6 +32,7 @@
            #:set
            #:time
            #:form
+           #:children
            #:variable
            #:transaction
            #:float-type)
