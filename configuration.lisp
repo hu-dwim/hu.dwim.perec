@@ -36,7 +36,8 @@
     (setup-readtable)))
 
 (defun setup-readtable ()
-  (enable-sharp-boolean-syntax))
+  (enable-sharp-boolean-syntax)
+  (enable-sharp-l-syntax))
 
 #+#.(cl:when (cl:find-package "SWANK") '(:and))
 (unless (assoc "CL-PEREC" swank:*readtable-alist* :test #'string=)

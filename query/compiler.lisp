@@ -184,7 +184,7 @@ with the result of the naively compiled query.")
   (bind ((objects (collect-persistent-object-literals form))
          (variables (mapcar #L(gensym (symbol-name (class-name (class-of !1)))) objects))
          (substitutions (mapcar 'cons objects variables))
-         (bindings (mapcar #L(`(,(cdr !1) (load-instance ,(car !1)))) substitutions)))
+         (bindings (mapcar #L`(,(cdr !1) (load-instance ,(car !1))) substitutions)))
     (if objects
         `(let ,bindings
           ,(substitute-syntax form substitutions))

@@ -82,7 +82,7 @@
           (lambda (clause)
             (bind ((pattern-vars (collect-pattern-variables (car clause))))
               `((pattern-match ',(car clause) ,expr-var)
-                (let ,(mapcar #L(`(,!1 (binding-val (get-binding ',!1 it)))) pattern-vars)
+                (let ,(mapcar #L`(,!1 (binding-val (get-binding ',!1 it))) pattern-vars)
                   (declare (ignorable ,@pattern-vars))
                   ,@(cdr clause)))))
           clauses)))))
