@@ -17,6 +17,7 @@
 ;;;; TODO: n-m associations
 ;;;; TODO: delete and update operations
 ;;;; TODO: recursive selects
+;;;; TODO: evaluate volatile expressions only once
 
 ;;;
 ;;; Compile queries

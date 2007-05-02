@@ -386,7 +386,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (bind ((slot-type (slot-definition-type slot)))
              (cond
                ((complex-type-p slot-type)
-                (sql-is-not-null (sql-bound-column-reference-for slot variable)))
+                (sql-bound-column-reference-for slot variable))
                ((unbound-subtype-p slot-type)
                 (sql-is-not-null (sql-column-reference-for slot variable)))
                (t ;; TODO: should be handled by partial eval
@@ -619,7 +619,7 @@ value is equal, when they represent the NIL lisp value)."
 (defun sql-null-literal-p (sql)
   (or (null sql)
       (and (typep sql 'sql-literal)
-           (null (cl-rdbms::value-of sql))
+           (member (cl-rdbms::value-of sql) '(nil :null))
            (or (null (cl-rdbms::type-of sql))
                (not (typep (cl-rdbms::type-of sql) 'cl-rdbms::sql-boolean-type))))))
 
