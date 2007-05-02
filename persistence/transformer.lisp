@@ -18,8 +18,8 @@
   #t)
 
 (defun is-sequence-of-constant (seq value &optional length)
-  (declare (type (or null array-total-size-limit) length)
-           (optimize (speed 3)))
+  (declare (type (or null fixnum) length)
+           (optimize (speed 1)))
   (if length
       (iter (for el :in-sequence seq)
             (repeat length)
