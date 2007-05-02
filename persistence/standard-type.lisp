@@ -15,13 +15,6 @@
 (defptype or (&rest types)
   `(or ,@types))
 
-(defmethod parse-keyword-type-parameters ((type or-type) type-parameters)
-  (append (list :types (mapcar #'parse-type (getf type-parameters :types)))
-          (call-next-method type (remove-keywords type-parameters :types))))
-
-(defmethod parse-positional-type-parameters ((type or-type) type-parameters)
-  (list :types (mapcar #'parse-type type-parameters)))
-
 ;;;;;;;
 ;;; And
 ;;;
@@ -30,13 +23,6 @@
 (defptype and (&rest types)
   `(and ,@types))
 
-(defmethod parse-keyword-type-parameters ((type and-type) type-parameters)
-  (append (list :types (mapcar #'parse-type (getf type-parameters :types)))
-          (call-next-method type (remove-keywords type-parameters :types))))
-
-(defmethod parse-positional-type-parameters ((type and-type) type-parameters)
-  (list :types (mapcar #'parse-type type-parameters)))
-
 ;;;;;;;
 ;;; Not
 ;;;
@@ -44,13 +30,6 @@
 
 (defptype not (negated-type)
   `(not ,negated-type))
-
-(defmethod parse-keyword-type-parameters((type not-type) type-parameters)
-  (append (list :negated-type (parse-type (getf type-parameters :negated-type)))
-          (call-next-method type (remove-keywords type-parameters :negated-type))))
-
-(defmethod parse-positional-type-parameters ((type not-type) type-parameters)
-  (list :negated-type (parse-type (first type-parameters))))
 
 ;;;;;;;;;;;;;
 ;;; Satisfies

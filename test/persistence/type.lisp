@@ -223,12 +223,3 @@
       (test-object))
     (with-caching-slot-values
       (test-object))))
-
-(deftest test/persistence/type/member-slot ()
-  (defptype member-test-type ()
-    '(member a b c))
-  (finishes
-    (let ((type (find-type 'member-test-type)))
-      (is (typep type 'member-type))
-      (is (equal (members-of type)
-                 '(a b c))))))

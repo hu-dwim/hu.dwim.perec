@@ -49,6 +49,9 @@
 
 (defun retest ()
   (drop-all-test-tables)
+  (mapc #L(awhen (cl-perec::primary-table-of !1)
+            (cl-perec::invalidate-computed-slot it 'prc::ensure-exported))
+        (hash-table-values cl-perec::*persistent-classes*))
   (test))
 
 (in-root-suite)

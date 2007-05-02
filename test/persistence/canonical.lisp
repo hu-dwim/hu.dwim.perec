@@ -85,6 +85,16 @@
        t2)
   (member a b c))
 
+(defptype member-test ()
+  '(member a b c))
+
+(deftest test/persistence/canonical/member ()
+  (finishes
+    (let ((type (find-type 'member-test)))
+      (is (typep type 'member-type))
+      (is (equal (members-of type)
+                 '(a b c))))))
+
 ;;;;;;;;;;;;;;
 ;;; Normalized
 
@@ -133,4 +143,3 @@
 (def-normalized-type-test symbol/2 (or unbound symbol) (and (not null) symbol))
 
 (def-normalized-type-test set/1 (set persistent-object) (and (not null) (set persistent-object)))
-

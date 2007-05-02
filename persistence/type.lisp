@@ -35,29 +35,34 @@
         ,(append
           `((name ',name)
             (args ',args)
-            (body ',body))
+            (body ',body)
+            (substituter
+             (lambda ,args ,@body)
+             :allocation :class)
+            (parser
+             (lambda ,args
+               (make-instance ',type-class-name
+                              ,@(mappend #L(list (intern (symbol-name !1) (find-package :keyword)) !1)
+                                         (lambda-list-to-variable-list args :include-&rest #t))))
+             :allocation :class))
           (lambda-list-to-variable-list args :include-&rest #t))
         (:export-class-name-p #t)
         (:export-accessor-names-p #t))
-      (bind ((substituter (lambda ,args ,@body)))
-        (eval-when (:load-toplevel :execute)
+      (eval-when (:load-toplevel :execute)
+        (bind ((class (ensure-finalized (find-class ',type-class-name))))
           ,(when allow-nil-args-p
-                 `(bind ((type ,(when allow-nil-args-p
-                                      `(parse-type (apply substituter nil)))))
-                   (if type
-                       ,(when args
-                              `(change-class type ',type-class-name))
-                       (setf type (make-instance ',type-class-name)))
-                   (setf (name-of type) ',name)
-                   (setf (args-of type) ',args)
-                   (setf (body-of type) ',body)
-                   (setf (documentation-of type) ',documentation)
-                   (setf (substituter-of type) substituter)
-                   (setf (find-type ',name) type)))
-          (ensure-class ',type-class-name :direct-superclasses
-                        ,(if allow-nil-args-p
-                             `(list (type-super-class-name-for ',name (apply substituter nil)))
-                             ''(persistent-type)))))
+                 `(bind ((substituter (substituter-of (class-prototype class))))
+                   (ensure-class ',type-class-name :direct-superclasses
+                    (list (ensure-finalized (find-class (type-super-class-name-for ',name (funcall substituter))))))
+                   (bind ((type (parse-type (funcall substituter))))
+                     (if type
+                         (change-class type ',type-class-name)
+                         (setf type (make-instance ',type-class-name)))
+                     (setf (name-of type) ',name)
+                     (setf (args-of type) ',args)
+                     (setf (body-of type) ',body)
+                     (setf (documentation-of type) ',documentation)
+                     (setf (find-type ',name) type))))))
       ,(if common-lisp-type-p
            `',name
            `(deftype ,name ,args ,@body)))))
@@ -80,7 +85,10 @@
            (not (eq name (first type))))
       (let ((el (first type)))
         (cond ((eq 'and el)
-               (type-class-name-for (find-if #'symbolp (cdr type))))
+               (let ((super-class-name (type-class-name-for (find-if #'symbolp (cdr type)))))
+                 (if (find-class super-class-name nil)
+                     super-class-name
+                     (type-class-name-for el))))
               ((member el '(or not))
                'persistent-type)
               (t
@@ -218,37 +226,13 @@
 ;;;;;;;;;;;;;;;
 ;;; Type parser
 
-(defgeneric parse-keyword-type-parameters (type type-parameters)
-  (:method (type type-parameters)
-           type-parameters))
-
-(defgeneric parse-positional-type-parameters (type type-parameters)
-  (:method (type (type-parameters null))
-           nil)
-  
-  (:method (type type-parameters)
-           (let ((args (lambda-list-to-variable-list (args-of type))))
-             ;; TODO: eliminate this eval by storing the lambde in defptype
-             (eval `(apply (lambda ,(args-of type)
-                             (list ,@(mappend #L(list (intern (symbol-name !1) (find-package :keyword)) !1) args)))
-                     ',type-parameters)))))
-
 (defun parse-type (type-specifier)
   (etypecase type-specifier
     (symbol (or (find-type type-specifier)
                 (find-persistent-class type-specifier)))
     (list
-     (let ((type (make-instance (type-class-name-for (first type-specifier)))))
-       (apply #'reinitialize-instance type
-              (cond ((= 0 (length type-specifier))
-                     nil)
-                    ((find-if #L(and (keywordp !1)
-                                     (member !1 (mapcar #L(intern (symbol-name !1)
-                                                                  (find-package :keyword))
-                                                        (args-of type))))
-                              (cdr type-specifier))
-                     (parse-keyword-type-parameters type (rest type-specifier)))
-                    (t (parse-positional-type-parameters type (rest type-specifier)))))))
+     (apply (parser-of (class-prototype (find-class (type-class-name-for (first type-specifier)))))
+            (rest type-specifier)))
     (persistent-type type-specifier)))
 
 ;;;;;;;;;;;;;;;;;
