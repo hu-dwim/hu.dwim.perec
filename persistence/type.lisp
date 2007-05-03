@@ -45,7 +45,7 @@
                               ,@(mappend #L(list (intern (symbol-name !1) (find-package :keyword)) !1)
                                          (lambda-list-to-variable-list args :include-&rest #t))))
              :allocation :class))
-          (lambda-list-to-variable-list args :include-&rest #t))
+          (mapcar #L(list !1 nil) (lambda-list-to-variable-list args :include-&rest #t)))
         (:export-class-name-p #t)
         (:export-accessor-names-p #t))
       (eval-when (:load-toplevel :execute)

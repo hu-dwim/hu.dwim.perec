@@ -1,3 +1,4 @@
+- association slot aliasing
 - change object name to instance name in places such as select-instance, purge-instance, load-instance, etc.
 - eliminate superfluous dependencies (cl-containers, cl-ppcre)
 - eliminate duplicates
