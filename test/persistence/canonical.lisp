@@ -85,16 +85,6 @@
        t2)
   (member a b c))
 
-(defptype member-test ()
-  '(member a b c))
-
-(deftest test/persistence/canonical/member ()
-  (finishes
-    (let ((type (find-type 'member-test)))
-      (is (typep type 'member-type))
-      (is (equal (members-of type)
-                 '(a b c))))))
-
 ;;;;;;;;;;;;;;
 ;;; Normalized
 
@@ -143,3 +133,66 @@
 (def-normalized-type-test symbol/2 (or unbound symbol) (and (not null) symbol))
 
 (def-normalized-type-test set/1 (set persistent-object) (and (not null) (set persistent-object)))
+
+;;;;;;;;;;;;;;;
+;;;; Reflection
+
+(defsuite* (test/persistence/type-reflection :in test/persistence))
+
+(deftest test/persistence/type-reflection/unbound ()
+  (let ((type (find-type 'unbound)))
+    (is (typep type 'unbound-type))
+    (is (subtypep 'unbound-type 'eql-type))))
+
+(deftest test/persistence/type-reflection/null ()
+  (let ((type (find-type 'null)))
+    (is (typep type 'null-type))
+    (is (subtypep 'null-type 'persistent-type))))
+
+(deftest test/persistence/type-reflection/boolean ()
+  (let ((type (find-type 'boolean)))
+    (is (typep type 'boolean-type))
+    (is (subtypep 'boolean-type 'persistent-type))))
+
+(deftest test/persistence/type-reflection/integer-16 ()
+  (let ((type (find-type 'integer-16)))
+    (is (typep type 'integer-16-type))
+    (is (subtypep 'integer-16-type 'integer-type))))
+
+(deftest test/persistence/type-reflection/integer-32 ()
+  (let ((type (find-type 'integer-32)))
+    (is (typep type 'integer-32-type))
+    (is (subtypep 'integer-32-type 'integer-type))))
+
+(deftest test/persistence/type-reflection/integer-64 ()
+  (let ((type (find-type 'integer-64)))
+    (is (typep type 'integer-64-type))
+    (is (subtypep 'integer-64-type 'integer-type))))
+
+(deftest test/persistence/type-reflection/string ()
+  (let ((type (find-type 'string)))
+    (is (typep type 'string-type))
+    (is (subtypep 'string-type 'persistent-type))))
+
+(deftest test/persistence/type-reflection/text ()
+  (let ((type (find-type 'text)))
+    (is (typep type 'text-type))
+    (is (subtypep 'text-type 'string-type))))
+
+(defptype member-test ()
+  '(member a b c))
+
+(deftest test/persistence/type-reflection/member ()
+  (let ((type (find-type 'member-test)))
+    (is (typep type 'member-test-type))
+    (is (subtypep 'member-test-type 'member-type))
+    (is (equal (members-of type)
+               '(a b c)))))
+
+(defptype integer-test ()
+  'integer-32)
+
+(deftest test/persistence/type-reflection/integer ()
+  (let ((type (find-type 'integer-test)))
+    (is (typep type 'integer-test-type))
+    (is (subtypep 'integer-test-type 'integer-32-type))))

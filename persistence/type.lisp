@@ -51,13 +51,15 @@
       (eval-when (:load-toplevel :execute)
         (bind ((class (ensure-finalized (find-class ',type-class-name))))
           ,(when allow-nil-args-p
-                 `(bind ((substituter (substituter-of (class-prototype class))))
+                 `(bind ((prototype (class-prototype class))
+                         (substituter (substituter-of prototype))
+                         (parser (parser-of prototype))
+                         (substituted-type (funcall substituter)))
                    (ensure-class ',type-class-name :direct-superclasses
-                    (list (ensure-finalized (find-class (type-super-class-name-for ',name (funcall substituter))))))
-                   (bind ((type (parse-type (funcall substituter))))
-                     (if type
-                         (change-class type ',type-class-name)
-                         (setf type (make-instance ',type-class-name)))
+                    (list (ensure-finalized (find-class (type-super-class-name-for ',name substituted-type)))))
+                   (bind ((type (if (symbolp substituted-type)
+                                    (make-instance ',type-class-name)
+                                    (change-class (parse-type substituted-type) ',type-class-name))))
                      (setf (name-of type) ',name)
                      (setf (args-of type) ',args)
                      (setf (body-of type) ',body)
@@ -81,19 +83,25 @@
                       type "-type"))
 
 (defun type-super-class-name-for (name type)
-  (if (and (consp type)
-           (not (eq name (first type))))
-      (let ((el (first type)))
-        (cond ((eq 'and el)
-               (let ((super-class-name (type-class-name-for (find-if #'symbolp (cdr type)))))
-                 (if (find-class super-class-name nil)
-                     super-class-name
-                     (type-class-name-for el))))
-              ((member el '(or not))
-               'persistent-type)
-              (t
-               (type-class-name-for el))))
-      'persistent-type))
+  (cond ((and (symbolp type)
+              (not (eq name type)))
+         (if (find-class (type-class-name-for type) nil)
+             (type-class-name-for type)
+             'persistent-type))
+        ((and (consp type)
+              (not (eq name (first type))))
+         (let ((el (first type)))
+           (cond ((eq 'and el)
+                  (let ((super-class-name (type-class-name-for (find-if #'symbolp (cdr type)))))
+                    (if (find-class super-class-name nil)
+                        super-class-name
+                        (type-class-name-for el))))
+                 ((member el '(or not))
+                  'persistent-type)
+                 (t
+                  (type-class-name-for el)))))
+        (t
+         'persistent-type)))
 
 (defun type-specifier-p (type)
   (find-type type))
