@@ -153,6 +153,8 @@
            ;; managing persistent instances
            #:with-making-persistent-instances
            #:with-making-transient-instances
+           #:ensure-persistent
+           #:ensure-transient
            #:make-persistent
            #:make-transient
            #:oid-of

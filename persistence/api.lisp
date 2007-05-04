@@ -125,19 +125,29 @@
 ;;;;;;;;;;;;;;;
 ;;; persistence
 
+(defun ensure-persistent (instance)
+  (unless (persistent-p instance)
+    (make-persistent instance)))
+
+(defun ensure-transient (instance)
+  (when (persistent-p instance)
+    (make-transient instance)))
+
 (defgeneric make-persistent (instance)
   (:documentation "Makes an instance persistent without making its associated instances persistent.")
 
   (:method :around (instance)
-           (unless (persistent-p instance)
-             (call-next-method))))
+           (if (persistent-p instance)
+               (error "Instance ~A is already persistent, you may want to use ensure-persistent instead" instance)
+               (call-next-method))))
 
 (defgeneric make-transient (instance)
   (:documentation "Makes an instance transient without making its associated instances transient.")
 
   (:method :around (instance)
-           (when (persistent-p instance)
-             (call-next-method))))
+           (if (persistent-p instance)
+               (call-next-method)
+               (error "Instance ~A is already transient, you may want to use ensure-transient instead" instance))))
 
 ;;;;;;;;;;;;;;
 ;;; collection
