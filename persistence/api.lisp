@@ -79,6 +79,8 @@
                    (bind ((class (find-class name)))
                      (ensure-class name
                                    :metaclass (class-of class)
+                                   ;; TODO: what about killing other class options?
+                                   :abstract (list (abstract-p class))
                                    :direct-superclasses (class-direct-superclasses class)
                                    :direct-slots (mapcar
                                                   #L(list :instance !1)
