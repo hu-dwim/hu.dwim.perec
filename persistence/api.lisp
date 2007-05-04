@@ -82,8 +82,9 @@
                                    :direct-superclasses (class-direct-superclasses class)
                                    :direct-slots (mapcar
                                                   #L(list :instance !1)
-                                                  (remove-if #L(typep !1 'persistent-association-end-direct-slot-definition)
-                                                             (class-direct-slots class)))))))
+                                                  (collect-if #L (typep !1 'persistent-direct-slot-definition)
+                                                              (remove-if #L(typep !1 'persistent-association-end-direct-slot-definition)
+                                                                         (class-direct-slots class))))))))
             (prog1
                 (aif (find-association ',association-name)
                      (reinitialize-instance it :association-end-definitions ,final-association-ends)
