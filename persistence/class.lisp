@@ -503,10 +503,15 @@
   "Returns true for persistent set types."
   (and (not (subtypep type 'list))
        (or (subtypep type '(set persistent-object))
-           (subtypep type '(disjunct-set persistent-object)))))
+           (subtypep type '(disjunct-set persistent-object))
+           (subtypep type '(ordered-set persistent-object)))))
+
+(defun ordered-set-type-p (type)
+  (and (not (subtypep type 'list))
+       (subtypep type '(ordered-set persistent-object))))
 
 (defun set-type-class-for (type)
-  (second (find 'set type :key #L(first (ensure-list !1)))))
+  (second (find-if #L(member (first (ensure-list !1)) '(set disjunct-set ordered-set)) type)))
 
 (defun unbound-subtype-p (type)
   (and (not (eq 'member type))

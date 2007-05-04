@@ -33,7 +33,11 @@
   (mapcar #'object-reader
           (select-records (oid-columns-of (table-of slot))
                           (list (name-of (table-of slot)))
-                          (id-column-matcher-where-clause instance (id-column-of slot)))))
+                          (id-column-matcher-where-clause instance (id-column-of slot))
+                          (let ((type (slot-definition-type slot)))
+                            (if (ordered-set-type-p type)
+                                ;; TODO: use reflection instead of third
+                                (list (sql-identifier :name (rdbms-name-for (third type)))))))))
 
 (defun restore-1-n-association-end-set (instance slot)
   "Restores the non lazy list association end value without local side effects from the database."

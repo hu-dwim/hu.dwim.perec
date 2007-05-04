@@ -17,6 +17,8 @@
           (eq type t)
           (not (prc::unbound-subtype-p type))))
   (is (or (eq type 'set)
+          (eq type 'disjunct-set)
+          (eq type 'ordered-set)
           (eq type 'member)
           (eq type t)
           (not (prc::set-type-p type)))))

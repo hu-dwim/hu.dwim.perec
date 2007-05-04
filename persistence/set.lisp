@@ -9,6 +9,7 @@
 ;;;;;;;
 ;;; Set
 
+;; TODO: set types need some refactoring, to have a common base type and to be less fragile
 (defptype set (&optional element-type)
   (declare (ignore element-type))
   '(or list persistent-slot-set-container))
@@ -23,6 +24,18 @@
   '(or list persistent-slot-set-container))
 
 (defmethod shared-initialize :around ((type disjunct-set-type) slot-names &rest args &key element-type &allow-other-keys)
+  (apply #'call-next-method type slot-names :element-type (parse-type element-type) (remove-keywords args :element-type)))
+
+(defun ordered-set-p (instance)
+  (declare (ignore instance))
+  #t)
+
+(defptype ordered-set (&optional element-type by)
+  (declare (ignore element-type by))
+  '(and (satisfies ordered-set-p)
+        (or list persistent-slot-set-container)))
+
+(defmethod shared-initialize :around ((type ordered-set-type) slot-names &rest args &key element-type &allow-other-keys)
   (apply #'call-next-method type slot-names :element-type (parse-type element-type) (remove-keywords args :element-type)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;

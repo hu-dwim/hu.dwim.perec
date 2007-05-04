@@ -129,6 +129,7 @@
            #:member
            #:set
            #:disjunct-set
+           #:ordered-set
            #:or
 
            ;; persistent classes, all persistent-classes are valid slot types

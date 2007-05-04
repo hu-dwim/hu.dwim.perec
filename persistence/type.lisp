@@ -211,6 +211,8 @@
     symbol
     serialized
     set
+    disjunct-set
+    ordered-set
     t)
   "An ordered list of types which are mapped to RDBMS.")
 
