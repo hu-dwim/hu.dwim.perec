@@ -207,6 +207,7 @@
            #:add-lexical-variable
            #:add-query-variable
            #:add-assert
+           #:add-order-by
            #:add-collect
            #:execute-query
            #:unique
