@@ -64,6 +64,8 @@
            #:unique-p
            #:required-p
            #:association-end-query-of
+           #:-instance-
+           #:-associated-instance-
 
            ;; defining persistent associations
            #:defassociation
