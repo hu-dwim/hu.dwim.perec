@@ -48,6 +48,7 @@
           (mapcar #L(list !1 nil) (lambda-list-to-variable-list args :include-&rest #t)))
         (:export-class-name-p #t)
         (:export-accessor-names-p #t))
+      (export ',name)
       (eval-when (:load-toplevel :execute)
         (bind ((class (ensure-finalized (find-class ',type-class-name))))
           ,(when allow-nil-args-p
