@@ -81,6 +81,9 @@
            #:parse-type
            #:unparse-type
            #:primitive-type-p
+           #:primitive-type-p*
+           #:persistent-class-type-p
+           #:persistent-class-type-p*
            #:destructure-type
            #:def-member-type
 

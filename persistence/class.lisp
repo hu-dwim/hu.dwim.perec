@@ -490,14 +490,32 @@
 ;;;;;;;;
 ;;; Type
 
+(defun null-inclusive-type-p (type)
+  (bind ((mapped-type (mapped-type-for type)))
+    (or (subtypep mapped-type 'boolean)
+        (subtypep mapped-type 'symbol))))
+
 (defun primitive-type-p (type)
-  "Accept types such as: integer, string, boolean, (or unbound integer), (or null string), (or unbound null boolean), etc."
+  "Accepts types such as boolean, integer, string, double, etc."
   (and (not (persistent-class-type-p type))
-       (not (set-type-p type))))
+       (not (set-type-p type))
+       (not (unbound-subtype-p type))
+       (or (not (null-subtype-p type))
+           (null-inclusive-type-p type))))
+
+(defun primitive-type-p* (type)
+  "Same as primitive-type-p but also accepts values such as (or unbound integer), (or null string), (or unbound null boolean), etc."
+  (primitive-type-p (normalized-type-for type)))
 
 (defun persistent-class-type-p (type)
   "Returns true for persistent class types."
-  (subtypep type 'persistent-object))
+  (and (subtypep type 'persistent-object)
+       (not (unbound-subtype-p type))
+       (not (null-subtype-p type))))
+
+(defun persistent-class-type-p* (type)
+  "Same as persistent-class-type-p but also accepts values such as (or unbound persistent-object), (or null persistent-object), (or unbound null persistent-object) etc."
+  (persistent-class-type-p (normalized-type-for type)))
 
 (defun set-type-p (type)
   "Returns true for persistent set types."

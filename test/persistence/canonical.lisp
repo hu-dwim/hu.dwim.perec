@@ -136,6 +136,48 @@
 
 (def-normalized-type-test set/1 (set persistent-object) (and (not null) (set persistent-object)))
 
+;;;;;;;;;;;;;;
+;;; Type check
+
+(defsuite* (test/persistence/type-check :in test/persistence))
+
+(deftest test/persistence/type-check/primitive-type (type)
+  (is (primitive-type-p type))
+  (is (not (primitive-type-p `(or unbound ,type))))
+  (unless (cl-perec::null-inclusive-type-p type)
+    (is (not (primitive-type-p `(or null ,type)))))
+  (is (not (primitive-type-p `(or unbound null ,type))))
+  (is (primitive-type-p* type))
+  (is (primitive-type-p* `(or unbound ,type)))
+  (is (primitive-type-p* `(or null ,type)))
+  (is (primitive-type-p* `(or null unbound ,type))))
+
+(deftest test/persistence/type-check/boolean ()
+  (test/persistence/type-check/primitive-type 'boolean))
+
+(deftest test/persistence/type-check/string ()
+  (test/persistence/type-check/primitive-type 'string))
+
+(deftest test/persistence/type-check/symbol ()
+  (test/persistence/type-check/primitive-type 'symbol))
+
+(defpclass primitive-type-test ()
+  ())
+
+(deftest test/persistence/type-check/persistent-object ()
+  (is (persistent-class-type-p 'primitive-type-test))
+  (is (not (persistent-class-type-p '(or unbound primitive-type-test))))
+  (is (not (persistent-class-type-p '(or null primitive-type-test))))
+  (is (not (persistent-class-type-p '(or unbound null primitive-type-test))))
+  (is (persistent-class-type-p* 'primitive-type-test))
+  (is (persistent-class-type-p* '(or unbound primitive-type-test)))
+  (is (persistent-class-type-p* '(or null primitive-type-test)))
+  (is (persistent-class-type-p* '(or unbound null primitive-type-test)))
+  (is (not (primitive-type-p 'primitive-type-test)))
+  (is (not (primitive-type-p '(or unbound primitive-type-test))))
+  (is (not (primitive-type-p '(or null primitive-type-test))))
+  (is (not (primitive-type-p '(or null unbound primitive-type-test)))))
+
 ;;;;;;;;;;;;;;;
 ;;;; Reflection
 
