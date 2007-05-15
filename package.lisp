@@ -201,8 +201,8 @@
            #:where
            #:order-by
            #:group-by
-           #:select-first-matching
-           #:select-last-matching
+           #:select-first-matching-instance
+           #:select-last-matching-instance
            #:select-instance
            #:select-instances
            #:select-similar-instance

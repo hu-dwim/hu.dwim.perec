@@ -116,7 +116,7 @@
 
 (deftest test/query/select/with-dynamic-variables ()
   (with-fixture forum-data
-      (let ((user (with-transaction (select-first-matching user-test))))
+      (let ((user (with-transaction (select-first-matching-instance user-test))))
         (test-query (:select-count nil :record-count 2)
           (revive-instance user)          ; for eq
           (select (o)
@@ -125,7 +125,7 @@
 
 (deftest test/query/select/with-literal-object ()
   (with-fixture forum-data
-      (bind ((user (with-transaction (select-first-matching user-test))))
+      (bind ((user (with-transaction (select-first-matching-instance user-test))))
         (test-query (:select-count nil :record-count 2)
           (execute-query
            (make-query
@@ -135,7 +135,7 @@
 
 (deftest test/query/select/polimorph-association-end ()
   (test-query (:select-count (+ 2 1) :record-count 2 :fixture forum-data)
-    (let ((topic (select-first-matching topic-test)))
+    (let ((topic (select-first-matching-instance topic-test)))
       (select (o)
         (from (o ad-test))
         (where (eq (topic-of o) topic))))))

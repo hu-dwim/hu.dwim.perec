@@ -83,5 +83,5 @@
     (bind ((scroll (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test)))))
       (setf (page-size scroll) 3)
       (check-page (elements scroll) 0 3)
-      (purge-instance (select-first-matching scroll-test))
+      (purge-instance (select-first-matching-instance scroll-test))
       (check-page (elements scroll) 1 4))))

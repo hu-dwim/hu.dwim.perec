@@ -78,14 +78,14 @@
 
 (deftest test/query/select/association-m-n/lexical-1 ()
   (test-query (:select-count nil :record-count 2 :fixture association-test-fixture)
-    (let ((s (select-first-matching movie-test)))
+    (let ((s (select-first-matching-instance movie-test)))
       (select (p)
         (from (p performer-test))
         (where (member p (performers-of s)))))))
 
 (deftest test/query/select/association-m-n/lexical-2 ()
   (test-query (:select-count nil :record-count 2 :fixture association-test-fixture)
-    (let ((s (select-first-matching movie-test)))
+    (let ((s (select-first-matching-instance movie-test)))
       (select (p)
         (from (p performer-test))
         (where (member s (movies-of p)))))))

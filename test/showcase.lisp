@@ -43,7 +43,7 @@
   (make-instance 'c1 :c4 (make-instance 'c4)))
 
 (with-transaction
-  (let ((c4 (select-first-matching c4)))
+  (let ((c4 (select-first-matching-instance c4)))
     (select ((c1 c1))
       (assert (eq c4 (c4-of c1)))
       (collect c4 (s1-of c1)))))
