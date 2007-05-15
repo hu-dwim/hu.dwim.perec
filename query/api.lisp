@@ -97,7 +97,7 @@
     (when (> (element-count scroll) 0)
       (setf (page-size scroll) 1)
       (last-page! scroll)
-      (first (aref (element scroll) 0)))))
+      (first (aref (elements scroll) 0)))))
 
 (defun select-similar-assert-for (type rest)
   (bind ((class (find-class type)))
