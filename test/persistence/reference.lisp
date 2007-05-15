@@ -39,17 +39,17 @@
 (deftest test/persistence/reference/initial-value/1 ()
   (with-and-without-caching-slot-values
     (with-one-and-two-transactions (make-instance 'reference-or-null-test)
-      (is (eq nil (referred-of -object-))))))
+      (is (eq nil (referred-of -instance-))))))
 
 (deftest test/persistence/reference/initial-value/2 ()
   (with-and-without-caching-slot-values
     (with-one-and-two-transactions (make-instance 'reference-or-unbound-test)
-      (is (not (slot-boundp -object- 'referred))))))
+      (is (not (slot-boundp -instance- 'referred))))))
 
 (deftest test/persistence/reference/initial-value/3 ()
   (with-and-without-caching-slot-values
     (with-one-and-two-transactions (make-instance 'reference-or-unbound-test)
-      (is (not (slot-boundp -object- 'referred))))))
+      (is (not (slot-boundp -instance- 'referred))))))
 
 (deftest test/persistence/reference/store-value/1 ()
   (with-and-without-caching-slot-values

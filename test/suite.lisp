@@ -32,18 +32,18 @@
       ,@forms)))
 
 (defmacro with-two-transactions (form-1 &body forms-2)
-  `(let ((-object-
+  `(let ((-instance-
           (with-transaction
             ,form-1)))
     (with-transaction
-      (revive-instance -object-)
+      (revive-instance -instance-)
       ,@forms-2)))
 
 (defmacro with-one-and-two-transactions (form-1 &body forms-2)
   `(progn
     (with-transaction
-      (let ((-object- ,form-1))
-        (declare (ignorable -object-))
+      (let ((-instance- ,form-1))
+        (declare (ignorable -instance-))
         ,@forms-2))
     (with-two-transactions ,form-1 ,@forms-2)))
 

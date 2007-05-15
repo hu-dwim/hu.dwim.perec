@@ -77,8 +77,8 @@
 (defmacro simple-select (options variable &body body)
   (bind ((variable-specification
           (typecase variable
-            (null '-object-)
-            (symbol `(-object- ,variable))
+            (null '-instance-)
+            (symbol `(-instance- ,variable))
             (t variable)))
          (variable-name (first (ensure-list variable-specification))))
     `(select ,options (,variable-name)
@@ -105,15 +105,15 @@
           (collect `(equal (,(reader-name-of
                               (find initarg (class-slots class)
                                     :key #L(first (slot-definition-initargs !1))))
-                            -object-)
+                            -instance-)
                      ,value)))))
 
 (defmacro select-similar-instance (type &rest rest &key &allow-other-keys)
-  `(select-instance (-object- ,type)
+  `(select-instance (-instance- ,type)
     ,@(select-similar-assert-for type rest)))
 
 (defmacro select-similar-instances (type &rest rest &key &allow-other-keys)
-  `(select-instances (-object- ,type)
+  `(select-instances (-instance- ,type)
     ,@(select-similar-assert-for type rest)))
 
 (defmacro select-instance (&optional variable &body body)

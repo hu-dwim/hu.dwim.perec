@@ -86,7 +86,7 @@
                           `(not (slot-boundp object ',name))))))
           (with-and-without-caching-slot-values
             (with-one-and-two-transactions (make-object)
-              (test-object -object-))))))))
+              (test-object -instance-))))))))
 
 (defclass* standard-class-type-test ()
   ((slot 0)))
