@@ -66,6 +66,16 @@
       (make-query ',select-form ',lexical-variables)
       ,@lexical-variables)))
 
+(defwalker-handler select (form parent env)
+  (let* ((lexical-variables (remove-duplicates (append (arnesi::lexical-variables (cdr env))
+                                                       ;; TODO: arnesi sux when accessing environment
+                                                       (mapcar #'cadr (car env))))))
+    (walk-form `(execute-query
+                 (make-query ',form ',lexical-variables)
+                 ,@lexical-variables)
+               parent
+               env)))
+
 (defmacro purge (&whole purge-form (&rest purge-list) &body clauses &environment env)
   "TODO"
   (declare (ignore purge-list clauses))
