@@ -111,20 +111,20 @@
 
 (defun select-similar-assert-for (type rest)
   (bind ((class (find-class type)))
-    (iter (for (initarg value) on rest by 'cddr)
-          (collect `(equal (,(reader-name-of
-                              (find initarg (class-slots class)
-                                    :key #L(first (slot-definition-initargs !1))))
-                            -instance-)
-                     ,value)))))
+    `(and ,@(iter (for (initarg value) on rest by 'cddr)
+                  (collect `(equal (,(reader-name-of
+                                      (find initarg (class-slots class)
+                                            :key #L(first (slot-definition-initargs !1))))
+                                    -instance-)
+                             ,value))))))
 
 (defmacro select-similar-instance (type &rest rest &key &allow-other-keys)
   `(select-instance (-instance- ,type)
-    ,@(select-similar-assert-for type rest)))
+    (where ,(select-similar-assert-for type rest))))
 
 (defmacro select-similar-instances (type &rest rest &key &allow-other-keys)
   `(select-instances (-instance- ,type)
-    ,@(select-similar-assert-for type rest)))
+    (where ,(select-similar-assert-for type rest))))
 
 (defmacro select-instance (&optional variable &body body)
   `(let ((scroll (simple-select (:result-type scroll) ,variable ,@body)))
