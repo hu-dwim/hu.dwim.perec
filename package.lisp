@@ -175,6 +175,8 @@
            #:revive-instance
            #:with-revived-instance
            #:with-revived-instances
+           #:with-reloaded-instance
+           #:with-reloaded-instances
            #:purge-instance
            #:purge-instances
            #:print-persistent-instance

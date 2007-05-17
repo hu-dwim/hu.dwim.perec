@@ -144,7 +144,7 @@
                    (delete-records (name-of table))))))))
 
 (defmacro revive-instance (place &rest args)
-  "Load instance found in PLACE into the current transaction, update PLACE if needed."
+  "Load instance found in PLACE into the current transaction, update PLACE if needed. The instance being revived cannot be part of another ongoing transaction. Use load-instance if that is needed."
   (with-unique-names (instance)
     `(bind ((,instance ,place))
       (when ,instance
@@ -165,6 +165,19 @@
 (defmacro with-revived-instance (instance &body body)
   "See WITH-REVIVED-INSTANCES."
   `(with-revived-instances (,instance)
+    ,@body))
+
+(defmacro with-reloaded-instances (instances &body body)
+  "Rebind the variables specified in INSTANCES, reload them in the current transaction and execute BODY in this lexical environment."
+  (unless (every #'symbolp instances)
+    (error "with-reloaded-instances works only on variables"))
+  `(bind ,(iter (for instance :in instances)
+                (collect `(,instance (load-instance ,instance))))
+    ,@body))
+
+(defmacro with-reloaded-instance (instance &body body)
+  "See WITH-RELOADED-INSTANCES."
+  `(with-reloaded-instances (,instance)
     ,@body))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
