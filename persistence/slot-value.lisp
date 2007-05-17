@@ -177,7 +177,7 @@
                       (setf slot-value restored-slot-value))
                     (when (cache-p restored-slot)
                       (setf (cached-slot-boundp-or-value-using-class class instance restored-slot) restored-slot-value)))
-              (funcall return-with  slot-value))
+              (funcall return-with slot-value))
             ;; only restore the requested slot value
             (bind (((values restored-slot-value restored-slot) (restore-slot instance slot)))
               (when (and *cache-slot-values*
@@ -219,7 +219,10 @@
                                    (instance persistent-object)
                                    (slot persistent-effective-slot-definition))
   "Reads the slot value from the database or the cache."
-  (slot-boundp-or-value-using-class class instance slot #'call-next-method #'identity))
+  (slot-boundp-or-value-using-class class instance slot #'call-next-method
+                                    #L(if (eq !1 +unbound-slot-value+)
+                                          (slot-unbound class instance (slot-definition-name slot))
+                                          !1)))
 
 (defmethod (setf slot-value-using-class) (new-value
                                           (class persistent-class)
