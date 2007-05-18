@@ -178,7 +178,9 @@
                     (sql-map-failed))))))
 
   (:method ((fn (eql 'eq)) (n-args (eql 2)) object (access association-end-access) call)
-           (function-call-to-sql fn 2 access object call))
+           (if (association-end-access-p object)
+               (call-next-method)
+               (function-call-to-sql fn 2 access object call)))
 
   ;; (typep variable type)
   ;;   example:
