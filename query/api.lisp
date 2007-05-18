@@ -96,18 +96,18 @@
       ,@body)))
 
 (defmacro select-first-matching-instance (&optional variable &body body)
-  `(let ((scroll (simple-select (:result-type scroll) ,variable ,@body)))
+  `(let ((scroll (simple-select (:result-type scroll :flatp #t) ,variable ,@body)))
     (when (> (element-count scroll) 0)
       (setf (page-size scroll) 1)
       (first-page! scroll)
-      (first (aref (elements scroll) 0)))))
+      (aref (elements scroll) 0))))
 
 (defmacro select-last-matching-instance (&optional variable &body body)
-  `(let ((scroll (simple-select (:result-type scroll) ,variable ,@body)))
+  `(let ((scroll (simple-select (:result-type scroll :flatp #t) ,variable ,@body)))
     (when (> (element-count scroll) 0)
       (setf (page-size scroll) 1)
       (last-page! scroll)
-      (first (aref (elements scroll) 0)))))
+      (aref (elements scroll) 0))))
 
 (defun select-similar-assert-for (type rest)
   (bind ((class (find-class type)))

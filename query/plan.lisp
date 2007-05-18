@@ -348,8 +348,8 @@
   (:method ((conversion conversion-operation))
            (with-slots (input result-type flatp) conversion
              (ecase result-type
-               (list `(to-list ,(compile-plan input) ,flatp))
-               (scroll `(to-scroll ,(compile-plan input))))))
+               (list `(to-list ,(compile-plan input) :flatp ,flatp))
+               (scroll `(to-scroll ,(compile-plan input) :flatp ,flatp)))))
 
   (:method ((delete delete-operation))
            (with-slots (input bindings variables) delete

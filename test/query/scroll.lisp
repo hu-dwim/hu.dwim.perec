@@ -8,7 +8,7 @@
    (and (= (length page) (- end start))
         (iter (for i index-of-vector page)
               (for v from start below end)
-              (always (= (first (aref page i)) v))))))
+              (always (= (aref page i) v))))))
 
 (defpclass* scroll-test ()
   ((attr-1 :type integer-32)))

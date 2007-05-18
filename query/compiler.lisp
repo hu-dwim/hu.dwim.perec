@@ -122,8 +122,8 @@ with the result of the naively compiled query.")
 
 (defun add-conversion-to-result-type (query form)
   (ecase (result-type-of query)
-    (list `(to-list ,form ,(flatp query)))
-    (scroll `(to-scroll ,form))))
+    (list `(to-list ,form :flatp ,(flatp query)))
+    (scroll `(to-scroll ,form :flatp ,(flatp query)))))
 
 ;;;;
 ;;;; Debug query compiler
