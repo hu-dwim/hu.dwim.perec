@@ -127,11 +127,11 @@
     (where ,(select-similar-assert-for type rest))))
 
 (defmacro select-instance (&optional variable &body body)
-  `(let ((scroll (simple-select (:result-type scroll) ,variable ,@body)))
+  `(let ((scroll (simple-select (:result-type scroll :flatp #t) ,variable ,@body)))
     (setf (page-size scroll) 1)
     (case (element-count scroll)
       (0 nil)
-      (1 (first-page! scroll) (first (aref (elements scroll) 0)))
+      (1 (first-page! scroll) (aref (elements scroll) 0))
       (otherwise (error "Query did not return unique result.")))))
 
 (defmacro select-instances (&optional variable &body body)
