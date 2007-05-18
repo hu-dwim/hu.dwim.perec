@@ -150,7 +150,8 @@
       (when ,instance
         (assert (or (not (instance-in-transaction-p ,instance))
                     (eq (transaction-of ,instance)
-                        *transaction*)))
+                        *transaction*))
+                nil "The place ~S being revived holds an alive instance in another transaction. Maybe you should use load-instance and friends." ',place)
         (setf ,place (load-instance ,instance ,@args))))))
 
 (defmacro with-revived-instances (instances &body body)
