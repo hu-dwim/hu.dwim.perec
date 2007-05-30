@@ -9,6 +9,8 @@
 ;;;;;;;
 ;;; Set
 
+;; TODO: enforce disjunct-set in defassociation for 1-N associations mapped as foreign keys in the RDBMS?
+
 ;; TODO: set types need some refactoring, to have a common base type and to be less fragile
 (defptype set (&optional element-type)
   (declare (ignore element-type))
