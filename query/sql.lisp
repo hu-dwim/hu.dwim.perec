@@ -47,9 +47,11 @@
 
 (defun sql-delete-from-table (table &key where)
   "Generate a delete command for records in TABLE that satisfies the WHERE clause."
-  `(sql-delete
-    :table ,(sql-table-reference-for table nil)
-    :where ,where))
+  (bind ((table-ref (sql-table-reference-for table nil)))
+    (when table-ref
+      `(sql-delete
+        :table ,table-ref
+        :where ,where))))
 
 (defun tables-for-delete (class)
   "Returns the tables where instances of CLASS are stored."
@@ -117,7 +119,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defgeneric sql-table-references-for (element)
   (:method ((query query))
            (bind ((variables (query-variables-of query)))
-             (mapcar 'sql-table-reference-for variables variables))))
+             (delete nil (mapcar 'sql-table-reference-for variables variables)))))
 
 (defgeneric sql-table-reference-for (element alias)
   (:method ((table table) (alias symbol))
@@ -162,7 +164,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (ensure-exported class)
            (bind ((tables (rest (primary-tables-of class)))) ; TODO handle UNION/APPEND
              (case (length tables)
-               (0 (error "No primary table for persistent class: ~A" class))
+               (0 nil)
                (1 (sql-table-reference-for (first tables) alias))
                (t (sql-table-reference-for
                    (sql-subquery :query (sql-select-oids-from-tables tables 'sql-union))
@@ -255,37 +257,50 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defun sql-exists-subselect-for-variable (variable type)
   "Returns an sql expression which evaluates to true iff the query variable named VARIABLE-NAME
  has the type TYPE."
-  `(sql-exists
-    (sql-subquery
-     :query
-     (sql-select
-      :columns (list 1)
-      :tables (list ,(sql-table-reference-for-type type type))
-      :where ,(sql-join-condition-for variable type nil)))))
+  (bind ((table-ref (sql-table-reference-for-type type type)))
+    (if table-ref
+        `(sql-exists
+          (sql-subquery
+           :query
+           (sql-select
+            :columns (list 1)
+            :tables (list ,table-ref)
+            :where ,(sql-join-condition-for variable type nil))))
+        (sql-false-literal))))
 
 (defun sql-exists-subselect-for-association-end (variable association-end)
   "Returns an sql expression which evaluates to true iff the query variable VARIABLE
  has associated objects through ASSOCIATION-END."
-  (bind ((class (slot-definition-class (other-association-end-of association-end))))
-    `(sql-exists
-      (sql-subquery
-       :query
-       (sql-select
-        :columns (list 1)
-        :tables (list ,(sql-table-reference-for class (sql-alias-for class)))
-        :where ,(sql-join-condition-for variable class (other-association-end-of association-end)))))))
+  (bind ((class (slot-definition-class (other-association-end-of association-end)))
+         (table-ref (sql-table-reference-for class (sql-alias-for class))))
+    (if table-ref
+        `(sql-exists
+          (sql-subquery
+           :query
+           (sql-select
+            :columns (list 1)
+            :tables (list ,table-ref)
+            :where ,(sql-join-condition-for variable class (other-association-end-of association-end)))))
+        (sql-false-literal))))
 
 (defun sql-aggregate-subselect-for-variable (aggregate-function n-association-end 1-var)
   (bind ((1-association-end (other-association-end-of n-association-end))
          (n-class (slot-definition-class 1-association-end))
          (n-var (make-query-variable :name (gensym (symbol-name (class-name n-class)))
-                                     :xtype n-class)))
-    `(sql-subquery
-      :query
-      (sql-select
-       :columns (list (,aggregate-function ,(sql-id-column-reference-for n-var)))
-       :tables (list ,(sql-table-reference-for n-var n-var))
-       :where ,(sql-join-condition-for 1-var n-var 1-association-end)))))
+                                     :xtype n-class))
+         (table-ref (sql-table-reference-for n-var n-var)))
+    (cond
+      (table-ref
+       `(sql-subquery
+         :query
+         (sql-select
+          :columns (list (,aggregate-function ,(sql-id-column-reference-for n-var)))
+          :tables (list ,table-ref)
+          :where ,(sql-join-condition-for 1-var n-var 1-association-end))))
+      ((eq aggregate-function 'sql-count)
+       (sql-literal :value 0))
+      (t
+       (sql-null-literal)))))
 
 (defun sql-aggregate-subselect-for-m-n-association-end (aggregate-function association-end variable)
   (bind ((other-end (other-association-end-of association-end))
@@ -302,15 +317,18 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 
 (defun sql-subselect-for-secondary-association-end (association-end variable)
   (bind ((primary-association-end (other-association-end-of association-end))
-         (class (slot-definition-class primary-association-end)))
-    `(sql-subquery
-      :query
-      (sql-select
-       :columns (list ,(sql-id-column-reference-for nil))
-       :tables (list ,(sql-table-reference-for class nil))
-       :where (sql-=
-               ,(sql-column-reference-for primary-association-end nil)
-               ,(sql-id-column-reference-for variable))))))
+         (class (slot-definition-class primary-association-end))
+         (table-ref (sql-table-reference-for class nil)))
+    (if table-ref
+        `(sql-subquery
+          :query
+          (sql-select
+           :columns (list ,(sql-id-column-reference-for nil))
+           :tables (list ,table-ref)
+           :where (sql-=
+                   ,(sql-column-reference-for primary-association-end nil)
+                   ,(sql-id-column-reference-for variable))))
+        (sql-null-literal)))) ; FIXME
 
 (defun sql-subselect-for-m-n-association (association-end variable)
   (bind ((other-end (other-association-end-of association-end))

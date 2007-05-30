@@ -105,18 +105,21 @@
                  :list list))
 
 (defun generate-sql-query (query)
-  (bind ((instance (make-instance 'sql-query-node
-                                  :query query
-                                  :result-type (result-type-of query)
-                                  :distinct (uniquep query)
-                                  :columns (sql-select-list-for query)
-                                  :tables  (sql-table-references-for query))))
-    (dolist (variable (query-variables-of query))
-      (when (joined-variable-p variable)
-        (add-sql-where-conditions
-         instance
-         (list (sql-join-condition-for-joined-variable variable)))))
-    instance))
+  (bind ((tables (sql-table-references-for query)))
+    (if tables
+        (bind ((instance (make-instance 'sql-query-node
+                                        :query query
+                                        :result-type (result-type-of query)
+                                        :distinct (uniquep query)
+                                        :columns (sql-select-list-for query)
+                                        :tables  tables)))
+          (dolist (variable (query-variables-of query))
+            (when (joined-variable-p variable)
+              (add-sql-where-conditions
+               instance
+               (list (sql-join-condition-for-joined-variable variable)))))
+          instance)
+        (generate-list-result-set nil query))))
 
 (defun add-filter (input query)
   (bind ((asserts (asserts-of query)))
@@ -398,10 +401,11 @@
                                              (sql-select
                                               :columns (list ',+id-column-name+)
                                               :tables (list ',temp-table))))
-                             (deletes (mapcar
-                                       (lambda (table)
-                                         (sql-delete-for-subselect table delete-where))
-                                       tables))
+                             (deletes (delete nil
+                                              (mapcar
+                                               (lambda (table)
+                                                 (sql-delete-for-subselect table delete-where))
+                                               tables)))
                              (drop-table `(sql-drop-table
                                            :name ',temp-table)))
                         `(execute-protected

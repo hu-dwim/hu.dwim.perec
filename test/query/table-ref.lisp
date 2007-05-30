@@ -2,6 +2,10 @@
 
 (defsuite* (test/query/table-ref :in test/query))
 
+(defpclass* abstract-test ()
+  ()
+  (:abstract #t))
+
 (defpclass* super-1-test ()
   ((attr1 :type integer)))
 
@@ -56,3 +60,8 @@
     (select (o)
       (from o)
       (where (typep o '(or super-1-test super-2-test))))))
+
+(deftest test/query/table-ref/abstract ()
+  (type-test
+   (select (o)
+     (from (o abstract-test)))))
