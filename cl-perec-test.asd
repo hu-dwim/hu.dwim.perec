@@ -28,7 +28,7 @@
 (in-package :cl-perec-system)
 
 (defvar *test-database-connection-specification*
-  '(:host "localhost" :database "perec-test" :user-name "root" :password "admin123"))
+  '(:host "localhost" :database "perec-test" :user-name "perec-test" :password "test123"))
 
 (defvar *load-with-debug-p* t)
 
