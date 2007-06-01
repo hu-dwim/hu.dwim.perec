@@ -96,6 +96,7 @@
             (setf *database*
                   (make-instance 'postgresql-postmodern
                                  :generated-transaction-class-name 'transaction
+                                 :default-result-type 'list
                                  :muffle-warnings t
                                  :transaction-mixin 'transaction-mixin
                                  :connection-specification cl-perec-system::*test-database-connection-specification*)))"))
