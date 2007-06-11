@@ -163,6 +163,7 @@
            #:ensure-transient
            #:make-persistent
            #:make-transient
+           #:lock-instance
            #:oid-of
            #:persistent-p
            #:created-p

@@ -91,6 +91,7 @@
   "Restores all prefetched slots at once without local side effects from the database. Executes a single select statement."
   (if-bind slots (prefetched-slots-of (class-of instance))
     (bind ((tables (delete-duplicates (mapcar #'table-of slots)))
+           ((values table-aliases where-clause) (table-aliases-and-where-clause-for-instance instance tables))
            (record
             (first
              (select-records (mapcan (lambda (slot)
@@ -98,13 +99,8 @@
                                                  (sql-column-alias :table (name-of (table-of slot)) :column column))
                                                (columns-of slot)))
                                      slots)
-                             (mapcar #L(sql-table-alias :name (name-of !1) :alias (name-of !1)) tables)
-                             (apply #'sql-and
-                                    (sql-= (sql-column-alias :table (name-of (first tables)) :column +id-column-name+)
-                                           (sql-literal :type +oid-id-sql-type+ :value (id-of instance)))
-                                    (mapcar #L(sql-= (sql-column-alias :table (name-of (first tables)) :column +id-column-name+)
-                                                     (sql-column-alias :table (name-of !1) :column +id-column-name+))
-                                            (rest tables)))))))
+                             table-aliases
+                             where-clause))))
       (assert (or record allow-missing))
       (when record
         (values
@@ -119,6 +115,16 @@
          (non-prefetched-slots (non-prefetched-slots-of (class-of instance))))
     (values (append prefetched-slot-values (mapcar #L(restore-slot instance !1) non-prefetched-slots))
             (append prefetched-slots non-prefetched-slots))))
+
+(defun table-aliases-and-where-clause-for-instance (instance tables)
+  (values
+   (mapcar #L(sql-table-alias :name (name-of !1) :alias (name-of !1)) tables)
+   (apply #'sql-and
+          (sql-= (sql-column-alias :table (name-of (first tables)) :column +id-column-name+)
+                 (sql-literal :type +oid-id-sql-type+ :value (id-of instance)))
+          (mapcar #L(sql-= (sql-column-alias :table (name-of (first tables)) :column +id-column-name+)
+                           (sql-column-alias :table (name-of !1) :column +id-column-name+))
+                  (rest tables)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS slot storers

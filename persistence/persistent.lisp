@@ -143,6 +143,19 @@
                  (when table
                    (delete-records (name-of table))))))))
 
+(defgeneric lock-instance (instance &key wait)
+  (:documentation "Lock instance in the current transaction. If wait is false and the instance cannot be locked then an condition will be thrown.")
+
+  (:method ((instance persistent-object) &key (wait #t))
+           (bind ((class (class-of instance))
+                  (tables (data-tables-of class))
+                  ((values table-aliases where-clause) (table-aliases-and-where-clause-for-instance instance tables)))
+             (execute (sql-select :columns (list (make-instance 'sql-all-columns))
+                                  :tables table-aliases
+                                  :where where-clause
+                                  :for :update
+                                  :wait wait)))))
+
 (defmacro revive-instance (place &rest args)
   "Load instance found in PLACE into the current transaction, update PLACE if needed. The instance being revived cannot be part of another ongoing transaction. Use load-instance if that is needed."
   (with-unique-names (instance)

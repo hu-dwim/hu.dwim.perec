@@ -10,43 +10,64 @@
     (is (persistent-p (make-instance 'persistence-test :name "the one")))))
 
 (deftest test/persistence/make-instance/2 ()
-  (let ((object
+  (let ((instance
          (with-transaction
            (make-instance 'persistence-test :name "the one"))))
     (with-transaction
-      (revive-instance object)
-      (is (persistent-p object)))))
+      (revive-instance instance)
+      (is (persistent-p instance)))))
 
 (deftest test/persistence/make-transient/1 ()
-  (let ((object (make-instance 'persistence-test :name "the one" :persistent #f)))
-    (is (not (persistent-p object)))))
+  (let ((instance (make-instance 'persistence-test :name "the one" :persistent #f)))
+    (is (not (persistent-p instance)))))
 
 (deftest test/persistence/make-transient/2 ()
   (with-transaction
-    (let ((object (make-instance 'persistence-test :name "the one")))
-      (make-transient object)
-      (is (not (persistent-p object))))))
+    (let ((instance (make-instance 'persistence-test :name "the one")))
+      (make-transient instance)
+      (is (not (persistent-p instance))))))
 
 (deftest test/persistence/make-transient/3 ()
   (with-transaction
-    (let ((object (make-instance 'persistence-test :name "the one")))
+    (let ((instance (make-instance 'persistence-test :name "the one")))
       (execute "delete from _persistence_test")
-      (slot-makunbound object 'prc::persistent)
-      (is (not (persistent-p object))))))
+      (slot-makunbound instance 'prc::persistent)
+      (is (not (persistent-p instance))))))
   
 (deftest test/persistence/make-persistent/1 ()
   (with-transaction
-    (let ((object (make-instance 'persistence-test :name "the one")))
-      (make-transient object)
-      (make-persistent object)
-      (is (persistent-p object))
-      (is (equal (name-of object) "the one")))))
+    (let ((instance (make-instance 'persistence-test :name "the one")))
+      (make-transient instance)
+      (make-persistent instance)
+      (is (persistent-p instance))
+      (is (equal (name-of instance) "the one")))))
 
 (deftest test/persistence/make-persistent/2 ()
   (with-transaction
-    (let ((object (make-instance 'persistence-test :name "the one")))
-      (slot-makunbound object 'prc::persistent)
-      (is (persistent-p object)))))
+    (let ((instance (make-instance 'persistence-test :name "the one")))
+      (slot-makunbound instance 'prc::persistent)
+      (is (persistent-p instance)))))
+
+(deftest test/persistence/lock-instance/1 ()
+  (finishes
+    (with-transaction
+      (let ((instance (make-instance 'persistence-test :name "the one")))
+        (lock-instance instance :wait #t))))
+  (let ((instance
+         (with-transaction
+           (make-instance 'persistence-test :name "the one"))))
+    (finishes
+      (with-transaction
+        (lock-instance instance :wait #f)))))
+
+(deftest test/persistence/lock-instance/2 ()
+  (with-transaction
+    (let ((instance (make-instance 'persistence-test :name "the one")))
+      (lock-instance instance :wait #t)
+      (signals error
+        (with-transaction
+          (with-revived-instance instance
+            (lock-instance instance :wait #f)))))))
 
 (defpclass* initform-1-test ()
   ((name "Hello" :type (text 20))))
@@ -59,8 +80,8 @@
     (is (equal "Hello" (name-of (make-instance 'initform-1-test))))))
 
 (deftest test/persistence/initform/2 ()
-  (let ((object
+  (let ((instance
          (with-transaction
            (stefil:signals error (make-instance 'initform-2-test)))))
     (with-transaction
-      (finishes (revive-instance object)))))
+      (finishes (revive-instance instance)))))
