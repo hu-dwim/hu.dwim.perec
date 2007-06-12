@@ -24,10 +24,9 @@
     :documentation "True means the instance is known to be persistent, false means the instance is known to be transient, unbound means the state is not yet determined. Actually, in the latter case slot-value-using-class will automatically determine whether the instance is in the database or not. Therefore reading the persistent slot will always return either true or false.")
    (transaction
     nil
-    :accessor #f
     :type t
     :persistent #f
-    :documentation "A weak reference to the transaction to this instance is currently attached to.")
+    :documentation "A reference to the transaction to which this instance is currently attached to or nil.")
    (created
     #f
     :type boolean

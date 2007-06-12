@@ -13,23 +13,17 @@
     (make-instance 'instance-cache)
     :type instance-cache)))
 
-(defun transaction-of (instance)
-  "Returns the transaction to which the instance is currently attached to or nil if the instance is not known to be part of any ongoing transaction."
-  (awhen (slot-value instance 'transaction)
-    (weak-pointer-value it)))
-
-(defun (setf transaction-of) (transaction instance)
-  "Attaches the instance to a different transaction."
-  (assert (or (not transaction)
-              (not (transaction-of instance))))
-  (setf (slot-value instance 'transaction)
-        (awhen transaction
-          (make-weak-pointer transaction))))
+(defmethod rdbms::cleanup-transaction :around ((transaction transaction-mixin))
+  (unwind-protect
+       (call-next-method)
+    (map-cached-instances
+     #L(setf (transaction-of !1) nil))))
 
 (defun instance-in-transaction-p (instance)
   "Returns true iff the instance is attached to a transaction which is in progress."
-  (awhen (transaction-of instance)
-    (transaction-in-progress-p it)))
+  (not (null (aprog1 (transaction-of instance)
+               (debug-only
+                 (assert (or (not it) (transaction-in-progress-p it))))))))
 
 (defun instance-in-current-transaction-p (instance)
   "Returns true iff the instance is attached to the current transaction which is in progress."
