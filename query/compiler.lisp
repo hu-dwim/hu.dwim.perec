@@ -101,8 +101,8 @@ with the result of the naively compiled query.")
     (with-unique-names (objects result-list)
       `(lambda ,lexical-variables
         (declare (ignorable ,@lexical-variables))
-        (let ((,objects (mapcar 'cache-instance
-                                (execute ,(sql-select-oids-for-class 'persistent-object))))
+        (let ((,objects (map 'list 'cache-instance
+                             (execute ,(sql-select-oids-for-class 'persistent-object))))
               (,result-list nil))
           (flet ((collect (&rest exprs) (push exprs ,result-list))
                  (purge (&rest objects) (mapc 'make-transient objects)))

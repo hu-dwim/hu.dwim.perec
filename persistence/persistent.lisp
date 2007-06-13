@@ -55,8 +55,9 @@
 (defgeneric cache-instance (thing)
   (:documentation "Attaches an instance to the current transaction. The instance must be already present in the database, so load-instance would return an instance for it. The purpose of this method is to cache instances returned by a query or when the existence may be guaranteed by some other means.")
 
-  (:method ((rdbms-values list))
-           (cache-instance (rdbms-values->oid rdbms-values)))
+  (:method ((values list))
+           (assert (= 2 (length values)))
+           (cache-instance (make-oid :id (first values) :class-name (symbol-from-canonical-name (second values)))))
 
   (:method ((oid oid))
            (aif (cached-instance-of oid)

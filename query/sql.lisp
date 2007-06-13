@@ -242,8 +242,8 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   (sql-column-reference-for (bound-column-of slot) qualifier))
 
 (defgeneric sql-column-references-for (element qualifier)
-  (:method ((column-names list) qualifier)
-           (mapcar #L(sql-column-reference-for !1 qualifier) column-names))
+  (:method ((column-names sequence) qualifier)
+           (map 'list #L(sql-column-reference-for !1 qualifier) column-names))
 
   (:method ((slot persistent-slot-definition) qualifier)
            (sql-column-references-for (columns-of slot) qualifier)))

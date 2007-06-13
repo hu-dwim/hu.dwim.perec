@@ -51,10 +51,12 @@
 
 (defmethod insert-item ((set persistent-slot-set-container) (item persistent-object))
   (bind ((slot (slot-of set)))
-    (update-records (name-of (table-of slot))
-                    (columns-of slot)
-                    (object-writer (instance-of set))
-                    (id-column-matcher-where-clause item))))
+    (let ((rdbms-values (make-array +oid-column-count+)))
+      (object-writer (instance-of set) rdbms-values 0)
+      (update-records (name-of (table-of slot))
+                      (columns-of slot)
+                      rdbms-values
+                      (id-column-matcher-where-clause item)))))
 
 (defmethod delete-item ((set persistent-slot-set-container) (item persistent-object))
   (bind ((slot (slot-of set)))
@@ -68,9 +70,9 @@
 
 (defmethod size ((set persistent-slot-set-container))
   (bind ((slot (slot-of set)))
-    (caar (execute (sql `(select (count *)
-                          ,(name-of (table-of slot))
-                          ,(id-column-matcher-where-clause (instance-of set) (id-column-of slot))))))))
+    (elt-0-0 (execute (sql `(select (count *)
+                             ,(name-of (table-of slot))
+                             ,(id-column-matcher-where-clause (instance-of set) (id-column-of slot))))))))
 
 (defmethod empty-p ((set persistent-slot-set-container))
   (= 0 (size set)))

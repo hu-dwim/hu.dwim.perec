@@ -100,14 +100,14 @@
     (when (> (element-count scroll) 0)
       (setf (page-size scroll) 1)
       (first-page! scroll)
-      (aref (elements scroll) 0))))
+      (elt (elements scroll) 0))))
 
 (defmacro select-last-matching-instance (&optional variable &body body)
   `(let ((scroll (simple-select (:result-type scroll :flatp #t) ,variable ,@body)))
     (when (> (element-count scroll) 0)
       (setf (page-size scroll) 1)
       (last-page! scroll)
-      (aref (elements scroll) 0))))
+      (elt (elements scroll) 0))))
 
 (defun select-similar-assert-for (type rest)
   (bind ((class (find-class type)))
@@ -131,7 +131,7 @@
     (setf (page-size scroll) 1)
     (case (element-count scroll)
       (0 nil)
-      (1 (first-page! scroll) (aref (elements scroll) 0))
+      (1 (first-page! scroll) (elt (elements scroll) 0))
       (otherwise (error "Query did not return unique result.")))))
 
 (defmacro select-instances (&optional variable &body body)

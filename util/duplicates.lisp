@@ -253,3 +253,9 @@ equal under TEST to result of evaluating INITIAL-VALUE."
 ;; TODO: move this into local-time
 (defun today ()
   (minimize-time-part (now) :timezone +utc-zone+))
+
+(defun elt-0 (vector)
+  (elt vector 0))
+
+(defun elt-0-0 (vector)
+  (elt (elt vector 0) 0))

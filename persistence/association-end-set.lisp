@@ -93,9 +93,9 @@
 (defmethod size ((set persistent-m-n-association-end-set-container))
   (bind ((slot (slot-of set))
          (other-slot (other-association-end-of slot)))
-    (caar (execute (sql `(select (count *)
-                          ,(name-of (table-of (slot-of set)))
-                          ,(id-column-matcher-where-clause (instance-of set) (id-column-of other-slot))))))))
+    (elt-0-0 (execute (sql `(select (count *)
+                             ,(name-of (table-of (slot-of set)))
+                             ,(id-column-matcher-where-clause (instance-of set) (id-column-of other-slot))))))))
 
 (defmethod empty! ((set persistent-m-n-association-end-set-container))
   (delete-m-n-association-end-set (instance-of set) (slot-of set)))

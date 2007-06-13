@@ -429,7 +429,7 @@
              (if suffix (concatenate-symbol field suffix) field)))
       (iter (for field in field-names)
            (for i from 0)
-           (collect `(,(name-for field) (nth ,i ,row)))))))
+           (collect `(,(name-for field) (elt ,i ,row)))))))
 
 (defun query-variable-bindings (query)
   (bind ((variables (query-variables-of query))
@@ -444,7 +444,7 @@
                (for slots = (when prefetchp (prefetched-slots-for variable)))
                (for column-count = (reduce '+ slots
                                            :key 'column-count-of
-                                           :initial-value (length +oid-column-names+)))
+                                           :initial-value +oid-column-count+))
                (for i initially 0 then (+ i column-count))
                (if (member variable referenced-variables)
                    (collect `(,(name-for variable)

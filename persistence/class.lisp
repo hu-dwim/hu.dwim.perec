@@ -334,7 +334,8 @@
                          column-count)
                 column-count)
        wrapper-1
-       wrapper-2))))
+       wrapper-2
+       column-count))))
 
 (defun compute-reader (slot type)
   "Maps a type to a one parameter lambda which will be called with the received RDBMS values."

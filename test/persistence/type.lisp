@@ -75,7 +75,7 @@
                                        ,value)))))
                (test-object (object)
                  ,(when (and test-value-p test-value)
-                        `(is (= 0 (caar
+                        `(is (= 0 (prc::elt-0-0
                                    (execute (strcat "select count(*) from _type_test where "
                                                     (rdbms::name-of
                                                      (last1
