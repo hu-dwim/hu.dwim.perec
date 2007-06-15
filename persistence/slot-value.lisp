@@ -17,10 +17,10 @@
   (:documentation "Invalidates all cached slot values in the instance.")
 
   (:method ((instance persistent-object))
-           (setf (cached-slots-of instance) nil)
            (bind ((class (class-of instance)))
              (iter (for slot in (persistent-effective-slots-of class))
-                   (cached-slot-makunbound-using-class class instance slot)))))
+                   (cached-slot-makunbound-using-class class instance slot)))
+           (setf (cached-slots-of instance) nil)))
 
 (defgeneric invalidate-cached-slot (instance slot)
   (:documentation "Invalidates the given cached slot value in the instance.")
