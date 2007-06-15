@@ -19,7 +19,6 @@
     nil
     :type (list query-variable))
    (flatp
-    :writer (setf flatp)
     :type boolean)
    (uniquep
     #f
@@ -80,11 +79,10 @@
             (when (not (eq (result-type-of query) 'list))
               (list :result-type (result-type-of query))))))
 
-(defgeneric flatp (query)
-  (:method ((query query))
-           (if (slot-boundp query 'flatp)
-               (slot-value query 'flatp)
-               (<= (length (collects-of query)) 1))))
+(defmethod flatp :around ((query query))
+  (if (slot-boundp query 'flatp)
+      (call-next-method)
+      (<= (length (collects-of query)) 1)))
 
 (defmethod add-lexical-variable ((query query) variable-name)
   (aprog1 (make-lexical-variable :name variable-name)
