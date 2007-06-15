@@ -279,7 +279,9 @@
 
 (defun column-count-for (normalized-type unbound-and-null-subtype-p)
   (+ (cond ((persistent-class-type-p normalized-type)
-            2)
+            (oid-mode-ecase
+              ((:class-name :class-id) 2)
+              (:merge 1)))
            ((primitive-type-p normalized-type)
             1)
            (t (error "Cannot map type ~A to a writer" normalized-type)))

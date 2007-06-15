@@ -257,5 +257,8 @@ equal under TEST to result of evaluating INITIAL-VALUE."
 (defun elt-0 (vector)
   (elt vector 0))
 
+(defun elt-1 (vector)
+  (elt vector 1))
+
 (defun elt-0-0 (vector)
   (elt (elt vector 0) 0))

@@ -327,9 +327,8 @@
 ;;;;;;;;;;
 ;;; Object
 
-(defun object-reader (rdbms-values)
-  (load-instance (make-oid :id (first rdbms-values) :class-name (symbol-from-canonical-name (second rdbms-values)))
-                 :skip-existence-check #t))
+(defun object-reader (rdbms-values index)
+  (load-instance (rdbms-values->oid* rdbms-values index) :skip-existence-check #t))
 
-(defun object-writer (slot-value)
-  (oid-values slot-value))
+(defun object-writer (slot-value rdbms-values index)
+  (oid->rdbms-values* (oid-of slot-value) rdbms-values index))
