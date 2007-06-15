@@ -6,9 +6,6 @@
 (defparameter *lazy-collections* #f
   "True means slot-value-using-class will by default return lazy collections.")
 
-(defparameter *prefetch-slot-values* #t
-  "True means slot values will be prefetched the first time an instance is read.")
-
 (eval-always
   (unless (fboundp 'make-unbound-value)
     (defstruct unbound-value

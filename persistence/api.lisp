@@ -187,17 +187,6 @@
   `(bind ((*lazy-collections* #f))
     ,@body))
 
-;;;;;;;;;;;;;;;
-;;; prefetching
-
-(defmacro with-prefetching-slot-values (&body body)
-  `(bind ((*prefetch-slot-values* #t))
-    ,@body))
-
-(defmacro without-prefetching-slot-values (&body body)
-  `(bind ((*prefetch-slot-values* #f))
-    ,@body))
-
 ;;;;;;;;;;;;;;;;;;;
 ;;; database access
 

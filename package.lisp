@@ -252,10 +252,6 @@
            #:with-lazy-collections
            #:without-lazy-collections
 
-           ;; prefetching
-           #:with-prefetching-slot-values
-           #:without-prefetching-slot-values
-
            ;; database and cache access
            #:with-bypassing-database-access
            #:without-bypassing-database-access
