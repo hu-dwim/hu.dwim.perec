@@ -230,7 +230,7 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
               (for key = (funcall group-by-fn record))
               (aggregate key record))
         (setf contents
-              (aprog1 (make-array (hash-table-size ht))
+              (aprog1 (make-array (hash-table-count ht))
                 (iter (for i :from 0)
                       (for (key acc) :in-hashtable ht)
                       (setf (aref it i) (funcall map-fn acc)))))))))
