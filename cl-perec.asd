@@ -124,8 +124,7 @@
              (:file "partial-eval" :depends-on ("query"))
              (:file "mapping" :depends-on ("query" "sql" "partial-eval"))
              (:file "plan" :depends-on ("mapping" "result-set" "runtime"))
-             (:file "compiler" :depends-on ("copy" "plan" "macro"))))
-   (:file "shift")))
+             (:file "compiler" :depends-on ("copy" "plan" "macro"))))))
 
 (defmethod perform ((op test-op) (system (eql (find-system :cl-perec))))
   (operate 'load-op :cl-perec-test)

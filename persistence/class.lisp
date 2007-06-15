@@ -213,6 +213,11 @@
 ;;; Export
 
 (defmethod export-to-rdbms ((class persistent-class))
+  (oid-mode-ecase
+    (:class-name)
+    ((:class-id :merge)
+     (let ((class-name (class-name class)))
+       (setf (class-id->class-name (class-name->class-id class-name)) class-name))))
   (ensure-finalized class)
   (mapc #'ensure-exported
         (persistent-effective-super-classes-of class))
