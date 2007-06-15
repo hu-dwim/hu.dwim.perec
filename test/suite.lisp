@@ -21,7 +21,7 @@
   (with-transaction
     (mapc #L(drop-table !1)
           (prc::collect-if #L(and (starts-with !1 "_")
-                                  (ends-with !1 "test"))
+                                  (search "test" !1))
                            (list-tables)))))
 
 (defmacro with-and-without-caching-slot-values (&body forms)

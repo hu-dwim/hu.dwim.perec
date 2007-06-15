@@ -46,6 +46,16 @@
       (name-of object)
       (is (= (counter+ select-counter 1) (current-select-counter))))))
 
+(deftest test/persistence/cache/invalidate-slots ()
+  (let ((instance (with-transaction (make-instance 'persistence-test :name "the one"))))
+    (with-transaction
+      (with-revived-instance instance
+        (with-transaction
+          (with-reloaded-instance instance
+            (setf (name-of instance) "the other")))
+        (prc::invalidate-all-cached-slots instance)
+        (is (equal "the other" (name-of instance)))))))
+
 (deftest test/persistence/cache/reference/read-initial-value ()
   (with-transaction
     (bind ((object (make-instance 'reference-test :referred (make-instance 'referred-test)))
