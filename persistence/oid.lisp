@@ -127,11 +127,13 @@
 
 (defun next-instance-id ()
   (aprog1 (sequence-next +oid-instance-id-sequence-name+)
-    (assert (<= (integer-length it) +oid-instance-id-bit-size+))))
+    (unless (<= (integer-length it) +oid-instance-id-bit-size+)
+      (error "Instance id sequence reached its maximum value ~A" +oid-maximum-instance-id+))))
 
 (defun next-class-id ()
   (aprog1 (sequence-next +oid-class-id-sequence-name+)
-    (assert (< it +oid-maximum-class-id+))))
+    (unless (< it +oid-maximum-class-id+)
+      (error "Class id sequence reached its maximum value ~A" +oid-maximum-class-id+))))
 
 (defun ensure-class-id-sequence ()
   "Makes sure the class id sequence exists in the database."
@@ -158,24 +160,25 @@
   (rdbms-values->oid* rdbms-values 0))
 
 (defun rdbms-values->oid* (rdbms-values index)
-  (oid-mode-ecase
-    (:class-name
-     (bind ((instance-id (elt rdbms-values index)))
-       (make-oid :id instance-id
-                 :instance-id instance-id
-                 :class-name (symbol-from-canonical-name (elt rdbms-values (1+ index))))))
-    (:class-id
-     (bind ((instance-id (elt rdbms-values index))
-            (class-id (elt rdbms-values (1+ index))))
-       (make-oid :id instance-id
-                 :instance-id instance-id 
-                 :class-id class-id
-                 :class-name (class-id->class-name class-id))))
-    (:merge
-     (bind ((id (elt rdbms-values index))
-            (instance-id (ldb (byte +oid-instance-id-bit-size+ +oid-class-id-bit-size+) id))
-            (class-id (ldb (byte +oid-class-id-bit-size+ 0) id)))
-       (make-oid :id id
-                 :instance-id instance-id
-                 :class-id class-id
-                 :class-name (class-id->class-name class-id))))))
+  (bind ((id (elt rdbms-values index))
+         instance-id
+         class-id
+         class-name)
+    (oid-mode-ecase
+      (:class-name
+       (setf instance-id id)
+       (setf class-name (symbol-from-canonical-name (elt rdbms-values (1+ index)))))
+      (:class-id
+       (setf instance-id id)
+       (setf class-id (elt rdbms-values (1+ index)))
+       (setf class-name (class-id->class-name class-id)))
+      (:merge
+       (setf instance-id (ldb (byte +oid-instance-id-bit-size+ +oid-class-id-bit-size+) id))
+       (setf class-id (ldb (byte +oid-class-id-bit-size+ 0) id))
+       (setf class-name (class-id->class-name class-id))))
+    (debug-only
+      (assert (and id instance-id class-name)))
+    (make-oid :id id
+              :instance-id instance-id
+              :class-id class-id
+              :class-name class-name)))
