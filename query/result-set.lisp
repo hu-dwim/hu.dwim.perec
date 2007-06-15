@@ -134,6 +134,7 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
     (when (flatp scroll)
       (assert (or (zerop (length records)) (= 1 (length (elt records 0)))))
       (setf records (map 'vector #L(elt !1 0) records)))
+    ;; TODO: eliminate coerce
     (coerce records 'vector)))
 
 (defmethod revive-scroll! ((scroll result-set-scroll))
@@ -282,7 +283,7 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
 
 (defun make-list-result-set (list)
   (aprog1 (make-instance 'list-result-set)
-    ;; FIXME: remove coerce
+    ;; FIXME: eliminate coerce
     (setf (contents it) (coerce list 'vector))))
 
 (defmethod revive-result-set! ((result-set list-result-set))

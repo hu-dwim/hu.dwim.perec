@@ -65,6 +65,7 @@ if it was fully evaluated.")
   (:method ((form special-form) query)
            (%partial-eval-special-form (operator-of form) (operands-of form) form query)))
 
+;; TODO: THESE MIGHT BE ACTUALLY OBSOLETE COMMENTS DUE TO VOLATILE/STATIC
 ;; TODO: partial eval should not allow partial evaluation of functions by default
 ;; TODO: there should be a positive list of partial evaluatable functions such as sql-* in the RDBMS package
 ;; TODO: some CL symbols, such as list, append, etc.

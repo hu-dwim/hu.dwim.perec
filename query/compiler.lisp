@@ -11,6 +11,7 @@
 (enable-pattern-reader #\M)
 
 ;;;; TODO: sorting and grouping
+;;;; TODO: sub queries?
 ;;;; TODO: embedded SQL in queries
 ;;;; TODO: return nil if there is contradiction between asserts
 ;;;; TODO: eliminate tautologies from asserts
