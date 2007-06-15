@@ -6,8 +6,12 @@
   (iter (for (table-id expected-records) on content by 'cddr)
         (for table-name = (format nil "_purge_~d_test" table-id))
         (for column-name = (make-symbol (format nil "_int_attr_~d" table-id)))
-        (for records-in-database = (sort (apply 'nconc (execute (sql `(select (,column-name) (,table-name)))))
-                                         #'<=))
+        ;; TODO: eliminate coerce
+        (for records-in-database = (sort
+                                    (apply 'concatenate 'list
+                                           (coerce (execute (sql `(select (,column-name) (,table-name))))
+                                                   'list))
+                                    #'<=))
         (is (equal records-in-database expected-records)
             "Table ~S: expected ~S, but found ~S" table-name expected-records records-in-database)))
 
