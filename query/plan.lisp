@@ -429,7 +429,7 @@
              (if suffix (concatenate-symbol field suffix) field)))
       (iter (for field in field-names)
            (for i from 0)
-           (collect `(,(name-for field) (elt ,i ,row)))))))
+           (collect `(,(name-for field) (elt ,row ,i)))))))
 
 (defun query-variable-bindings (query)
   (bind ((variables (query-variables-of query))

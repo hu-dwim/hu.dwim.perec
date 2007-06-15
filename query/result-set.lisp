@@ -198,7 +198,8 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
 
 (defmethod update-contents! ((result-set filtered-result-set))
   (with-slots (contents inner predicate) result-set
-    (setf contents (collect-elements (records-of inner) :filter predicate)))
+    ;; TODO: eliminate coerce
+    (setf contents (coerce (collect-elements (records-of inner) :filter predicate) 'vector)))
   (values))
 
 ;;;
@@ -228,8 +229,10 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
               (for key = (funcall group-by-fn record))
               (aggregate key record))
         (setf contents
-              (iter (for (key acc) in-hashtable ht)
-                    (collect (funcall map-fn acc))))))))
+              (aprog1 (make-array (hash-table-size ht))
+                (iter (for i :from 0)
+                      (for (key acc) :in-hashtable ht)
+                      (setf (aref it i) (funcall map-fn acc)))))))))
 
 ;;;
 ;;; Unique filtered result-set
@@ -246,8 +249,11 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
 (defmethod update-contents! ((result-set unique-result-set))
   (with-slots (contents inner test-fn) result-set
     (setf contents
-          (with-iterator (iterator (records-of inner) :unique #t :test test-fn)
-            (collect-elements iterator)))))
+          ;; TODO: eliminate coerce
+          (coerce
+           (with-iterator (iterator (records-of inner) :unique #t :test test-fn)
+             (collect-elements iterator))
+           'list))))
 
 ;;;
 ;;; Mapped result-set
