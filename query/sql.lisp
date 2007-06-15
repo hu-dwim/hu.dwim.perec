@@ -236,7 +236,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (sql-column-reference-for element (sql-alias-for qualifier))))
 
 (defun sql-id-column-reference-for (qualifier)
-  (sql-column-reference-for +id-column-name+ qualifier))
+  (sql-column-reference-for +oid-id-column-name+ qualifier))
 
 (defun sql-bound-column-reference-for (slot qualifier)
   (sql-column-reference-for (bound-column-of slot) qualifier))

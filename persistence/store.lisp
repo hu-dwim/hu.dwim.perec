@@ -6,12 +6,17 @@
 (defparameter *lazy-collections* #f
   "True means slot-value-using-class will by default return lazy collections.")
 
-(defstruct unbound-value
-  "This structure is used for the unbound slot value marker. The type for that marker must be a subtype of t and cannot be a subtype of any other type.")
+(defparameter *prefetch-slot-values* #t
+  "True means slot values will be prefetched the first time an instance is read.")
 
-(defparameter +unbound-slot-value+
-  (make-unbound-value)
-  "This value is used to signal unbound slot value returned from database.")
+(eval-always
+  (unless (fboundp 'make-unbound-value)
+    (defstruct unbound-value
+      "This structure is used for the unbound slot value marker. The type for that marker must be a subtype of t and cannot be a subtype of any other type.")))
+
+(define-constant +unbound-slot-value+ (make-unbound-value)
+  :test equalp
+  :documentation "This value is used to signal unbound slot value returned from database.")
 
 (defmethod make-load-form ((instance unbound-value) &optional environment)
   (declare (ignore environment))
@@ -120,10 +125,10 @@
   (values
    (mapcar #L(sql-table-alias :name (name-of !1) :alias (name-of !1)) tables)
    (apply #'sql-and
-          (sql-= (sql-column-alias :table (name-of (first tables)) :column +id-column-name+)
+          (sql-= (sql-column-alias :table (name-of (first tables)) :column +oid-id-column-name+)
                  (sql-literal :type +oid-id-sql-type+ :value (id-of instance)))
-          (mapcar #L(sql-= (sql-column-alias :table (name-of (first tables)) :column +id-column-name+)
-                           (sql-column-alias :table (name-of !1) :column +id-column-name+))
+          (mapcar #L(sql-= (sql-column-alias :table (name-of (first tables)) :column +oid-id-column-name+)
+                           (sql-column-alias :table (name-of !1) :column +oid-id-column-name+))
                   (rest tables)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -205,20 +210,21 @@
 (defun store-prefetched-slots (instance)
   "Stores all prefetched slots without local side effects into the database. Executes one insert statement for each table."
   (bind ((prefetched-slots (prefetched-slots-of (class-of instance)))
-         (tables (delete-duplicates (mapcar #'table-of prefetched-slots))))    
+         (tables (delete-duplicates (mapcar #'table-of prefetched-slots)))
+         (oid (oid-of instance)))    
     (dolist (table tables)
       (bind ((slots (collect-if #L(eq (table-of !1) table) prefetched-slots))
              (slot-values (mapcar #L(cached-slot-boundp-or-value-using-class (class-of instance) instance !1) slots))
              (oid-columns (oid-columns-of table))
              (columns (mappend #'columns-of slots))
-             (oid-values (oid-values instance))
+             (oid-values (oid->rdbms-values oid))
              (rdbms-values (mappend #L(store-slot-value !1 !2) slots slot-values)))
         (if (persistent-p instance)
             (update-records (name-of table) columns rdbms-values (id-column-matcher-where-clause instance))
             (insert-records (name-of table) (append oid-columns columns) (append oid-values rdbms-values)))))
     (unless (persistent-p instance)
       (dolist (table (set-difference (data-tables-of (class-of instance)) tables))
-        (insert-records (name-of table) (oid-columns-of table) (oid-values instance))))))
+        (insert-records (name-of table) (oid-columns-of table) (oid->rdbms-values oid))))))
 
 (defun store-all-slots (instance)
   "Stores all slots wihtout local side effects into the database."
@@ -229,12 +235,12 @@
 ;;;;;;;;;;;
 ;;; Utility
 
-(defun id-column-matcher-where-clause (instance &optional (id-name +id-column-name+))
+(defun id-column-matcher-where-clause (instance &optional (id-name +oid-id-column-name+))
   (sql-binary-operator :name '=
                        :left (sql-identifier :name id-name)
                        :right (sql-literal :type +oid-id-sql-type+ :value (id-of instance))))
 
-(defun id-column-list-matcher-where-clause (values &optional (id-name +id-column-name+))
+(defun id-column-list-matcher-where-clause (values &optional (id-name +oid-id-column-name+))
   (sql-binary-operator :name 'in
                        :left (sql-identifier :name id-name)
                        :right (mapcar (lambda (value)

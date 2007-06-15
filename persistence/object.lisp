@@ -92,16 +92,16 @@
 
 (defun print-persistent-instance (instance)
   (declare (type persistent-object instance))
-  (princ ":persistent ")
-  (princ (cond ((not (slot-boundp instance 'persistent))
-                "#? ")
-               ((persistent-p instance)
-                "#t ")
-               (t "#f ")))
+  (write-string ":persistent ")
+  (write-string (cond ((not (slot-boundp instance 'persistent))
+                       "#? ")
+                      ((persistent-p instance)
+                       "#t ")
+                      (t "#f ")))
   (if (and (slot-boundp instance 'oid)
            (oid-of instance))
       (princ (id-of instance))
-      (princ "nil")))
+      (write-string "nil")))
 
 (defprint-object (self persistent-object)
   "Prints the oid of the instance and whether the instance is known to be persistent or transient."
@@ -110,24 +110,8 @@
 (defun ensure-oid (instance)
   "Makes sure that the instance has a valid oid."
   (unless (oid-of instance)
-    (setf (oid-of instance) (make-new-oid (class-name-of instance)))))
+    (setf (oid-of instance) (make-class-oid (class-name (class-of instance))))))
 
 (defun id-of (instance)
   "Shortcut for the unique identifier number of the instance."
   (oid-id (oid-of instance)))
-
-(defun (setf class-name-of) (new-value instance)
-  "Shortcut for the setter of the class name of the instance."
-  (setf (oid-class-name (oid-of instance)) new-value))
-
-(defun id-value (instance)
-  "Returns the RDBMS representation."
-  (id-of instance))
-
-(defun class-name-value (instance)
-  "Returns the RDBMS representation."
-  (canonical-symbol-name (class-name-of instance)))
-
-(defun oid-values (instance)
-  "Returns a list representation of the instance oid in the order of the corresponding RDBMS columns."
-  (list (id-value instance) (class-name-value instance)))

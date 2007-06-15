@@ -30,19 +30,20 @@
 ;;;;;;;;;;;;;
 ;;; Constants
 
-(defconstant +oid-id-bit-size+ 64
-  "Length of the life time unique identifier numbers in bits.")
+(defun equal-type-p (type-1 type-2)
+  (rdbms::equal-type-p type-1 type-2 nil))
 
-(defvar +oid-id-sql-type+
-  (sql-integer-type :bit-size +oid-id-bit-size+)
-  "The RDBMS type for the oid's id slot.")
+(define-constant +oid-id-sql-type+ (sql-integer-type :bit-size +oid-id-bit-size+)
+  :test equal-type-p
+  :documentation "The RDBMS type for the oid's id slot.")
 
-(defconstant +oid-class-name-maximum-length+ 128
-  "Maximum length of class names.")
+(define-constant +oid-class-id-sql-type+ (sql-integer-type :bit-size +oid-class-id-bit-size+)
+  :test equal-type-p
+  :documentation "The RDBMS type for the oid's class-id slot")
 
-(defvar +oid-class-name-sql-type+
-  (sql-character-varying-type :size +oid-class-name-maximum-length+)
-  "The RDBMS type for the oid's class-name slot")
+(define-constant +oid-class-name-sql-type+ (sql-character-varying-type :size +oid-class-name-character-size+)
+  :test equal-type-p
+  :documentation "The RDBMS type for the oid's class-name slot")
 
 ;;;;;;;;;;
 ;;; Export

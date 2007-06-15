@@ -35,7 +35,8 @@
            #:children
            #:variable
            #:transaction
-           #:float-type)
+           #:float-type
+           #:class-name-of)
 
   (:shadowing-import-from :iterate
                           #:finish)
@@ -250,6 +251,10 @@
            ;; laziness
            #:with-lazy-collections
            #:without-lazy-collections
+
+           ;; prefetching
+           #:with-prefetching-slot-values
+           #:without-prefetching-slot-values
 
            ;; database and cache access
            #:with-bypassing-database-access

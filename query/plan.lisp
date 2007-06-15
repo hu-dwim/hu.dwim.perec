@@ -394,12 +394,12 @@
                                              :name ',temp-table
                                              :temporary #t
                                              :columns (list
-                                                       (sql-identifier :name ',+id-column-name+))
+                                                       (sql-identifier :name ',+oid-id-column-name+))
                                              :as (sql-subquery :query ,select-deleted-ids)))
                              (delete-where `(sql-subquery
                                              :query
                                              (sql-select
-                                              :columns (list ',+id-column-name+)
+                                              :columns (list ',+oid-id-column-name+)
                                               :tables (list ',temp-table))))
                              (deletes (delete nil
                                               (mapcar

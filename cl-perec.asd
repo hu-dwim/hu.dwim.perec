@@ -107,7 +107,8 @@
              (:file "standard-type")
              (:file "transformer")
              (:file "set")
-             (:file "association-end-set")))
+             (:file "association-end-set")
+             (:file "shift")))
    (:module :query
             :components
             ((:file "copy")

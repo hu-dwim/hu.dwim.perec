@@ -174,17 +174,24 @@
 
 (defcclass* class-primary-table (table)
   ((oid-columns
-    (compute-as (list (id-column-of -self-) (class-name-column-of -self-)))
+    (compute-as (oid-mode-ecase
+                  (:class-name (list (id-column-of -self-) (class-name-column-of -self-)))
+                  (:class-id (list (id-column-of -self-) (class-id-column-of -self-)))
+                  (:merge (list (id-column-of -self-)))))
     :type (list sql-column)
     :documentation "The list of RDBMS columns corresponding to the oid of this table.")
    (id-column
-    (compute-as (find +id-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
+    (compute-as (find +oid-id-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
     :type sql-column
-    :documentation "The RDBMS column of corresponding oid slot.")
+    :documentation "The RDBMS column of the corresponding oid slot.")
    (class-name-column
-    (compute-as (find +class-name-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
+    (compute-as (find +oid-class-name-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
     :type sql-column
-    :documentation "The RDBMS column of corresponding oid slot."))
+    :documentation "The RDBMS column of the corresponding oid slot.")
+   (class-id-column
+    (compute-as (find +oid-class-id-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
+    :type sql-column
+    :documentation "The RDBMS column of the corresponding oid slot."))
   (:documentation "This is a special table related to a persistent class."))
 
 ;; :persistent is a slot definition option and may be set to #t or #f
@@ -621,31 +628,45 @@
 
 (defun make-oid-columns ()
   "Creates a list of RDBMS columns that will be used to store the oid data of the instances in this table."
-  (list
-   (make-instance 'column
-                  :name +id-column-name+
-                  :type +oid-id-sql-type+
-                  :constraints (list (sql-not-null-constraint)
-                                     (sql-primary-key-constraint)))
-   (make-instance 'column
-                  :name +class-name-column-name+
-                  :type +oid-class-name-sql-type+)))
+  (append
+   (list (make-instance 'column
+                        :name +oid-id-column-name+
+                        :type +oid-id-sql-type+
+                        :constraints (list (sql-not-null-constraint)
+                                           (sql-primary-key-constraint))))
+   (oid-mode-ecase
+     (:class-name
+      (list (make-instance 'column
+                           :name +oid-class-name-column-name+
+                           :type +oid-class-name-sql-type+)))
+     (:class-id
+      (list (make-instance 'column
+                           :name +oid-class-id-column-name+
+                           :type +oid-class-id-sql-type+)))
+     (:merge))))
 
 (defun make-columns-for-reference-slot (class-name column-name)
   (bind ((id-column-name (rdbms-name-for (concatenate-symbol column-name "-id")))
-         (id-index-name (rdbms-name-for (concatenate-symbol column-name "-id-on-" class-name "-idx")))
-         (class-name-column-name (rdbms-name-for (concatenate-symbol column-name "-class-name"))))
-    (list
-     (make-instance 'column
-                    :name id-column-name
-                    :type +oid-id-sql-type+
-                    :index (sql-index :name id-index-name))
-     (make-instance 'column
-                    :name class-name-column-name
-                    :type +oid-class-name-sql-type+))))
+         (id-index-name (rdbms-name-for (concatenate-symbol column-name "-id-on-" class-name "-idx"))))
+    (append
+     (list (make-instance 'column
+                          :name id-column-name
+                          :type +oid-id-sql-type+
+                          :index (sql-index :name id-index-name)))
+     (oid-mode-ecase
+       (:class-name
+        (list (make-instance 'column
+                             :name (rdbms-name-for (concatenate-symbol column-name "-class-name"))
+                             :type +oid-class-name-sql-type+)))
+       (:class-id
+        (list (make-instance 'column
+                             :name (rdbms-name-for (concatenate-symbol column-name "-class-id"))
+                             :type +oid-class-id-sql-type+)))
+       (:merge)))))
 
 (defun bound-column-of (slot)
   (bind ((column (first (columns-of slot))))
     (assert (ends-with (string-upcase (symbol-name (cl-rdbms::name-of column))) "BOUND"))
     (assert (typep (cl-rdbms::type-of column) 'sql-boolean-type))
     column))
+

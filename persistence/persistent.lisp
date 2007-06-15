@@ -6,6 +6,9 @@
 
 (in-package :cl-perec)
 
+;;;;;;;;;;;;;;;;;;
+;;; Load and cache
+
 (defun instance-exists-in-database-p (instance)
   "Returns true if the instance can be found in the database"
   (and (oid-of instance)
@@ -52,9 +55,8 @@
 (defgeneric cache-instance (thing)
   (:documentation "Attaches an instance to the current transaction. The instance must be already present in the database, so load-instance would return an instance for it. The purpose of this method is to cache instances returned by a query or when the existence may be guaranteed by some other means.")
 
-  (:method ((values list))
-           (assert (= 2 (length values)))
-           (cache-instance (make-oid :id (first values) :class-name (symbol-from-canonical-name (second values)))))
+  (:method ((rdbms-values list))
+           (cache-instance (rdbms-values->oid rdbms-values)))
 
   (:method ((oid oid))
            (aif (cached-instance-of oid)
@@ -98,6 +100,9 @@
                         new-instance
                         (instance-not-found)))))))
 
+;;;;;;;;;
+;;; Purge
+
 (defgeneric purge-instance (instance)
   (:documentation "Purges the given instance without respect to associations and references to it.")
   
@@ -132,16 +137,37 @@
                                                   (mappend #'data-tables-of sub-classes)))))
                  (when table
                    (delete-records (name-of table)
-                                   (sql-in (sql-identifier :name +id-column-name+)
+                                   (sql-in (sql-identifier :name +oid-id-column-name+)
                                            (sql-subquery :query
                                                          (apply #'sql-union
-                                                                (mapcar #L(sql-select :columns (list +id-column-name+)
+                                                                (mapcar #L(sql-select :columns (list +oid-id-column-name+)
                                                                                       :tables (list (name-of !1)))
                                                                         (cdr (primary-tables-of class)))))))))
                ;; delete instances from the primary tables of sub classes
                (dolist (table (list* class-primary-table sub-primary-tables))
                  (when table
                    (delete-records (name-of table))))))))
+
+(defun purge-all-instances ()
+  (purge-instances 'persistent-object))
+
+;;;;;;;;
+;;; Drop
+
+(defun drop-persistent-classes ()
+  (flet ((drop-table (owner)
+           (when (table-exists-p (name-of owner))
+             (rdbms::drop-table (name-of owner)))
+           (invalidate-computed-slot owner 'ensure-exported)))
+    (iter (for (class-name class) :in-hashtable *persistent-classes*)
+          (awhen (primary-table-of class)
+            (drop-table it)))
+    (iter (for (association-name association) :in-hashtable *persistent-associations*)
+          (awhen (primary-table-of association)
+            (drop-table it)))))
+
+;;;;;;;;
+;;; Lock
 
 (defgeneric lock-instance (instance &key wait)
   (:documentation "Lock instance in the current transaction. If wait is false and the instance cannot be locked then an condition will be thrown.")
@@ -155,6 +181,13 @@
                                   :where where-clause
                                   :for :update
                                   :wait wait)))))
+
+(defgeneric lock-slot (instance slot)
+  ;; TODO:
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;;; Revive and reload
 
 (defmacro revive-instance (place &rest args)
   "Load instance found in PLACE into the current transaction, update PLACE if needed. The instance being revived cannot be part of another ongoing transaction. Use load-instance if that is needed."
