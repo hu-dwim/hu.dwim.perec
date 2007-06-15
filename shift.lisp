@@ -31,8 +31,7 @@
         (setf class-id
               (if (eq 'persistent-class* class-name)
                   +persistent-class-class-id+
-                  (persistent-class-id-of (or (select-instance (instance)
-                                                (from (instance persistent-class*))
+                  (persistent-class-id-of (or (select-instance (instance persistent-class*)
                                                 (where (eq class-name (persistent-class-name-of instance))))
                                               (make-instance 'persistent-class*
                                                              :persistent-class-id (next-class-id)
