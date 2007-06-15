@@ -183,7 +183,7 @@
                                   :wait wait)))))
 
 (defgeneric lock-slot (instance slot)
-  ;; TODO:
+  ;; TODO: implement
   )
 
 ;;;;;;;;;;;;;;;;;;;;;

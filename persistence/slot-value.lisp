@@ -6,7 +6,7 @@
 (defparameter *cache-slot-values* #t
   "True means slot values will be cached in the slots of the persistent instances. Writing a slot still goes directly to the database but it will be also stored in the instance. If the instance's state is modified in the database it is up to the modifier to clear the list of cached slots from the instance using the invalidate functions. The purpose of the slot value cache is to increase performance and reduce the number of database interactions during a transaction.")
 
-;; TODO: shouldn't we use standard-instance-access instead of this special? (probably would be more efficient)
+;; TODO: shouldn't we use standard-instance-access instead of this special? (probably would be more efficient, well I measured and yes it is)
 (defparameter *bypass-database-access* #f
   "True means slot-value-using-class and friends will bypass database access and directly use the underlying CLOS instance as a cache. It can be used for reading, writing, making unbound and checking boundness of slots.")
 
@@ -244,6 +244,7 @@
   (setf (slot-boundp-or-value-using-class class instance slot #'call-next-method) +unbound-slot-value+)
   instance)
 
+;; TODO: add tests
 (defmethod update-instance-for-different-class :after ((previous-instance persistent-object)
                                                        (current-instance persistent-object)
                                                        &rest initargs &key &allow-other-keys)
