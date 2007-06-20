@@ -28,21 +28,21 @@
 
 (defun cached-instance-of (oid &optional (instance-cache (current-instance-cache)))
   "Returns the instance for the given oid from the current transaction's instance cachce."
-  (gethash (oid-id oid) (instances-of instance-cache)))
+  (gethash (oid-instance-id oid) (instances-of instance-cache)))
 
 (defun (setf cached-instance-of) (instance oid &optional (instance-cache (current-instance-cache)))
   "Puts an instance with the given oid into the current transaction's instance cache and attaches it to the current transaction. The instance must not be present in the cache before."
   (assert (not (instance-in-transaction-p instance)))
   (assert (not (cached-instance-of oid instance-cache)))
   (setf (transaction-of instance) *transaction*)
-  (setf (gethash (oid-id oid) (instances-of instance-cache)) instance))
+  (setf (gethash (oid-instance-id oid) (instances-of instance-cache)) instance))
 
 (defun remove-cached-instance (instance &optional (instance-cache (current-instance-cache)))
   "Removes an instance from the current transaction's instance cache and detaches it from the transaction."
   (assert (instance-in-transaction-p instance))
   (assert (cached-instance-of (oid-of instance) instance-cache))
   (setf (transaction-of instance) nil)
-  (remhash (oid-id (oid-of instance)) (instances-of instance-cache)))
+  (remhash (oid-instance-id (oid-of instance)) (instances-of instance-cache)))
 
 (defun map-cached-instances (function &optional (instance-cache (current-instance-cache)))
   "Maps the given one parameter function to all instances present in the cache."
