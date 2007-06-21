@@ -200,6 +200,12 @@
                 nil "The place ~S being revived holds an alive instance in another transaction. Maybe you should use load-instance and friends." ',place)
         (setf ,place (load-instance ,instance ,@args))))))
 
+(defmacro revive-instances (&rest places)
+  `(progn
+    ,@(iter (for place :in places)
+            (collect `(revive-instance ,place)))
+    (values)))
+
 (defmacro with-revived-instances (instances &body body)
   "Rebind the variables specified in INSTANCES, revive them in the current transaction and execute BODY in this lexical environment."
   (unless (every #'symbolp instances)

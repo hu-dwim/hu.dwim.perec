@@ -175,6 +175,7 @@
            #:p-eq
            #:load-instance
            #:revive-instance
+           #:revive-instances
            #:with-revived-instance
            #:with-revived-instances
            #:with-reloaded-instance
