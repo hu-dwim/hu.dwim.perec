@@ -8,7 +8,7 @@
 
 (defclass* instance-cache ()
   ((instances
-    (make-hash-table :test #'eq)
+    (make-hash-table :test #'eql)
     :type hash-table
     :documentation "A map from oid values to persistent instances used to cache instance identities and slot values during a transaction.")
    (created-instances
@@ -35,14 +35,18 @@
   (assert (not (instance-in-transaction-p instance)))
   (assert (not (cached-instance-of oid instance-cache)))
   (setf (transaction-of instance) *transaction*)
-  (setf (gethash (oid-instance-id oid) (instances-of instance-cache)) instance))
+  (let ((key (oid-instance-id oid)))
+    (assert key)
+    (setf (gethash key (instances-of instance-cache)) instance)))
 
 (defun remove-cached-instance (instance &optional (instance-cache (current-instance-cache)))
   "Removes an instance from the current transaction's instance cache and detaches it from the transaction."
-  (assert (instance-in-transaction-p instance))
-  (assert (cached-instance-of (oid-of instance) instance-cache))
-  (setf (transaction-of instance) nil)
-  (remhash (oid-instance-id (oid-of instance)) (instances-of instance-cache)))
+  (bind ((oid (oid-of instance))
+         (key (oid-instance-id oid)))
+    (assert (instance-in-transaction-p instance))
+    (assert (cached-instance-of oid instance-cache))
+    (setf (transaction-of instance) nil)
+    (remhash key (instances-of instance-cache))))
 
 (defun map-cached-instances (function &optional (instance-cache (current-instance-cache)))
   "Maps the given one parameter function to all instances present in the cache."
