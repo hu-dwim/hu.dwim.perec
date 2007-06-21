@@ -58,17 +58,10 @@
 ;;;;;;;;;;;
 ;;; Utility
 
-(defun rdbms-name-for (name)
-  "Returns a name which does not conflict with RDBMS keywords and fits in the maximum size."
-  ;; TODO: this name mapping is not injective (different lisp names are mapped to the same rdbms name)
-  (let ((name-as-string (strcat "_" (regex-replace-all "\\*|-|/" (symbol-name name) "_")))
-        (max-length 63))
-    (when (> (length name-as-string) max-length)
-      (setf name-as-string
-            (strcat (subseq name-as-string 0 (- max-length 3))
-                    (write-to-string (mod (sxhash name-as-string) 1000)))))
+;; TODO get rid of this, use string names
+(defun rdbms-name-for (name &optional thing)
+  (let ((name-as-string (rdbms:rdbms-name-for name thing)))
     (aif (symbol-package name)
-         ;; TODO: find a better place for cl symbols?
          (intern name-as-string (if (eq it #.(find-package :common-lisp))
                                     (find-package :cl-rdbms)
                                     it))

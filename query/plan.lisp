@@ -382,7 +382,7 @@
                        (tables (when (persistent-class-p type) (tables-for-delete type))))
                   (if (length=1 tables) ; simple delete
                       `(execute ,(sql-delete-from-table (first tables) :where (where-of input)))
-                      (bind ((temp-table (rdbms-name-for 'deleted-ids))
+                      (bind ((temp-table (rdbms-name-for 'deleted-ids :table))
                              (select-deleted-ids `(sql-select
                                                    :columns (list
                                                              ,(sql-id-column-reference-for

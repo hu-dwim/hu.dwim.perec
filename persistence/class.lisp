@@ -404,7 +404,7 @@
                        (primary-table-columns-for-class class))
                (or current-table
                    (make-instance 'class-primary-table
-                                  :name (rdbms-name-for (class-name class))
+                                  :name (rdbms-name-for (class-name class) :table)
                                   :columns (compute-as
                                              (append
                                               (make-oid-columns)
@@ -482,7 +482,7 @@
                            (when complex-type-p
                              (list
                               (make-instance 'column
-                                             :name (rdbms-name-for (concatenate-symbol name "-bound"))
+                                             :name (rdbms-name-for (concatenate-symbol name "-bound") :column)
                                              :type (sql-boolean-type))))
                            (make-columns-for-reference-slot class-name name)))
                          ((primitive-type-p normalized-type)
@@ -490,11 +490,11 @@
                            (when complex-type-p
                              (list
                               (make-instance 'column
-                                             :name (rdbms-name-for (concatenate-symbol name "-bound"))
+                                             :name (rdbms-name-for (concatenate-symbol name "-bound") :column)
                                              :type (sql-boolean-type))))
                            (list
                             (make-instance 'column
-                                           :name (rdbms-name-for name)
+                                           :name (rdbms-name-for name :column)
                                            :type (compute-column-type type)
                                            ;; TODO: add null constraint if type-check is :always (and (not (subytpep 'null type))
                                            ;;                                                         (not (subytpep 'unbound type)))
@@ -503,7 +503,8 @@
                                            :index (if (and (index-p slot)
                                                            (not (unique-p slot)))
                                                       (sql-index :name
-                                                                 (rdbms-name-for (concatenate-symbol name "-on-" class-name "-idx"))))))))
+                                                                 (rdbms-name-for (concatenate-symbol name "-on-" class-name "-idx")
+                                                                                 :index)))))))
                          (t
                           (error "Unknown type ~A in slot ~A" type slot))))))))
 
@@ -659,8 +660,8 @@
      (:merge))))
 
 (defun make-columns-for-reference-slot (class-name column-name)
-  (bind ((id-column-name (rdbms-name-for (concatenate-symbol column-name "-id")))
-         (id-index-name (rdbms-name-for (concatenate-symbol column-name "-id-on-" class-name "-idx"))))
+  (bind ((id-column-name (rdbms-name-for (concatenate-symbol column-name "-id")) :column)
+         (id-index-name (rdbms-name-for (concatenate-symbol column-name "-id-on-" class-name "-idx") :index)))
     (append
      (list (make-instance 'column
                           :name id-column-name
@@ -669,11 +670,11 @@
      (oid-mode-ecase
        (:class-name
         (list (make-instance 'column
-                             :name (rdbms-name-for (concatenate-symbol column-name "-class-name"))
+                             :name (rdbms-name-for (concatenate-symbol column-name "-class-name") :column)
                              :type +oid-class-name-sql-type+)))
        (:class-id
         (list (make-instance 'column
-                             :name (rdbms-name-for (concatenate-symbol column-name "-class-id"))
+                             :name (rdbms-name-for (concatenate-symbol column-name "-class-id") :column)
                              :type +oid-class-id-sql-type+)))
        (:merge)))))
 

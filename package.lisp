@@ -35,6 +35,7 @@
            #:children
            #:variable
            #:transaction
+           #:rdbms-name-for ;; TODO get rid of this
            #:float-type
            #:class-name-of)
 

@@ -111,7 +111,7 @@
 (defmethod compute-primary-table ((association persistent-association) current-table)
   (when (eq (association-kind-of association) :m-n)
     (make-instance 'association-primary-table
-                   :name (rdbms-name-for (name-of association))
+                   :name (rdbms-name-for (name-of association) :table)
                    :columns (compute-as
                               (mappend #'columns-of
                                        (mapcar #'effective-association-end-for (association-ends-of association)))))))
