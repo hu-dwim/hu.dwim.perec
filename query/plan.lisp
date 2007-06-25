@@ -521,7 +521,7 @@ If the result is not NIL, then each query variable must be aggregated,
        exprs)))
 
 (defun aggregate-map-fn-body-for (acc-var exprs)
-  `(list
+  `(vector
     ,@(mapcar
        (lambda (expr)
          `(funcall
