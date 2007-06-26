@@ -399,16 +399,20 @@
                       (mappend #L(when (eq class (primary-class-of !1))
                                    (columns-of !1))
                                (mappend #L(persistent-effective-slots-of !1)
-                                        (collect-if #L(typep !1 'persistent-class) (depends-on-of class))))))))
-             (when (or (not (abstract-p class))
-                       (primary-table-columns-for-class class))
-               (or current-table
-                   (make-instance 'class-primary-table
-                                  :name (rdbms-name-for (class-name class) :table)
-                                  :columns (compute-as
-                                             (append
-                                              (make-oid-columns)
-                                              (primary-table-columns-for-class class)))))))))
+                                        (collect-if #L(typep !1 'persistent-class) (depends-on-of class)))))
+                     :test #'equal
+                     ;; TODO this 'NAME symbol thing should be cleaned up: who exports? a single one or each project has their own?
+                     :key #'cl-rdbms::name-of)))
+             (bind ((primary-table-columns (primary-table-columns-for-class class)))
+               (when (or (not (abstract-p class))
+                         primary-table-columns)
+                 (or current-table
+                     (make-instance 'class-primary-table
+                                    :name (rdbms-name-for (class-name class) :table)
+                                    :columns (compute-as
+                                               (append
+                                                (make-oid-columns)
+                                                primary-table-columns)))))))))
 
 (defgeneric compute-primary-tables (class)
   (:method ((class persistent-class))
