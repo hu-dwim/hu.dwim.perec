@@ -245,15 +245,6 @@ equal under TEST to result of evaluating INITIAL-VALUE."
           new))
     ,@(when documentation `(,documentation))))
 
-;; TODO: move this into local-time
-(defun parse-date (str)
-  (let ((*default-timezone* +utc-zone+))
-    (parse-timestring str)))
-
-;; TODO: move this into local-time
-(defun today ()
-  (minimize-time-part (now) :timezone +utc-zone+))
-
 (defun elt-0 (vector)
   (elt vector 0))
 

@@ -180,9 +180,9 @@
 (def-type-test symbol/2 symbol 'cl-perec-test::something)
 (def-type-test symbol/3 (symbol* 30) 'cl-user::something)
 
-(def-type-test date/1 date (parse-date "2006-06-06"))
+(def-type-test date/1 date (parse-datestring "2006-06-06"))
 
-(def-type-test time/1 time (parse-date "06:06:06"))
+(def-type-test time/1 time (parse-datestring "06:06:06"))
 
 (def-type-test timestamp/1 timestamp (parse-timestring "2006-06-06T06:06:06Z"))
 (def-type-test timestamp/2 timestamp (parse-timestring "2006-06-06T06:06:06+06:00"))

@@ -14,15 +14,15 @@
     (make-instance 'aggregate-test
                    :int-attr 1
                    :str-attr "1"
-                   :date-attr (parse-date "2001-01-01"))
+                   :date-attr (parse-datestring "2001-01-01"))
     (make-instance 'aggregate-test
                    :int-attr 2
                    :str-attr "2"
-                   :date-attr (parse-date "2001-01-02"))
+                   :date-attr (parse-datestring "2001-01-02"))
     (make-instance 'aggregate-test
                    :int-attr 3
                    :str-attr "3"
-                   :date-attr (parse-date "2001-01-03"))
+                   :date-attr (parse-datestring "2001-01-03"))
     (make-instance 'aggregate-test
                    :int-attr nil
                    :str-attr nil
@@ -61,5 +61,5 @@
                           (from (o aggregate-test))))))
     (is
      (and (= (first result) 3)
-          (local-time= (second result) (parse-date "2001-01-01"))
-          (local-time= (third result) (parse-date "2001-01-03"))))))
+          (local-time= (second result) (parse-datestring "2001-01-01"))
+          (local-time= (third result) (parse-datestring "2001-01-03"))))))
