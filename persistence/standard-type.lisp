@@ -442,9 +442,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Unsigned byte vector
 
-;; TODO add max size and assert for it in the reader/wirter
-(defptype unsigned-byte-vector ()
-  '(vector (unsigned-byte 8)))
+;; TODO assert for the size in the reader/writer
+(defptype unsigned-byte-vector (&optional size)
+  `(vector (unsigned-byte 8) ,size))
 
 (defmapping unsigned-byte-vector (sql-binary-large-object-type)
   'identity-reader
