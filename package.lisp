@@ -267,3 +267,12 @@
 (import-sql-constructor-names)
 
 (define-computed-universe compute-as)
+
+;; TODO get rid of this, use string names
+(defun rdbms-name-for (name &optional thing)
+  (let ((name-as-string (rdbms:rdbms-name-for name thing)))
+    (aif (symbol-package name)
+         (intern name-as-string (if (eq it #.(find-package :common-lisp))
+                                    (find-package :cl-rdbms)
+                                    it))
+         (make-symbol name-as-string))))
