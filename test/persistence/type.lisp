@@ -182,7 +182,7 @@
 
 (def-type-test date/1 date (parse-datestring "2006-06-06"))
 
-(def-type-test time/1 time (parse-datestring "06:06:06"))
+(def-type-test time/1 time (parse-timestring "06:06:06"))
 
 (def-type-test timestamp/1 timestamp (parse-timestring "2006-06-06T06:06:06Z"))
 (def-type-test timestamp/2 timestamp (parse-timestring "2006-06-06T06:06:06+06:00"))
