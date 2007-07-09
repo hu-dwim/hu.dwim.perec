@@ -316,12 +316,15 @@
   (setf (elt rdbms-values index) (format-timestring slot-value :omit-time-part-p #t)))
 
 (defun time->string-writer (slot-value rdbms-values index)
+  (assert (eq (timezone-of slot-value) +utc-zone+))
   (setf (elt rdbms-values index) (format-timestring slot-value :omit-date-part-p #t :omit-timezone-part-p #t)))
 
 (defun timestamp->string-writer (slot-value rdbms-values index)
+  (assert (eq (timezone-of slot-value) +utc-zone+))
   (setf (elt rdbms-values index) (format-timestring slot-value :date-time-separator #\Space :use-zulu-p #f)))
 
 (defun local-time->integer-writer (slot-value rdbms-values index)
+  (assert (eq (timezone-of slot-value) +utc-zone+))
   (setf (elt rdbms-values index) (universal-time slot-value)))
 
 ;;;;;;;;;;
