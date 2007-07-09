@@ -98,10 +98,11 @@
                       ((persistent-p instance)
                        "#t ")
                       (t "#f ")))
-  (if (and (slot-boundp instance 'oid)
-           (oid-of instance))
-      (princ (id-of instance))
-      (write-string "nil")))
+  (if (slot-boundp instance 'oid)
+      (aif (oid-of instance)
+           (princ (oid-instance-id it))
+           (write-string "nil"))
+      (write-string "?")))
 
 (defprint-object (self persistent-object)
   "Prints the oid of the instance and whether the instance is known to be persistent or transient."
