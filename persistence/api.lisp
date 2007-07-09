@@ -97,7 +97,8 @@
               (ensure-persistent-class ',secondary-class))))
         ,(when export-accessors-names-p
                `(export '(,primary-reader ,lazy-primary-reader ,secondary-reader ,lazy-secondary-reader)
-                 ,*package*))))))
+                 ,*package*))
+        ',association-name))))
 
 (defmacro defassociation* (&body association-ends)
   `(defassociation
