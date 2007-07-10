@@ -442,10 +442,27 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Unsigned byte vector
 
-;; TODO assert for the size in the reader/writer
-(defptype unsigned-byte-vector (&optional size)
-  `(vector (unsigned-byte 8) ,size))
+(defptype unsigned-byte-vector (&optional maximum-size minimum-size)
+  `(vector (unsigned-byte 8) ,@(when (eql maximum-size minimum-size)
+                                 (list maximum-size))))
 
-(defmapping unsigned-byte-vector (sql-binary-large-object-type)
+;; TODO assert for the size constraints in the reader/writer
+(defmapping unsigned-byte-vector (if (consp type-specification)
+                                     (sql-binary-large-object-type :size (bind ((parsed-type (parse-type type-specification)))
+                                                                           (when (eql (maximum-size-of parsed-type)
+                                                                                      (minimum-size-of parsed-type))
+                                                                             (maximum-size-of parsed-type))))
+                                     (sql-binary-large-object-type))
   'identity-reader
   'identity-writer)
+
+;;;;;;;;;;;;;;
+;;; IP address
+
+(defptype ip-address ()
+  '(unsigned-byte-vector 4 16))
+
+(defmapping ip-address (sql-binary-large-object-type :size 16)
+  'unsigned-byte-array->ip-address-reader
+  'ip-address->unsigned-byte-array-writer)
+

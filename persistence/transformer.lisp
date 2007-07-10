@@ -327,6 +327,39 @@
   (assert (eq (timezone-of slot-value) +utc-zone+))
   (setf (elt rdbms-values index) (universal-time slot-value)))
 
+;;;;;;;;;;;;;;
+;;; IP address
+
+(defun unsigned-byte-array->ip-address-reader (rdbms-values index)
+  (bind ((bytes (elt rdbms-values index)))
+    (cond ((= (length bytes) 4)
+           bytes)
+          ((= (length bytes) 16)
+           (loop with result = (make-array 8 :element-type '(unsigned-byte 16) :adjustable #f :fill-pointer 0)
+                 for idx :from 0 :below 16 :by 2
+                 do (vector-push (+ (aref bytes idx)
+                                    (ash (aref bytes (1+ idx)) 8))
+                                 result)
+                 finally (return result)))
+          (t (error "Illegal data in database for unsigned-byte-array->ip-address-reader: ~S" bytes)))))
+
+(defun ip-address->unsigned-byte-array-writer (slot-value rdbms-values index)
+  (assert (and (typep slot-value 'vector)
+               (or (and (= (length slot-value) 4)
+                        (subtypep (array-element-type slot-value) '(unsigned-byte 8)))
+                   (and (= (length slot-value) 8)
+                        (subtypep (array-element-type slot-value) '(unsigned-byte 16))))))
+  (bind ((result))
+    (cond ((= (length slot-value) 4)
+           (setf result (coerce slot-value 'unsigned-byte-vector)))
+          ((= (length slot-value) 8)
+           (setf result (make-array 16 :adjustable #f :fill-pointer 0))
+           (loop for part :across slot-value do
+                 (vector-push (ldb (byte 8 8) part) result)
+                 (vector-push (ldb (byte 8 0) part) result)))
+          (t (error "Illegal input for ip-address->unsigned-byte-array-writer: ~S" slot-value)))
+    (setf (elt rdbms-values index) result)))
+
 ;;;;;;;;;;
 ;;; Object
 
