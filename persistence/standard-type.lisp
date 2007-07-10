@@ -299,6 +299,7 @@
 (defmapping text (if (consp type-specification)
                      (sql-character-varying-type :size (maximum-length-of (parse-type type-specification)))
                      (sql-character-large-object-type))
+  ;; FIXME what about type checking: writing something printable into a text slot silently stores its printed representation
   'identity-reader
   'identity-writer)
 
