@@ -77,7 +77,11 @@
   ;; Supported types
   
   (:method (value (type symbol) &optional args)
-           (sql-literal :value (value->sql-value value (compose-type type args))))
+           (bind ((type (compose-type type args))
+                  (normalized-type (normalized-type-for type)))
+             (sql-literal :value (value->sql-value value type)
+                          :type (unless (persistent-class-type-p normalized-type)
+                                  (compute-column-type type)))))
 
   (:method (value (type persistent-class) &optional args)
            (assert (null args))
