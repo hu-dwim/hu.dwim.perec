@@ -102,7 +102,13 @@
            (assert (null args))
            (value->sql-literal value 'string))
 
-  (:method ((value number) (type (eql +unknown-type+)) &optional args) ; TODO BIT
+  (:method ((value integer) (type (eql +unknown-type+)) &optional args)
+           (assert (null args))
+           (if (<= (- #.(expt 2 31)) value #.(1- (expt 2 31)))
+               (value->sql-literal value 'integer-32)
+               (value->sql-literal value 'integer)))
+
+  (:method ((value number) (type (eql +unknown-type+)) &optional args)
            (assert (null args))
            (value->sql-literal value 'number))
 
