@@ -50,12 +50,13 @@
 
 (defgeneric %infer-types (syntax query &optional toplevel)
   (:method (syntax query &optional toplevel)
-           (declare (ignore syntax query toplevel))
-           (values))
+           (declare (ignore query toplevel))
+           (xtype-of syntax))
 
   (:method ((form compound-form) query &optional toplevel)
            (declare (ignore toplevel))
-           (mapc #L(%infer-types !1 query #f) (operands-of form)))
+           (mapc #L(%infer-types !1 query #f) (operands-of form))
+           (xtype-of form))
 
   (:method ((access slot-access) query &optional toplevel)
            (declare (ignore toplevel))
@@ -65,7 +66,8 @@
                    (find-slot-for-access access (slots-for-slot-access access))))
            (when (slot-of access)
              (setf (xtype-of access)
-                   (slot-definition-type (slot-of access)))))
+                   (slot-definition-type (slot-of access))))
+           (xtype-of access))
 
   ;; toplevel (eq <obj1> <obj2>)    -> (type-of <obj1>) == (type-of <obj2>)
   ;; toplevel (member <obj1> <obj2>) -> (type-of <obj1>) <= (x-element-type-of <obj2>)
@@ -92,7 +94,8 @@
                      (%infer-types obj2 query))
                     ((and (has-default-type-p obj1) (not (has-default-type-p obj2)))
                      (setf (xtype-of obj1) (x-element-type-of (xtype-of obj2)))
-                     (%infer-types obj1 query)))))))))
+                     (%infer-types obj1 query)))))))
+           (xtype-of call)))
 
 (defun restrict-variable-type (variable type)
   (let ((orig-type (xtype-of variable)))
