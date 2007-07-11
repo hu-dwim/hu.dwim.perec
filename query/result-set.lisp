@@ -362,5 +362,8 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
 (defmethod records-of ((result-set scrolled-result-set) &optional start end)
   (setf (cl-rdbms::offset-of (sql-query-of result-set)) start
         (cl-rdbms::limit-of (sql-query-of result-set)) (- end start))
-  (execute (sql-query-of result-set) :result-type 'vector))
+  (execute (sql-query-of result-set)
+           :result-type 'vector
+           :start-row start
+           :row-limit (- end start)))
 
