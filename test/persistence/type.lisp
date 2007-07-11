@@ -65,7 +65,7 @@
              (defpclass* type-test ()
                ((,name :type ,type))))))
         (flet ((make-object ()
-                 (execute "delete from _type_test")
+                 (execute (sql `(delete ,(rdbms-name-for 'type-test))))
                  (setf object
                        (apply #'make-instance
                               'type-test
@@ -76,11 +76,17 @@
                (test-object (object)
                  ,(when (and test-value-p test-value)
                         `(is (= 0 (prc::elt-0-0
-                                   (execute (strcat "select count(*) from _type_test where "
-                                                    (rdbms::name-of
-                                                     (last1
-                                                      (prc::columns-of (prc::find-slot (find-class 'type-test) ',name))))
-                                                    " is null"))))))
+                                   (execute (rdbms::sql-select
+                                             :columns (list (rdbms::sql-count-*))
+                                             :tables (list (rdbms-name-for 'type-test))
+                                             :where (rdbms::sql-is-null
+                                                     (rdbms::sql-identifier
+                                                      :name
+                                                      (rdbms::name-of
+                                                       (last1
+                                                        (prc::columns-of
+                                                         (prc::find-slot
+                                                          (find-class 'type-test) ',name))))))))))))
                  (is ,(if test-value-p
                           `(object-equal-p ,value (slot-value object ',name))
                           `(not (slot-boundp object ',name))))))

@@ -253,3 +253,4 @@ equal under TEST to result of evaluating INITIAL-VALUE."
 
 (defun elt-0-0 (vector)
   (elt (elt vector 0) 0))
+

@@ -4,8 +4,8 @@
 
 (defun check-existing-records (&rest content)
   (iter (for (table-id expected-records) on content by 'cddr)
-        (for table-name = (format nil "_purge_~d_test" table-id))
-        (for column-name = (make-symbol (format nil "_int_attr_~d" table-id)))
+        (for table-name = (rdbms-name-for (format nil "purge-~d-test" table-id) :table))
+        (for column-name = (rdbms-name-for (format nil "int-attr-~d" table-id) :column))
         ;; TODO: eliminate coerce
         (for records-in-database = (sort
                                     (apply 'concatenate 'list
