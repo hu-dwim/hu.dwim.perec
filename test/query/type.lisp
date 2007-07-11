@@ -26,9 +26,13 @@
                         (execute-query
                          (make-query
                           ,(if test-value-p
-                               ``(select (o)
-                                  (from (o query-type-test))
-                                  (where (equal (,,accessor o) ',,value)))
+                               `(if (typep ,value 'local-time)
+                                 `(select (o)
+                                   (from (o query-type-test))
+                                   (where (local-time= (,,accessor o) ',,value)))
+                                 `(select (o)
+                                   (from (o query-type-test))
+                                   (where (equal (,,accessor o) ',,value))))
                                ``(select (o)
                                   (from (o query-type-test))
                                   (where (not (slot-boundp o ',',name)))))))))))
