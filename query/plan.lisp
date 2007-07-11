@@ -415,10 +415,13 @@
 
 (defgeneric create-temporary-table (table-name columns subselect database)
   (:method (table-name columns subselect database)
-           `(sql-create-table :name ',table-name
-                              :temporary #t
-                              :columns (list ,@columns)
-                              :as (sql-subquery :query ,subselect)))
+           `(sql-create-table
+             :name ',table-name
+             :temporary #t
+             :columns (list ,@(mapcar (lambda (column)
+                                        (sql-identifier :name (slot-value column 'arnesi:name)))
+                                      columns))
+             :as (sql-subquery :query ,subselect)))
 
   (:method (table-name columns subselect (database oracle))
            (ensure-oracle-temporary-table-exists table-name columns)
