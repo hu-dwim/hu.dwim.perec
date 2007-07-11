@@ -85,7 +85,8 @@
                        (:file "polymorph")
                        (:file "type")
                        (:file "aggregate")
-                       (:file "partial-eval")))))))
+                       (:file "partial-eval")
+                       (:file "expression")))))))
 
 (defsystem :cl-perec-test.postgresql
   :description "Tests for cl-perec with Postgresql backend."

@@ -73,28 +73,29 @@
   ;; toplevel (member <obj1> <obj2>) -> (type-of <obj1>) <= (x-element-type-of <obj2>)
   (:method ((call function-call) query &optional toplevel)
            (call-next-method)
-           (when (and toplevel (= (length (args-of call)) 2))
-             (bind ((obj1 (first (args-of call)))
-                    (obj2 (second (args-of call))))
-               (case (fn-of call)
-                 ((eq eql equal =
-                      local-time= local-time/=  ; TODO these are n-ary
-                      local-time< local-time> local-time<= local-time>=)
-                  (cond
-                    ((and (not (has-default-type-p obj1)) (has-default-type-p obj2))
-                     (setf (xtype-of obj2) (xtype-of obj1))
-                     (%infer-types obj2 query))
-                    ((and (has-default-type-p obj1) (not (has-default-type-p obj2)))
-                     (setf (xtype-of obj1) (xtype-of obj2))
-                     (%infer-types obj1 query))))
-                 (member
-                  (cond
-                    ((and (not (has-default-type-p obj1)) (has-default-type-p obj2))
-                     (setf (xtype-of obj2) `(set ,(xtype-of obj1)))
-                     (%infer-types obj2 query))
-                    ((and (has-default-type-p obj1) (not (has-default-type-p obj2)))
-                     (setf (xtype-of obj1) (x-element-type-of (xtype-of obj2)))
-                     (%infer-types obj1 query)))))))
+           (when toplevel
+             (case (fn-of call)
+               ((eq eql equal
+                    = local-time= local-time/=
+                    local-time< local-time> local-time<= local-time>=)
+                (bind ((arg-with-known-type (find-if (lambda (arg) (not (has-default-type-p arg)))
+                                                     (args-of call))))
+                  (when arg-with-known-type
+                    (iter (for arg in (args-of call))
+                          (when (has-default-type-p arg)
+                            (setf (xtype-of arg) (xtype-of arg-with-known-type))
+                            (%infer-types arg query))))))
+               (member
+                (when (= (length (args-of call)) 2)
+                  (bind ((obj1 (first (args-of call)))
+                         (obj2 (second (args-of call))))
+                    (cond
+                      ((and (not (has-default-type-p obj1)) (has-default-type-p obj2))
+                       (setf (xtype-of obj2) `(set ,(xtype-of obj1)))
+                       (%infer-types obj2 query))
+                      ((and (has-default-type-p obj1) (not (has-default-type-p obj2)))
+                       (setf (xtype-of obj1) (x-element-type-of (xtype-of obj2)))
+                       (%infer-types obj1 query))))))))
            (xtype-of call)))
 
 (defun restrict-variable-type (variable type)

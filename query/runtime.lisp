@@ -77,6 +77,7 @@
   ;; Supported types
   
   (:method (value (type symbol) &optional args)
+           (assert (not (eql type +unknown-type+)))
            (bind ((type (compose-type type args))
                   (normalized-type (normalized-type-for type)))
              (sql-literal :value (value->sql-value value type)
@@ -93,6 +94,10 @@
            (value->sql-literal value (first type) (rest type)))
 
   ;; Infer type from value
+
+  (:method (value (type (eql +unknown-type+)) &optional args)
+           (declare (ignore args))
+           (error "Could not infer SQL type for literal: ~S" value))
 
   (:method ((value persistent-object) (type (eql +unknown-type+)) &optional args)
            (assert (null args))
