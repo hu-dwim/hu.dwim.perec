@@ -87,10 +87,23 @@
                        (:file "aggregate")
                        (:file "partial-eval")))))))
 
+(defsystem :cl-perec-test.postgresql
+  :description "Tests for cl-perec with Postgresql backend."
+  :depends-on (:cl-rdbms.postgresql
+               :cl-perec))
+
+(defsystem :cl-perec-test.oracle
+  :description "Tests for cl-perec with Oracle backend."
+  :depends-on (:cl-rdbms.oracle
+               :cl-perec))
+
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
   (in-package :cl-perec-test)
   (pushnew :debug *features*)
   (declaim (optimize (debug 3)))
+  (warn "Pushed :debug in *features*, set (declaim (optimize (debug 3))) and set *database*."))
+
+(defmethod perform ((o test-op) (c (eql (find-system :cl-perec-test.postgresql))))
   (eval (read-from-string
          "(progn
             (setf *database*
@@ -100,4 +113,26 @@
                                  :muffle-warnings t
                                  :transaction-mixin 'transaction-mixin
                                  :connection-specification cl-perec-system::*test-database-connection-specification*)))"))
-  (warn "Pushed :debug in *features*, set (declaim (optimize (debug 3))) and set *database*."))
+  (eval (read-from-string "(stefil:funcall-test-with-feedback-message 'test)")))
+
+(defmethod perform ((o test-op) (c (eql (find-system :cl-perec-test.oracle))))
+  (eval (read-from-string
+         "(progn
+            (setf *database*
+                  (make-instance 'oracle
+                                 :transaction-mixin 'transaction-mixin
+                                 :connection-specification
+                                 '(:datasource \"(ADDRESS =
+                                                  (PROTOCOL = TCP)
+                                                  (HOST = localhost)
+                                                  (PORT = 1521))\"
+                                   :user-name \"perec-test\"
+                                   :password \"test123\"))))"))
+  (eval (read-from-string "(stefil:funcall-test-with-feedback-message 'test)")))
+
+(defmethod operation-done-p ((op test-op) (system (eql (find-system :cl-perec-test.postgresql))))
+  nil)
+
+(defmethod operation-done-p ((op test-op) (system (eql (find-system :cl-perec-test.oracle))))
+  nil)
+

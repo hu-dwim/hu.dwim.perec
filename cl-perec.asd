@@ -75,7 +75,8 @@
                :cl-ppcre
                :cl-store
                :cl-containers
-               :cl-rdbms.postmodern)
+               :cl-rdbms.postmodern
+               :cl-rdbms.oracle)
   :serial t
   :components
   ((:file "package")
