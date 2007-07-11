@@ -390,12 +390,13 @@
                                                    :tables  (list
                                                              ,@(tables-of input))
                                                    :where ,(where-of input)))
-                             (create-table `(sql-create-table
-                                             :name ',temp-table
-                                             :temporary #t
-                                             :columns (list
-                                                       (sql-identifier :name ',+oid-id-column-name+))
-                                             :as (sql-subquery :query ,select-deleted-ids)))
+                             (create-table (create-temporary-table temp-table
+                                                                   (list
+                                                                    (sql-column
+                                                                     :name +oid-id-column-name+
+                                                                     :type +oid-id-sql-type+))
+                                                                   select-deleted-ids
+                                                                   *database*))
                              (delete-where `(sql-subquery
                                              :query
                                              (sql-select
@@ -406,12 +407,46 @@
                                                (lambda (table)
                                                  (sql-delete-for-subselect table delete-where))
                                                tables)))
-                             (drop-table `(sql-drop-table
-                                           :name ',temp-table)))
+                             (drop-table (drop-temporary-table temp-table *database*)))
                         `(execute-protected
                           ,create-table
                           (list ,@deletes)
                           ,drop-table)))))))))
+
+(defgeneric create-temporary-table (table-name columns subselect database)
+  (:method (table-name columns subselect database)
+           `(sql-create-table :name ',table-name
+                              :temporary #t
+                              :columns (list ,@columns)
+                              :as (sql-subquery :query ,subselect)))
+
+  (:method (table-name columns subselect (database oracle))
+           (ensure-oracle-temporary-table-exists table-name columns)
+           `(sql-insert
+             :table ',table-name
+             :columns (list ,@columns)
+             :subselect (sql-subquery
+                         :query ,subselect))))
+
+(defun ensure-oracle-temporary-table-exists (table-name columns)
+  (unless (oracle-temporary-table-exists-p table-name)
+    (with-transaction (execute (sql-create-table
+                                :name table-name
+                                :temporary :delete-rows
+                                :columns columns)))))
+
+(defun oracle-temporary-table-exists-p (table-name)
+  (execute (format nil
+                   "select table_name from user_tables where lower(table_name)='~A' and temporary='Y'"
+                   (string-downcase (rdbms-name-for table-name))) ;; TODO should be case sensitive
+           :result-type 'list))
+
+(defgeneric drop-temporary-table (table-name database)
+  (:method (table-name database)
+           `(sql-drop-table :name ',table-name))
+
+  (:method (table-name (database oracle))
+           nil))
 
 ;;;
 ;;; Helpers
