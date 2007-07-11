@@ -565,14 +565,13 @@ value is equal, when they represent the NIL lisp value)."
       seq))
 
 (defun sql-substring (str start length)
-  (sql-function-call :name "substring" :arguments (list str start length)))
+  (sql-function-call :name "substr" :arguments (list str start length)))
 
 (defun sql-regex-match (regex target &key (start 0) end)
-  "TODO: this works for PostgreSQL only"
-  (sql-~ (sql-subseq target start end)  regex))
+  (sql-regexp-like :string (sql-subseq target start end) :pattern regex))
 
 (defun sql-length (str)
-  (sql-function-call :name "char_length" :arguments (list str)))
+  (sql-function-call :name "length" :arguments (list str)))
 
 ;;;----------------------------------------------------------------------------
 ;;; Aggregate functions
@@ -645,7 +644,7 @@ value is equal, when they represent the NIL lisp value)."
   (typep sql 'cl-rdbms::sql-literal*))
 
 (defun sql-null-literal ()
-  (sql-literal :value nil))
+  (sql-literal :value :null))
 
 (defun sql-false-literal ()
   (sql-literal :value #f :type (make-instance 'cl-rdbms::sql-boolean-type)))
