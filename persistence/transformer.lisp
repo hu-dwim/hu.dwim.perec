@@ -303,6 +303,8 @@
 ;;;;;;;;;;;;;;;;;
 ;;; Date and time
 
+;; TODO: let the local-time go down to rdbms
+
 (defun string->local-time-reader (rdbms-values index)
   (bind ((*default-timezone* +utc-zone+))
     (parse-timestring (elt rdbms-values index) :date-time-separator #\Space)))

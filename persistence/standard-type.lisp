@@ -346,6 +346,7 @@
   '(and local-time
         (satisfies date-p)))
 
+;; TODO: don't use identity-reader, since it may return :NULL
 (defmapping date (sql-date-type)
   'identity-reader
   'date->string-writer)
@@ -364,6 +365,7 @@
   '(and local-time
         (satisfies time-p)))
 
+;; TODO: don't use identity-reader, since it may return :NULL
 (defmapping time (sql-time-type)
   'identity-reader
   'time->string-writer)
@@ -378,6 +380,7 @@
         (satisfies date-p)
         (satisfies time-p)))
 
+;; TODO: don't use identity-reader, since it may return :NULL
 (defmapping timestamp (sql-timestamp-type :with-timezone #t)
   'identity-reader
   'timestamp->string-writer)
