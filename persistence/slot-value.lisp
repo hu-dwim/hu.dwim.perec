@@ -125,6 +125,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CLOS MOP slot-value-using-class and friends
 
+(defmacro assert-instance-access ()
+  `(assert (or *bypass-database-access*
+            (not persistent)
+            (instance-in-current-transaction-p instance))
+    nil
+    "Accessing a persistent instance while it is not attached to the current transaction."))
+
 (defmethod slot-value-using-class ((class persistent-class)
                                    (instance persistent-object)
                                    (slot standard-effective-slot-definition))
@@ -156,9 +163,7 @@
     (assert (eq class (class-of instance)))
     (assert (eq class (slot-definition-class slot))))
   (bind ((persistent (persistent-p instance)))
-    (assert (or *bypass-database-access*
-                (not persistent)
-                (instance-in-current-transaction-p instance)))
+    (assert-instance-access)
     (if (or (not persistent)
             *bypass-database-access*
             (and *cache-slot-values*
@@ -190,9 +195,7 @@
     (assert (eq class (class-of instance)))
     (assert (eq class (slot-definition-class slot))))
   (bind ((persistent (persistent-p instance)))
-    (assert (or *bypass-database-access*
-                (not persistent)
-                (instance-in-current-transaction-p instance)))
+    (assert-instance-access)
     ;; store slot value in the database
     (when (and (not *bypass-database-access*)
                persistent)

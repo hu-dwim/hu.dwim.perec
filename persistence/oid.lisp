@@ -81,7 +81,9 @@
   "This map is used to cache class names by class ids. It gets filled when ensure-class is called for the first time and kept up to date.")
 
 (defun class-id->class-name (class-id)
-  (gethash class-id *oid-class-id->class-name-map*))
+  (aprog1
+      (gethash class-id *oid-class-id->class-name-map*)
+    (assert it nil "Could not find the class name for the class id ~A, probably the class has not yet been exported." class-id)))
 
 (defun (setf class-id->class-name) (class-name class-id)
   (assert (and class-id class-name (symbolp class-name) (integerp class-id)))
