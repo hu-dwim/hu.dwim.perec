@@ -15,8 +15,10 @@
 
 (defun sql-select-oids-for-class (class-name)
   "Generates a select for the oids of instances of the class named CLASS-NAME."
-  (bind ((tables (rest (primary-tables-of (find-class class-name))))) ; TODO: APPEND/UNION
-    (sql-select-oids-from-tables tables 'sql-union)))
+  (bind ((class (find-class class-name))
+         (tables (rest (primary-tables-of class))))
+    (ensure-class-and-subclasses-exported class)
+    (sql-select-oids-from-tables tables 'sql-union))) ; TODO: APPEND/UNION
 
 (defun sql-select-oids-from-tables (tables set-operation)
   "Generates a select for the union or intersection of oids from TABLES."
@@ -29,7 +31,6 @@
 (defgeneric sql-select-oids-from-table (table)
   (:documentation "Generates a select for the oids in TABLE.")
   (:method ((table table))
-           (ensure-exported table)
            (sql-select :columns +oid-column-names+ :tables (list (name-of table))))
   (:method ((table sql-table-alias))
            (sql-select :columns +oid-column-names+ :tables (list table))))
@@ -47,15 +48,12 @@
 
 (defun sql-delete-from-table (table &key where)
   "Generate a delete command for records in TABLE that satisfies the WHERE clause."
-  (bind ((table-ref (sql-table-reference-for table nil)))
-    (when table-ref
-      `(sql-delete
-        :table ,table-ref
-        :where ,where))))
+  `(sql-delete
+    :table ,(sql-table-reference-for table nil)
+    :where ,where))
 
 (defun tables-for-delete (class)
   "Returns the tables where instances of CLASS are stored."
-  (ensure-exported class)
   (bind ((super-classes (persistent-effective-super-classes-of class))
          (sub-classes (persistent-effective-sub-classes-of class))
          (class-primary-table (primary-table-of class))
@@ -161,7 +159,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defgeneric sql-table-reference-for-type (type &optional alias)
   
   (:method ((class persistent-class) &optional alias)
-           (ensure-exported class)
+           (ensure-class-and-subclasses-exported class)
            (bind ((tables (rest (primary-tables-of class)))) ; TODO handle UNION/APPEND
              (case (length tables)
                (0 nil)
@@ -652,3 +650,9 @@ value is equal, when they represent the NIL lisp value)."
 (defun sql-true-literal ()
   (sql-literal :value #t :type (make-instance 'cl-rdbms::sql-booelan-type)))
 
+;;;----------------------------------------------------------------------------
+;;; Helpers
+;;;
+(defun ensure-class-and-subclasses-exported (class)
+  (ensure-exported class)
+  (mapc 'ensure-exported (persistent-effective-sub-classes-of class)))
