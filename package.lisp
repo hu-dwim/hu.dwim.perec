@@ -52,7 +52,8 @@
                           #:string-to-octets)
 
   (:shadowing-import-from :cl-rdbms
-                          #:update-index)
+                          #:update-index
+                          #:insert-record)
 
   (:export ;; defining persistent classes
            #:defpclass

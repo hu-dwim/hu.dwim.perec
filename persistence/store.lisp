@@ -169,9 +169,9 @@
          (rdbms-values (make-array (* 2 +oid-column-count+))))
     (object-writer value rdbms-values 0)
     (object-writer instance rdbms-values +oid-column-count+)
-    (insert-records (name-of (table-of slot))
-                    (append (columns-of slot) (columns-of other-slot))
-                    rdbms-values)))
+    (insert-record (name-of (table-of slot))
+                   (append (columns-of slot) (columns-of other-slot))
+                   rdbms-values)))
 
 (defun store-m-n-association-end-set (instance slot value)
   "Stores the non lazy list association end value without local side effects into the database."
@@ -232,10 +232,10 @@
               (store-slot-value slot slot-value rdbms-values index))
         (if (persistent-p instance)
             (update-records (name-of table) columns rdbms-values (id-column-matcher-where-clause instance))
-            (insert-records (name-of table) (append oid-columns columns) (concatenate 'vector oid-values rdbms-values)))))
+            (insert-record (name-of table) (append oid-columns columns) (concatenate 'vector oid-values rdbms-values)))))
     (unless (persistent-p instance)
       (dolist (table (set-difference (data-tables-of (class-of instance)) tables))
-        (insert-records (name-of table) (oid-columns-of table) (oid->rdbms-values oid))))))
+        (insert-record (name-of table) (oid-columns-of table) (oid->rdbms-values oid))))))
 
 (defun store-all-slots (instance)
   "Stores all slots wihtout local side effects into the database."

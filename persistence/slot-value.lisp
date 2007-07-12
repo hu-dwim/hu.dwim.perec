@@ -6,7 +6,10 @@
 (defparameter *cache-slot-values* #t
   "True means slot values will be cached in the slots of the persistent instances. Writing a slot still goes directly to the database but it will be also stored in the instance. If the instance's state is modified in the database it is up to the modifier to clear the list of cached slots from the instance using the invalidate functions. The purpose of the slot value cache is to increase performance and reduce the number of database interactions during a transaction.")
 
-;; TODO: shouldn't we use standard-instance-access instead of this special? (probably would be more efficient, well I measured and yes it is)
+;; TODO: shouldn't we use standard-instance-access instead of this special?
+;; (probably would be more efficient, well I measured and yes it is)
+;; TODO: why not storing a predefined value (i.e an internal symbol) in the slot when it is not cached
+
 (defparameter *bypass-database-access* #f
   "True means slot-value-using-class and friends will bypass database access and directly use the underlying CLOS instance as a cache. It can be used for reading, writing, making unbound and checking boundness of slots.")
 
@@ -265,9 +268,9 @@
                           (list (oid-class-name current-oid))
                           at-current-instance)
           ;; TODO: handle initargs
-          (insert-records (name-of table)
-                          (oid-columns-of table)
-                          (oid->rdbms-values current-oid))))
+          (insert-record (name-of table)
+                         (oid-columns-of table)
+                         (oid->rdbms-values current-oid))))
     (dolist (table (data-tables-of previous-class))
       (unless (member table (data-tables-of current-class))
         (delete-records (name-of table)
