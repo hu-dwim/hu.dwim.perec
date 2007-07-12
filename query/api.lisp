@@ -175,6 +175,10 @@ Query variables can be referenced in the asserts and collects of the QUERY."))
   (:documentation
    "Add a collect for the EXPRESSION form to the QUERY."))
 
+(defgeneric add-group-by (query expression)
+  (:documentation
+   "Add a group-by clause specified by EXPRESSION to the QUERY."))
+
 (defgeneric add-order-by (query expression &optional direction)
   (:documentation
    "Add an order-by clause specified by EXPRESSION and DIRECTION to the QUERY."))

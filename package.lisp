@@ -268,6 +268,11 @@
 
 (define-computed-universe compute-as)
 
+(deflogger qlog ()
+  :level +warn+
+  :compile-time-level +dribble+
+  :appender (make-instance 'brief-stream-log-appender :stream *debug-io*))
+
 ;; TODO get rid of this, use string names
 (defun rdbms-name-for (name &optional thing)
   (let ((name-as-string (rdbms:rdbms-name-for name thing)))

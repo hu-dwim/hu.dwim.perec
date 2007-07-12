@@ -19,6 +19,7 @@
    (columns)
    (tables)
    (where nil)
+   (group-by nil)
    (order-by nil))
   (:documentation "Creates a result-set from the records returned by an SQL query."))
 
@@ -56,8 +57,16 @@
 (defclass* delete-operation (unary-operation-node)
   ((variables)))
 
-
 ;;; TODO: union,intersection,difference,product,join
+
+(defmethod print-object ((node plan-node) stream)
+  (princ (class-name (class-of node)) stream)
+  (pprint-newline :mandatory stream))
+
+(defmethod print-object ((node unary-operation-node) stream)
+  (call-next-method)
+  (pprint-indent :current 2 stream)
+  (print-object (input-of node) stream))
 
 ;;;
 ;;; Generate initial plan for the query.
@@ -65,6 +74,10 @@
 
 (defgeneric generate-plan (query)
   (:documentation "Generates a PLAN for the QUERY.")
+
+  (:method :around ((query query))
+           (aprog1 (call-next-method)
+             (qlog.dribble "Initial plan:~%~<~S~:>" it)))
 
   (:method ((query query))
 
@@ -78,8 +91,10 @@
                       (add-unique
                        (add-projection
                         (add-sorter
-                         (add-filter
-                          (generate-sql-query query)
+                         (add-grouping
+                          (add-where-filter
+                           (generate-sql-query query)
+                           query)
                           query)
                          query)
                         query)
@@ -89,7 +104,7 @@
                  (if (contradictory-p query)
                      nil
                      (add-lisp-delete
-                      (add-filter
+                      (add-where-filter
                        (generate-sql-query query)
                        query)
                       query))))))
@@ -121,7 +136,7 @@
           instance)
         (generate-list-result-set nil query))))
 
-(defun add-filter (input query)
+(defun add-where-filter (input query)
   (bind ((asserts (asserts-of query)))
     (if asserts
        (make-instance 'filter-operation
@@ -131,19 +146,35 @@
                       :condition `(and ,@asserts))
        input)))
 
-(defun add-sorter (input query)
-  (bind ((order-by (order-by-of query)))
-    (if (and order-by (or (member :asc order-by) (member :desc order-by)))
-        (make-instance 'sort-operation
+(defun add-grouping (input query)
+  (bind ((group-by (group-by-of query))
+         (collects (collects-of query))
+         (aggregates (collect-aggregate-calls collects)))
+    (if (or group-by aggregates)
+        (make-instance 'group-operation
                        :query query
                        :input input
                        :bindings (query-variable-bindings query)
-                       :sort-spec order-by)
+                       :group-by group-by
+                       :exprs aggregates)
+        input)))
+
+(defun add-sorter (input query)
+  (bind ((order-by (order-by-of query)))
+    (if (and order-by (or (member :asc order-by) (member :desc order-by)))
+        (progn
+          (assert (not (typep input 'group-operation)) () "TODO group by + order by")
+          (make-instance 'sort-operation
+                         :query query
+                         :input input
+                         :bindings (query-variable-bindings query)
+                         :sort-spec order-by))
         input)))
 
 (defun add-projection (input query)
   (bind ((collects (collects-of query))
-         (aggregates (collect-aggregate-calls collects)))
+         (aggregates (when (typep input 'group-operation)
+                       (exprs-of input))))
     (if aggregates
         (bind ((field-names (mapcar 'field-name-for aggregates))
                (substitution (mapcar #'cons aggregates field-names))
@@ -151,18 +182,13 @@
           (make-instance 'projection-operation
                          :query query
                          :bindings (field-bindings field-names)
-                         :input (make-instance 'group-operation
-                                               :query query
-                                               :input input
-                                               :bindings (query-variable-bindings query)
-                                               :group-by nil
-                                               :exprs aggregates)
+                         :input input
                          :values new-collects))
         (make-instance 'projection-operation
                        :query query
                        :bindings (query-variable-bindings query)
                        :input input
-                       :values (collects-of query)))))
+                       :values collects))))
 
 (defun add-unique (input query)
   (if (uniquep query)
@@ -191,13 +217,17 @@
 ;;; Optimize the plan
 ;;;
 
-(defgeneric optimize-plan (plan)
+(defun optimize-plan (plan)
+  (aprog1 (%optimize-plan plan)
+    (qlog.dribble "Improved plan:~%~<~S~:>" it)))
+
+(defgeneric %optimize-plan (plan)
 
   (:method (plan-node)
            plan-node)
   
   (:method ((op unary-operation-node))
-           (setf (input-of op) (optimize-plan (input-of op)))
+           (setf (input-of op) (%optimize-plan (input-of op)))
            op)
 
   (:method ((delete delete-operation))
@@ -230,7 +260,17 @@
                sort))
 
   (:method ((grouping group-operation))
-           (call-next-method))
+           (if (typep (input-of grouping) 'sql-query-node)
+               (bind ((sql-query (input-of grouping))
+                      ((values sql-exprs lisp-exprs) (to-sql (exprs-of grouping)))
+                      ((values sql-groupby lisp-groupby) (to-sql (group-by-of grouping))))
+                 (if (or lisp-exprs lisp-groupby)
+                     (call-next-method)
+                     (progn
+                       (setf (columns-of sql-query) sql-exprs)
+                       (setf (group-by-of sql-query) sql-groupby)
+                       sql-query)))
+               (call-next-method)))
 
   (:method ((projection projection-operation))
            (call-next-method)))
@@ -255,7 +295,12 @@
 ;;; Compile plan to lisp code.
 ;;;
 
-(defgeneric compile-plan (plan)
+(defun compile-plan (plan)
+  (aprog1 (%compile-plan plan)
+    (qlog.dribble "Compiled plan:~%~S" it)))
+
+
+(defgeneric %compile-plan (plan)
   (:documentation "Compiles a PLAN to executable lisp code.")
 
   (:method ((list-node list-result-node))
@@ -263,7 +308,7 @@
              `(make-list-result-set ',list)))
 
   (:method ((sql-query sql-query-node))
-           (with-slots (query result-type distinct columns tables where order-by) sql-query
+           (with-slots (query result-type distinct columns tables where group-by order-by) sql-query
              `(open-result-set
                ',result-type
                ,(partial-eval
@@ -272,6 +317,7 @@
                    :columns (list ,@columns)
                    :tables  (list ,@tables)
                    :where ,where
+                   :group-by (list ,@group-by)
                    :order-by (list ,@order-by))
                  query)
                ,@(when (eq result-type 'scroll)
@@ -285,7 +331,9 @@
                                                  :distinct ,distinct
                                                  :columns (list ,@columns)
                                                  :tables (list ,@tables)
-                                                 :where ,where))
+                                                 :where ,where
+                                                 :group-by (list ,@group-by)
+                                                 ))
                                                'records)))
                               query))))))
 
@@ -293,7 +341,7 @@
            (with-slots (input bindings condition) filter
              (with-unique-names (row)
                `(make-filtered-result-set
-                 ,(compile-plan input)
+                 ,(%compile-plan input)
                  (lambda (,row)
                    (let (,@(funcall bindings row :referenced-by condition))
                      ,condition))))))
@@ -302,7 +350,7 @@
            (with-slots (input bindings values) projection
              (with-unique-names (row)
                `(make-mapped-result-set
-                 ,(compile-plan input)
+                 ,(%compile-plan input)
                  (lambda (,row)
                    (let (,@(funcall bindings row :referenced-by values))
                      ;;,(ignorable-variables-declaration variables)
@@ -321,7 +369,7 @@
                         (sort-spec1 (rename-variables (copy-query sort-spec) "1"))
                         (sort-spec2 (rename-variables (copy-query sort-spec) "2")))
                    `(make-ordered-result-set
-                     ,(compile-plan input)
+                     ,(%compile-plan input)
                      (lambda (,row1 ,row2)
                        (let (,@bindings1 ,@bindings2)
                          ,(generate-comparator sort-spec1 sort-spec2)))))))))
@@ -329,13 +377,13 @@
   (:method ((delta unique-operation))
            (with-slots (input) delta
              `(make-unique-result-set
-               ,(compile-plan input))))
+               ,(%compile-plan input))))
 
   (:method ((gamma group-operation))
            (with-slots (input bindings group-by exprs) gamma
              (with-unique-names (row acc)
                `(make-grouped-result-set
-                 ,(compile-plan input)
+                 ,(%compile-plan input)
                  (lambda (,row)
                    (declare (ignorable ,row))
                    (let (,@(funcall bindings row :referenced-by group-by))
@@ -351,8 +399,8 @@
   (:method ((conversion conversion-operation))
            (with-slots (input result-type flatp) conversion
              (ecase result-type
-               (list `(to-list ,(compile-plan input) :flatp ,flatp))
-               (scroll `(to-scroll ,(compile-plan input) :flatp ,flatp)))))
+               (list `(to-list ,(%compile-plan input) :flatp ,flatp))
+               (scroll `(to-scroll ,(%compile-plan input) :flatp ,flatp)))))
 
   (:method ((delete delete-operation))
            (with-slots (input bindings variables) delete
@@ -366,7 +414,7 @@
                        (condition (condition-of input2)))
                   (assert (typep input2 'sql-query-node))
                   (with-unique-names (row)
-                    `(execute ,(compile-plan input2)
+                    `(execute ,(%compile-plan input2)
                       :visitor
                       (lambda (,row)
                         (let ,(funcall bindings row :referenced-by (append variables condition))
@@ -454,6 +502,11 @@
 ;;;
 ;;; Helpers
 ;;;
+
+(defun aggregate-variable-bindings (exprs aggregates)
+  (bind ((field-names (mapcar 'field-name-for aggregates))
+         (substitution (mapcar #'cons aggregates field-names)))
+    (values (field-bindings field-names) (substitute-syntax exprs substitution))))
 
 (defun field-name-for (expr)
   (if (and (consp expr) (aggregate-function-name-p (first expr)))

@@ -589,8 +589,10 @@ value is equal, when they represent the NIL lisp value)."
   (gethash function-name *aggregate-functions*))
 
 (defmacro define-aggregate-function (function-name &rest args)
-  `(setf (gethash ',function-name *aggregate-functions*)
-         (make-aggregate-function ,@args)))
+  `(progn
+    (setf (gethash ',function-name *aggregate-functions*)
+     (make-aggregate-function ,@args))
+    (define-sql-operator ',function-name ,(getf args :sql))))
 
 (define-aggregate-function count
     :sql 'sql-count

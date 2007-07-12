@@ -42,6 +42,10 @@
     nil
     :type list
     :documentation "List of expressions of the action form.")
+   (group-by
+    nil
+    :type list
+    :documentation "List of slot values.")
    (order-by
     nil
     :type list
@@ -58,7 +62,8 @@
 (define-copy-method copy-inner-class progn ((self query) copy copy-htable)
   (with-slot-copying (copy copy-htable self)
     (copy-slots lexical-variables query-variables flatp uniquep prefetchp result-type
-                asserts action action-args order-by sql-select-list sql-where sql-order-by)))
+                asserts action action-args group-by order-by sql-select-list
+                sql-where sql-order-by)))
 
 (defmethod print-object ((query query) stream)
   (print-unreadable-object (query stream :type t)
@@ -117,10 +122,12 @@
                                     (0 nil)
                                     (1 `(where ,(first asserts)))
                                     (t `(where (and ,@asserts)))))
+                    (group-by-clause (when (group-by-of query) `(group-by ,@(group-by-of query))))
                     (order-by-clause (when (order-by-of query) `(order-by ,@(order-by-of query)))))
              `(,action ,options ,action-list
                  (from ,@variables)
                  ,@(optional where-clause)
+                 ,@(optional group-by-clause)
                  ,@(optional order-by-clause))))))
 
 
@@ -139,6 +146,9 @@
 
 (defmethod add-collect ((query query) expression)
   (appendf (collects-of query) (list expression)))
+
+(defmethod add-group-by ((query query) expression)
+  (appendf (group-by-of query) (list expression)))
 
 (defmethod add-order-by ((query query) expression &optional (direction :asc))
   (assert (member direction '(:asc :desc)))
