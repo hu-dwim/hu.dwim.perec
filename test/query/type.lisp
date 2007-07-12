@@ -22,6 +22,7 @@
                           'query-type-test
                           ,(when test-value-p `(list ,init-arg ,value))))
                  (test-object ()
+                   (declare #+sbcl(sb-ext:muffle-conditions sb-ext:compiler-note))
                    (is (prc::length=1
                         (execute-query
                          (make-query
