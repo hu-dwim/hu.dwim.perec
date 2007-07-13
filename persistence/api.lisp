@@ -60,8 +60,8 @@
            (secondary-reader (first (getf secondary-association-end :readers)))
            (lazy-secondary-reader (concatenate-symbol secondary-reader "*"))
            (secondary-writer (first (getf secondary-association-end :writers)))
-           (association-name (concatenate-symbol primary-class "-" primary-slot "-"
-                                                 secondary-class "-" secondary-slot)))
+           (association-name (concatenate-symbol primary-class "~" primary-slot "~"
+                                                 secondary-class "~" secondary-slot)))
       `(progn
         (eval-when (:compile-toplevel)
           (flet ((ensure-reader-function (name)
