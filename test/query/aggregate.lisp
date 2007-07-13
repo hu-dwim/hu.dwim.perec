@@ -45,6 +45,17 @@
       (from (o aggregate-test)))
     '((3 6 1 3 2)))))
 
+(def-aggregate-test test/query/aggregate/int/2 ()
+  (is
+   (equal
+    (select ((+ (count (int-attr-of o))
+                (sum (int-attr-of o))
+                (min (int-attr-of o))
+                (max (int-attr-of o))
+                (avg (int-attr-of o))))
+      (from (o aggregate-test)))
+    '(15))))
+
 (def-aggregate-test test/query/aggregate/string ()
   (is
    (equal

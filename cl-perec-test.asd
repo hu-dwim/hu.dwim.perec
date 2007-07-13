@@ -85,6 +85,7 @@
                        (:file "polymorph")
                        (:file "type")
                        (:file "aggregate")
+                       (:file "group-by")
                        (:file "partial-eval")
                        (:file "expression")))))))
 

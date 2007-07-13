@@ -114,7 +114,7 @@ with the result of the naively compiled query.")
             query
             (add-unique-filter
              query
-             `(make-list-result-set (nreverse ,result-list))))))))) ;; TODO order-by
+             `(make-list-result-set (nreverse ,result-list))))))))) ;; TODO group-by,order-by
 
 (defun add-unique-filter (query form)
   (if (uniquep query)
@@ -206,10 +206,13 @@ with the result of the naively compiled query.")
 
 (defun parse-query (query)
   (bind ((variables (get-variables query)))
-    (setf (asserts-of query) (mapcar #L(parse-query-form !1 variables) (asserts-of query)))
-    (setf (action-args-of query) (mapcar #L(parse-query-form !1 variables) (action-args-of query)))
-    (setf (order-by-of query) (iter (for (dir expr) on (order-by-of query) by 'cddr)
-                                    (nconcing (list dir (parse-query-form expr variables)))))))
+    (flet ((parse (form)
+             (parse-query-form form variables)))
+      (setf (asserts-of query) (mapcar #'parse (asserts-of query)))
+      (setf (action-args-of query) (mapcar #'parse (action-args-of query)))
+      (setf (group-by-of query) (mapcar #'parse (group-by-of query)))
+      (setf (order-by-of query) (iter (for (dir expr) on (order-by-of query) by 'cddr)
+                                    (nconcing (list dir (parse expr))))))))
 
 (defun normalize-query (query)
     (setf (asserts-of query)
@@ -266,9 +269,7 @@ with the result of the naively compiled query.")
               call))))
 
 (defun introduce-joined-variables (query)
-  (mapc #L(introduce-joined-variables-for !1 query) (asserts-of query))
-  (mapc #L(introduce-joined-variables-for !1 query) (action-args-of query))
-  (mapc #L(when (syntax-object-p !1) (introduce-joined-variables-for !1 query)) (order-by-of query)))
+  (mapc-query (lambda (expr) (introduce-joined-variables-for expr query)) query))
 
 (defgeneric introduce-joined-variables-for (syntax query)
   (:documentation "Substitutes the arguments of slot accessor forms with joined variables.")

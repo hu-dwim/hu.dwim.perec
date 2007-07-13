@@ -28,11 +28,6 @@
   (mapc-query #L(%infer-types !1 query #t) query)
   (mapc-query #'check-types query))
 
-(defun mapc-query (fn query)
-  (mapc fn (asserts-of query))
-  (mapc fn (action-args-of query))
-  (mapc #L(when (syntax-object-p !1) (funcall fn !1)) (order-by-of query)))
-
 (defun process-toplevel-typep-asserts (query)
   (setf (asserts-of query)
         (mapcan

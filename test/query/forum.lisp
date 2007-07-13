@@ -305,8 +305,8 @@
   (test-query (:select-count 1 :record-count 1 :fixture forum-data)
     (select (tc m u)
       (from (tc topic-test) (m message-test) (u user-test))
-      (where (string= (strcat (title-of tc) ":" (subject-of m) ":" (name-of u))
-                       "topic1:subject1:user1")))))
+      (where (equal (strcat (title-of tc) ":" (subject-of m) ":" (name-of u))
+                    "topic1:subject1:user1")))))
 
 (deftest test/query/select/non-persistent-slot ()
   (test-query (:record-count 2 :fixture forum-data) ; TODO: should select 1

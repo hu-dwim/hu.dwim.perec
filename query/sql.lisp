@@ -629,7 +629,6 @@ value is equal, when they represent the NIL lisp value)."
                                  (/ (cdr state) (car state))
                                  nil)))
 
-
 ;;;----------------------------------------------------------------------------
 ;;; Literals
 ;;;

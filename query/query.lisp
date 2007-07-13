@@ -84,6 +84,12 @@
             (when (not (eq (result-type-of query) 'list))
               (list :result-type (result-type-of query))))))
 
+(defun mapc-query (fn query)
+  (mapc fn (asserts-of query))
+  (mapc fn (action-args-of query))
+  (mapc fn (group-by-of query))
+  (mapc #L(when (syntax-object-p !1) (funcall fn !1)) (order-by-of query)))
+
 (defmethod flatp :around ((query query))
   (if (slot-boundp query 'flatp)
       (call-next-method)
@@ -235,10 +241,14 @@
              (bind ((lexical-variables (make-lexical-variables lexical-variables))
                     (from-clause (find 'from clauses :key #'first))
                     (where-clause (find 'where clauses :key #'first))
+                    (group-by-clause (find 'group-by clauses :key #'first))
                     (order-by-clause (find 'order-by clauses :key #'first))
                     (query-variables (make-query-variables (rest from-clause)))
                     (asserts (make-asserts where-clause (rest from-clause)))
-                    (other-clauses (remove from-clause (remove where-clause (remove order-by-clause clauses)))))
+                    (other-clauses (remove from-clause
+                                           (remove where-clause
+                                                   (remove group-by-clause
+                                                           (remove order-by-clause clauses))))))
                (unless from-clause
                  (error "Missing FROM clause in: ~:W" form))
                (when other-clauses
@@ -251,6 +261,7 @@
                       :asserts asserts
                       :action :collect
                       :action-args select-list
+                      :group-by (rest group-by-clause)
                       :order-by (rest order-by-clause)
                       options)))
            (make-purge (options purge-list clauses)
