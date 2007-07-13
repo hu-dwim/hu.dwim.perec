@@ -10,6 +10,10 @@
 
 (defconstant +end-of-time+ (parse-timestring "3000-01-01TZ"))
 
+(defconstant +t-delete+ 0)
+
+(defconstant +t-insert+ 1)
+
 (defvar *t*)
 
 (defvar *validity-start*)
@@ -96,8 +100,48 @@
 
 (defcclass* persistent-effective-slot-definition-t
     (persistent-slot-definition-t standard-effective-slot-definition)
-  ((t-slot
-    (compute-as (find-slot (t-class-of (slot-definition-class -self-)) (slot-definition-name -self-)))
+  ())
+
+(defcclass* persistent-association-end-slot-definition-t (persistent-slot-definition-t)
+  ;; TODO: kill association?!
+  ((association)))
+
+(defcclass* persistent-association-end-direct-slot-definition-t
+    (persistent-association-end-slot-definition-t persistent-direct-slot-definition-t)
+  ()
+  (:metaclass identity-preserving-class))
+
+(defcclass* persistent-association-end-effective-slot-definition-t
+    (persistent-association-end-slot-definition-t persistent-effective-slot-definition-t)
+  ((t-class
+    (compute-as (find-class 'xxx-parent-test~xxx-child-test~t)) ;; TODO: hack
+    :type persistent-class)
+   (table
+    (compute-as (primary-table-of (t-class-of -self-)))
+    :type table)
+   (t-value-column
+    (compute-as (first (columns-of (find-slot (t-class-of -self-) 't-value))))
+    :type column)
+   (validity-start-column
+    (compute-as (first (columns-of (find-slot (t-class-of -self-) 'validity-start))))
+    :type column)
+   (validity-end-column
+    (compute-as (first (columns-of (find-slot (t-class-of -self-) 'validity-end))))
+    :type column)
+   (action-column
+    (compute-as (first (columns-of (find-slot (t-class-of -self-) 'action))))
+    :type column)
+   (parent-oid-columns
+    (compute-as (columns-of (find-slot (t-class-of -self-) (class-name (slot-definition-class -self-)))))
+    :type list)
+   (child-oid-columns
+    (compute-as (columns-of (child-slot-of -self-))) ;; TODO: hack
+    :type list)
+   (child-slot
+    (compute-as (find-slot (t-class-of -self-) 'xxx-child-test)) ;; TODO: hack
+    :type list)
+   (action-slot
+    (compute-as (find-slot (t-class-of -self-) 'action))
     :type persistent-effective-slot-definition)))
 
 (defmethod validate-superclass ((class persistent-class)
@@ -109,18 +153,24 @@
   t)
 
 (defmethod direct-slot-definition-class ((class persistent-class-t)
-                                         &key instance time-dependent temporal &allow-other-keys)
+                                         &key instance association time-dependent temporal &allow-other-keys)
   (cond (instance
          (class-of instance))
+        ((and association
+              (or time-dependent temporal))
+         (find-class 'persistent-association-end-direct-slot-definition-t))
         ((or time-dependent temporal)
          (find-class 'persistent-direct-slot-definition-t))
         (t
          (call-next-method))))
 
 (defmethod effective-slot-definition-class ((class persistent-class-t)
-                                            &key instance time-dependent temporal &allow-other-keys)
+                                            &key instance association time-dependent temporal &allow-other-keys)
   (cond (instance
          (class-of instance))
+        ((and association
+              (or time-dependent temporal))
+         (find-class 'persistent-association-end-effective-slot-definition-t))
         ((or time-dependent temporal)
          (find-class 'persistent-effective-slot-definition-t))
         (t
@@ -136,7 +186,7 @@
              (slot-initargs (mappend (lambda (slot-option-name)
                                        (some #L(slot-initarg-and-value !1 slot-option-name)
                                              direct-slot-definitions))
-                                     '(temporal time-dependent)))
+                                     '(temporal time-dependent association)))
              (initargs (append slot-initargs standard-initargs))
              (effective-slot-class (apply #'effective-slot-definition-class class :persistent #t initargs)))
         (apply #'make-instance effective-slot-class initargs))
@@ -163,27 +213,27 @@
                 (aref vector i)))
     (replace vector vector-copy)))
 
-(defun collect-child-oids-having-validity (records validity-start validity-end)
+(defun collect-children-having-validity (child-slot records validity-start validity-end)
   ;; records are tuples ordered by t ascending: (child-oid validity-start validity-end action)
   ;; TODO: multiple column oid
-  (labels ((child-oid-of (record)
-             (aref record 0))
+  (labels ((child-of (record)
+             (restore-slot-value child-slot record 0))
            (validity-start-of (record)
              (aref record 1))
            (validity-end-of (record)
              (aref record 2))
            (action-of (record)
              (aref record 3))
-           (collect-child-oids-having-validity (records validity-start validity-end)
+           (collect-children-having-validity (records validity-start validity-end)
              (bind (set)
                (iter (for record :in-sequence records)
                      (when (and (local-time<= validity-end (validity-end-of record))
                                 (local-time<= (validity-start-of record) validity-start))
                        (ecase (action-of record)
-                         (:insert
-                          (pushnew (child-oid-of record) set))
-                         (:delete
-                          (deletef (child-oid-of record) set)))))
+                         (#.+t-insert+
+                          (pushnew (child-of record) set))
+                         (#.+t-delete+
+                          (deletef (child-of record) set)))))
                set)))
     (bind (validities)
       (flet ((push-validity (validity)
@@ -195,24 +245,35 @@
               (push-validity (local-time-adjust-days (validity-end-of record) 1))))
       (setf validities (sort validities #'local-time<))
       (if (= 2 (length validities))
-          (collect-child-oids-having-validity records (first validities) (local-time-adjust-days (second validities) -1))
+          (collect-children-having-validity records (first validities) (local-time-adjust-days (second validities) -1))
           (bind ((size (1- (length validities)))
-                 (values (make-array size))
-                 (validity-starts (make-array size))
-                 (validity-ends (make-array size)))
-            (iter (for validity :in validities)
-                  (for previous-validity :previous validity :initially nil)
+                 (values (make-array size :fill-pointer 0))
+                 (validity-starts (make-array size :fill-pointer 0))
+                 (validity-ends (make-array size :fill-pointer 0)))
+            (iter (with value = nil)
+                  (with previous-value = :unbound)
+                  (with previous-validity = nil)
+                  (for validity :in validities)
                   (for modified-validity = (local-time-adjust-days validity -1))
                   (for index :from -1)
-                  (when previous-validity
-                    (setf (aref values index)
-                          (collect-child-oids-having-validity records previous-validity modified-validity))
-                    (setf (aref validity-starts index) previous-validity)
-                    (setf (aref validity-ends index) modified-validity)))
-            (make-instance 'values-having-validity
-                           :values values
-                           :validity-starts validity-starts
-                           :validity-ends validity-ends))))))
+                  (if previous-validity
+                      (progn
+                        (setf value (collect-children-having-validity records previous-validity modified-validity))
+                        (if (equal value previous-value)
+                            (decf index)
+                            (progn
+                              (vector-push value values)
+                              (vector-push previous-validity validity-starts)
+                              (vector-push modified-validity validity-ends)
+                              (setf previous-value value)
+                              (setf previous-validity validity))))
+                      (setf previous-validity validity)))
+            (if (= 1 (length values))
+                (aref values 0)
+                (make-instance 'values-having-validity
+                               :values values
+                               :validity-starts validity-starts
+                               :validity-ends validity-ends)))))))
 
 (defmethod slot-value-using-class ((class persistent-class-t)
                                    (instance persistent-object)
@@ -344,8 +405,74 @@
     ;; TODO: if t-instance is cached either invalidate it or set the value on it
     new-value))
 
+(defmethod slot-value-using-class ((class persistent-class-t)
+                                   (instance persistent-object)
+                                   (slot persistent-association-end-effective-slot-definition-t))
+  (bind ((table (table-of slot))
+         (table-name (name-of table))
+         (t-value-column (t-value-column-of slot))
+         (validity-start-column (validity-start-column-of slot))
+         (validity-end-column (validity-end-column-of slot))
+         (action-column (action-column-of slot))
+         (parent-id-column (first (parent-oid-columns-of slot)))
+         (child-oid-columns (child-oid-columns-of slot)))
+    (collect-children-having-validity
+     (child-slot-of slot)
+     (select-records (append child-oid-columns
+                             (list validity-start-column validity-end-column action-column))
+                     (list table-name)
+                     (sql-and (id-column-matcher-where-clause instance parent-id-column)
+                              (sql-<= (sql-identifier :name (rdbms::name-of t-value-column))
+                                      (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))
+                              (sql-<= (sql-identifier :name (rdbms::name-of validity-start-column))
+                                      (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
+                              (sql-<= (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f))
+                                      (sql-identifier :name (rdbms::name-of validity-end-column))))
+                     (list (sql-sort-spec :sort-key (sql-identifier :name (rdbms::name-of t-value-column)) :ordering :descending)))
+     *validity-start*
+     *validity-end*)))
+
+(defmethod (setf slot-value-using-class) (new-values
+                                          (class persistent-class-t)
+                                          (instance persistent-object)
+                                          (slot persistent-association-end-effective-slot-definition-t))
+  ;; TODO: get first and delete those
+  (insert-t-association-delta-records instance slot new-values +t-insert+))
+
+(defun insert-t-association-delta-records (parent slot children action)
+  (bind ((t-class (t-class-of slot))
+         (table (table-of slot))
+         (table-name (name-of table))
+         (t-value-column (t-value-column-of slot))
+         (validity-start-column (validity-start-column-of slot))
+         (validity-end-column (validity-end-column-of slot))
+         (action-column (action-column-of slot))
+         (parent-oid-columns (parent-oid-columns-of slot))
+         (child-oid-columns (child-oid-columns-of slot)))
+    (iter (for child :in children)
+          (for rdbms-values = (make-array (+ (* 3 +oid-column-count+) 4)))
+          (for index = 0)
+          (oid->rdbms-values* (make-class-oid (class-name t-class)) rdbms-values index)
+          (incf index +oid-column-count+)
+          (oid->rdbms-values* (oid-of parent) rdbms-values index)
+          (incf index +oid-column-count+)
+          (oid->rdbms-values* (oid-of child) rdbms-values index)
+          (incf index +oid-column-count+)
+          (setf (aref rdbms-values index) (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))
+          (incf index)
+          (setf (aref rdbms-values index) (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f)))
+          (incf index)
+          (setf (aref rdbms-values index) (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
+          (incf index)
+          (store-slot-value (action-slot-of slot) action rdbms-values index)
+          (insert-record table-name
+                         (append +oid-column-names+ parent-oid-columns child-oid-columns
+                                 (list t-value-column validity-start-column validity-end-column action-column))
+                         rdbms-values))))
+
 (eval-always
-  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent)))
+  ;; TODO: kill association?
+  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent :association)))
 
 ;;;;;;;;
 ;;; Test
@@ -524,27 +651,29 @@
      (update-counter-of (command-counter-of *transaction*))
      (insert-counter-of (command-counter-of *transaction*)))))
 
+;; TODO: parent slot should be lied
 (defpclass* xxx-parent-test ()
-  ((children :type (set xxx-child-test) :persistent #f :temporal #t :time-dependent #t))
+  ((children :type (set xxx-child-test) :persistent #f :temporal #t :time-dependent #t :association #t))
   (:metaclass persistent-class-t))
 
+;; TODO: parent slot should be lied
 (defpclass* xxx-child-test ()
-  ((parent :type xxx-parent-test :persistent #f :temporal #t :time-dependent #t))
+  ((parent :type xxx-parent-test :persistent #f :temporal #t :time-dependent #t :association #t))
   (:metaclass persistent-class-t))
 
 (defpclass* xxx-parent-test~xxx-child-test~t ()
   ((t-value :type timestamp)
    (validity-start :type date)
    (validity-end :type date)
-   (action :type (member :insert :delete))))
+   (action :type integer-16)))
 
 (defassociation*
-  ((:class xxx-parent-test :slot parent-test~child-test~ts :type (set xxx-parent-test~xxx-child-test~t))
-   (:class xxx-parent-test~xxx-child-test~t :slot parent-test :type xxx-parent-test)))
+  ((:class xxx-parent-test :slot xxx-parent-test~xxx-child-test~ts :type (set xxx-parent-test~xxx-child-test~t))
+   (:class xxx-parent-test~xxx-child-test~t :slot xxx-parent-test :type xxx-parent-test)))
 
 (defassociation*
-  ((:class xxx-child-test :slot parent-test~child-test~ts :type (set xxx-parent-test~xxx-child-test~t))
-   (:class xxx-parent-test~xxx-child-test~t :slot child-test :type xxx-child-test)))
+  ((:class xxx-child-test :slot xxx-parent-test~xxx-child-test~ts :type (set xxx-parent-test~xxx-child-test~t))
+   (:class xxx-parent-test~xxx-child-test~t :slot xxx-child-test :type xxx-child-test)))
 
 (deftest test-3 ()
   (with-transaction
@@ -560,40 +689,31 @@
         (with-validity-range "2007-01-03" "2007-01-04"
           (setf (children-of parent) (list child-3 child-4)))
         (with-validity-range "2007-01-02" "2007-01-03"
-          (insert-item (children-of* parent) child-5)
-          (delete-item (children-of* parent) child-1))
+          #+nil (insert-item (children-of* parent) child-5)
+          (insert-t-association-delta-records parent (find-slot 'xxx-parent-test 'children) (list child-5) +t-insert+)
+          #+nil (delete-item (children-of* parent) child-1)
+          (insert-t-association-delta-records parent (find-slot 'xxx-parent-test 'children) (list child-1) +t-delete+))
         (with-validity-range "2007-01-01" "2007-01-01"
-          (is (equal (list child-1 child-2) (children-of parent))))
+          (is (equal (list child-2 child-1) (children-of parent))))
         (with-validity-range "2007-01-04" "2007-01-04"
-          (is (equal (list child-3 child-4) (children-of parent))))
+          (is (equal (list child-4 child-3) (children-of parent))))
         (with-validity-range "2007-01-01" "2007-01-04"
           (let ((children (children-of parent)))
             (is (= 4 (length (values-of children))))
             (iter (for (value validity-start validity-end index) :in-values-having-validity children)
                   (ecase index
-                    (0 (is (and (equal (list child-1 child-2) value)
+                    (0 (is (and (equal (list child-2 child-1) value)
                                 (local-time= validity-start (parse-datestring "2007-01-01"))
                                 (local-time= validity-end (parse-datestring "2007-01-01")))))
-                    (1 (is (and (equal (list child-2 child-5) value)
+                    (1 (is (and (equal (list child-5 child-2) value)
                                 (local-time= validity-start (parse-datestring "2007-01-02"))
                                 (local-time= validity-end (parse-datestring "2007-01-02")))))
-                    (2 (is (and (equal (list child-3 child-4 child-5) value)
+                    (2 (is (and (equal (list child-5 child-4 child-3) value)
                                 (local-time= validity-start (parse-datestring "2007-01-03"))
                                 (local-time= validity-end (parse-datestring "2007-01-03")))))
-                    (3 (is (and (equal (list child-3 child-4) value)
+                    (3 (is (and (equal (list child-4 child-3) value)
                                 (local-time= validity-start (parse-datestring "2007-01-04"))
                                 (local-time= validity-end (parse-datestring "2007-01-04")))))))))))))
-
-(defun test-4 ()
-  (collect-child-oids-having-validity
-   (vector (vector 1 (parse-timestring "2007-01-01") (parse-timestring "2007-01-02") :insert)
-           (vector 2 (parse-timestring "2007-01-01") (parse-timestring "2007-01-02") :insert)
-           (vector 3 (parse-timestring "2007-01-03") (parse-timestring "2007-01-04") :insert)
-           (vector 4 (parse-timestring "2007-01-03") (parse-timestring "2007-01-04") :insert)
-           (vector 1 (parse-timestring "2007-01-02") (parse-timestring "2007-01-03") :delete)
-           (vector 5 (parse-timestring "2007-01-02") (parse-timestring "2007-01-03") :insert))
-   (parse-timestring "2007-01-01")
-   (parse-timestring "2007-01-04")))
 
 #|
 t = (now)
