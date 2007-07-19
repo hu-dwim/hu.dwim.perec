@@ -305,12 +305,18 @@
 
 ;; TODO: let the local-time go down to rdbms
 
+(declaim (inline local-time-to-utc-zone))
+(defun local-time-to-utc-zone (local-time)
+  (if (eq (timezone-of local-time) +utc-zone+)
+      local-time
+      (local-time-adjust local-time +utc-zone+ (make-local-time))))
+
 (defun string->local-time-reader (rdbms-values index)
   (bind ((*default-timezone* +utc-zone+))
     (parse-timestring (elt rdbms-values index) :date-time-separator #\Space)))
 
 (defun integer->local-time-reader (rdbms-values index)
-  ;; NOTE: assuming that the database server is configured to UTC time zone
+  ;; NOTE: assumes that the database server is configured to return UTC timezone
   (local-time :universal (elt rdbms-values index) :timezone +utc-zone+))
 
 (defun date->string-writer (slot-value rdbms-values index)
@@ -322,11 +328,11 @@
   (setf (elt rdbms-values index) (format-timestring slot-value :omit-date-part-p #t :omit-timezone-part-p #t)))
 
 (defun timestamp->string-writer (slot-value rdbms-values index)
-  (assert (eq (timezone-of slot-value) +utc-zone+))
+  (setf slot-value (local-time-to-utc-zone slot-value))
   (setf (elt rdbms-values index) (format-timestring slot-value :date-time-separator #\Space :use-zulu-p #f)))
 
 (defun local-time->integer-writer (slot-value rdbms-values index)
-  (assert (eq (timezone-of slot-value) +utc-zone+))
+  (setf slot-value (local-time-to-utc-zone slot-value))
   (setf (elt rdbms-values index) (universal-time slot-value)))
 
 ;;;;;;;;;;;;;;
