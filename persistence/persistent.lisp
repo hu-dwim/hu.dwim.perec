@@ -113,6 +113,7 @@
                              (id-column-matcher-where-clause instance)))
            (update-cache-for-deleted-instance instance)))
 
+;; TODO: what about invalidating cache instances, references?
 (defgeneric purge-instances (class)
   (:documentation "Purges all instances of the given class without respect to associations and references.")
 
