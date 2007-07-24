@@ -187,14 +187,3 @@
 (defmacro without-lazy-collections (&body body)
   `(bind ((*lazy-collections* #f))
     ,@body))
-
-;;;;;;;;;;;;;;;;;;;
-;;; database access
-
-(defmacro with-bypassing-database-access (&body body)
-  `(bind ((*bypass-database-access* #t))
-    ,@body))
-
-(defmacro without-bypassing-database-access (&body body)
-  `(bind ((*bypass-database-access* #f))
-    ,@body))

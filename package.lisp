@@ -253,14 +253,7 @@
 
            ;; laziness
            #:with-lazy-collections
-           #:without-lazy-collections
-
-           ;; database and cache access
-           #:with-bypassing-database-access
-           #:without-bypassing-database-access
-
-           ;; utils
-           ))
+           #:without-lazy-collections))
 
 (in-package :cl-perec)
 
