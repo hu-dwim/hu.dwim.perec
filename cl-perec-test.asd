@@ -95,8 +95,5 @@
   (declaim (optimize (debug 3)))
   (warn "Pushed :debug in *features*, set (declaim (optimize (debug 3))) and set *database*."))
 
-(defmethod perform ((o test-op) (c (eql (find-system :cl-perec))))
-  (eval (read-from-string "(stefil:funcall-test-with-feedback-message 'test)")))
-
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :cl-perec-test))))
   nil)
