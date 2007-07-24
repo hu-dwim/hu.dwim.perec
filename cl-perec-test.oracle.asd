@@ -29,8 +29,7 @@
 
 (defsystem :cl-perec-test.oracle
   :description "Tests for cl-perec with Oracle backend."
-  :depends-on (:cl-rdbms.oracle
-               :cl-perec))
+  :depends-on (:cl-perec-test))
 
 (defmethod perform ((o load-op) (c (eql (find-system :cl-perec-test.oracle))))
   (eval (read-from-string

@@ -29,8 +29,7 @@
 
 (defsystem :cl-perec-test.postgresql
   :description "Tests for cl-perec with Postgresql backend."
-  :depends-on (:cl-rdbms.postgresql
-               :cl-perec-test))
+  :depends-on (:cl-perec-test))
 
 (defmethod perform ((o load-op) (c (eql (find-system :cl-perec-test.postgresql))))
   (eval (read-from-string
