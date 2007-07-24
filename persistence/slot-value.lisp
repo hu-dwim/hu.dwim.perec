@@ -133,7 +133,7 @@
             (not persistent)
             (instance-in-current-transaction-p instance))
     nil
-    "Accessing a persistent instance while it is not attached to the current transaction."))
+    "Accessing a persistent ~A while it is not attached to the current transaction." instance))
 
 (defmethod slot-value-using-class ((class persistent-class)
                                    (instance persistent-object)
