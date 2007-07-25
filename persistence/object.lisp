@@ -27,21 +27,11 @@
     :type t
     :persistent #f
     :documentation "A reference to the transaction to which this instance is currently attached to or nil.")
-   (created
-    #f
-    :type boolean
+   (event
+    nil
+    :type (member nil :created :modified :deleted)
     :persistent #f
-    :documentation "True means the instance was created in the current transaction. At most one of created, modified or deleted might be true.")
-   (modified
-    #f
-    :type boolean
-    :persistent #f
-    :documentation "True means the instance was not created but modified in the current transaction.")
-   (deleted
-    #f
-    :type boolean
-    :persistent #f
-    :documentation "True means the instance was already present at the very beginning but got deleted in the current transaction."))
+    :documentation ":created means the instance was created in the current transaction, :modified means the instance was not created but modified in the current transaction. :deleted means the instance was already present at the very beginning but got deleted in the current transaction."))
   (:default-initargs :persistent *make-persistent-instances*)
   (:abstract #t)
   (:documentation "Base class for all persistent classes. If this class is not inherited by a persistent class then it is automatically added to the direct superclasses. There is only one persistent instance in a transaction with a give oid therefore eq will return true iff the oids are equal."))
@@ -102,6 +92,15 @@
 (defprint-object (self persistent-object)
   "Prints the oid of the instance and whether the instance is known to be persistent or transient."
   (print-persistent-instance self))
+
+(defun created-p (instance)
+  (eq :created (event-of instance)))
+
+(defun modified-p (instance)
+  (eq :modified (event-of instance)))
+
+(defun deleted-p (instance)
+  (eq :deleted (event-of instance)))
 
 (defun ensure-oid (instance)
   "Makes sure that the instance has a valid oid."

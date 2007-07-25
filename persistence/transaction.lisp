@@ -30,25 +30,13 @@
   (and (in-transaction-p)
        (eq (transaction-of instance) *transaction*)))
 
-(defun assert-consistent-event (instance event)
-  (assert (and (eq (eq event :created) (created-p instance))
-               (eq (eq event :modified) (modified-p instance))
-               (eq (eq event :deleted) (deleted-p instance)))))
-
 (defgeneric before-committing-instance (instance event)
   (:method (instance event)
-           (values))
-  #+debug
-  (:method :around (instance event)
-           (assert-consistent-event instance event)))
+           (values)))
 
 (defgeneric after-instance-committed (instance event)
   (:method (instance event)
-           (values))
-
-  #+debug
-  (:method :around (instance event)
-           (assert-consistent-event instance event)))
+           (values)))
 
 (defmethod cl-rdbms::commit-transaction :around (database (transaction transaction-mixin))
   (map-created-instances (rcurry #'before-committing-instance :created))
