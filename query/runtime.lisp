@@ -40,7 +40,7 @@
       (iter (for slot :in prefetched-slots)
             (for width = (column-count-of slot))
             (for index :initially (+ start +oid-column-count+) :then (+ index width))
-            (setf (cached-slot-boundp-or-value instance (slot-definition-name slot))
+            (setf (underlying-slot-boundp-or-value instance (slot-definition-name slot))
                   (restore-slot-value slot row index))))
     instance))
 

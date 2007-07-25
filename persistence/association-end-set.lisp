@@ -17,19 +17,20 @@
            ;; instance <-> new-value
            ;; old-other-new-value -> nil
            (when (slot-value-cached-p instance slot)
-             (when-bind old-other-instance (and (cached-slot-boundp-using-class class instance slot)
-                                              (cached-slot-value-using-class class instance slot))
+             (when-bind old-other-instance (and (underlying-slot-boundp-using-class class instance slot)
+                                                (underlying-slot-value-using-class class instance slot))
                (when (slot-value-cached-p old-other-instance other-slot)
-                 (setf (cached-slot-value-using-class (class-of old-other-instance) old-other-instance other-slot) nil))))
+                 (setf (underlying-slot-value-using-class (class-of old-other-instance) old-other-instance other-slot)
+                       nil))))
            (when (and new-value
                       (not (unbound-slot-value-p new-value))
                       (slot-value-cached-p new-value other-slot))
              (when-bind old-other-new-value
-                 (and (cached-slot-boundp-using-class (class-of new-value) new-value other-slot)
-                      (cached-slot-value-using-class (class-of new-value) new-value other-slot))
+                 (and (underlying-slot-boundp-using-class (class-of new-value) new-value other-slot)
+                      (underlying-slot-value-using-class (class-of new-value) new-value other-slot))
                (when old-other-new-value
-                 (setf (cached-slot-value-using-class (class-of old-other-new-value) old-other-new-value slot) nil)))
-             (setf (cached-slot-value-using-class (class-of new-value) new-value other-slot) instance)))
+                 (setf (underlying-slot-value-using-class (class-of old-other-new-value) old-other-new-value slot) nil)))
+             (setf (underlying-slot-value-using-class (class-of new-value) new-value other-slot) instance)))
           ((eq (association-kind-of (association-of slot)) :1-n)
            ;; invalidate all cached back references 
            (if (eq (cardinality-kind-of slot) :n)
@@ -58,12 +59,12 @@
   (bind ((slot (slot-of set))
          (class (class-of item))
          (other-slot (other-effective-association-end-for class slot)))
-    (setf (cached-slot-value-using-class class item other-slot) (instance-of set))))
+    (setf (underlying-slot-value-using-class class item other-slot) (instance-of set))))
 
 (defmethod delete-item :after ((set persistent-1-n-association-end-set-container) item)
   (bind ((class (class-of item))
          (other-slot (other-effective-association-end-for class (slot-of set))))
-    (setf (cached-slot-value-using-class class item other-slot) nil)))
+    (setf (underlying-slot-value-using-class class item other-slot) nil)))
 
 (defmethod empty! :after ((set persistent-1-n-association-end-set-container))
   (invalidate-cached-1-n-association-end-set-slot (other-association-end-of (slot-of set))))

@@ -3,34 +3,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Caching slot values in instances
 
-(defconstant +vm-specific-unbound-slot-value+ sb-pcl::+slot-unbound+)
+(defconstant +not-cached-slot-value+ '+not-cached-slot-value+
+  "This value is stored in slots to indicate that the slot value is not cached.")
 
 (defparameter *cache-slot-values* #t
   "True means slot values will be cached in the slots of the persistent instances. Writing a slot still goes directly to the database but it will be also stored in the instance. If the instance's state is modified in the database it is up to the modifier to clear the list of cached slots from the instance using the invalidate functions. The purpose of the slot value cache is to increase performance and reduce the number of database interactions during a transaction.")
-
-;; TODO: why not storing a predefined value (i.e an internal symbol) in the slot when it is not cached
-
-(defparameter *propagate-cache-changes* #t
-  "True means setting the slot of an instance in the cache will propagate changes to other instances in the cache according to the association end slot integrity rules.")
-
-(defgeneric invalidate-all-cached-slots (instance)
-  (:documentation "Invalidates all cached slot values in the instance.")
-
-  (:method ((instance persistent-object))
-           (bind ((class (class-of instance)))
-             (iter (for slot in (persistent-effective-slots-of class))
-                   (cached-slot-makunbound-using-class class instance slot)))
-           (setf (cached-slots-of instance) nil)))
-
-(defgeneric invalidate-cached-slot (instance slot)
-  (:documentation "Invalidates the given cached slot value in the instance.")
-
-  (:method ((instance persistent-object) (slot-name symbol))
-           (invalidate-cached-slot instance (find-slot (class-of instance) slot-name)))
-
-  (:method ((instance persistent-object) (slot persistent-effective-slot-definition))
-           (cached-slot-makunbound-using-class (class-of instance) instance slot)
-           (delete! slot (cached-slots-of instance))))
 
 (defgeneric propagate-cache-changes (class instance slot new-value)
   (:documentation "Partially invalidate or update the cache to reflect setting the slot of instance to new-value.")
@@ -39,92 +16,98 @@
            (debug-only (assert (debug-persistent-p instance)))
            (values)))
 
+(defun invalidate-all-cached-slots (instance)
+  "Invalidates all cached slot values in the instance."
+  (bind ((class (class-of instance)))
+    (iter (for slot in (persistent-effective-slots-of class))
+          (when (cache-p slot)
+            (invalidate-cached-slot instance slot)))))
+
+(defun invalidate-cached-slot (instance slot)
+  "Invalidates the given cached slot value in the instance."
+  (setf (standard-instance-access instance (slot-definition-location slot)) +not-cached-slot-value+))
+
 (defun slot-value-cached-p (instance slot)
-  "Specifies whether the given slot is cached in the instance or not."
+  "Tells whether the given slot is cached in the instance or not."
   (debug-only (assert (debug-persistent-p instance)))
-  (member slot (cached-slots-of instance)))
+  (and (cache-p slot)
+       (not (eq +not-cached-slot-value+ (standard-instance-access instance (slot-definition-location slot))))))
 
-(defun cached-slot-value (instance slot-name)
+;;;;;;;;;;;;;;;;;;;;;;;
+;;; Primitve slot value
+
+(defun underlying-slot-value (instance slot-name)
   "Similar to slot-value but never interacts with the database."
-  (debug-only (assert (debug-persistent-p instance)))
   (bind ((class (class-of instance))
          (slot (find-slot class slot-name)))
     (if slot
-        (cached-slot-value-using-class class instance slot)
+        (underlying-slot-value-using-class class instance slot)
         (values (slot-missing class instance slot-name 'slot-value)))))
 
-(defun (setf cached-slot-value) (new-value instance slot-name)
+(defun (setf underlying-slot-value) (new-value instance slot-name)
   "Similar to (setf slot-value) but never interacts with the database."
-  (debug-only (assert (debug-persistent-p instance)))
   (bind ((class (class-of instance))
          (slot (find-slot class slot-name)))
     (if slot
-        (setf (cached-slot-value-using-class class instance slot) new-value)
+        (setf (underlying-slot-value-using-class class instance slot) new-value)
         (progn
           (slot-missing class instance slot-name 'slot-value)
           new-value))))
 
-(defun cached-slot-boundp-or-value (instance slot-name)
+(defun underlying-slot-boundp-or-value (instance slot-name)
   "Similar to slot-value-boundp-or-value but never interacts with the database."
-  (debug-only (assert (debug-persistent-p instance)))
   (bind ((class (class-of instance))
          (slot (find-slot class slot-name)))
     (if slot
-        (cached-slot-boundp-or-value-using-class class instance slot)
+        (underlying-slot-boundp-or-value-using-class class instance slot)
         (values (slot-missing class instance slot-name 'slot-value)))))
 
-(defun (setf cached-slot-boundp-or-value) (new-value instance slot-name)
+(defun (setf underlying-slot-boundp-or-value) (new-value instance slot-name)
   "Similar to (setf slot-value-boundp-or-value) but never interacts with the database."
-  (debug-only (assert (debug-persistent-p instance)))
   (bind ((class (class-of instance))
          (slot (find-slot class slot-name)))
     (if slot
-        (setf (cached-slot-boundp-or-value-using-class class instance slot) new-value)
+        (setf (underlying-slot-boundp-or-value-using-class class instance slot) new-value)
         (progn
           (slot-missing class instance slot-name 'slot-value)
           new-value))))
 
-(defun cached-slot-value-using-class (class instance slot)
+(defun underlying-slot-value-using-class (class instance slot)
   "Returns the cached value of the instance's slot similar to slot-value-using-class but never interacts with the database."
-  (debug-only (assert (debug-persistent-p instance)))
-  (bind ((value (cached-slot-boundp-or-value-using-class class instance slot)))
+  (bind ((value (underlying-slot-boundp-or-value-using-class class instance slot)))
     (if (eq value +unbound-slot-value+)
         (values (slot-unbound class instance (slot-definition-name slot)))
         value)))
 
-(defun (setf cached-slot-value-using-class) (new-value class instance slot)
+(defun (setf underlying-slot-value-using-class) (new-value class instance slot)
   "Sets the cached value of the instance's slot similar to (setf slot-value-using-class) but never interacts with the database."
-  (debug-only (assert (debug-persistent-p instance)))
-  (setf (cached-slot-boundp-or-value-using-class class instance slot) new-value))
+  (setf (underlying-slot-boundp-or-value-using-class class instance slot) new-value))
 
-(defun cached-slot-makunbound-using-class (class instance slot)
+(defun underlying-slot-makunbound-using-class (class instance slot)
   "Makes the cached instance's slot unbound similar to slot-makunbound-using-class but never interacts with the database."
-  (debug-only (assert (debug-persistent-p instance)))
-  (setf (cached-slot-boundp-or-value-using-class class instance slot) +unbound-slot-value+))
+  (setf (underlying-slot-boundp-or-value-using-class class instance slot) +unbound-slot-value+))
 
-(defun cached-slot-boundp-using-class (class instance slot)
+(defun underlying-slot-boundp-using-class (class instance slot)
   "Returns the cached boundness of the instance's slot similar to slot-boundp-using-class but never interacts with the database."
-  (debug-only (assert (debug-persistent-p instance)))
-  (not (eq +unbound-slot-value+ (cached-slot-boundp-or-value-using-class class instance slot))))
+  (not (eq +unbound-slot-value+ (underlying-slot-boundp-or-value-using-class class instance slot))))
 
-(defun cached-slot-boundp-or-value-using-class (class instance slot)
+(defun underlying-slot-boundp-or-value-using-class (class instance slot)
   "Either returns the cached slot value or the unbound slot marker. This method does not interact with the database."
   (declare (ignore class))
-  (debug-only (assert (debug-persistent-p instance)))
-  (bind ((value (standard-instance-access instance (slot-definition-location slot))))
-    (if (eq value +vm-specific-unbound-slot-value+)
-        +unbound-slot-value+
-        value)))
+  (prog1-bind value (standard-instance-access instance (slot-definition-location slot))
+    (assert (not (eq value +not-cached-slot-value+)))
+    #+sbcl
+    (debug-only
+      (assert (not (eq value sb-pcl::+slot-unbound+))))))
 
-(defun (setf cached-slot-boundp-or-value-using-class) (new-value class instance slot)
+(defun (setf underlying-slot-boundp-or-value-using-class) (new-value class instance slot)
   "Either sets the slot value to the given new value or makes the slot unbound if the new value is the unbound marker. This method does not interact with the database."
   (declare (ignore class))
-  (debug-only (assert (debug-persistent-p instance)))
-  (pushnew slot (cached-slots-of instance))
-  (setf (standard-instance-access instance (slot-definition-location slot))
-        (if (eq +unbound-slot-value+ new-value)
-            +vm-specific-unbound-slot-value+
-            new-value)))
+  (debug-only
+    (assert (not (eq new-value +not-cached-slot-value+)))
+    #+sbcl
+    (assert (not (eq new-value sb-pcl::+slot-unbound+))))
+  (setf (standard-instance-access instance (slot-definition-location slot)) new-value))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CLOS MOP slot-value-using-class and friends
@@ -153,73 +136,66 @@
                     (for restored-slot in restored-slots)
                     (when (and *cache-slot-values*
                                (cache-p restored-slot))
-                      (setf (cached-slot-boundp-or-value-using-class class instance restored-slot) restored-slot-value)))))
+                      (setf (underlying-slot-boundp-or-value-using-class class instance restored-slot)
+                            restored-slot-value)))))
           ;; simple existence test
           (setf (slot-value-using-class class instance slot) (instance-exists-in-database-p instance)))
       (call-next-method)))
 
-(defun slot-boundp-or-value-using-class (class instance slot call-next-method return-with)
+(defun slot-boundp-or-value-using-class (class instance slot return-with)
+  (declare (type function return-with))
   (debug-only
     (assert (eq class (class-of instance)))
     (assert (eq class (slot-definition-class slot))))
   (bind ((persistent (persistent-p instance)))
     (assert-instance-access)
-    (if (or (not persistent)
-            (and *cache-slot-values*
-                 (slot-value-cached-p instance slot)))
-        ;; read the slot value from the cache
-        (funcall call-next-method)
-        ;; restore the slot value from the database and put it in the underlying slot when appropriate
-        (if (and *cache-slot-values*
-                 (prefetch-p slot))
-            ;; restore all prefetched slot values at once
-            (bind (((values restored-slot-values restored-slots) (restore-prefetched-slots instance))
-                   (slot-value))
-              (iter (for restored-slot-value in restored-slot-values)
-                    (for restored-slot in restored-slots)
-                    (when (eq slot restored-slot)
-                      (setf slot-value restored-slot-value))
-                    (when (cache-p restored-slot)
-                      (setf (cached-slot-boundp-or-value-using-class class instance restored-slot) restored-slot-value)))
-              (funcall return-with slot-value))
-            ;; only restore the requested slot value
-            (bind (((values restored-slot-value restored-slot) (restore-slot instance slot)))
-              (when (and *cache-slot-values*
-                         (cache-p restored-slot))
-                (setf (cached-slot-boundp-or-value-using-class class instance restored-slot) restored-slot-value))
-              (funcall return-with restored-slot-value))))))
+    (cond ((or (not persistent)
+               (and *cache-slot-values*
+                    (slot-value-cached-p instance slot)))
+           (funcall return-with (underlying-slot-boundp-or-value-using-class class instance slot)))
+          (t
+           ;; restore the slot and all other prefetched slots from the database
+           (if (and *cache-slot-values*
+                    (prefetch-p slot))
+               ;; restore all prefetched slot values at once
+               (bind (((values restored-slot-values restored-slots) (restore-prefetched-slots instance))
+                      (slot-value))
+                 (iter (for restored-slot-value in restored-slot-values)
+                       (for restored-slot in restored-slots)
+                       (when (eq slot restored-slot)
+                         (setf slot-value restored-slot-value))
+                       (when (cache-p restored-slot)
+                         (setf (underlying-slot-boundp-or-value-using-class class instance restored-slot)
+                               restored-slot-value)))
+                 (funcall return-with slot-value))
+               ;; only restore the requested slot from the database
+               (bind (((values restored-slot-value restored-slot) (restore-slot instance slot)))
+                 (when (and *cache-slot-values*
+                            (cache-p restored-slot))
+                   (setf (underlying-slot-boundp-or-value-using-class class instance restored-slot) restored-slot-value))
+                 (funcall return-with restored-slot-value)))))))
 
-(defun (setf slot-boundp-or-value-using-class) (new-value class instance slot call-next-method)
+(defun (setf slot-boundp-or-value-using-class) (new-value class instance slot)
   (debug-only
     (assert (eq class (class-of instance)))
     (assert (eq class (slot-definition-class slot))))
   (bind ((persistent (persistent-p instance)))
     (assert-instance-access)
-    ;; store slot value in the database
+    ;; always store the slot into the database
     (when persistent
       (store-slot instance slot new-value)
-      (update-cache-for-modified-instance instance))
-    ;; update slot value cache if appropriate
-    (when (and persistent
-               *propagate-cache-changes*)
-      (bind ((*propagate-cache-changes* #f))
-        (propagate-cache-changes class instance slot new-value)))
-    (when (and *cache-slot-values*
-               (cache-p slot)
-               persistent)
-      (pushnew slot (cached-slots-of instance)))
-    ;; store slot value in the underlying slot if appropriate
+      (update-instance-cache-for-modified-instance instance)
+      (propagate-cache-changes class instance slot new-value))
     (when (or (not persistent)
-              (and *cache-slot-values*
-                   (cache-p slot)))
-      (funcall call-next-method))
+              (and *cache-slot-values* (cache-p slot)))
+      (setf (underlying-slot-boundp-or-value-using-class class instance slot) new-value))
     new-value))
 
 (defmethod slot-value-using-class ((class persistent-class)
                                    (instance persistent-object)
                                    (slot persistent-effective-slot-definition))
   "Reads the slot value from the database or the cache."
-  (slot-boundp-or-value-using-class class instance slot #'call-next-method
+  (slot-boundp-or-value-using-class class instance slot
                                     #L(if (eq !1 +unbound-slot-value+)
                                           (slot-unbound class instance (slot-definition-name slot))
                                           !1)))
@@ -229,19 +205,22 @@
                                           (instance persistent-object)
                                           (slot persistent-effective-slot-definition))
   "Writes the new slot value to the database and the cache."
-  (setf (slot-boundp-or-value-using-class class instance slot #'call-next-method) new-value))
+  (debug-only
+    (assert (not (or (eq new-value +not-cached-slot-value+)
+                     (eq new-value +unbound-slot-value+)))))
+  (setf (slot-boundp-or-value-using-class class instance slot) new-value))
 
 (defmethod slot-boundp-using-class ((class persistent-class)
                                     (instance persistent-object)
                                     (slot persistent-effective-slot-definition))
   "Reads boundness from the database or the cache."
-  (slot-boundp-or-value-using-class class instance slot #'call-next-method #L(not (eq +unbound-slot-value+ !1))))
+  (slot-boundp-or-value-using-class class instance slot #L(not (eq +unbound-slot-value+ !1))))
 
 (defmethod slot-makunbound-using-class ((class persistent-class)
                                         (instance persistent-object)
                                         (slot persistent-effective-slot-definition))
   "Writes boundness to the database and the cache."
-  (setf (slot-boundp-or-value-using-class class instance slot #'call-next-method) +unbound-slot-value+)
+  (setf (slot-boundp-or-value-using-class class instance slot) +unbound-slot-value+)
   instance)
 
 ;; TODO: add tests

@@ -61,7 +61,7 @@
 (defun map-deleted-instances (function &optional (instance-cache (current-instance-cache)))
   (iterate-nodes (deleted-instances-of instance-cache) function))
 
-(defun update-cache-for-created-instance (instance &optional (instance-cache (current-instance-cache)))
+(defun update-instance-cache-for-created-instance (instance &optional (instance-cache (current-instance-cache)))
   (cond ((created-p instance))
         ((or (modified-p instance)
              (deleted-p instance))
@@ -70,14 +70,14 @@
          (setf (created-p instance) #t)
          (insert-item (created-instances-of instance-cache) instance))))
 
-(defun update-cache-for-modified-instance (instance &optional (instance-cache (current-instance-cache)))
-  (when (and (not (created-p instance))
-             (not (modified-p instance))
+(defun update-instance-cache-for-modified-instance (instance &optional (instance-cache (current-instance-cache)))
+  (when (and (not (modified-p instance))
+             (not (created-p instance))
              (not (deleted-p instance)))
     (setf (modified-p instance) #t)
     (insert-item (modified-instances-of instance-cache) instance)))
 
-(defun update-cache-for-deleted-instance (instance &optional (instance-cache (current-instance-cache)))
+(defun update-instance-cache-for-deleted-instance (instance &optional (instance-cache (current-instance-cache)))
   (cond ((created-p instance)
          (setf (created-p instance) #f)
          (delete-item (created-instances-of instance-cache) instance))

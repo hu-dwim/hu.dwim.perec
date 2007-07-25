@@ -26,15 +26,6 @@
           (decf (select-counter-of (command-counter-of *transaction*))))
         (setf (persistent-p instance) (instance-exists-in-database-p instance)))))
 
-(defgeneric initialize-revived-slot-p (slot)
-  (:documentation "When a persistent instance is revived the slots marked here will be initialized by shared-initialize. The default implementation will not initialize persistent slots.")
-
-  (:method (slot)
-           #t)
-
-  (:method ((slot persistent-effective-slot-definition))
-           #f))
-
 (defgeneric initialize-revived-instance (instance &key &allow-other-keys)
   (:documentation "When a revived instance is initialized slots marked with initialize-revived-slot-p will be passed down to be initialized by shared-initialize.")
 
@@ -42,8 +33,9 @@
            (assert oid)
            (bind ((slot-names
                    (iter (for slot in (class-slots (class-of instance)))
-                         (when (initialize-revived-slot-p slot)
-                           (collect (slot-definition-name slot))))))
+                         (if (typep slot 'persistent-effective-slot-definition)
+                             (invalidate-cached-slot instance slot)
+                             (collect (slot-definition-name slot))))))
              (apply #'shared-initialize instance slot-names args))))
 
 (defgeneric make-revived-instance (class &key &allow-other-keys)
@@ -111,7 +103,7 @@
            (dolist (table (data-tables-of (class-of instance)))
              (delete-records (name-of table)
                              (id-column-matcher-where-clause instance)))
-           (update-cache-for-deleted-instance instance)))
+           (update-instance-cache-for-deleted-instance instance)))
 
 ;; TODO: what about invalidating cache instances, references?
 (defgeneric purge-instances (class)
@@ -239,7 +231,7 @@
 
 (defmethod make-persistent ((instance persistent-object))
   (ensure-oid instance)
-  (update-cache-for-created-instance instance)
+  (update-instance-cache-for-created-instance instance)
   (store-all-slots instance)
   (setf (persistent-p instance) #t)
   (setf (cached-instance-of (oid-of instance)) instance))
@@ -247,6 +239,6 @@
 (defmethod make-transient ((instance persistent-object))
   (with-caching-slot-values
     (restore-all-slots instance))
-  (purge-instance instance)
+  (remove-cached-instance instance)
   (setf (persistent-p instance) #f)
-  (remove-cached-instance instance))
+  (purge-instance instance))

@@ -41,12 +41,7 @@
     #f
     :type boolean
     :persistent #f
-    :documentation "True means the instance was already present at the very beginning but got deleted in the current transaction.")
-   (cached-slots
-    nil
-    :type (list persistent-effective-slot-definition)
-    :persistent #f
-    :documentation "A list of slots for which the slot values are currently cached in the instance in the lisp VM. This list must be updated when database update happens outside of slot access (batch update, trigger, etc."))
+    :documentation "True means the instance was already present at the very beginning but got deleted in the current transaction."))
   (:default-initargs :persistent *make-persistent-instances*)
   (:abstract #t)
   (:documentation "Base class for all persistent classes. If this class is not inherited by a persistent class then it is automatically added to the direct superclasses. There is only one persistent instance in a transaction with a give oid therefore eq will return true iff the oids are equal."))
@@ -65,12 +60,12 @@
 (defmethod initialize-instance :around ((instance persistent-object) &rest args &key persistent &allow-other-keys)
   (when persistent
     (ensure-exported (class-of instance)))
+  (bind ((class (class-of instance)))
+    (iter (for slot :in (persistent-effective-slots-of class))
+          (underlying-slot-makunbound-using-class class instance slot)))
   (prog1 (apply #'call-next-method instance :persistent #f args)
     (when (eq persistent #t)
-      (make-persistent instance)
-      (setf (created-p instance) #t)
-      (setf (cached-slots-of instance)
-            (collect-if #'cache-p (persistent-effective-slots-of (class-of instance)))))))
+      (make-persistent instance))))
 
 (defmethod make-instance :before ((class persistent-class) &key &allow-other-keys)
   (when (abstract-p class)

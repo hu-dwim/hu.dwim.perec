@@ -221,7 +221,7 @@
          (oid (oid-of instance)))    
     (dolist (table tables)
       (bind ((slots (collect-if #L(eq (table-of !1) table) prefetched-slots))
-             (slot-values (mapcar #L(cached-slot-boundp-or-value-using-class (class-of instance) instance !1) slots))
+             (slot-values (mapcar #L(underlying-slot-boundp-or-value-using-class (class-of instance) instance !1) slots))
              (oid-columns (oid-columns-of table))
              (columns (mappend #'columns-of slots))
              (oid-values (oid->rdbms-values oid))
@@ -240,8 +240,9 @@
 (defun store-all-slots (instance)
   "Stores all slots wihtout local side effects into the database."
   (store-prefetched-slots instance)
-  (mapc #L(store-slot instance !1 (cached-slot-boundp-or-value-using-class (class-of instance) instance !1))
-        (non-prefetched-slots-of (class-of instance))))
+  (bind ((class (class-of instance)))
+    (mapc #L(store-slot instance !1 (underlying-slot-boundp-or-value-using-class class instance !1))
+          (non-prefetched-slots-of class))))
 
 ;;;;;;;;;;;
 ;;; Utility

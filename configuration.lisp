@@ -28,8 +28,9 @@
      nil)))
 
 (defmacro debug-only (&body body)
-  #+debug`(progn ,@body)
-  #-debug(declare (ignore body)))
+  (if (member :debug *features*)
+      `(progn ,@body)
+      (values)))
 
 (defun file-header ()
   `(eval-always
