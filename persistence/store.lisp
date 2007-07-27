@@ -25,9 +25,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS slot restorers
 
+#+debug(declaim (notinline restore-slot-value))
 (defun restore-slot-value (slot rdbms-values index)
   "Provides convenient access to the arguments in the debugger."
-  (declare (optimize (debug 3)))
   (funcall (reader-of slot) rdbms-values index))
 
 (defun restore-slot-set (instance slot)
@@ -134,9 +134,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS slot storers
 
+#+debug(declaim (notinline store-slot-value))
 (defun store-slot-value (slot slot-value rdbms-values index)
   "Provides convenient access to the arguments in the debugger."
-  (declare (optimize (debug 3)))
   (funcall (writer-of slot) slot-value rdbms-values index))
 
 (defun delete-slot-set (instance slot)
