@@ -580,7 +580,8 @@
                  (incf end-index column-count)
                  (if (member variable referenced-variables)
                      (collect `(,(name-for variable)
-                                (cache-instance-with-prefetched-slots ,row ,i ',slots)))))
+                                (cache-instance-with-prefetched-slots ,row ,i ',slots
+                                 ',(mapcar #'column-count-of slots))))))
            referenced-by
            end-index)))))
 
