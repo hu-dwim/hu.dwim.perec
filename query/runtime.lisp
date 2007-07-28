@@ -134,6 +134,11 @@
            (assert (null args))
            (sql-literal :value (mapcar #L(value->sql-literal !1 type) value))))
 
+;; TODO: this was a temporary solution that sped up things quite a bit
+(defcfun (yyy :computed-in compute-as) (type)
+  (normalized-type-for type))
+
+;; TODO: normalized-type-for is a performance killer (don't have an idea yet)
 (defun value->sql-value (value type)
   (assert (not (eq type +unknown-type+)))
   (bind ((sql-values (value->sql-values value type)))
@@ -143,12 +148,16 @@
            ((persistent-class-type-p (normalized-type-for type)) ; only id column used
             (elt sql-values 0))
            ((and (null-subtype-p type) (unbound-subtype-p type))
-            (assert (elt sql-values 0))     ; check if BOUND
-            (elt sql-values 1))             ; omit BOUND column
+            (assert (elt sql-values 0)) ; check if BOUND
+            (elt sql-values 1))         ; omit BOUND column
            (t
             (error "unsupported multi-column type: ~A" type))))
       (t (error "unsupported multi-column type: ~A" type)))))
 
+;; TODO: this was a temporary solution that sped up things quite a bit
+(defcfun (xxx :computed-in compute-as) (type)
+  (compute-writer nil type))
+;; TODO: compute-writer is a performance killer (it's available on the slot)
 (defun value->sql-values (value type)
   (assert (not (eq type +unknown-type+)))
   (bind (((values writer wrapper-1 wrapper-2 column-count) (compute-writer nil type))
