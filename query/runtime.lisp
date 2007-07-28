@@ -32,16 +32,23 @@
 ;;; Caching
 ;;;
 
-(defun cache-instance-with-prefetched-slots (row start prefetched-slots column-counts)
+(defun cache-instance-with-prefetched-slots (row start class prefetched-slots column-counts)
   "Caches the instances whose oid and slots are contained by ROW starting at START."
-  (bind ((oid (subseq row start (+ start +oid-column-count+)))
-         (instance (cache-instance oid)))
+  (declare (optimize (speed 3))
+           (type simple-vector row)
+           (type fixnum start))
+  (bind ((oid (subseq row start (+ start #.+oid-column-count+)))
+         (instance (cache-instance oid))
+         (instance-class (class-of instance)))
     (when *cache-slot-values*
       (iter (for slot :in prefetched-slots)
-            (for column-count :in column-counts)
-            (for index :initially (+ start +oid-column-count+) :then (+ index column-count))
-            (setf (underlying-slot-boundp-or-value instance (slot-definition-name slot))
-                  (restore-slot-value slot row index))))
+            (for (the fixnum column-count) :in column-counts)
+            (for (the fixnum index) :initially (+ start #.+oid-column-count+) :then (the fixnum (+ index column-count)))
+            (if (eq instance-class class)
+                (setf (underlying-slot-boundp-or-value-using-class class instance slot)
+                      (restore-slot-value slot row index))
+                (setf (underlying-slot-boundp-or-value instance (slot-definition-name slot))
+                      (restore-slot-value slot row index)))))
     instance))
 
 (defun column-count-of (slot)
