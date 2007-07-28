@@ -35,7 +35,7 @@
   "Puts an instance with the given oid into the current transaction's instance cache and attaches it to the current transaction. The instance must not be present in the cache before."
   (debug-only
     (assert (not (instance-in-transaction-p instance)))
-    (assert (not (cached-instance-of oid *instance-cache*))))
+    (assert (not (cached-instance-of oid))))
   (setf (transaction-of instance) *transaction*)
   (let ((key (oid-instance-id oid)))
     (assert key)
@@ -47,7 +47,7 @@
          (key (oid-instance-id oid)))
     (debug-only
       (assert (instance-in-transaction-p instance))
-      (assert (cached-instance-of oid *instance-cache*)))
+      (assert (cached-instance-of oid)))
     (setf (transaction-of instance) nil)
     (remhash key (instances-of *instance-cache*))))
 
