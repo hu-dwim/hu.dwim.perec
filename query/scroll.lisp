@@ -17,7 +17,7 @@
 (defgeneric page (scroll))
 (defgeneric (setf page) (page scroll)
   (:method :around (page (scroll scroll))
-           (declare (cl:type integer page))
+           (declare (type integer page))
            ;; TODO: why isn't it an error?
            (when (< page 0)
              (setf page 0))
@@ -64,7 +64,7 @@
       nil))
 
 (defmethod (setf page) :around (page (scroll fixed-size-scroll))
-  (declare (cl:type integer page))
+  (declare (type integer page))
   (bind ((page-count (page-count scroll)))
     (when (>= page page-count)
       (setf page (1- page-count)))

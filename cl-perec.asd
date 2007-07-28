@@ -73,6 +73,7 @@
                :parse-number
                :contextl
                :metacopy
+               :cl-def
                :cl-ppcre
                :cl-store
                :cl-containers

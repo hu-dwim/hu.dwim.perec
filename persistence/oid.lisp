@@ -71,7 +71,7 @@
   :test equal
   :documentation "All RDBMS table column names for an oid. The order of columns does matter.")
 
-(defparameter +oid-column-count+ (length +oid-column-names+)
+(defconstant +oid-column-count+ (length +oid-column-names+)
   "The number of oid columns")
 
 (defparameter *oid-instance-id-sequence-exists* #f

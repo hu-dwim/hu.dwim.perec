@@ -22,6 +22,7 @@
         :local-time
         :parse-number
         :metacopy-with-contextl
+        :cl-def
         :cl-ppcre
         :cl-store
         :cl-containers
@@ -266,6 +267,10 @@
   :level +warn+
   :compile-time-level +dribble+
   :appender (make-instance 'brief-stream-log-appender :stream *debug-io*))
+
+(defun transform-function-definer-options (options)
+  #+debug (remove-keywords options '(:inline :optimize))
+  #-debug options)
 
 ;; TODO get rid of this, use string names
 (defun rdbms-name-for (name &optional thing)

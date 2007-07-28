@@ -6,7 +6,7 @@
 
 (in-package :cl-perec)
 
-(declaim (optimize (debug 3) (safety 3) (speed 0)))
+;;(declaim-debug)
 
 ;;;; This file contains classes and methods for storing, filtering, mapping
 ;;;; results of SQL queries.

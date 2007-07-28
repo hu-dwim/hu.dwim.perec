@@ -27,13 +27,11 @@
 
 (define-symbol-macro *instance-cache* (instance-cache-of *transaction*))
 
-#-debug(declaim (inline cached-instance-of))
-(defun cached-instance-of (oid)
+(def (function io) cached-instance-of (oid)
   "Returns the instance for the given oid from the current transaction's instance cachce."
   (gethash (oid-instance-id oid) (instances-of *instance-cache*)))
 
-#-debug(declaim (inline (setf cached-instance-of)))
-(defun (setf cached-instance-of) (instance oid)
+(def (function io) (setf cached-instance-of) (instance oid)
   "Puts an instance with the given oid into the current transaction's instance cache and attaches it to the current transaction. The instance must not be present in the cache before."
   (debug-only
     (assert (not (instance-in-transaction-p instance)))
@@ -43,8 +41,7 @@
     (assert key)
     (setf (gethash key (instances-of *instance-cache*)) instance)))
 
-#-debug(declaim (inline remove-cached-instance))
-(defun remove-cached-instance (instance)
+(def (function io) remove-cached-instance (instance)
   "Removes an instance from the current transaction's instance cache and detaches it from the transaction."
   (bind ((oid (oid-of instance))
          (key (oid-instance-id oid)))
@@ -54,21 +51,21 @@
     (setf (transaction-of instance) nil)
     (remhash key (instances-of *instance-cache*))))
 
-#-debug(declaim (inline map-cached-instances))
-(defun map-cached-instances (function)
+(def (function io) map-cached-instances (function)
   "Maps the given one parameter function to all instances present in the cache."
+  (declare (type function function))
   (alexandria:maphash-values function (instances-of *instance-cache*)))
 
-#-debug(declaim (inline map-created-instances))
-(defun map-created-instances (function)
+(def (function io) map-created-instances (function)
+  (declare (type function function))
   (alexandria:maphash-keys function (created-instances-of *instance-cache*)))
 
-#-debug(declaim (inline map-modified-instances))
-(defun map-modified-instances (function)
+(def (function io) map-modified-instances (function)
+  (declare (type function function))
   (alexandria:maphash-keys function (modified-instances-of *instance-cache*)))
 
-#-debug(declaim (inline map-deleted-instances))
-(defun map-deleted-instances (function)
+(def (function io) map-deleted-instances (function)
+  (declare (type function function))
   (alexandria:maphash-keys function (deleted-instances-of *instance-cache*)))
 
 (defun update-instance-cache-for-created-instance (instance)

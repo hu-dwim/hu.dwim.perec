@@ -9,10 +9,9 @@
 ;;;;;;;;;;;
 ;;; Unbound
 
-(defun is-vector-of-constant (vector value index length)
+(def (function io) is-vector-of-constant (vector value index length)
   (declare (type (or null fixnum) length)
-           (type fixnum index)
-           (optimize (speed 1)))
+           (type fixnum index))
   (iter (for i :from index)
         (repeat length)
         (always (eql (elt vector i) value))))
@@ -305,8 +304,7 @@
 
 ;; TODO: let the local-time go down to rdbms
 
-(declaim (inline local-time-to-utc-zone))
-(defun local-time-to-utc-zone (local-time)
+(def (function io) local-time-to-utc-zone (local-time)
   (if (eq (timezone-of local-time) +utc-zone+)
       local-time
       (local-time-adjust local-time +utc-zone+ (make-local-time))))
@@ -367,12 +365,3 @@
                  (vector-push (ldb (byte 8 0) part) result)))
           (t (error "Illegal input for ip-address->unsigned-byte-array-writer: ~S" slot-value)))
     (setf (elt rdbms-values index) result)))
-
-;;;;;;;;;;
-;;; Object
-
-(defun object-reader (rdbms-values index)
-  (load-instance (rdbms-values->oid* rdbms-values index) :skip-existence-check #t))
-
-(defun object-writer (slot-value rdbms-values index)
-  (oid->rdbms-values* (oid-of slot-value) rdbms-values index))
