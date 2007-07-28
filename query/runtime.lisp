@@ -36,7 +36,7 @@
   "Caches the instances whose oid and slots are contained by ROW starting at START."
   (declare (type simple-vector row)
            (type fixnum start))
-  (bind ((oid (subseq row start (+ start +oid-column-count+)))
+  (bind ((oid (rdbms-values->oid* row start))
          (instance (cache-instance oid))
          (instance-class (class-of instance)))
     (when *cache-slot-values*
