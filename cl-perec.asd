@@ -62,6 +62,7 @@
   :default-component-class local-cl-source-file
   :depends-on (:iterate
                :arnesi
+               :alexandria
                :metabang-bind
                :s-base64
                :computed-class

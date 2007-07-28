@@ -38,6 +38,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Primitve slot value
 
+#-debug(declaim (inline underlying-slot-value))
 (defun underlying-slot-value (instance slot-name)
   "Similar to slot-value but never interacts with the database."
   (bind ((class (class-of instance))
@@ -46,6 +47,7 @@
         (underlying-slot-value-using-class class instance slot)
         (values (slot-missing class instance slot-name 'slot-value)))))
 
+#-debug(declaim (inline (setf underlying-slot-value)))
 (defun (setf underlying-slot-value) (new-value instance slot-name)
   "Similar to (setf slot-value) but never interacts with the database."
   (bind ((class (class-of instance))
@@ -56,6 +58,7 @@
           (slot-missing class instance slot-name 'slot-value)
           new-value))))
 
+#-debug(declaim (inline underlying-slot-boundp-or-value))
 (defun underlying-slot-boundp-or-value (instance slot-name)
   "Similar to slot-value-boundp-or-value but never interacts with the database."
   (bind ((class (class-of instance))
@@ -64,6 +67,7 @@
         (underlying-slot-boundp-or-value-using-class class instance slot)
         (values (slot-missing class instance slot-name 'slot-value)))))
 
+#-debug(declaim (inline (setf underlying-slot-boundp-or-value)))
 (defun (setf underlying-slot-boundp-or-value) (new-value instance slot-name)
   "Similar to (setf slot-value-boundp-or-value) but never interacts with the database."
   (bind ((class (class-of instance))
@@ -74,6 +78,7 @@
           (slot-missing class instance slot-name 'slot-value)
           new-value))))
 
+#-debug(declaim (inline underlying-slot-value-using-class))
 (defun underlying-slot-value-using-class (class instance slot)
   "Returns the cached value of the instance's slot similar to slot-value-using-class but never interacts with the database."
   (bind ((value (underlying-slot-boundp-or-value-using-class class instance slot)))
@@ -81,18 +86,22 @@
         (values (slot-unbound class instance (slot-definition-name slot)))
         value)))
 
+#-debug(declaim (inline (setf underlying-slot-value-using-class)))
 (defun (setf underlying-slot-value-using-class) (new-value class instance slot)
   "Sets the cached value of the instance's slot similar to (setf slot-value-using-class) but never interacts with the database."
   (setf (underlying-slot-boundp-or-value-using-class class instance slot) new-value))
 
+#-debug(declaim (inline underlying-slot-makunbound-using-class))
 (defun underlying-slot-makunbound-using-class (class instance slot)
   "Makes the cached instance's slot unbound similar to slot-makunbound-using-class but never interacts with the database."
   (setf (underlying-slot-boundp-or-value-using-class class instance slot) +unbound-slot-value+))
 
+#-debug(declaim (inline underlying-slot-boundp-using-class))
 (defun underlying-slot-boundp-using-class (class instance slot)
   "Returns the cached boundness of the instance's slot similar to slot-boundp-using-class but never interacts with the database."
   (not (eq +unbound-slot-value+ (underlying-slot-boundp-or-value-using-class class instance slot))))
 
+#-debug(declaim (inline underlying-slot-boundp-or-value-using-class))
 (defun underlying-slot-boundp-or-value-using-class (class instance slot)
   "Either returns the cached slot value or the unbound slot marker. This method does not interact with the database."
   (declare (ignore class))
@@ -102,6 +111,7 @@
     (debug-only
       (assert (not (eq value sb-pcl::+slot-unbound+))))))
 
+#-debug(declaim (inline (setf underlying-slot-boundp-or-value-using-class)))
 (defun (setf underlying-slot-boundp-or-value-using-class) (new-value class instance slot)
   "Either sets the slot value to the given new value or makes the slot unbound if the new value is the unbound marker. This method does not interact with the database."
   (declare (ignore class))
@@ -144,6 +154,8 @@
           (setf (slot-value-using-class class instance slot) (instance-exists-in-database-p instance)))
       (call-next-method)))
 
+
+#-debug(declaim (inline slot-boundp-or-value-using-class))
 (defun slot-boundp-or-value-using-class (class instance slot return-with)
   (declare (type function return-with))
   (debug-only
@@ -177,6 +189,7 @@
                    (setf (underlying-slot-boundp-or-value-using-class class instance restored-slot) restored-slot-value))
                  (funcall return-with restored-slot-value)))))))
 
+#-debug(declaim (inline (setf slot-boundp-or-value-using-class)))
 (defun (setf slot-boundp-or-value-using-class) (new-value class instance slot)
   (debug-only
     (assert (eq class (class-of instance)))
@@ -189,7 +202,8 @@
       (update-instance-cache-for-modified-instance instance)
       (propagate-cache-changes class instance slot new-value))
     (when (or (not persistent)
-              (and *cache-slot-values* (cache-p slot)))
+              (and *cache-slot-values*
+                   (cache-p slot)))
       (setf (underlying-slot-boundp-or-value-using-class class instance slot) new-value))
     new-value))
 

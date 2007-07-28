@@ -34,8 +34,7 @@
 
 (defun cache-instance-with-prefetched-slots (row start class prefetched-slots column-counts)
   "Caches the instances whose oid and slots are contained by ROW starting at START."
-  (declare (optimize (speed 3))
-           (type simple-vector row)
+  (declare (type simple-vector row)
            (type fixnum start))
   (bind ((oid (subseq row start (+ start #.+oid-column-count+)))
          (instance (cache-instance oid))
