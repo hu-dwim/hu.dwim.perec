@@ -30,8 +30,10 @@
 (defun slot-value-cached-p (instance slot)
   "Tells whether the given slot is cached in the instance or not."
   (debug-only (assert (debug-persistent-p instance)))
-  (and (cache-p slot)
-       (not (eq +not-cached-slot-value+ (standard-instance-access instance (slot-definition-location slot))))))
+  (bind ((value (standard-instance-access instance (slot-definition-location slot))))
+    (values
+     (not (eq +not-cached-slot-value+ value))
+     value)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Primitve slot value
