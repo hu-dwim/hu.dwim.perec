@@ -30,6 +30,11 @@
   (:documentation "When a revived instance is initialized slots marked with initialize-revived-slot-p will be passed down to be initialized by shared-initialize.")
 
   (:method ((instance persistent-object) &rest args &key oid &allow-other-keys)
+           ;; TODO: use definer
+           #-debug
+           (declare (optimize (speed 3) (debug 0))
+                    (dynamic-extent args)
+                    #+sbcl (sb-c::stack-allocate-dynamic-extent))
            (assert oid)
            (bind ((slot-names
                    (iter (for slot in (class-slots (class-of instance)))

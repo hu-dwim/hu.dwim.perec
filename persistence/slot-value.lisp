@@ -16,18 +16,18 @@
            (debug-only (assert (debug-persistent-p instance)))
            (values)))
 
-(defun invalidate-all-cached-slots (instance)
+(def (function o) invalidate-all-cached-slots (instance)
   "Invalidates all cached slot values in the instance."
   (bind ((class (class-of instance)))
     (iter (for slot in (persistent-effective-slots-of class))
           (when (cache-p slot)
             (invalidate-cached-slot instance slot)))))
 
-(defun invalidate-cached-slot (instance slot)
+(def (function io) invalidate-cached-slot (instance slot)
   "Invalidates the given cached slot value in the instance."
   (setf (standard-instance-access instance (slot-definition-location slot)) +not-cached-slot-value+))
 
-(defun slot-value-cached-p (instance slot)
+(def (function io) slot-value-cached-p (instance slot)
   "Tells whether the given slot is cached in the instance or not."
   (debug-only (assert (debug-persistent-p instance)))
   (bind ((value (standard-instance-access instance (slot-definition-location slot))))
