@@ -12,79 +12,89 @@
     :type hash-table
     :documentation "A map from oid values to persistent instances used to cache instance identities and slot values during a transaction.")
    (created-instances
-    (make-container 'set-container)
-    :type list)
+    (make-hash-table :test #'eq)
+    :type hash-table
+    :documentation "A map from instances to true indicating that the instance is in the set.")
    (modified-instances
-    (make-container 'set-container)
-    :type list)
+    (make-hash-table :test #'eq)
+    :type hash-table
+    :documentation "A map from instances to true indicating that the instance is in the set.")
    (deleted-instances
-    (make-container 'set-container)
-    :type list))
+    (make-hash-table :test #'eq)
+    :type hash-table
+    :documentation "A map from instances to true indicating that the instance is in the set."))
   (:documentation "Each transaction has its own transaction level instance cache filled by the operations executed during that transaction. The cache is created empty when the transaction starts and it will be dropped when the transaction ends. Each instance loaded during a transaction will be put here to keep the identity of the in-memory instance throughout the transaction. Moreover the instance cache is responsible to manage the list of created, modified and deleted instances during the transaction."))
 
-(defun current-instance-cache ()
-  "Returns the instance cache of the current transaction."
-  (instance-cache-of *transaction*))
+(define-symbol-macro *instance-cache* (instance-cache-of *transaction*))
 
-(defun cached-instance-of (oid &optional (instance-cache (current-instance-cache)))
+#-debug(declaim (inline cached-instance-of))
+(defun cached-instance-of (oid)
   "Returns the instance for the given oid from the current transaction's instance cachce."
-  (gethash (oid-instance-id oid) (instances-of instance-cache)))
+  (gethash (oid-instance-id oid) (instances-of *instance-cache*)))
 
-(defun (setf cached-instance-of) (instance oid &optional (instance-cache (current-instance-cache)))
+#-debug(declaim (inline (setf cached-instance-of)))
+(defun (setf cached-instance-of) (instance oid)
   "Puts an instance with the given oid into the current transaction's instance cache and attaches it to the current transaction. The instance must not be present in the cache before."
-  (assert (not (instance-in-transaction-p instance)))
-  (assert (not (cached-instance-of oid instance-cache)))
+  (debug-only
+    (assert (not (instance-in-transaction-p instance)))
+    (assert (not (cached-instance-of oid *instance-cache*))))
   (setf (transaction-of instance) *transaction*)
   (let ((key (oid-instance-id oid)))
     (assert key)
-    (setf (gethash key (instances-of instance-cache)) instance)))
+    (setf (gethash key (instances-of *instance-cache*)) instance)))
 
-(defun remove-cached-instance (instance &optional (instance-cache (current-instance-cache)))
+#-debug(declaim (inline remove-cached-instance))
+(defun remove-cached-instance (instance)
   "Removes an instance from the current transaction's instance cache and detaches it from the transaction."
   (bind ((oid (oid-of instance))
          (key (oid-instance-id oid)))
-    (assert (instance-in-transaction-p instance))
-    (assert (cached-instance-of oid instance-cache))
+    (debug-only
+      (assert (instance-in-transaction-p instance))
+      (assert (cached-instance-of oid *instance-cache*)))
     (setf (transaction-of instance) nil)
-    (remhash key (instances-of instance-cache))))
+    (remhash key (instances-of *instance-cache*))))
 
-(defun map-cached-instances (function &optional (instance-cache (current-instance-cache)))
+#-debug(declaim (inline map-cached-instances))
+(defun map-cached-instances (function)
   "Maps the given one parameter function to all instances present in the cache."
-  (maphash #L(funcall function !2) (instances-of instance-cache)))
+  (alexandria:maphash-values function (instances-of *instance-cache*)))
 
-(defun map-created-instances (function &optional (instance-cache (current-instance-cache)))
-  (iterate-nodes (created-instances-of instance-cache) function))
+#-debug(declaim (inline map-created-instances))
+(defun map-created-instances (function)
+  (alexandria:maphash-keys function (created-instances-of *instance-cache*)))
 
-(defun map-modified-instances (function &optional (instance-cache (current-instance-cache)))
-  (iterate-nodes (modified-instances-of instance-cache) function))
+#-debug(declaim (inline map-modified-instances))
+(defun map-modified-instances (function)
+  (alexandria:maphash-keys function (modified-instances-of *instance-cache*)))
 
-(defun map-deleted-instances (function &optional (instance-cache (current-instance-cache)))
-  (iterate-nodes (deleted-instances-of instance-cache) function))
+#-debug(declaim (inline map-deleted-instances))
+(defun map-deleted-instances (function)
+  (alexandria:maphash-keys function (deleted-instances-of *instance-cache*)))
 
-(defun update-instance-cache-for-created-instance (instance &optional (instance-cache (current-instance-cache)))
+(defun update-instance-cache-for-created-instance (instance)
   (ecase (event-of instance)
     (:created)
     ((:modified :deleted)
      (error "Inconsistent cache"))
     ((nil)
      (setf (event-of instance) :created)
-     (insert-item (created-instances-of instance-cache) instance))))
+     (setf (gethash instance (created-instances-of *instance-cache*)) #t))))
 
-(defun update-instance-cache-for-modified-instance (instance &optional (instance-cache (current-instance-cache)))
+(defun update-instance-cache-for-modified-instance (instance)
   (unless (event-of instance)
     (setf (event-of instance) :modified)
-    (insert-item (modified-instances-of instance-cache) instance)))
+    (setf (gethash instance (modified-instances-of *instance-cache*)) #t)))
 
-(defun update-instance-cache-for-deleted-instance (instance &optional (instance-cache (current-instance-cache)))
+(defun update-instance-cache-for-deleted-instance (instance)
   (ecase (event-of instance)
     (:created
      (setf (event-of instance) nil)
-     (delete-item (created-instances-of instance-cache) instance))
+     (remhash instance (created-instances-of *instance-cache*)))
     (:modified
      (setf (event-of instance) :deleted)
-     (delete-item (modified-instances-of instance-cache) instance)
-     (insert-item (deleted-instances-of instance-cache) instance))
+     (remhash instance (modified-instances-of *instance-cache*))
+     (setf (gethash instance (deleted-instances-of *instance-cache*)) #t))
     (:deleted)
     ((nil)
      (setf (event-of instance) :deleted)
-     (insert-item (deleted-instances-of instance-cache) instance))))
+     (setf (gethash instance (deleted-instances-of *instance-cache*)) #t))))
