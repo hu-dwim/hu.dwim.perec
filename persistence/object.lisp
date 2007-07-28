@@ -48,14 +48,15 @@
 ;;; MOP methods
 
 (defmethod initialize-instance :around ((instance persistent-object) &rest args &key persistent &allow-other-keys)
-  (when persistent
-    (ensure-exported (class-of instance)))
-  (bind ((class (class-of instance)))
-    (iter (for slot :in (persistent-effective-slots-of class))
-          (underlying-slot-makunbound-using-class class instance slot)))
-  (prog1 (apply #'call-next-method instance :persistent #f args)
-    (when (eq persistent #t)
-      (make-persistent instance))))
+  (bind ((class (class-of instance))
+         (slots (persistent-effective-slots-of class)))
+    (when persistent
+      (ensure-exported class))
+    (iter (for slot :in slots)
+          (underlying-slot-makunbound-using-class class instance slot))
+    (prog1 (apply #'call-next-method instance :persistent #f args)
+      (when (eq persistent #t)
+        (make-persistent instance)))))
 
 (defmethod make-instance :before ((class persistent-class) &key &allow-other-keys)
   (when (abstract-p class)

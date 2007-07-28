@@ -234,7 +234,12 @@
   (update-instance-cache-for-created-instance instance)
   (store-all-slots instance)
   (setf (persistent-p instance) #t)
-  (setf (cached-instance-of (oid-of instance)) instance))
+  (setf (cached-instance-of (oid-of instance)) instance)
+  (bind ((class (class-of instance))
+         (slots (persistent-effective-slots-of class)))
+    (iter (for slot :in slots)
+          (when (set-type-p (slot-definition-type slot))
+            (invalidate-cached-slot instance slot)))))
 
 (defmethod make-transient ((instance persistent-object))
   (with-caching-slot-values
