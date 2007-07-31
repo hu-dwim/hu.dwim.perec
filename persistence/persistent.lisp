@@ -33,8 +33,7 @@
            ;; TODO: use definer
            #-debug
            (declare (optimize (speed 3) (debug 0))
-                    (dynamic-extent args)
-                    #+sbcl (sb-c::stack-allocate-dynamic-extent))
+                    (dynamic-extent args))
            (assert oid)
            (bind ((slot-names
                    (iter (for slot in (class-slots (class-of instance)))
