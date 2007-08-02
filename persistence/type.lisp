@@ -70,10 +70,15 @@
            `',name
            `(deftype ,name ,args ,@body)))))
 
-(defun find-type (type)
-  (gethash (first (ensure-list type)) *persistent-types*))
+(def (function io) find-type (type &key (otherwise :error))
+  (or (gethash (first (ensure-list type)) *persistent-types*)
+      (case otherwise
+        (:error (error "Unknown type specifier ~S" type))
+        (:warn (warn "Unknown type specifier ~S" type)
+               nil)
+        (t otherwise))))
 
-(defun (setf find-type) (new-value type)
+(def (function io) (setf find-type) (new-value type)
   (setf (gethash (first (ensure-list type)) *persistent-types*) new-value))
 
 (defun type-class-name-for (type)
@@ -105,13 +110,10 @@
          'persistent-type)))
 
 (defun type-specifier-p (type)
-  (find-type type))
+  (find-type type :otherwise #f))
 
 (defun substitute-type-arguments (type args)
-  (let ((persistent-type (find-type type)))
-    (if persistent-type
-        (apply (substituter-of (find-type type)) args)
-        (error "Unknown type specifier: ~A" type))))
+  (apply (substituter-of (find-type type)) args))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; Canonical type
@@ -239,7 +241,7 @@
 
 (defun parse-type (type-specifier)
   (etypecase type-specifier
-    (symbol (or (find-type type-specifier)
+    (symbol (or (find-type type-specifier :otherwise nil)
                 (find-persistent-class type-specifier)))
     (list
      (apply (parser-of (class-prototype (find-class (type-class-name-for (first type-specifier)))))
