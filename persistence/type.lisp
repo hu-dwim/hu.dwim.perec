@@ -84,7 +84,7 @@
 (defun type-class-name-for (type)
   (concatenate-symbol (if (eq (symbol-package type)
                               (find-package :common-lisp))
-                          (find-package :cl-perec)
+                          *package*
                           (symbol-package type))
                       type "-type"))
 
