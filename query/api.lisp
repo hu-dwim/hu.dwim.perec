@@ -110,7 +110,7 @@
       (elt (elements scroll) 0))))
 
 (defun select-similar-assert-for (type rest)
-  (bind ((class (find-class type)))
+  (bind ((class (ensure-finalized (find-class type))))
     `(and ,@(iter (for (initarg value) on rest by 'cddr)
                   (collect `(equal (,(reader-name-of
                                       (find initarg (class-slots class)
