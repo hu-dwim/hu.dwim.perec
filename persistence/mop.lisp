@@ -146,7 +146,7 @@
             (direct-slot persistent-association-end-direct-slot-definition)
             slot-option-name
             direct-slot-definitions)
-           (if (member slot-option-name '(min-cardinality max-cardinality association))
+           (if (member slot-option-name '(association))
                (some #L(slot-initarg-and-value !1 slot-option-name) direct-slot-definitions)
                (call-next-method))))
 

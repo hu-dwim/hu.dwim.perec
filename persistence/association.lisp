@@ -49,17 +49,9 @@
     (compute-as (compute-association-end-query -self-))
     :type t)
    (min-cardinality
-    (compute-as (bind ((type (slot-definition-type -self-)))
-                  (if (and (not (null-subtype-p type))
-                           (not (unbound-subtype-p type)))
-                      1
-                      0)))
     :type integer
     :documentation "The minimum number of instances present in an association for this end.")
    (max-cardinality
-    (compute-as (if (set-type-p (slot-definition-type -self-))
-                    :n
-                    1))
     :type integer
     :documentation "The maximum number of instances present in an association for this end. Unbound means the maximum number is not defined.")
    (cardinality-kind
@@ -82,7 +74,17 @@
 
 (defcclass* persistent-association-end-direct-slot-definition
     (persistent-association-end-slot-definition persistent-direct-slot-definition)
-  ((other-association-end
+  ((min-cardinality
+    (compute-as (bind ((type (slot-definition-type -self-)))
+                  (if (and (not (null-subtype-p type))
+                           (not (unbound-subtype-p type)))
+                      1
+                      0))))
+   (max-cardinality
+    (compute-as (if (set-type-p (slot-definition-type -self-))
+                    :n
+                    1)))
+   (other-association-end
     (compute-as (if (primary-association-end-p -self-)
                     (secondary-association-end-of (association-of -self-))
                     (primary-association-end-of (association-of -self-))))
@@ -91,7 +93,11 @@
 
 (defcclass* persistent-association-end-effective-slot-definition
     (persistent-association-end-slot-definition persistent-effective-slot-definition)
-  ((other-association-end
+  ((min-cardinality
+    (compute-as (apply #'max (mapcar #'min-cardinality-of (direct-slots-of -self-)))))
+   (max-cardinality
+    (compute-as (apply #'min* (mapcar #'max-cardinality-of (direct-slots-of -self-)))))
+   (other-association-end
     (compute-as (bind ((class (associated-class-of (first (direct-slots-of -self-)))))
                   (ensure-finalized class)
                   (other-effective-association-end-for class -self-)))
@@ -195,3 +201,8 @@
 (defun effective-association-ends-for-accessor (name)
   (collect-if #L(typep !1 'persistent-association-end-effective-slot-definition)
               (effective-slots-for-accessor name)))
+
+(defun min* (&rest args)
+  (if (find-if #'numberp args)
+      (apply #'min (delete-if-not #'numberp args))
+      :n))
