@@ -230,6 +230,24 @@
   `(with-reloaded-instances (,instance)
     ,@body))
 
+(defun singleton-variable-name-for (name)
+  (bind ((name-string (symbol-name name)))
+    (concatenate-symbol (subseq name-string 0 (1- (length name-string)))
+                        "-singleton*"
+                        (symbol-package name))))
+
+(defmacro def-singleton-persistent-instance (name &body forms)
+  (bind ((singleton-variable-name (singleton-variable-name-for name)))
+    `(progn
+     (defparameter ,singleton-variable-name nil)
+     (define-symbol-macro ,name
+         (progn
+           (aif ,singleton-variable-name
+                (load-instance it)
+                (setf ,singleton-variable-name
+                      (progn
+                        ,@forms))))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Making instances persistent and transient
 
