@@ -245,7 +245,8 @@ Be careful when using in different situations, because it modifies *readtable*."
            (eq val nil))))
 
 (defun parse-args-p (macro-name)
-  (member macro-name '(and or)))
+  (or (member macro-name '(and or))
+      (member macro-name rdbms::*sql-constructor-names*))) ; TODO missing export
 
 ;;;;
 ;;;; Substitute
