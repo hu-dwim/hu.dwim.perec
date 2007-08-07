@@ -169,6 +169,17 @@
 (defgeneric lock-instance (instance &key wait)
   (:documentation "Lock instance in the current transaction. If wait is false and the instance cannot be locked then an condition will be thrown.")
 
+  (:method :around (instance &key wait)
+           (if wait
+               (call-next-method)
+               (handler-case
+                   (progn
+                     (call-next-method)
+                     #t)
+                 (error (e)
+                        (declare (ignore e))
+                        (return-from lock-instance #f)))))
+
   (:method ((instance persistent-object) &key (wait #t))
            (bind ((class (class-of instance))
                   (tables (data-tables-of class))

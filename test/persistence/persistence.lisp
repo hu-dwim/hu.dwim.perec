@@ -56,18 +56,17 @@
   (let ((instance
          (with-transaction
            (make-instance 'persistence-test :name "the one"))))
-    (finishes
-      (with-transaction
-        (lock-instance instance :wait #f)))))
+    (is (with-transaction
+          (lock-instance instance :wait #f)))))
 
 (deftest test/persistence/lock-instance/2 ()
   (with-transaction
     (let ((instance (make-instance 'persistence-test :name "the one")))
       (lock-instance instance :wait #t)
-      (signals error
-        (with-transaction
-          (with-revived-instance instance
-            (lock-instance instance :wait #f)))))))
+      (is (not
+           (with-transaction
+             (with-revived-instance instance
+               (lock-instance instance :wait #f))))))))
 
 (defpclass* initform-1-test ()
   ((name "Hello" :type (text 20))))
