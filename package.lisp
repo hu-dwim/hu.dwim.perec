@@ -205,6 +205,7 @@
            #:query-builder
            #:simple-query-builder
            #:select
+           #:simple-select
            #:purge
            #:from
            #:where
