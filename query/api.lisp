@@ -69,7 +69,9 @@
 (defwalker-handler select (form parent env)
   (let* ((lexical-variables (remove-duplicates (append (arnesi::lexical-variables (cdr env))
                                                        ;; TODO: arnesi sux when accessing environment
-                                                       (mapcar #'cadr (car env))))))
+                                                       (iter (for entry :in (car env))
+                                                             (when (eq :lexical-let (first entry))
+                                                               (collect (second entry))))))))
     (walk-form `(execute-query
                  (make-query ',form ',lexical-variables)
                  ,@lexical-variables)
