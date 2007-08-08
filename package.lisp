@@ -151,6 +151,7 @@
            #:with-transaction
            #:with-transaction*
            #:*transaction*
+           #:register-transaction-hook
            #:mark-transaction-for-commit-only
            #:mark-transaction-for-rollback-only
            #:transaction-timestamp
