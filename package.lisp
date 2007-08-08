@@ -157,7 +157,7 @@
            #:transaction-timestamp
            #:transaction-mixin
            #:transaction-with-hooks-mixin
-           #:register-commit-hook
+           #:register-hook
            #:before-committing-instance
            #:after-instance-committed
 
