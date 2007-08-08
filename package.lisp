@@ -155,7 +155,7 @@
            #:mark-transaction-for-rollback-only
            #:transaction-timestamp
            #:transaction-mixin
-           #:transaction-with-commit-hooks-mixin
+           #:transaction-with-hooks-mixin
            #:register-commit-hook
            #:before-committing-instance
            #:after-instance-committed
