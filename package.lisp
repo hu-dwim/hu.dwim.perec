@@ -251,6 +251,16 @@
            #:fixed-size-scroll
            #:simple-scroll
 
+           ;; temporal and time-dependent
+           #:persistent-class-t
+           #:with-t
+           #:with-validity
+           #:with-validity-range
+           #:*t*
+           #:*validity-start*
+           #:*validity-end*
+           #:values-having-validity
+
            ;; turning cache on and off
            #:with-caching-slot-values
            #:without-caching-slot-values

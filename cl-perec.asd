@@ -109,7 +109,8 @@
              (:file "standard-type")
              (:file "transformer")
              (:file "set")
-             (:file "association-end-set")))
+             (:file "association-end-set")
+             (:file "class-t")))
    (:module :query
             :components
             ((:file "api")

@@ -6,37 +6,77 @@
 
 (in-package :cl-perec)
 
-(defconstant +beginning-of-time+ (parse-timestring "1000-01-01TZ"))
+;;;;;;;;;;;;;
+;;; Constants
 
-(defconstant +end-of-time+ (parse-timestring "3000-01-01TZ"))
+(define-constant +beginning-of-time+ (parse-timestring "1000-01-01TZ")
+  :test local-time=
+  :documentation "All dates and timestamps for temporal and time dependent slots are equal or greater than the beginning of time.")
 
-(defconstant +t-delete+ 0)
+(define-constant +end-of-time+ (parse-timestring "3000-01-01TZ")
+  :test local-time=
+  :documentation "All dates and timestamps for temporal and time dependent slots are equal or less than the end of time.")
 
-(defconstant +t-insert+ 1)
+(defconstant +t-delete+ 0
+  "Constant used to mark RDBMS records for association slots.")
 
-(defvar *t*)
+(defconstant +t-insert+ 1
+  "Constant used to mark RDBMS records for association slots.")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Temporal and time dependent
+
+(defvar *t*
+  "The time machine parameter, modifications made after t will not be visible.")
 
 (defvar *validity-start*)
+;; TODO:  "When a slot value is time dependent then the approximation uses constant values given for time ranges.")
 
 (defvar *validity-end*)
+;; TODO:  "When a slot value is time dependent then the approximation uses constant values given for time ranges.")
 
-(defun ensure-timestamp (timestamp)
-  (if (stringp timestamp)
-      `(load-time-value (parse-timestring ,timestamp))
-      timestamp))
+(macrolet ((with-partial-date (date &body forms)
+             (rebinding (date)
+               `(bind ((date-string
+                        (if (typep ,date 'local-time)
+                            (format-datestring ,date)
+                            ,date)))
+                 (ecase (ecase (count #\- date-string)
+                          (0 :year)
+                          (1 :month)
+                          (2 :day))
+                   ,@forms)))))
+  (defun date-of-first-day-for-partial-date (date)
+    (with-partial-date date
+      (:year (strcat date-string "-01-01"))
+      (:month (strcat date-string "-01"))
+      (:day date-string)))
 
-(defun ensure-date (timestamp)
-  (if (stringp timestamp)
-      `(load-time-value (parse-datestring ,timestamp))
-      timestamp))
+  (defun date-of-last-day-for-partial-date (date)
+    (with-partial-date date
+      (:year (strcat date-string "-12-31"))
+      (:month (let ((date-1 (parse-datestring (strcat date-string "-01")))
+                    (date-2 (parse-datestring (strcat date-string "-31"))))
+                (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
+                    (decode-local-time date-1)
+                  (declare (ignore usec sec min hour day day-of-week daylight-saving-time-p original-timezone))
+                  (setf date-1 (encode-local-time 0 0 0 0 1 (1+ month) year))
+                  (format-datestring
+                   (local-time-adjust-days date-2 (- -1 (day-of (local-time::local-time-diff date-2 date-1))))))))
+      (:day date-string))))
 
 (defmacro with-t (timestamp &body forms)
-  `(let ((*t* ,(ensure-timestamp timestamp)))
+  `(let ((*t* (load-time-value (parse-timestring ,timestamp))))
+    ,@forms))
+
+(defmacro with-validity (validity &body forms)
+  `(let ((*validity-start* (load-time-value (parse-datestring ,(date-of-first-day-for-partial-date validity))))
+         (*validity-end* (load-time-value (parse-datestring ,(date-of-last-day-for-partial-date validity)))))
     ,@forms))
 
 (defmacro with-validity-range (start end &body forms)
-  `(let ((*validity-start* ,(ensure-date start))
-         (*validity-end* ,(ensure-date end)))
+  `(let ((*validity-start* (load-time-value (parse-datestring ,(date-of-first-day-for-partial-date start))))
+         (*validity-end* (load-time-value (parse-datestring ,(date-of-last-day-for-partial-date end)))))
     ,@forms))
 
 (defclass* values-having-validity ()
@@ -64,6 +104,9 @@
         (for ,(first variables) = (aref ,values ,index))
         (for ,(second variables) = (aref ,validity-starts ,index))
         (for ,(third variables) = (aref ,validity-ends ,index))))))
+
+;;;;;;;
+;;; Mop
 
 (defcclass* persistent-class-t (persistent-class)
   ((t-class
@@ -144,6 +187,10 @@
     (compute-as (find-slot (t-class-of -self-) 'action))
     :type persistent-effective-slot-definition)))
 
+(eval-always
+  ;; TODO: kill association?
+  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent :association)))
+
 (defmethod validate-superclass ((class persistent-class)
                                 (superclass persistent-class-t))
   t)
@@ -191,6 +238,9 @@
              (effective-slot-class (apply #'effective-slot-definition-class class :persistent #t initargs)))
         (apply #'make-instance effective-slot-class initargs))
       (call-next-method)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Slot value and friends
 
 (defcondition* unbound-slot-t (unbound-slot)
   ((t :type timestamp)
@@ -469,285 +519,3 @@
                          (append +oid-column-names+ parent-oid-columns child-oid-columns
                                  (list t-value-column validity-start-column validity-end-column action-column))
                          rdbms-values))))
-
-(eval-always
-  ;; TODO: kill association?
-  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent :association)))
-
-;;;;;;;;
-;;; Test
-
-(eval-always
-  (use-package :stefil))
-
-(defpclass* test ()
-  ((name :type (or null text))
-   (open-date :type date :persistent #f :temporal #t)
-   (population :type integer-32 :persistent #f :temporal #t :time-dependent #t))
-  (:metaclass persistent-class-t))
-
-(defpclass* test-t ()
-  ((t-value :type timestamp)
-   (validity-start :type date)
-   (validity-end :type date)
-   (open-date :type date)
-   (population :type integer-32)))
-
-(defassociation*
-  ((:class test-t :slot test :type test)
-   (:class test :slot t-objects :type (set test-t))))
-
-(defmacro bind-cartesian-product* (names-values-pairs &body forms)
-  (if names-values-pairs
-      (bind ((names-and-values (first names-values-pairs))
-             (names (first names-and-values))
-             (values (rest names-and-values)))
-        (cons 'progn
-              (iter (for value :in values)
-                    (collect `(bind ((,names ,value))
-                               (bind-cartesian-product* ,(rest names-values-pairs)
-                                 ,@forms))))))
-      `(progn
-        ,@forms)) )
-
-(deftest test-1 ()
-  (with-transaction
-    (bind ((name "The name")
-           (2007-01-01 (parse-datestring "2007-01-01"))
-           (2007-01-02 (parse-datestring "2007-01-02"))
-           (2007-01-03 (parse-datestring "2007-01-03"))
-           (2007-01-04 (parse-datestring "2007-01-04"))
-           (2007-01-05 (parse-datestring "2007-01-05"))
-           (2007-01-06 (parse-datestring "2007-01-06"))
-           (test (make-instance 'test)))
-      ;; normal slot
-      (setf (name-of test) name)
-      (bind-cartesian-product* ((*t* 2007-01-01 2007-01-02)
-                               ((*validity-start* *validity-end*) (list 2007-01-03 2007-01-04) (list 2007-01-05 2007-01-06)))
-        (is (equal (name-of test) name)))
-      ;; temporal slot
-      (bind-cartesian-product* (((*validity-start* *validity-end*) (list 2007-01-03 2007-01-04) (list 2007-01-05 2007-01-06)))
-        (signals error (open-date-of test))
-        (with-t 2007-01-02
-          (setf (open-date-of test) 2007-01-05))
-        (with-t 2007-01-04
-          (setf (open-date-of test) 2007-01-06))
-        (with-t 2007-01-01
-          (signals error (open-date-of test)))
-        (with-t 2007-01-02
-          (is (local-time= (open-date-of test) 2007-01-05)))
-        (with-t 2007-01-03
-          (is (local-time= (open-date-of test) 2007-01-05)))
-        (with-t 2007-01-04
-          (is (local-time= (open-date-of test) 2007-01-06)))
-        (with-t 2007-01-05
-          (is (local-time= (open-date-of test) 2007-01-06))))
-      ;; temporal time-depenent slot
-      (with-t 2007-01-02
-        (with-validity-range 2007-01-02 2007-01-03
-          (setf (population-of test) 100))
-        (with-validity-range 2007-01-04 2007-01-05
-          (setf (population-of test) 200)))
-      (with-t 2007-01-03
-        (with-validity-range 2007-01-03 2007-01-04
-          (setf (population-of test) 120)
-          (setf (population-of test) 150)))
-      (with-t 2007-01-01
-        (with-validity-range 2007-01-02 2007-01-02
-          (signals error (population-of test))))
-      (with-t 2007-01-02
-        (with-validity-range 2007-01-02 2007-01-05
-          (let ((population (population-of test)))
-            (is (= 2 (length (values-of population))))
-            (iter (for (value validity-start validity-end index) :in-values-having-validity population)
-                  (ecase index
-                    (0 (is (and (= value 100)
-                                (local-time= validity-start 2007-01-02)
-                                (local-time= validity-end 2007-01-03))))
-                    (1 (is (and (= value 200)
-                                (local-time= validity-start 2007-01-04)
-                                (local-time= validity-end 2007-01-05)))))))))
-      (with-t 2007-01-04
-        (with-validity-range 2007-01-02 2007-01-02
-          (is (= (population-of test) 100)))
-        (with-validity-range 2007-01-03 2007-01-04
-          (is (= (population-of test) 150)))
-        (with-validity-range 2007-01-05 2007-01-05
-          (is (= (population-of test) 200))))
-      ;; temporal time-dependent 1-n association slot
-      #+nil
-      (with-t 2007-01-02
-        (with-validity-range 2007-01-02 2007-01-05
-          (setf (iskolák-of önkormányzat) (list test))))
-      #+nil
-      (with-t 2007-01-03
-        (with-validity-range 2007-01-03 2007-01-04
-          (setf (iskolák-of önkormányzat) nil))))))
-
-
-(defpclass* lakossag ()
-  ((osszesen :type integer-32)))
-
-(defpclass* telepules ()
-  ((lakossag :type lakossag :persistent #f :temporal #t :time-dependent #t))
-  (:metaclass persistent-class-t))
-
-(defpclass* telepules-t ()
-  ((t-value :type timestamp)
-   (validity-start :type date)
-   (validity-end :type date)))
-
-(defassociation*
-  ((:class telepules-t :slot telepules :type telepules)
-   (:class telepules :slot t-objects :type (set telepules-t))))
-
-(defassociation*
-  ((:class telepules-t :slot lakossag :type lakossag)
-   (:class lakossag :slot telepules-t :type telepules-t)))
-
-(deftest test-2 ()
-  (with-transaction
-    (with-t "2007-01-01"
-      (let ((telepules (make-instance 'telepules))
-            (osszesen-1 (random 100000))
-            (osszesen-2 (random 100000)))
-        (with-validity-range "2007-01-01" "2007-01-02"
-          (setf (lakossag-of telepules) (make-instance 'lakossag :osszesen osszesen-1)))
-        (with-validity-range "2007-01-03" "2007-01-04"
-          (setf (lakossag-of telepules) (make-instance 'lakossag :osszesen osszesen-2)))
-        (with-validity-range "2007-01-01" "2007-01-01"
-          (is (= osszesen-1 (osszesen-of (lakossag-of telepules)))))
-        (with-validity-range "2007-01-04" "2007-01-04"
-          (is (= osszesen-2 (osszesen-of (lakossag-of telepules)))))
-        (with-validity-range "2007-01-01" "2007-01-04"
-          (let ((lakossag (lakossag-of telepules)))
-            (is (= 2 (length (values-of lakossag))))
-            (iter (for (value validity-start validity-end index) :in-values-having-validity lakossag)
-                  (ecase index
-                    (0 (is (and (= osszesen-1 (osszesen-of value))
-                                (local-time= validity-start (parse-datestring "2007-01-01"))
-                                (local-time= validity-end (parse-datestring "2007-01-02")))))
-                    (1 (is (and (= osszesen-2 (osszesen-of value))
-                                (local-time= validity-start (parse-datestring "2007-01-03"))
-                                (local-time= validity-end (parse-datestring "2007-01-04")))))))))))))
-
-(defun report-1 ()
-  (with-transaction
-    (values
-     (with-t "2007-01-01"
-       (iter (for telepules :in (select-instances telepules))
-             (collect
-                 (let ((osszes-lakos
-                        (osszesen-of
-                         (with-validity-range "2007-01-01" "2007-01-01"
-                           (lakossag-of telepules)))))
-                   (list
-                    (max (if (< osszes-lakos 500)
-                             3000000
-                             1500000)
-                         (* 1380 osszes-lakos))
-                    (* 515 osszes-lakos))))))
-     (select-counter-of (command-counter-of *transaction*))
-     (update-counter-of (command-counter-of *transaction*))
-     (insert-counter-of (command-counter-of *transaction*)))))
-
-;; TODO: parent slot should be lied
-(defpclass* xxx-parent-test ()
-  ((children :type (set xxx-child-test) :persistent #f :temporal #t :time-dependent #t :association #t))
-  (:metaclass persistent-class-t))
-
-;; TODO: parent slot should be lied
-(defpclass* xxx-child-test ()
-  ((parent :type xxx-parent-test :persistent #f :temporal #t :time-dependent #t :association #t))
-  (:metaclass persistent-class-t))
-
-(defpclass* xxx-parent-test~xxx-child-test~t ()
-  ((t-value :type timestamp)
-   (validity-start :type date)
-   (validity-end :type date)
-   (action :type integer-16)))
-
-(defassociation*
-  ((:class xxx-parent-test :slot xxx-parent-test~xxx-child-test~ts :type (set xxx-parent-test~xxx-child-test~t))
-   (:class xxx-parent-test~xxx-child-test~t :slot xxx-parent-test :type xxx-parent-test)))
-
-(defassociation*
-  ((:class xxx-child-test :slot xxx-parent-test~xxx-child-test~ts :type (set xxx-parent-test~xxx-child-test~t))
-   (:class xxx-parent-test~xxx-child-test~t :slot xxx-child-test :type xxx-child-test)))
-
-(deftest test-3 ()
-  (with-transaction
-    (with-t "2007-01-01"
-      (let ((parent (make-instance 'xxx-parent-test))
-            (child-1 (make-instance 'xxx-child-test))
-            (child-2 (make-instance 'xxx-child-test))
-            (child-3 (make-instance 'xxx-child-test))
-            (child-4 (make-instance 'xxx-child-test))
-            (child-5 (make-instance 'xxx-child-test)))
-        (with-validity-range "2007-01-01" "2007-01-02"
-          (setf (children-of parent) (list child-1 child-2)))
-        (with-validity-range "2007-01-03" "2007-01-04"
-          (setf (children-of parent) (list child-3 child-4)))
-        (with-validity-range "2007-01-02" "2007-01-03"
-          #+nil (insert-item (children-of* parent) child-5)
-          (insert-t-association-delta-records parent (find-slot 'xxx-parent-test 'children) (list child-5) +t-insert+)
-          #+nil (delete-item (children-of* parent) child-1)
-          (insert-t-association-delta-records parent (find-slot 'xxx-parent-test 'children) (list child-1) +t-delete+))
-        (with-validity-range "2007-01-01" "2007-01-01"
-          (is (equal (list child-2 child-1) (children-of parent))))
-        (with-validity-range "2007-01-04" "2007-01-04"
-          (is (equal (list child-4 child-3) (children-of parent))))
-        (with-validity-range "2007-01-01" "2007-01-04"
-          (let ((children (children-of parent)))
-            (is (= 4 (length (values-of children))))
-            (iter (for (value validity-start validity-end index) :in-values-having-validity children)
-                  (ecase index
-                    (0 (is (and (equal (list child-2 child-1) value)
-                                (local-time= validity-start (parse-datestring "2007-01-01"))
-                                (local-time= validity-end (parse-datestring "2007-01-01")))))
-                    (1 (is (and (equal (list child-5 child-2) value)
-                                (local-time= validity-start (parse-datestring "2007-01-02"))
-                                (local-time= validity-end (parse-datestring "2007-01-02")))))
-                    (2 (is (and (equal (list child-5 child-4 child-3) value)
-                                (local-time= validity-start (parse-datestring "2007-01-03"))
-                                (local-time= validity-end (parse-datestring "2007-01-03")))))
-                    (3 (is (and (equal (list child-4 child-3) value)
-                                (local-time= validity-start (parse-datestring "2007-01-04"))
-                                (local-time= validity-end (parse-datestring "2007-01-04")))))))))))))
-
-#|
-t = (now)
-validity-start = 2006-10-1
-validity-end = 2006-10-1
-
-(sum (osszesen-of (lakossag-of telepules)))
-
-telepules -> telepules-t -> lakossag
-telepules -> lakossag
-
-(select ((id-of telepules) (osszesen-of lakossag) (t-of telepules-t) (validity-start-of telepules-t) (validity-end-of telepules-t))
-  (from (telepules telepules) (telepules-t telepules-t) (lakossag lakossag))
-  (where (and (eq telepules (telepules-of telepules-t))
-              (eq lakossag (lakossag-of telepules-t))
-              (local-time<= (t-of telepules-t) *t*)
-              (local-time<= (validity-start-of telepules-t) *validity-end*)
-              (local-time<= *validity-start* (validity-end-of telepules-t)))))
-
-(select ((my** (id-of telepules)) (sum (osszesen-of lakossag)))
-  (from (telepules telepules) (telepules-t telepules-t) (lakossag lakossag))
-  (where (and (eq telepules (telepules-of telepules-t))
-              (eq lakossag (lakossag-of telepules-t))
-              (local-time<= (t-of telepules-t) *t*)
-              (local-time<= (validity-start-of telepules-t) *validity-end*)
-              (local-time<= *validity-start* (validity-end-of telepules-t)))))
-
-(let ((t1)
-      (t2))
-  (with-transaction
-    (setf t1 *transaction*)
-    (with-transaction
-      (setf t2 *transaction*)
-      (let ((instance-2 (select-object)))
-        (with-using-transaction t1
-          (let ((instance-1 (reload-instance instance-2)))))))))
-|#

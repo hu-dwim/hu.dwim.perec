@@ -123,6 +123,19 @@
             ,(generate variables l)))
         nil)))
 
+(defmacro bind-cartesian-product* (names-values-pairs &body forms)
+  (if names-values-pairs
+      (bind ((names-and-values (first names-values-pairs))
+             (names (first names-and-values))
+             (values (rest names-and-values)))
+        (cons 'progn
+              (iter (for value :in values)
+                    (collect `(bind ((,names ,value))
+                               (bind-cartesian-product* ,(rest names-values-pairs)
+                                ,@forms))))))
+      `(progn
+        ,@forms)) )
+
 (defun lessp (obj1 obj2)
   (typecase obj1
     (real (< obj1 obj2))
