@@ -177,6 +177,9 @@
     :documentation "The type check option is inherited among direct slots according to the class precedence list with defaulting to :always. for primitive types and :on-commit for class types."))
   (:documentation "Class for persistent effective slot definitions."))
 
+(eval-always
+  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:persistent :prefetch :cache :index :unique :type-check)))
+
 (defcclass* class-primary-table (table)
   ((oid-columns
     (compute-as (oid-mode-ecase
@@ -198,10 +201,6 @@
     :type sql-column
     :documentation "The RDBMS column of the corresponding oid slot."))
   (:documentation "This is a special table related to a persistent class."))
-
-;; :persistent is a slot definition option and may be set to #t or #f
-(eval-always
-  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:persistent :prefetch :cache :index :unique :type-check)))
 
 (defmethod describe-object ((instance persistent-class) stream)
   (call-next-method)
