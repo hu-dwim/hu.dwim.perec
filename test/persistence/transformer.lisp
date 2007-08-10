@@ -39,7 +39,7 @@
 
 (deftest test/persistence/transformer/or-unbound-boolean/unbound ()
   (is-equal-using-transformers '(or unbound boolean)
-                               prc::+unbound-slot-value+
+                               prc::+unbound-slot-marker+
                                (vector :null)))
 
 (deftest test/persistence/transformer/or-unbound-boolean/t ()
@@ -72,7 +72,7 @@
 
 (deftest test/persistence/transformer/or-unbound-integer/unbound ()
   (is-equal-using-transformers '(or unbound integer)
-                               prc::+unbound-slot-value+
+                               prc::+unbound-slot-marker+
                                (vector :null)))
 
 (deftest test/persistence/transformer/or-unbound-integer/integer ()
@@ -82,7 +82,7 @@
 
 (deftest test/persistence/transformer/or-unbound-null-integer/unbound ()
   (is-equal-using-transformers '(or unbound null integer)
-                               prc::+unbound-slot-value+
+                               prc::+unbound-slot-marker+
                                (vector #f :null)))
 
 (deftest test/persistence/transformer/or-unbound-null-integer/null ()
@@ -115,7 +115,7 @@
 
 (deftest test/persistence/transformer/or-unbound-string/unbound ()
   (is-equal-using-transformers '(or unbound string)
-                               prc::+unbound-slot-value+
+                               prc::+unbound-slot-marker+
                                (vector :null)))
 
 (deftest test/persistence/transformer/or-unbound-string/string ()
@@ -125,7 +125,7 @@
 
 (deftest test/persistence/transformer/or-unbound-null-string/unbound ()
   (is-equal-using-transformers '(or unbound null string)
-                               prc::+unbound-slot-value+
+                               prc::+unbound-slot-marker+
                                (vector #f :null)))
 
 (deftest test/persistence/transformer/or-unbound-null-string/null ()
@@ -153,7 +153,7 @@
 
 (deftest test/persistence/transformer/or-unbound-symbol/unbound ()
   (is-equal-using-transformers '(or unbound symbol)
-                               prc::+unbound-slot-value+
+                               prc::+unbound-slot-marker+
                                (vector :null)))
 
 (deftest test/persistence/transformer/or-unbound-symbol/nil ()
@@ -171,7 +171,7 @@
 
 (deftest test/persistence/transformer/t/unbound ()
   (is-equal-using-transformers t
-                               prc::+unbound-slot-value+
+                               prc::+unbound-slot-marker+
                                (vector :null)))
 
 (deftest test/persistence/transformer/t/nil ()

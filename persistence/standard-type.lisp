@@ -85,7 +85,7 @@
 
 ;; this type must be used to mark slots which might be unbound (e.g. (or unbound integer))
 (defptype unbound ()
-  `(eql ,+unbound-slot-value+))
+  `(eql ,+unbound-slot-marker+))
 
 (defmapping unbound (sql-boolean-type)
   (unbound-reader #L(error 'type-error :datum (first !1) :expected-type type))

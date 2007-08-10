@@ -25,7 +25,7 @@
                (setf (underlying-slot-value-using-class (class-of old-other-instance) old-other-instance other-slot)
                      nil))))
          (when (and new-value
-                    (not (unbound-slot-value-p new-value))
+                    (not (unbound-slot-marker-p new-value))
                     (slot-value-cached-p new-value other-slot))
            (when-bind old-other-new-value
                (and (underlying-slot-boundp-using-class new-value-class new-value other-slot)
@@ -39,7 +39,7 @@
            (bind ((other-slot (other-association-end-of slot))
                   ((values cache-p old-slot-value) (slot-value-cached-p instance slot)))
              (if cache-p
-                 (unless (unbound-slot-value-p old-slot-value)
+                 (unless (unbound-slot-marker-p old-slot-value)
                    (dolist (child old-slot-value)
                      (invalidate-cached-slot child other-slot)))
                  (invalidate-cached-1-n-association-end-set-slot other-slot))))))))

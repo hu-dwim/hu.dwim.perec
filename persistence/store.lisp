@@ -7,20 +7,20 @@
   "True means slot-value-using-class will by default return lazy collections.")
 
 (eval-always
-  (unless (fboundp 'make-unbound-value)
-    (defstruct unbound-value
+  (unless (fboundp 'make-unbound-marker)
+    (defstruct unbound-marker
       "This structure is used for the unbound slot value marker. The type for that marker must be a subtype of t and cannot be a subtype of any other type.")))
 
-(define-constant +unbound-slot-value+ (make-unbound-value)
+(define-constant +unbound-slot-marker+ (make-unbound-marker)
   :test equalp
   :documentation "This value is used to signal unbound slot value returned from database.")
 
-(defmethod make-load-form ((instance unbound-value) &optional environment)
+(defmethod make-load-form ((instance unbound-marker) &optional environment)
   (declare (ignore environment))
-  '(make-unbound-value))
+  '(make-unbound-marker))
 
-(def (function io) unbound-slot-value-p (value)
-  (eq +unbound-slot-value+ value))
+(def (function io) unbound-slot-marker-p (value)
+  (eq +unbound-slot-marker+ value))
 
 ;;;;;;;;;;;
 ;;; Utility
@@ -219,7 +219,7 @@
            (bind ((other-slot (other-effective-association-end-for (class-of other-instance) slot)))
              (store-slot other-instance other-slot nil)))
          (when (and value
-                    (not (unbound-slot-value-p value)))
+                    (not (unbound-slot-marker-p value)))
            (bind ((other-slot (other-effective-association-end-for (class-of value) slot)))
              (store-slot value other-slot instance))))
         ((and (typep slot 'persistent-association-end-effective-slot-definition)

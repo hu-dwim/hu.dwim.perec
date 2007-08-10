@@ -24,13 +24,13 @@
 (def-transformer-wrapper unbound-reader
   (lambda (rdbms-values index)
     (if (is-vector-of-constant rdbms-values :null index column-number)
-        +unbound-slot-value+
+        +unbound-slot-marker+
         (funcall function rdbms-values index))))
 
 (def-transformer-wrapper non-unbound-reader
   (lambda (rdbms-values index)
     (prog1-bind slot-value (funcall function rdbms-values index)
-      (when (unbound-slot-value-p slot-value)
+      (when (unbound-slot-marker-p slot-value)
         (if slot
             (error 'unbound-slot :instance nil :name (slot-definition-name slot))
             (error 'type-error :datum slot-value :expected-type type))))))
@@ -38,13 +38,13 @@
 (def-transformer-wrapper unbound-writer
   (bind ((unbound-rdbms-value (make-array column-number :initial-element :null)))
     (lambda (slot-value rdbms-values index)
-      (if (unbound-slot-value-p slot-value)
+      (if (unbound-slot-marker-p slot-value)
           (replace rdbms-values unbound-rdbms-value :start1 index)
           (funcall function slot-value rdbms-values index)))))
 
 (def-transformer-wrapper non-unbound-writer
   (lambda (slot-value rdbms-values index)
-    (if (unbound-slot-value-p slot-value)
+    (if (unbound-slot-marker-p slot-value)
         (if slot
             (error 'unbound-slot :instance nil :name (slot-definition-name slot))
             (error 'type-error :datum slot-value :expected-type type))
@@ -100,7 +100,7 @@
                        (return-from equal-vector #f)))
                #t))
         (cond ((equal-vector unbound-rdbms-values rdbms-values index column-number)
-               +unbound-slot-value+)
+               +unbound-slot-marker+)
               ((equal-vector nil-rdbms-values rdbms-values index column-number)
                nil)
               (t (funcall function rdbms-values (1+ index))))))))
@@ -112,7 +112,7 @@
          (nil-rdbms-values (aprog1 (copy-seq rdbms-column-values)
                              (setf (elt it 0) #t))))
     (lambda (slot-value rdbms-values index)
-      (cond ((unbound-slot-value-p slot-value)
+      (cond ((unbound-slot-marker-p slot-value)
              (replace rdbms-values unbound-rdbms-values :start1 index))
             ((null slot-value)
              (replace rdbms-values nil-rdbms-values :start1 index))
