@@ -118,6 +118,16 @@
 ;;;;;;;;;;;;;;;;
 ;;; Type checker
 
+(defparameter *type-check-slot-values* #t)
+
+(defmacro with-type-checking-slot-values (&body body)
+  `(bind ((*type-check-slot-values* #t))
+    ,@body))
+
+(defmacro without-type-checking-slot-values (&body body)
+  `(bind ((*type-check-slot-values* #f))
+    ,@body))
+
 (defcondition* slot-type-error (type-error)
   ((instance
     nil
@@ -133,16 +143,17 @@
              (instance-of condition)
              (type-error-expected-type condition)))))
 
-(def (function io) check-slot-type (instance slot slot-value &optional (on-commit #f))
-  (bind ((type (if on-commit
-                   (slot-definition-type slot)
-                   (always-checked-type-of slot)))
-         (normalized-type (normalized-type-of slot))
-         (check-type (if (set-type-p normalized-type)
-                         (set-type-class-for normalized-type)
-                         type)))
-    (unless (typep slot-value check-type)
-      (error 'slot-type-error :instance instance :slot slot :datum slot-value :expected-type type))))
+(def (function io) check-slot-value-type (instance slot slot-value &optional (on-commit #f))
+  (when *type-check-slot-values*
+    (bind ((type (if on-commit
+                     (slot-definition-type slot)
+                     (always-checked-type-of slot)))
+           (normalized-type (normalized-type-of slot))
+           (check-type (if (set-type-p normalized-type)
+                           (set-type-class-for normalized-type)
+                           type)))
+      (unless (typep slot-value check-type)
+        (error 'slot-type-error :instance instance :slot slot :datum slot-value :expected-type type)))))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; Canonical type

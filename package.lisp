@@ -266,7 +266,11 @@
 
            ;; laziness
            #:with-lazy-collections
-           #:without-lazy-collections))
+           #:without-lazy-collections
+
+           ;; type check
+           #:with-type-checking-slot-values
+           #:without-type-checking-slot-values))
 
 (in-package :cl-perec)
 

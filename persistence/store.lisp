@@ -172,7 +172,7 @@
   (delete-slot-set instance slot)
   (when values
     (dolist (value values)
-      (check-slot-type instance slot value))
+      (check-slot-value-type instance slot value))
     (let ((rdbms-values (make-array +oid-column-count+)))
       (object-writer instance rdbms-values 0)
       (update-records (name-of (table-of slot))
@@ -189,7 +189,7 @@
 		  (id-column-matcher-where-clause instance (id-column-of slot))))
 
 (def (function o) insert-into-m-n-association-end-set (instance slot value)
-  (check-slot-type instance slot value)
+  (check-slot-value-type instance slot value)
   (bind ((other-slot (other-association-end-of slot))
          (rdbms-values (make-array (* 2 +oid-column-count+))))
     (object-writer value rdbms-values 0)
@@ -203,7 +203,7 @@
   (delete-m-n-association-end-set instance slot)
   (when value
     (mapc #L(progn
-              (check-slot-type instance slot !1)
+              (check-slot-value-type instance slot !1)
               (insert-into-m-n-association-end-set instance slot !1))
           value)))
 
@@ -212,7 +212,7 @@
   (cond ((and (typep slot 'persistent-association-end-effective-slot-definition)
 	      (eq (association-kind-of (association-of slot)) :1-1)
               (secondary-association-end-p slot))
-         (check-slot-type instance slot value)
+         (check-slot-value-type instance slot value)
          (when-bind other-instance (and (persistent-p instance)
                                         (slot-boundp-using-class (class-of instance) instance slot)
                                         (slot-value-using-class (class-of instance) instance slot))
@@ -236,7 +236,7 @@
 	((set-type-p (normalized-type-of slot))
          (store-slot-set instance slot value))
 	(t
-         (check-slot-type instance slot value)
+         (check-slot-value-type instance slot value)
          (when-bind columns (columns-of slot)
            (bind ((rdbms-values (make-array (length (the list columns)))))
              (store-slot-value slot value rdbms-values 0)
@@ -261,7 +261,7 @@
         (iter (for slot :in slots)
               (for slot-value :in slot-values)
               (for index :initially 0 :then (the fixnum (+ index (length (columns-of slot)))))
-              (check-slot-type instance slot slot-value)
+              (check-slot-value-type instance slot slot-value)
               (store-slot-value slot slot-value rdbms-values index))
         (if (persistent-p instance)
             (update-records (name-of table) columns rdbms-values (id-column-matcher-where-clause instance))

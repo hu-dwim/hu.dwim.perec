@@ -37,7 +37,7 @@
                (when (eq :on-commit (type-check-of slot))
                  (bind (((values cached-p slot-value) (slot-value-cached-p instance slot)))
                    (when cached-p
-                     (check-slot-type instance slot slot-value #t))))))))
+                     (check-slot-value-type instance slot slot-value #t))))))))
 
 (defgeneric after-instance-committed (instance event)
   (:method (instance event)

@@ -87,7 +87,7 @@
   (bind ((slot (slot-of set))
          (other-slot (other-association-end-of slot))
          (instance (instance-of set)))
-    (check-slot-type instance slot item)
+    (check-slot-value-type instance slot item)
     (delete-records (name-of (table-of (slot-of set)))
                     (sql-and (id-column-matcher-where-clause item (id-column-of slot))
                              (id-column-matcher-where-clause instance (id-column-of other-slot))))))
