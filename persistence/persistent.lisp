@@ -255,9 +255,13 @@
          (progn
            (aif ,singleton-variable-name
                 (load-instance it)
-                (setf ,singleton-variable-name
-                      (progn
-                        ,@forms))))))))
+                (progn
+                  (register-transaction-hook :before :rollback
+                                             (lambda ()
+                                               (setf ,singleton-variable-name nil)))
+                  (setf ,singleton-variable-name
+                        (progn
+                          ,@forms)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Making instances persistent and transient
