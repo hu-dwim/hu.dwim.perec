@@ -11,6 +11,14 @@
            (with-and-without-caching-slot-values
              (run-child-tests))))
     (body)
+    (bind ((*association-1-1-brother-class-name* 'strict-brother-test)
+           (*association-1-1-sister-class-name* 'strict-sister-test))
+      (test/persistence/association/1-1/initial-value/2)
+      (test/persistence/association/1-1/initial-value/3)
+      (test/persistence/association/1-1/store-value/1)
+      (test/persistence/association/1-1/store-value/2)
+      (test/persistence/association/1-1/referential-integrity/1)
+      (test/persistence/association/1-1/referential-integrity/2))
     (bind ((*association-1-1-brother-class-name* '1-1-self-association-test)
            (*association-1-1-sister-class-name* '1-1-self-association-test))
       (body))))
@@ -79,13 +87,15 @@
   (with-transaction
     (bind ((sister (make-instance *association-1-1-sister-class-name*))
            (brother (make-instance *association-1-1-brother-class-name* :sister sister)))
-      (is (eq (sister-of brother) sister)))))
+      (is (eq (sister-of brother) sister))
+      (is (eq (brother-of sister) brother)))))
 
 (deftest test/persistence/association/1-1/initial-value/3 ()
   (with-transaction
     (bind ((brother (make-instance *association-1-1-brother-class-name*))
            (sister (make-instance *association-1-1-sister-class-name* :brother brother)))
-      (is (eq (brother-of sister) brother)))))
+      (is (eq (brother-of sister) brother))
+      (is (eq (sister-of brother) sister)))))
 
 (deftest test/persistence/association/1-1/store-value/1 ()
   (with-sister-and-brother-transaction

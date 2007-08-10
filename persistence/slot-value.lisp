@@ -13,7 +13,6 @@
   (:documentation "Partially invalidate or update the cache to reflect setting the slot of instance to new-value.")
 
   (:method ((class persistent-class) (instance persistent-object) (slot persistent-effective-slot-definition) new-value)
-           (debug-only (assert (debug-persistent-p instance)))
            (values)))
 
 (def (function o) invalidate-all-cached-slots (instance)
@@ -29,7 +28,6 @@
 
 (def (function io) slot-value-cached-p (instance slot)
   "Tells whether the given slot is cached in the instance or not."
-  (debug-only (assert (debug-persistent-p instance)))
   (bind ((value (standard-instance-access instance (slot-definition-location slot))))
     (values
      (not (eq +not-cached-slot-value+ value))
@@ -187,8 +185,8 @@
     ;; always store the slot into the database
     (when persistent
       (store-slot instance slot new-value)
-      (update-instance-cache-for-modified-instance instance)
-      (propagate-cache-changes class instance slot new-value))
+      (update-instance-cache-for-modified-instance instance))
+    (propagate-cache-changes class instance slot new-value)
     (when (or (not persistent)
               (and *cache-slot-values*
                    (cache-p slot)))

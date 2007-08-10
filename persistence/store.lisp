@@ -212,10 +212,11 @@
   (cond ((and (typep slot 'persistent-association-end-effective-slot-definition)
 	      (eq (association-kind-of (association-of slot)) :1-1)
               (secondary-association-end-p slot))
-         (when-bind other-instance (and (slot-boundp-using-class (class-of instance) instance slot)
+         (check-slot-type instance slot value)
+         (when-bind other-instance (and (persistent-p instance)
+                                        (slot-boundp-using-class (class-of instance) instance slot)
                                         (slot-value-using-class (class-of instance) instance slot))
            (bind ((other-slot (other-effective-association-end-for (class-of other-instance) slot)))
-             (check-slot-type instance slot value)
              (store-slot other-instance other-slot nil)))
          (when (and value
                     (not (unbound-slot-value-p value)))

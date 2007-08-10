@@ -6,7 +6,6 @@
 (defmethod propagate-cache-changes ((class persistent-class)
                                     (instance persistent-object)
                                     (slot persistent-association-end-effective-slot-definition) new-value)
-  (debug-only (assert (debug-persistent-p instance)))
   (bind ((other-slot (other-association-end-of slot)))
     (cond ((eq (association-kind-of (association-of slot)) :1-1)
            ;; BEFORE
