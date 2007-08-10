@@ -143,6 +143,7 @@
              (instance-of condition)
              (type-error-expected-type condition)))))
 
+;; TODO: take care about performance
 (def (function io) check-slot-value-type (instance slot slot-value &optional (on-commit #f))
   (when *type-check-slot-values*
     (bind ((type (if on-commit

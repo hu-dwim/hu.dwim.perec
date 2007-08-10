@@ -30,7 +30,7 @@
 (def-transformer-wrapper non-unbound-reader
   (lambda (rdbms-values index)
     (prog1-bind slot-value (funcall function rdbms-values index)
-      (when (eq +unbound-slot-value+ slot-value)
+      (when (unbound-slot-value-p slot-value)
         (if slot
             (error 'unbound-slot :instance nil :name (slot-definition-name slot))
             (error 'type-error :datum slot-value :expected-type type))))))
@@ -38,13 +38,13 @@
 (def-transformer-wrapper unbound-writer
   (bind ((unbound-rdbms-value (make-array column-number :initial-element :null)))
     (lambda (slot-value rdbms-values index)
-      (if (eq +unbound-slot-value+ slot-value)
+      (if (unbound-slot-value-p slot-value)
           (replace rdbms-values unbound-rdbms-value :start1 index)
           (funcall function slot-value rdbms-values index)))))
 
 (def-transformer-wrapper non-unbound-writer
   (lambda (slot-value rdbms-values index)
-    (if (eq +unbound-slot-value+ slot-value)
+    (if (unbound-slot-value-p slot-value)
         (if slot
             (error 'unbound-slot :instance nil :name (slot-definition-name slot))
             (error 'type-error :datum slot-value :expected-type type))
@@ -112,7 +112,7 @@
          (nil-rdbms-values (aprog1 (copy-seq rdbms-column-values)
                              (setf (elt it 0) #t))))
     (lambda (slot-value rdbms-values index)
-      (cond ((eq +unbound-slot-value+ slot-value)
+      (cond ((unbound-slot-value-p slot-value)
              (replace rdbms-values unbound-rdbms-values :start1 index))
             ((null slot-value)
              (replace rdbms-values nil-rdbms-values :start1 index))

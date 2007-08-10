@@ -9,6 +9,9 @@
 (defparameter *cache-slot-values* #t
   "True means slot values will be cached in the slots of the persistent instances. Writing a slot still goes directly to the database but it will be also stored in the instance. If the instance's state is modified in the database it is up to the modifier to clear the list of cached slots from the instance using the invalidate functions. The purpose of the slot value cache is to increase performance and reduce the number of database interactions during a transaction.")
 
+(def (function io) not-cached-slot-value-p (value)
+  (eq +not-cached-slot-value+ value))
+
 (defgeneric propagate-cache-changes (class instance slot new-value)
   (:documentation "Partially invalidate or update the cache to reflect setting the slot of instance to new-value.")
 
@@ -30,7 +33,7 @@
   "Tells whether the given slot is cached in the instance or not."
   (bind ((value (standard-instance-access instance (slot-definition-location slot))))
     (values
-     (not (eq +not-cached-slot-value+ value))
+     (not (not-cached-slot-value-p value))
      value)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -75,7 +78,7 @@
 (def (function io) underlying-slot-value-using-class (class instance slot)
   "Returns the cached value of the instance's slot similar to slot-value-using-class but never interacts with the database."
   (bind ((value (underlying-slot-boundp-or-value-using-class class instance slot)))
-    (if (eq value +unbound-slot-value+)
+    (if (unbound-slot-value-p value)
         (values (slot-unbound class instance (slot-definition-name slot)))
         value)))
 
@@ -89,13 +92,13 @@
 
 (def (function io) underlying-slot-boundp-using-class (class instance slot)
   "Returns the cached boundness of the instance's slot similar to slot-boundp-using-class but never interacts with the database."
-  (not (eq +unbound-slot-value+ (underlying-slot-boundp-or-value-using-class class instance slot))))
+  (not (unbound-slot-value-p (underlying-slot-boundp-or-value-using-class class instance slot))))
 
 (def (function io) underlying-slot-boundp-or-value-using-class (class instance slot)
   "Either returns the cached slot value or the unbound slot marker. This method does not interact with the database."
   (declare (ignore class))
   (prog1-bind value (standard-instance-access instance (slot-definition-location slot))
-    (assert (not (eq value +not-cached-slot-value+)))
+    (assert (not (not-cached-slot-value-p value)))
     #+sbcl
     (debug-only
       (assert (not (eq value sb-pcl::+slot-unbound+))))))
@@ -104,7 +107,7 @@
   "Either sets the slot value to the given new value or makes the slot unbound if the new value is the unbound marker. This method does not interact with the database."
   (declare (ignore class))
   (debug-only
-    (assert (not (eq new-value +not-cached-slot-value+)))
+    (assert (not (not-cached-slot-value-p new-value)))
     #+sbcl
     (assert (not (eq new-value sb-pcl::+slot-unbound+))))
   (setf (standard-instance-access instance (slot-definition-location slot)) new-value))
@@ -198,7 +201,7 @@
                                    (slot persistent-effective-slot-definition))
   "Reads the slot value from the database or the cache."
   (slot-boundp-or-value-using-class class instance slot
-                                    #L(if (eq !1 +unbound-slot-value+)
+                                    #L(if (unbound-slot-value-p !1)
                                           (slot-unbound class instance (slot-definition-name slot))
                                           !1)))
 
@@ -208,15 +211,15 @@
                                           (slot persistent-effective-slot-definition))
   "Writes the new slot value to the database and the cache."
   (debug-only
-    (assert (not (or (eq new-value +not-cached-slot-value+)
-                     (eq new-value +unbound-slot-value+)))))
+    (assert (not (or (not-cached-slot-value-p new-value)
+                     (unbound-slot-value-p new-value)))))
   (setf (slot-boundp-or-value-using-class class instance slot) new-value))
 
 (defmethod slot-boundp-using-class ((class persistent-class)
                                     (instance persistent-object)
                                     (slot persistent-effective-slot-definition))
   "Reads boundness from the database or the cache."
-  (slot-boundp-or-value-using-class class instance slot #L(not (eq +unbound-slot-value+ !1))))
+  (slot-boundp-or-value-using-class class instance slot #L(not (unbound-slot-value-p !1))))
 
 (defmethod slot-makunbound-using-class ((class persistent-class)
                                         (instance persistent-object)
