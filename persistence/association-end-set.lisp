@@ -6,34 +6,43 @@
 (defmethod propagate-cache-changes ((class persistent-class)
                                     (instance persistent-object)
                                     (slot persistent-association-end-effective-slot-definition) new-value)
-  (bind ((other-slot (other-association-end-of slot)))
-    (cond ((eq (association-kind-of (association-of slot)) :1-1)
-           ;; BEFORE
-           ;; instance <-> old-other-instance
-           ;; new-value <-> old-other-new-value
-           ;; AFTER
-           ;; old-other-instance -> nil
-           ;; instance <-> new-value
-           ;; old-other-new-value -> nil
-           (when (slot-value-cached-p instance slot)
-             (when-bind old-other-instance (and (underlying-slot-boundp-using-class class instance slot)
-                                                (underlying-slot-value-using-class class instance slot))
-               (when (slot-value-cached-p old-other-instance other-slot)
-                 (setf (underlying-slot-value-using-class (class-of old-other-instance) old-other-instance other-slot)
-                       nil))))
-           (when (and new-value
-                      (not (unbound-slot-value-p new-value))
-                      (slot-value-cached-p new-value other-slot))
-             (when-bind old-other-new-value
-                 (and (underlying-slot-boundp-using-class (class-of new-value) new-value other-slot)
-                      (underlying-slot-value-using-class (class-of new-value) new-value other-slot))
-               (when old-other-new-value
-                 (setf (underlying-slot-value-using-class (class-of old-other-new-value) old-other-new-value slot) nil)))
-             (setf (underlying-slot-value-using-class (class-of new-value) new-value other-slot) instance)))
-          ((eq (association-kind-of (association-of slot)) :1-n)
-           ;; invalidate all cached back references 
-           (if (eq (cardinality-kind-of slot) :n)
-               (invalidate-cached-1-n-association-end-set-slot other-slot))))))
+  (bind ((association-kind (association-kind-of (association-of slot))))
+    (case association-kind
+      (:1-1
+       ;; BEFORE
+       ;; instance <-> old-other-instance
+       ;; new-value <-> old-other-new-value
+       ;; AFTER
+       ;; old-other-instance -> nil
+       ;; instance <-> new-value
+       ;; old-other-new-value -> nil
+       (bind ((other-slot (other-association-end-of slot))
+              (new-value-class (class-of new-value)))
+         (when (slot-value-cached-p instance slot)
+           (when-bind old-other-instance (and (underlying-slot-boundp-using-class class instance slot)
+                                              (underlying-slot-value-using-class class instance slot))
+             (when (slot-value-cached-p old-other-instance other-slot)
+               (setf (underlying-slot-value-using-class (class-of old-other-instance) old-other-instance other-slot)
+                     nil))))
+         (when (and new-value
+                    (not (unbound-slot-value-p new-value))
+                    (slot-value-cached-p new-value other-slot))
+           (when-bind old-other-new-value
+               (and (underlying-slot-boundp-using-class new-value-class new-value other-slot)
+                    (underlying-slot-value-using-class new-value-class new-value other-slot))
+             (when old-other-new-value
+               (setf (underlying-slot-value-using-class (class-of old-other-new-value) old-other-new-value slot) nil)))
+           (setf (underlying-slot-value-using-class new-value-class new-value other-slot) instance))))
+      (:1-n
+       ;; invalidate all cached back references 
+       (if (eq (cardinality-kind-of slot) :n)
+           (bind ((other-slot (other-association-end-of slot))
+                  ((values cache-p old-slot-value) (slot-value-cached-p instance slot)))
+             (if cache-p
+                 (unless (unbound-slot-value-p old-slot-value)
+                   (dolist (child old-slot-value)
+                     (invalidate-cached-slot child other-slot)))
+                 (invalidate-cached-1-n-association-end-set-slot other-slot))))))))
 
 ;; TODO: this is hell slow for huge transactions, what if this kind of caching is turned off after some limit?
 (defun invalidate-cached-1-n-association-end-set-slot (slot)
