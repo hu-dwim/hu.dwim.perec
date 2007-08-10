@@ -115,6 +115,35 @@
 (defun substitute-type-arguments (type args)
   (apply (substituter-of (find-type type)) args))
 
+;;;;;;;;;;;;;;;;
+;;; Type checker
+
+(defcondition* slot-type-error (type-error)
+  ((instance
+    nil
+    :type persistent-object)
+   (slot
+    :type persistent-effective-slot-definition))
+  (:report
+   (lambda (condition stream)
+     (format stream
+             "~@<The value ~2I~:_~S ~I~_in slot ~A of instance ~A is not of type ~2I~_~S.~:>"
+             (type-error-datum condition)
+             (slot-definition-name (slot-of condition))
+             (instance-of condition)
+             (type-error-expected-type condition)))))
+
+(def (function io) check-slot-type (instance slot slot-value &optional (on-commit #f))
+  (bind ((type (if on-commit
+                   (slot-definition-type slot)
+                   (always-checked-type-of slot)))
+         (normalized-type (normalized-type-of slot))
+         (check-type (if (set-type-p normalized-type)
+                         (set-type-class-for normalized-type)
+                         type)))
+    (unless (typep slot-value check-type)
+      (error 'slot-type-error :instance instance :slot slot :datum slot-value :expected-type type))))
+
 ;;;;;;;;;;;;;;;;;;
 ;;; Canonical type
 

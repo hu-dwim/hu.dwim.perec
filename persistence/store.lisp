@@ -32,9 +32,9 @@
   (oid->rdbms-values* (oid-of slot-value) rdbms-values index))
 
 (def (function io) id-column-matcher-where-clause (instance &optional (id-name +oid-id-column-name+))
-     (sql-binary-operator :name '=
-                          :left (sql-identifier :name id-name)
-                          :right (sql-literal :type +oid-id-sql-type+ :value (id-of instance))))
+  (sql-binary-operator :name '=
+                       :left (sql-identifier :name id-name)
+                       :right (sql-literal :type +oid-id-sql-type+ :value (id-of instance))))
 
 (def (function io) id-column-list-matcher-where-clause (values &optional (id-name +oid-id-column-name+))
   (sql-binary-operator :name 'in
@@ -167,16 +167,18 @@
 		  '(nil nil)
 		  (id-column-matcher-where-clause instance (id-column-of slot))))
 
-(def (function o) store-slot-set (instance slot value)
+(def (function o) store-slot-set (instance slot values)
   "Stores the non lazy list without local side effects into the database."
   (delete-slot-set instance slot)
-  (when value
+  (when values
+    (dolist (value values)
+      (check-slot-type instance slot value))
     (let ((rdbms-values (make-array +oid-column-count+)))
       (object-writer instance rdbms-values 0)
       (update-records (name-of (table-of slot))
                       (columns-of slot)
                       rdbms-values
-                      (id-column-list-matcher-where-clause value)))))
+                      (id-column-list-matcher-where-clause values)))))
 
 (def (function o) store-1-n-association-end-set (instance slot value)
   "Stores the non lazy list association end value without local side effects into the database."
@@ -187,6 +189,7 @@
 		  (id-column-matcher-where-clause instance (id-column-of slot))))
 
 (def (function o) insert-into-m-n-association-end-set (instance slot value)
+  (check-slot-type instance slot value)
   (bind ((other-slot (other-association-end-of slot))
          (rdbms-values (make-array (* 2 +oid-column-count+))))
     (object-writer value rdbms-values 0)
@@ -199,7 +202,10 @@
   "Stores the non lazy list association end value without local side effects into the database."
   (delete-m-n-association-end-set instance slot)
   (when value
-    (mapc #L(insert-into-m-n-association-end-set instance slot !1) value)))
+    (mapc #L(progn
+              (check-slot-type instance slot !1)
+              (insert-into-m-n-association-end-set instance slot !1))
+          value)))
 
 (def (function o) store-slot (instance slot value)
   "Stores a single slot without local side effects into the database."
@@ -209,6 +215,7 @@
          (when-bind other-instance (and (slot-boundp-using-class (class-of instance) instance slot)
                                         (slot-value-using-class (class-of instance) instance slot))
            (bind ((other-slot (other-effective-association-end-for (class-of other-instance) slot)))
+             (check-slot-type instance slot value)
              (store-slot other-instance other-slot nil)))
          (when (and value
                     (not (unbound-slot-value-p value)))
@@ -228,6 +235,7 @@
 	((set-type-p (normalized-type-of slot))
          (store-slot-set instance slot value))
 	(t
+         (check-slot-type instance slot value)
          (when-bind columns (columns-of slot)
            (bind ((rdbms-values (make-array (length (the list columns)))))
              (store-slot-value slot value rdbms-values 0)
@@ -252,6 +260,7 @@
         (iter (for slot :in slots)
               (for slot-value :in slot-values)
               (for index :initially 0 :then (the fixnum (+ index (length (columns-of slot)))))
+              (check-slot-type instance slot slot-value)
               (store-slot-value slot slot-value rdbms-values index))
         (if (persistent-p instance)
             (update-records (name-of table) columns rdbms-values (id-column-matcher-where-clause instance))

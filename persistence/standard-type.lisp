@@ -210,7 +210,7 @@
 ;;; non float -> (type-error)
 
 (defptype float (&optional minimum-value maximum-value)
-  `(float ,minimum-value ,maximum-value))
+  `(or integer (float ,minimum-value ,maximum-value)))
 
 (defmapping float (sql-float-type :bite-size 64)
   'object->number-reader
@@ -223,7 +223,7 @@
 
 ;; TODO: minimum-value maximum-value
 (defptype float-32 ()
-  'float)
+  '(or integer float))
 
 (defmapping float-32 (sql-float-type :bit-size 32)
   'object->number-reader
@@ -236,7 +236,7 @@
 
 ;; TODO: minimum-value maximum-value
 (defptype float-64 ()
-  'float)
+  '(or integer float))
 
 (defmapping float-64 (sql-float-type :bit-size 64)
   'object->number-reader

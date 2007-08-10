@@ -49,23 +49,23 @@
       (is (persistent-p instance)))))
 
 (deftest test/persistence/lock-instance/1 ()
-  (finishes
-    (with-transaction
-      (let ((instance (make-instance 'persistence-test :name "the one")))
-        (lock-instance instance :wait #t))))
+  (with-one-and-two-transactions
+      (make-instance 'persistence-test :name "the one")
+    (is (lock-instance -instance- :wait #t)))
+  (with-one-and-two-transactions
+      (make-instance 'persistence-test :name "the one")
+    (is (lock-instance -instance- :wait #f))))
+
+(deftest test/persistence/lock-instance/2 ()
   (let ((instance
          (with-transaction
            (make-instance 'persistence-test :name "the one"))))
-    (is (with-transaction
-          (lock-instance instance :wait #f)))))
-
-(deftest test/persistence/lock-instance/2 ()
-  (with-transaction
-    (let ((instance (make-instance 'persistence-test :name "the one")))
-      (lock-instance instance :wait #t)
+    (with-transaction
+      (with-reloaded-instance instance
+        (lock-instance instance :wait #t))
       (is (not
            (with-transaction
-             (with-revived-instance instance
+             (with-reloaded-instance instance
                (lock-instance instance :wait #f))))))))
 
 (defpclass* initform-1-test ()

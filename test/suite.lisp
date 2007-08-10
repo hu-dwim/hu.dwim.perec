@@ -51,7 +51,8 @@
   (drop-all-test-tables)
   (mapc #L(awhen (cl-perec::primary-table-of !1)
             (cl-perec::invalidate-computed-slot it 'prc::ensure-exported))
-        (hash-table-values cl-perec::*persistent-classes*))
+        (append (hash-table-values cl-perec::*persistent-classes*)
+                (hash-table-values cl-perec::*persistent-associations*)))
   (test))
 
 (in-root-suite)

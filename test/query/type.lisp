@@ -110,8 +110,8 @@
 
 (def-query-type-test string/1 string "")
 (def-query-type-test string/2 string (random-string 10000))
-(def-query-type-test string/3 (string 20) "")
-(def-query-type-test string/4 (string 20) "something")
+(def-query-type-test string/3 (string 20) "                    ")
+(def-query-type-test string/4 (string 20) "something           ")
 
 (def-query-type-test symbol/1 symbol 'something)
 (def-query-type-test symbol/2 symbol 'cl-perec-test::something)

@@ -177,9 +177,13 @@
 (deftest test/persistence/transformer/t/nil ()
   (is-equal-using-transformers t
                                nil
-                               (vector #(67 108 115 84 10 35 1 3 78 73 76 35 1 11 67 79 77 77 79 78 45 76 73 83 80))))
+                               (vector
+                                (flexi-streams:with-output-to-sequence (stream)
+                                  (cl-store:store nil stream)))))
 
 (deftest test/persistence/transformer/t/something ()
   (is-equal-using-transformers t
                                'something
-                               (vector #(67 108 115 84 10 5 1 9 83 79 77 69 84 72 73 78 71 5 1 13 67 76 45 80 69 82 69 67 45 84 69 83 84))))
+                               (vector
+                                (flexi-streams:with-output-to-sequence (stream)
+                                  (cl-store:store 'something stream)))))

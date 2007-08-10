@@ -550,7 +550,10 @@
        (subtypep type '(ordered-set persistent-object))))
 
 (defun set-type-class-for (type)
-  (second (find-if #L(member (first (ensure-list !1)) '(set disjunct-set ordered-set)) type)))
+  (second
+   (find-if #L(member (first (ensure-list !1))
+                      '(set disjunct-set ordered-set))
+            (ensure-list type))))
 
 (defun unbound-subtype-p (type)
   (and (not (eq 'member type))

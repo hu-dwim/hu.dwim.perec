@@ -35,6 +35,16 @@
   ((:class strict-brother-test :slot sister :type strict-sister-test)
    (:class strict-sister-test :slot brother :type strict-brother-test)))
 
+(defpclass* unbound-brother-test ()
+  ())
+   
+(defpclass* unbound-sister-test ()
+  ())
+
+(defassociation*
+  ((:class unbound-brother-test :slot sister :type (or unbound unbound-sister-test))
+   (:class unbound-sister-test :slot brother :type (or unbound unbound-brother-test))))
+
 (defpclass* 1-1-self-association-test ()
   ())
 

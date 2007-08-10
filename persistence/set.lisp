@@ -50,9 +50,11 @@
     :type persistent-effective-slot-definition)))
 
 (defmethod insert-item ((set persistent-slot-set-container) (item persistent-object))
-  (bind ((slot (slot-of set)))
+  (bind ((slot (slot-of set))
+         (instance (instance-of set)))
+    (check-slot-type instance slot item)
     (let ((rdbms-values (make-array +oid-column-count+)))
-      (object-writer (instance-of set) rdbms-values 0)
+      (object-writer instance rdbms-values 0)
       (update-records (name-of (table-of slot))
                       (columns-of slot)
                       rdbms-values
@@ -60,6 +62,7 @@
 
 (defmethod delete-item ((set persistent-slot-set-container) (item persistent-object))
   (bind ((slot (slot-of set)))
+    (check-slot-type (instance-of set) slot item)
     (update-records (name-of (table-of slot))
                     (columns-of slot)
                     '(nil nil)

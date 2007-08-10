@@ -16,7 +16,7 @@
   (if prc::*cache-slot-values* counter (+ counter value)))
 
 (defpclass* cache-test ()
-  ((name nil :type (or null (string 20)))))
+  ((name nil :type (or null (text 20)))))
 
 (deftest test/persistence/cache/slot/read-initial-value ()
   (with-transaction
@@ -121,13 +121,13 @@
 (deftest test/persistence/cache/association/1-1/write-unbound ()
   (with-transaction
     (finishes
-      (bind ((brother (make-instance 'strict-brother-test)))
+      (bind ((brother (make-instance 'unbound-brother-test)))
         (select (b)
-          (from (b strict-brother-test)))))
+          (from (b unbound-brother-test)))))
     (finishes
-      (bind ((sister (make-instance 'strict-sister-test)))
+      (bind ((sister (make-instance 'unbound-sister-test)))
         (select (b)
-          (from (b strict-sister-test)))))))
+          (from (b unbound-sister-test)))))))
 
 (deftest test/persistence/cache/association/1-n/read-initial-value ()
   (with-transaction

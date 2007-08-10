@@ -70,6 +70,9 @@
     ,@forms))
 
 (defmacro with-validity (validity &body forms)
+  (assert (not (stringp (first forms))) nil
+          "Evaluating the atom ~S in the body of with-validity doesn't make too much sense, you probably would like to use with-validity-range instead"
+          (first forms))
   `(let ((*validity-start* (load-time-value (parse-datestring ,(date-of-first-day-for-partial-date validity))))
          (*validity-end* (load-time-value (parse-datestring ,(date-of-last-day-for-partial-date validity)))))
     ,@forms))

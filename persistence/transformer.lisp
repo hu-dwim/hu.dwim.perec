@@ -16,17 +16,6 @@
         (repeat length)
         (always (eql (elt vector i) value))))
 
-(defcondition* slot-type-error (type-error)
-  ((slot
-    :type persistent-effective-slot-definition))
-  (:report
-   (lambda (condition stream)
-     (format stream
-             "~@<The value ~2I~:_~S ~I~_in slot ~A is not of type ~2I~_~S.~:>"
-             (type-error-datum condition)
-             (slot-definition-name (slot-of condition))
-             (type-error-expected-type condition)))))
-
 (defmacro def-transformer-wrapper (name &body forms)
   `(defun ,name (slot type function column-number)
     (declare (ignorable slot type column-number))
