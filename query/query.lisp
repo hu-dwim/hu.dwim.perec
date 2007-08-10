@@ -46,6 +46,9 @@
     nil
     :type list
     :documentation "List of slot values.")
+   (having
+    nil
+    :type list)
    (order-by
     nil
     :type list
@@ -62,7 +65,7 @@
 (define-copy-method copy-inner-class progn ((self query) copy copy-htable)
   (with-slot-copying (copy copy-htable self)
     (copy-slots lexical-variables query-variables flatp uniquep prefetchp result-type
-                asserts action action-args group-by order-by sql-select-list
+                asserts action action-args group-by having order-by sql-select-list
                 sql-where sql-order-by)))
 
 (defmethod print-object ((query query) stream)
@@ -88,6 +91,7 @@
   (mapc fn (asserts-of query))
   (mapc fn (action-args-of query))
   (mapc fn (group-by-of query))
+  (mapc fn (having-of query))
   (mapc #L(when (syntax-object-p !1) (funcall fn !1)) (order-by-of query)))
 
 (defmethod flatp :around ((query query))
@@ -129,11 +133,16 @@
                                     (1 `(where ,(first asserts)))
                                     (t `(where (and ,@asserts)))))
                     (group-by-clause (when (group-by-of query) `(group-by ,@(group-by-of query))))
+                    (having-clause (case (length (having-of query))
+                                     (0 nil)
+                                     (1 `(having ,(first (having-of query))))
+                                     (t `(having (and ,@(having-of query))))))
                     (order-by-clause (when (order-by-of query) `(order-by ,@(order-by-of query)))))
              `(,action ,options ,action-list
                  (from ,@variables)
                  ,@(optional where-clause)
                  ,@(optional group-by-clause)
+                 ,@(optional having-clause)
                  ,@(optional order-by-clause))))))
 
 
@@ -155,6 +164,9 @@
 
 (defmethod add-group-by ((query query) expression)
   (appendf (group-by-of query) (list expression)))
+
+(defmethod add-having ((query query) expression)
+  (appendf (having-of query) (list expression)))
 
 (defmethod add-order-by ((query query) expression &optional (direction :asc))
   (assert (member direction '(:asc :desc)))
@@ -242,13 +254,15 @@
                     (from-clause (find 'from clauses :key #'first))
                     (where-clause (find 'where clauses :key #'first))
                     (group-by-clause (find 'group-by clauses :key #'first))
+                    (having-clause (find 'having clauses :key #'first))
                     (order-by-clause (find 'order-by clauses :key #'first))
                     (query-variables (make-query-variables (rest from-clause)))
                     (asserts (make-asserts where-clause (rest from-clause)))
                     (other-clauses (remove from-clause
                                            (remove where-clause
                                                    (remove group-by-clause
-                                                           (remove order-by-clause clauses))))))
+                                                           (remove having-clause
+                                                                   (remove order-by-clause clauses)))))))
                (unless from-clause
                  (error "Missing FROM clause in: ~:W" form))
                (when other-clauses
@@ -262,6 +276,7 @@
                       :action :collect
                       :action-args select-list
                       :group-by (rest group-by-clause)
+                      :having (rest having-clause)
                       :order-by (rest order-by-clause)
                       options)))
            (make-purge (options purge-list clauses)

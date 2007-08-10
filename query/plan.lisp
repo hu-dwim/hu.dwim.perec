@@ -22,6 +22,7 @@
    (tables)
    (where nil)
    (group-by nil)
+   (having nil)
    (order-by nil))
   (:documentation "Creates a result-set from the records returned by an SQL query."))
 
@@ -91,9 +92,11 @@
                       (add-unique
                        (add-projection
                         (add-sorter
-                         (add-grouping
-                          (add-where-filter
-                           (generate-sql-query query)
+                         (add-having-filter
+                          (add-grouping
+                           (add-where-filter
+                            (generate-sql-query query)
+                            query)
                            query)
                           query)
                          query)
@@ -164,6 +167,16 @@
                        :group-by group-by                   ;; could refer only these variables
                        :collected-expressions aggregates)
         input)))
+
+(defun add-having-filter (input query)
+  (bind ((having (having-of query)))
+    (if having
+       (make-instance 'filter-operation
+                      :query query
+                      :binder (binder-of input)
+                      :input input
+                      :condition `(and ,@having))
+       input)))
 
 (defun add-sorter (input query)
   (bind ((order-by (order-by-of query)))
@@ -236,7 +249,9 @@
                 (bind ((sql-query (input-of filter))
                        ((values sql-conditions lisp-conditions)
                         (to-sql (rest (condition-of filter)))))
-                  (add-sql-where-conditions sql-query sql-conditions)
+                  (if (null (group-by-of sql-query))
+                      (add-sql-where-conditions sql-query sql-conditions)
+                      (add-sql-having-conditions sql-query sql-conditions))
                   (if lisp-conditions
                       (progn
                         (setf (condition-of filter) `(and ,@lisp-conditions))
@@ -339,7 +354,8 @@
              `(make-list-result-set ',list)))
 
   (:method ((sql-query sql-query-node))
-           (with-slots (query result-type distinct columns tables where group-by order-by) sql-query
+           (with-slots (query result-type distinct columns tables where group-by having order-by)
+               sql-query
              `(open-result-set
                ',result-type
                ,(partial-eval
@@ -349,6 +365,7 @@
                    :tables  (list ,@tables)
                    :where ,where
                    :group-by (list ,@group-by)
+                   :having ,having
                    :order-by (list ,@order-by))
                  query)
                ,@(when (eq result-type 'scroll)
@@ -364,6 +381,7 @@
                                                  :tables (list ,@tables)
                                                  :where ,where
                                                  :group-by (list ,@group-by)
+                                                 :having ,having
                                                  ))
                                                'records)))
                               query))))))
@@ -694,3 +712,12 @@ If true then all query variables must be under some aggregate call."
             (assert (and (consp where) (eq (first where) 'sql-and)))
             (setf (where-of sql-query) (nconc where conditions)))))))
 
+(defun add-sql-having-conditions (sql-query conditions)
+  (when conditions
+    (bind ((having (having-of sql-query)))
+      (if (null having)
+          (progn
+            (setf (having-of sql-query) `(sql-and ,@conditions)))
+          (progn
+            (assert (and (consp having) (eq (first having) 'sql-and)))
+            (setf (having-of sql-query) (nconc having conditions)))))))

@@ -114,7 +114,7 @@ with the result of the naively compiled query.")
             query
             (add-unique-filter
              query
-             `(make-list-result-set (nreverse ,result-list))))))))) ;; TODO group-by,order-by
+             `(make-list-result-set (nreverse ,result-list))))))))) ;; TODO group-by,having,order-by
 
 (defun add-unique-filter (query form)
   (if (uniquep query)
@@ -211,6 +211,7 @@ with the result of the naively compiled query.")
       (setf (asserts-of query) (mapcar #'parse (asserts-of query)))
       (setf (action-args-of query) (mapcar #'parse (action-args-of query)))
       (setf (group-by-of query) (mapcar #'parse (group-by-of query)))
+      (setf (having-of query) (mapcar #'parse (having-of query)))
       (setf (order-by-of query) (iter (for (dir expr) on (order-by-of query) by 'cddr)
                                     (nconcing (list dir (parse expr))))))))
 

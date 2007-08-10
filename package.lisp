@@ -209,8 +209,9 @@
            #:purge
            #:from
            #:where
-           #:order-by
            #:group-by
+           #:having
+           #:order-by
            #:select-first-matching-instance
            #:select-last-matching-instance
            #:select-instance

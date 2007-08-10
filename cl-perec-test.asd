@@ -86,6 +86,7 @@
                        (:file "type")
                        (:file "aggregate")
                        (:file "group-by")
+                       (:file "having")
                        (:file "partial-eval")
                        (:file "expression")))))))
 
