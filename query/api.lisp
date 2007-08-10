@@ -112,13 +112,15 @@
       (elt (elements scroll) 0))))
 
 (defun select-similar-assert-for (type rest)
-  (bind ((class (ensure-finalized (find-class type))))
-    `(and ,@(iter (for (initarg value) on rest by 'cddr)
-                  (collect `(equal (,(reader-name-of
-                                      (find initarg (class-slots class)
-                                            :key #L(first (slot-definition-initargs !1))))
-                                    -instance-)
-                             ,value))))))
+  (if rest
+      (bind ((class (ensure-finalized (find-class type))))
+        `(and ,@(iter (for (initarg value) on rest by 'cddr)
+                      (collect `(equal (,(reader-name-of
+                                          (find initarg (class-slots class)
+                                                :key #L(first (slot-definition-initargs !1))))
+                                        -instance-)
+                                 ,value)))))
+      #t))
 
 (defmacro select-similar-instance (type &rest rest &key &allow-other-keys)
   `(select-instance (-instance- ,type)
