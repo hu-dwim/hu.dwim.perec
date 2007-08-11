@@ -127,10 +127,10 @@
     (ecase (association-kind-of association)
       (:1-1 (if (primary-association-end-p slot)
                 (call-next-method)
-                (slot-definition-class (other-association-end-of slot))))
+                (primary-class-of (other-association-end-of slot))))
       (:1-n (if (eq :1 (cardinality-kind-of slot))
                 (call-next-method)
-                (slot-definition-class (other-association-end-of slot))))
+                (primary-class-of (other-association-end-of slot))))
       (:m-n nil))))
 
 (defmethod compute-table ((slot persistent-association-end-effective-slot-definition))
