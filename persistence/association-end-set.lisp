@@ -12,27 +12,24 @@
        ;; BEFORE
        ;; instance <-> old-other-instance
        ;; new-value <-> old-other-new-value
-       ;; AFTER
-       ;; old-other-instance -> nil
-       ;; instance <-> new-value
-       ;; old-other-new-value -> nil
-       (bind ((other-slot (other-association-end-of slot))
-              (new-value-class (class-of new-value)))
-         (when (slot-value-cached-p instance slot)
-           (when-bind old-other-instance (and (underlying-slot-boundp-using-class class instance slot)
-                                              (underlying-slot-value-using-class class instance slot))
-             (when (slot-value-cached-p old-other-instance other-slot)
-               (setf (underlying-slot-value-using-class (class-of old-other-instance) old-other-instance other-slot)
-                     nil))))
+       (flet ((update-cached-slot-value-in-other-instance (instance slot)
+                (bind (((values cache-p other-instance) (slot-value-cached-p instance slot)))
+                  (when (and cache-p
+                             other-instance
+                             (not (unbound-slot-marker-p other-instance)))
+                    (bind ((other-class (class-of other-instance))
+                           (other-slot (other-effective-association-end-for other-class slot)))
+                      (setf (underlying-slot-value-using-class other-class other-instance other-slot) nil))))))
+         ;; old-other-instance -> nil
+         (update-cached-slot-value-in-other-instance instance slot)
          (when (and new-value
-                    (not (unbound-slot-marker-p new-value))
-                    (slot-value-cached-p new-value other-slot))
-           (when-bind old-other-new-value
-               (and (underlying-slot-boundp-using-class new-value-class new-value other-slot)
-                    (underlying-slot-value-using-class new-value-class new-value other-slot))
-             (when old-other-new-value
-               (setf (underlying-slot-value-using-class (class-of old-other-new-value) old-other-new-value slot) nil)))
-           (setf (underlying-slot-value-using-class new-value-class new-value other-slot) instance))))
+                    (not (unbound-slot-marker-p new-value)))
+           (bind ((new-value-class (class-of new-value))
+                  (new-other-slot (other-effective-association-end-for new-value-class slot)))
+             ;; old-other-new-value -> nil
+             (update-cached-slot-value-in-other-instance new-value new-other-slot)
+             ;; new-value -> instance
+             (setf (underlying-slot-value-using-class new-value-class new-value new-other-slot) instance)))))
       (:1-n
        ;; invalidate all cached back references 
        (if (eq (cardinality-kind-of slot) :n)
