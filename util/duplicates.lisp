@@ -41,7 +41,7 @@
   `(setf ,place
     (delete ,object ,place)))
 
-(defun find-slot (class-or-name slot-name)
+(def (function io) find-slot (class-or-name slot-name)
   (find slot-name
         (class-slots (if (symbolp class-or-name)
                          (find-class class-or-name)

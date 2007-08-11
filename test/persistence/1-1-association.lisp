@@ -139,5 +139,3 @@
     (setf (brother-of sister) brother)
     (setf (brother-of sister) (make-instance *association-1-1-brother-class-name*))
     (is (eq nil (sister-of brother)))))
-
-

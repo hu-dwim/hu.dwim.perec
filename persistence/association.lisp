@@ -182,17 +182,17 @@
 (defun (setf find-association) (new-value name)
   (setf (gethash name *persistent-associations*) new-value))
 
-(defun to-one-association-end-p (association-end)
+(def (function io) to-one-association-end-p (association-end)
   (eq (cardinality-kind-of association-end) :1))
 
-(defun to-many-association-end-p (association-end)
+(def (function io) to-many-association-end-p (association-end)
   (eq (cardinality-kind-of association-end) :n))
 
-(defun effective-association-end-for (direct-association-end)
+(def (function io) effective-association-end-for (direct-association-end)
   (find-slot (slot-definition-class direct-association-end) (slot-definition-name direct-association-end)))
 
-(defun other-effective-association-end-for (class slot)
-  (find-slot class (slot-definition-name (some #'other-association-end-of (direct-slots-of slot)))))
+(def (function io) other-effective-association-end-for (class effective-slot)
+  (find-slot class (slot-definition-name (some #'other-association-end-of (direct-slots-of effective-slot)))))
 
 (defun association-end-accessor-p (name)
   (and (symbolp name)

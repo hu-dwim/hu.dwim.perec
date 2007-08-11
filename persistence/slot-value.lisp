@@ -12,6 +12,10 @@
 (def (function io) not-cached-slot-marker-p (value)
   (eq +not-cached-slot-marker+ value))
 
+(defmacro assert-instance-slot-correspondence ()
+  `(debug-only
+    (assert (eq (class-of instance) (slot-definition-class slot)))))
+
 (defgeneric propagate-cache-changes (class instance slot new-value)
   (:documentation "Partially invalidate or update the cache to reflect setting the slot of instance to new-value.")
 
@@ -27,10 +31,12 @@
 
 (def (function io) invalidate-cached-slot (instance slot)
   "Invalidates the given cached slot value in the instance."
+  (assert-instance-slot-correspondence)
   (setf (standard-instance-access instance (slot-definition-location slot)) +not-cached-slot-marker+))
 
 (def (function io) slot-value-cached-p (instance slot)
   "Tells whether the given slot is cached in the instance or not."
+  (assert-instance-slot-correspondence)
   (bind ((value (standard-instance-access instance (slot-definition-location slot))))
     (values
      (not (not-cached-slot-marker-p value))
@@ -96,7 +102,8 @@
 
 (def (function io) underlying-slot-boundp-or-value-using-class (class instance slot)
   "Either returns the cached slot value or the unbound slot marker. This method does not interact with the database."
-  (declare (ignore class))
+  (declare (ignorable class))
+  (assert-instance-slot-correspondence)
   (prog1-bind value (standard-instance-access instance (slot-definition-location slot))
     (assert (not (not-cached-slot-marker-p value)))
     #+sbcl
@@ -105,7 +112,8 @@
 
 (def (function io) (setf underlying-slot-boundp-or-value-using-class) (new-value class instance slot)
   "Either sets the slot value to the given new value or makes the slot unbound if the new value is the unbound marker. This method does not interact with the database."
-  (declare (ignore class))
+  (declare (ignorable class))
+  (assert-instance-slot-correspondence)
   (debug-only
     (assert (not (not-cached-slot-marker-p new-value)))
     #+sbcl
@@ -123,9 +131,7 @@
                                    (instance persistent-object)
                                    (slot standard-effective-slot-definition))
   "Prefetches persistent slot values when determining whether the instance is persistent or not."
-  (debug-only
-    (assert (eq class (class-of instance)))
-    (assert (eq class (slot-definition-class slot))))
+  (assert-instance-slot-correspondence)
   ;; check for the persistent flag slot
   (if (and (eq (slot-definition-name slot) 'persistent)
            (not (slot-boundp-using-class class instance slot)))
@@ -148,9 +154,7 @@
 
 (def (function io) slot-boundp-or-value-using-class (class instance slot return-with)
   (declare (type function return-with))
-  (debug-only
-    (assert (eq class (class-of instance)))
-    (assert (eq class (slot-definition-class slot))))
+  (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance)))
     (assert-instance-access)
     (cond ((or (not persistent)
@@ -180,9 +184,7 @@
                  (funcall return-with restored-slot-value)))))))
 
 (def (function io) (setf slot-boundp-or-value-using-class) (new-value class instance slot)
-  (debug-only
-    (assert (eq class (class-of instance)))
-    (assert (eq class (slot-definition-class slot))))
+  (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance)))
     (assert-instance-access)
     ;; always store the slot into the database
