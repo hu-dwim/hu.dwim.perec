@@ -80,10 +80,10 @@
                (eq (association-kind-of (association-of slot)) :1-1)
                (secondary-association-end-p slot))
           (bind ((records
-                 (select-records +oid-column-names+
-                                 (list (name-of (table-of slot)))
-                                 (sql-= (id-of instance)
-                                        (sql-identifier :name (id-column-of slot))))))
+                  (select-records +oid-column-names+
+                                  (list (name-of (table-of slot)))
+                                  (sql-= (sql-literal :type +oid-id-sql-type+ :value (id-of instance))
+                                         (sql-identifier :name (id-column-of slot))))))
             (declare (type vector records))
             (unless (zerop (length records))
               (restore-slot-value slot (elt-0 records) 0))))
