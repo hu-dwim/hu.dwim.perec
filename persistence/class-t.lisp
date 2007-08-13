@@ -28,17 +28,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Temporal and time dependent
 
-(defvar *t*)
-(setf (documentation '*t* 'variable)
-      "The time machine parameter, modifications made after t will not be visible."))
-
-(defvar *validity-start*)
-(setf (documentation '*validity-start* 'variable)
-      "When a slot value is time dependent then the approximation uses constant values given for time ranges."))
-
-(defvar *validity-end*)
-(setf (documentation '*validity-end* 'variable)
-      "When a slot value is time dependent then the approximation uses constant values given for time ranges."))
+(def (special-variable :documentation "The time machine parameter, modifications made after *T* will not be visible.")
+    *t*)
+(def (special-variable :documentation "When a slot value is time dependent then the approximation uses constant values given for time ranges.")
+    *validity-start*)
+(def (special-variable :documentation "When a slot value is time dependent then the approximation uses constant values given for time ranges.")
+    *validity-end*)
 
 (macrolet ((with-partial-date (date &body forms)
              (rebinding (date)
