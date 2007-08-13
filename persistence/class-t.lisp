@@ -71,18 +71,25 @@
                    timestamp)))
     ,@forms))
 
+(def (function e) call-with-validity-range (start end trunk)
+  (bind ((*validity-start* start)
+         (*validity-end* end))
+    (funcall trunk)))
+
 (defmacro with-validity (validity &body forms)
   (assert (not (stringp (first forms))) nil
           "Evaluating the atom ~S in the body of with-validity doesn't make too much sense, you probably would like to use with-validity-range instead"
           (first forms))
-  `(let ((*validity-start* (load-time-value (parse-datestring ,(date-of-first-day-for-partial-date validity))))
-         (*validity-end* (load-time-value (parse-datestring ,(date-of-last-day-for-partial-date validity)))))
-    ,@forms))
+  `(call-with-validity-range (load-time-value (parse-datestring ,(date-of-first-day-for-partial-date validity)))
+                             (load-time-value (parse-datestring ,(date-of-last-day-for-partial-date validity)))
+                             (lambda ()
+                               ,@forms)))
 
 (defmacro with-validity-range (start end &body forms)
-  `(let ((*validity-start* (load-time-value (parse-datestring ,(date-of-first-day-for-partial-date start))))
-         (*validity-end* (load-time-value (parse-datestring ,(date-of-last-day-for-partial-date end)))))
-    ,@forms))
+  `(call-with-validity-range (load-time-value (parse-datestring ,(date-of-first-day-for-partial-date start)))
+                             (load-time-value (parse-datestring ,(date-of-last-day-for-partial-date end)))
+                             (lambda ()
+                               ,@forms)))
 
 (defclass* values-having-validity ()
   ((values :type (vector t))
