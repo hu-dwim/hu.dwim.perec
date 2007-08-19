@@ -9,19 +9,19 @@
 ;;;;;;;;;;;;;
 ;;; defpclass
 
+(defun defpclass-form (defclass-macro class-name superclasses slots options)
+  `(,defclass-macro ,class-name ,superclasses ,slots
+    ,@(unless (find :metaclass options :key #'first)
+              '((:metaclass persistent-class)))
+    ,@options))
+
 (defmacro defpclass (name superclasses slots &rest options)
   "Defines a persistent class. Slots may have an additional :persistent slot option which is true by default. For standard options see defclass."
-  `(defclass ,name ,superclasses , slots
-    ,@(append (unless (find :metaclass options :key #'first)
-                '((:metaclass persistent-class)))
-              options)))
+  (defpclass-form 'defclass name superclasses slots options))
 
 (defmacro defpclass* (name superclasses slots &rest options)
   "Same as defpclass but uses defclass*."
-  `(defclass* ,name ,superclasses , slots
-    ,@(append (unless (find :metaclass options :key #'first)
-                '((:metaclass persistent-class)))
-              options)))
+  (defpclass-form 'defclass* name superclasses slots options))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; defassociation
