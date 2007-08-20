@@ -253,6 +253,7 @@
            ;; temporal and time-dependent
            #:persistent-class-t
            #:with-t
+           #:with-default-t
            #:with-validity
            #:with-validity-range
            #:*t*

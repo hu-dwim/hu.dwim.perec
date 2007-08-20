@@ -28,12 +28,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Temporal and time dependent
 
-(def (special-variable :documentation "The time machine parameter, modifications made after *T* will not be visible.")
-    *t*)
-(def (special-variable :documentation "When a slot value is time dependent then the approximation uses constant values given for time ranges.")
-    *validity-start*)
-(def (special-variable :documentation "When a slot value is time dependent then the approximation uses constant values given for time ranges.")
-    *validity-end*)
+(defvar *t*)
+(setf (documentation '*t* 'variable)
+      "The time machine parameter, modifications made after t will not be visible."))
+
+(defvar *validity-start*)
+(setf (documentation '*validity-start* 'variable)
+      "When a slot value is time dependent then the approximation uses constant values given for time ranges."))
+
+(defvar *validity-end*)
+(setf (documentation '*validity-end* 'variable)
+      "When a slot value is time dependent then the approximation uses constant values given for time ranges."))
 
 (macrolet ((with-partial-date (date &body forms)
              (rebinding (date)
@@ -70,11 +75,6 @@
                    `(load-time-value (parse-timestring ,timestamp))
                    timestamp)))
     ,@forms))
-
-(def (function e) call-with-validity-range (start end trunk)
-  (bind ((*validity-start* start)
-         (*validity-end* end))
-    (funcall trunk)))
 
 (defmacro with-validity (validity &body forms)
   (assert (not (stringp (first forms))) nil
@@ -120,9 +120,16 @@
 ;;;;;;;
 ;;; Mop
 
+(defun class-name->t-class-name (class-name)
+  (concatenate-symbol class-name "-t"))
+
+(defun t-class-name->class-name (t-class-name)
+  (bind ((name (symbol-name t-class-name)))
+    (intern (subseq name 0 (- (length name) 2)) (symbol-package t-class-name))))
+
 (defcclass* persistent-class-t (persistent-class)
   ((t-class
-    (compute-as (find-class (concatenate-symbol (class-name -self-) "-t")))
+    (compute-as (find-class (class-name->t-class-name (class-name -self-))))
     :type persistent-class)
    (t-value-column
     (compute-as (first (columns-of (find-slot (t-class-of -self-) 't-value))))
@@ -141,12 +148,18 @@
     :type column)))
 
 (defcclass* persistent-slot-definition-t (standard-slot-definition)
-  ((time-dependent
+  ((persistent
+    ;; TODO: remove this shit slot
+    )
+   (time-dependent
     #f
     :type boolean)
    (temporal
     #f
-    :type boolean)))
+    :type boolean)
+   (integrates
+    nil
+    :type symbol)))
 
 (defcclass* persistent-direct-slot-definition-t
     (persistent-slot-definition-t standard-direct-slot-definition)
@@ -203,7 +216,7 @@
 
 (eval-always
   ;; TODO: kill association?
-  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent :association)))
+  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent :integrates :association)))
 
 (defmethod validate-superclass ((class persistent-class)
                                 (superclass persistent-class-t))
@@ -214,25 +227,26 @@
   t)
 
 (defmethod direct-slot-definition-class ((class persistent-class-t)
-                                         &key instance association time-dependent temporal &allow-other-keys)
+                                         &key instance persistent association time-dependent temporal integrates &allow-other-keys)
   (cond (instance
          (class-of instance))
         ((and association
               (or time-dependent temporal))
          (find-class 'persistent-association-end-direct-slot-definition-t))
-        ((or time-dependent temporal)
+        ((and persistent
+              (or time-dependent temporal integrates))
          (find-class 'persistent-direct-slot-definition-t))
         (t
          (call-next-method))))
 
 (defmethod effective-slot-definition-class ((class persistent-class-t)
-                                            &key instance association time-dependent temporal &allow-other-keys)
+                                            &key instance association time-dependent temporal integrates &allow-other-keys)
   (cond (instance
          (class-of instance))
         ((and association
               (or time-dependent temporal))
          (find-class 'persistent-association-end-effective-slot-definition-t))
-        ((or time-dependent temporal)
+        ((or time-dependent temporal integrates)
          (find-class 'persistent-effective-slot-definition-t))
         (t
          (call-next-method))))
@@ -245,9 +259,11 @@
             direct-slot-definitions)
       (bind ((standard-initargs (compute-standard-effective-slot-definition-initargs class direct-slot-definitions))
              (slot-initargs (mappend (lambda (slot-option-name)
-                                       (some #L(slot-initarg-and-value !1 slot-option-name)
+                                       (some #L(when ;; TODO: fragile guard check for association option
+                                                   (find-slot (class-of !1) slot-option-name)
+                                                 (slot-initarg-and-value !1 slot-option-name))
                                              direct-slot-definitions))
-                                     '(temporal time-dependent association)))
+                                     '(temporal time-dependent integrates association)))
              (initargs (append slot-initargs standard-initargs))
              (effective-slot-class (apply #'effective-slot-definition-class class :persistent #t initargs)))
         (apply #'make-instance effective-slot-class initargs))
@@ -276,6 +292,21 @@
           (setf (aref vector-copy (aref indices i))
                 (aref vector i)))
     (replace vector vector-copy)))
+
+
+(defun day-length-for-date-range (date-1 date-2)
+  (1+ (day-of (local-time::local-time-diff date-1 date-2))))
+
+(defun integrated-time-dependent-slot-value (instance slot-name)
+  (bind ((slot-values (slot-value instance slot-name)))
+    (if (typep slot-values 'values-having-validity)
+        (iter (for (value validity-start validity-end index) :in-values-having-validity slot-values)
+              (summing (* value (day-length-for-date-range validity-end validity-start))))
+        (* slot-values (day-length-for-date-range *validity-end* *validity-start*)))))
+
+(defun (setf integrated-time-dependent-slot-value) (new-value instance slot-name)
+  (setf (slot-value instance slot-name)
+        (/ new-value (day-length-for-date-range *validity-end* *validity-start*))))
 
 (defun collect-children-having-validity (child-slot records validity-start validity-end)
   ;; records are tuples ordered by t ascending: (child-oid validity-start validity-end action)
@@ -399,82 +430,86 @@
 (defmethod slot-value-using-class ((class persistent-class-t)
                                    (instance persistent-object)
                                    (slot persistent-effective-slot-definition-t))
-  (bind ((t-slot (t-slot-of slot))
-         (table (table-of t-slot))
-         (columns (columns-of t-slot))
-         (parent-id-column (parent-id-column-of class))
-         (t-value-column (t-value-column-of class))
-         (validity-start-column (validity-start-column-of class))
-         (validity-end-column (validity-end-column-of class))
-         (records
-          ;; TODO: add row limits if not time-dependent
-          ;; TODO: t-value-column is not used, so maybe omit?
-          (select-records (list* t-value-column validity-start-column validity-end-column columns)
-                          (list (name-of table))
-                          (sql-and (id-column-matcher-where-clause instance parent-id-column)
-                                   ;; TODO: hack this out
-                                   (sql-is-not-null (sql-identifier :name (rdbms::name-of (first columns))))
-                                   (sql-and (sql-<= (sql-identifier :name (rdbms::name-of t-value-column))
-                                                    (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))
-                                            (sql-<= (sql-identifier :name (rdbms::name-of validity-start-column))
-                                                    (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
-                                            (sql-<= (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f))
-                                                    (sql-identifier :name (rdbms::name-of validity-end-column)))))
-                          (list (sql-sort-spec :sort-key (sql-identifier :name (rdbms::name-of t-value-column)) :ordering :descending)))))
-    (collect-values-having-validity instance slot t-slot records)))
+  (aif (integrates-of slot)
+       (integrated-time-dependent-slot-value instance it)
+       (bind ((t-slot (t-slot-of slot))
+              (table (table-of t-slot))
+              (columns (columns-of t-slot))
+              (parent-id-column (parent-id-column-of class))
+              (t-value-column (t-value-column-of class))
+              (validity-start-column (validity-start-column-of class))
+              (validity-end-column (validity-end-column-of class))
+              (records
+               ;; TODO: add row limits if not time-dependent
+               ;; TODO: t-value-column is not used, so maybe omit?
+               (select-records (list* t-value-column validity-start-column validity-end-column columns)
+                               (list (name-of table))
+                               (sql-and (id-column-matcher-where-clause instance parent-id-column)
+                                        ;; TODO: hack this out
+                                        (sql-is-not-null (sql-identifier :name (rdbms::name-of (first columns))))
+                                        (sql-and (sql-<= (sql-identifier :name (rdbms::name-of t-value-column))
+                                                         (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))
+                                                 (sql-<= (sql-identifier :name (rdbms::name-of validity-start-column))
+                                                         (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
+                                                 (sql-<= (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f))
+                                                         (sql-identifier :name (rdbms::name-of validity-end-column)))))
+                               (list (sql-sort-spec :sort-key (sql-identifier :name (rdbms::name-of t-value-column)) :ordering :descending)))))
+         (collect-values-having-validity instance slot t-slot records))))
 
 (defmethod (setf slot-value-using-class) (new-value
                                           (class persistent-class-t)
                                           (instance persistent-object)
                                           (slot persistent-effective-slot-definition-t))
-  (bind ((t-class (t-class-of class))
-         (t-slot (t-slot-of slot))
-         (table (table-of t-slot))
-         (table-name (name-of table))
-         (columns (columns-of t-slot))
-         (column-count (length columns))
-         (parent-id-column (parent-id-column-of class))
-         (t-value-column (t-value-column-of class))
-         (validity-start-column (validity-start-column-of class))
-         (validity-end-column (validity-end-column-of class))
-         (rdbms-values (make-array column-count))
-         (update-count))
-    (store-slot-value t-slot new-value rdbms-values 0)
-    (setf update-count
-          (update-records table-name
-                          columns
-                          rdbms-values
-                          (sql-and (id-column-matcher-where-clause instance parent-id-column)
-                                   (sql-= (sql-identifier :name (rdbms::name-of t-value-column))
-                                          (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))
-                                   (sql-= (sql-identifier :name (rdbms::name-of validity-start-column))
-                                          (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f)))
-                                   (sql-= (sql-identifier :name (rdbms::name-of validity-end-column))
-                                          (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f))))))
-    (assert (<= update-count 1))
-    (when (zerop update-count)
-      (bind ((size (+ (* 2 +oid-column-count+) 3 column-count))
-             (rdbms-values (make-array size))
-             (index 0))
-        (oid->rdbms-values* (make-class-oid (class-name t-class)) rdbms-values index)
-        (incf index +oid-column-count+)
-        (store-slot-value (parent-slot-of class) instance rdbms-values index)
-        (incf index +oid-column-count+)
-        (setf (aref rdbms-values index) (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))
-        (incf index)
-        (setf (aref rdbms-values index) (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f)))
-        (incf index)
-        (setf (aref rdbms-values index) (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
-        (incf index)
-        (store-slot-value t-slot new-value rdbms-values index)
-        (insert-record table-name
-                       (append +oid-column-names+
-                               (list* parent-id-column t-value-column validity-start-column validity-end-column columns))
-                       rdbms-values)))
-    (when (typep new-value 'persistent-object)
-      (invalidate-all-cached-slots new-value))
-    ;; TODO: if t-instance is cached either invalidate it or set the value on it
-    new-value))
+  (aif (integrates-of slot)
+       (setf (integrated-time-dependent-slot-value instance it) new-value)
+       (bind ((t-class (t-class-of class))
+              (t-slot (t-slot-of slot))
+              (table (table-of t-slot))
+              (table-name (name-of table))
+              (columns (columns-of t-slot))
+              (column-count (length columns))
+              (parent-id-column (parent-id-column-of class))
+              (t-value-column (t-value-column-of class))
+              (validity-start-column (validity-start-column-of class))
+              (validity-end-column (validity-end-column-of class))
+              (rdbms-values (make-array column-count))
+              (update-count))
+         (store-slot-value t-slot new-value rdbms-values 0)
+         (setf update-count
+               (update-records table-name
+                               columns
+                               rdbms-values
+                               (sql-and (id-column-matcher-where-clause instance parent-id-column)
+                                        (sql-= (sql-identifier :name (rdbms::name-of t-value-column))
+                                               (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))
+                                        (sql-= (sql-identifier :name (rdbms::name-of validity-start-column))
+                                               (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f)))
+                                        (sql-= (sql-identifier :name (rdbms::name-of validity-end-column))
+                                               (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f))))))
+         (assert (<= update-count 1))
+         (when (zerop update-count)
+           (bind ((size (+ (* 2 +oid-column-count+) 3 column-count))
+                  (rdbms-values (make-array size))
+                  (index 0))
+             (oid->rdbms-values* (make-class-oid (class-name t-class)) rdbms-values index)
+             (incf index +oid-column-count+)
+             (store-slot-value (parent-slot-of class) instance rdbms-values index)
+             (incf index +oid-column-count+)
+             (setf (aref rdbms-values index) (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))
+             (incf index)
+             (setf (aref rdbms-values index) (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f)))
+             (incf index)
+             (setf (aref rdbms-values index) (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
+             (incf index)
+             (store-slot-value t-slot new-value rdbms-values index)
+             (insert-record table-name
+                            (append +oid-column-names+
+                                    (list* parent-id-column t-value-column validity-start-column validity-end-column columns))
+                            rdbms-values)))
+         (when (typep new-value 'persistent-object)
+           (invalidate-all-cached-slots new-value))
+         ;; TODO: if t-instance is cached either invalidate it or set the value on it
+         new-value)))
 
 (defmethod slot-value-using-class ((class persistent-class-t)
                                    (instance persistent-object)
