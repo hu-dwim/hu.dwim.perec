@@ -7,6 +7,7 @@
 (in-package :cl-perec)
 
 ;; TODO: naming convention is really bad in this file -t means a lot of different things, mass confusion rulez, refactoring is a must
+;; TODO: do not use t-value for time-dependent only slots, because the number of records increases dramatically
 
 ;;;;;;;;;;;;;
 ;;; Constants
@@ -28,17 +29,23 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Temporal and time dependent
 
-(defvar *t*)
-(setf (documentation '*t* 'variable)
-      "The time machine parameter, modifications made after t will not be visible."))
+(def (special-variable :documentation "The time machine parameter, modifications made after *T* will not be visible.")
+    *t*)
 
-(defvar *validity-start*)
-(setf (documentation '*validity-start* 'variable)
-      "When a slot value is time dependent then the approximation uses constant values given for time ranges."))
+(def (special-variable :documentation "When a slot value is time dependent then the approximation uses constant values given for time ranges.")
+    *validity-start*)
 
-(defvar *validity-end*)
-(setf (documentation '*validity-end* 'variable)
-      "When a slot value is time dependent then the approximation uses constant values given for time ranges."))
+(def (special-variable :documentation "When a slot value is time dependent then the approximation uses constant values given for time ranges.")
+    *validity-end*)
+
+#+nil
+(defpclass* object-with-t ()
+  ((t-value :type timestamp)))
+
+#+nil
+(defpclass* object-with-validity ()
+  ((validity-start :type date)
+   (validity-end :type date)))
 
 (macrolet ((with-partial-date (date &body forms)
              (rebinding (date)
@@ -75,6 +82,15 @@
                    `(load-time-value (parse-timestring ,timestamp))
                    timestamp)))
     ,@forms))
+
+(defmacro with-default-t (&body forms)
+  `(with-t (transaction-timestamp)
+    ,@forms))
+
+(def (function e) call-with-validity-range (start end trunk)
+    (bind ((*validity-start* start)
+           (*validity-end* end))
+      (funcall trunk)))
 
 (defmacro with-validity (validity &body forms)
   (assert (not (stringp (first forms))) nil
