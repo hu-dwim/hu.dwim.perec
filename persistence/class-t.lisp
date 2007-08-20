@@ -107,6 +107,14 @@
                              (lambda ()
                                ,@forms)))
 
+(defclass transaction-t-mixin ()
+  ())
+
+(defmethod call-in-transaction :around (database (transaction transaction-t-mixin) function)
+  (declare (ignore database function))
+  (with-default-t
+    (call-next-method)))
+
 (defclass* values-having-validity ()
   ((values :type (vector t))
    (validity-starts :type (vector date))

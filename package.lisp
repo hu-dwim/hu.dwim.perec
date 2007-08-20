@@ -256,6 +256,7 @@
            #:with-default-t
            #:with-validity
            #:with-validity-range
+           #:transaction-t-mixin
            #:*t*
            #:*validity-start*
            #:*validity-end*
