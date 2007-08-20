@@ -43,7 +43,7 @@
   (:method (instance event)
            (values)))
 
-(defmethod cl-rdbms::commit-transaction :around (database (transaction transaction-mixin))
+(defmethod commit-transaction :around (database (transaction transaction-mixin))
   (map-created-instances (rcurry #'before-committing-instance :created))
   (map-modified-instances (rcurry #'before-committing-instance :modified))
   (map-deleted-instances (rcurry #'before-committing-instance :deleted))
