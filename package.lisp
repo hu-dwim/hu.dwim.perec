@@ -17,7 +17,6 @@
         :s-base64
         :computed-class
         :defclass-star
-        :trivial-garbage
         :flexi-streams
         :local-time
         :parse-number
