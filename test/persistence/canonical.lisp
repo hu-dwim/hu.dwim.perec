@@ -15,23 +15,23 @@
   (is (or (eq type 'unbound)
           (eq type 'member)
           (eq type t)
-          (not (prc::unbound-subtype-p type))))
+          (not (unbound-subtype-p type))))
   (is (or (eq type 'set)
           (eq type 'disjunct-set)
           (eq type 'ordered-set)
           (eq type 'member)
           (eq type t)
-          (not (prc::set-type-p type)))))
+          (not (set-type-p type)))))
 
 (deftest test/persistence/canonical/subtypep ()
-  (mapc #'check-mapped-type prc::*mapped-type-precedence-list*))
+  (mapc #'check-mapped-type *mapped-type-precedence-list*))
 
 (deftest test/persistence/canonical/type (type canonical-type)
-  (let ((prc::*canonical-types* '(unbound)))
-    (is (equalp canonical-type (prc::canonical-type-for type)))))
+  (let ((*canonical-types* '(unbound)))
+    (is (equalp canonical-type (canonical-type-for type)))))
 
 (defmacro def-canonical-type-test (name type canonical-type)
-  `(deftest ,(prc::concatenate-symbol 'test/persistence/canonical/ name) ()
+  `(deftest ,(concatenate-symbol 'test/persistence/canonical/ name) ()
     (test/persistence/canonical/type ',type ',canonical-type)))
 
 (def-canonical-type-test null/1 null null)
@@ -93,10 +93,10 @@
 (defsuite* (test/persistence/normalized :in test/persistence))
 
 (deftest test/persistence/normalized/type (type normalized-type)
-  (is (equalp normalized-type (prc::normalized-type-for type))))
+  (is (equalp normalized-type (normalized-type-for type))))
 
 (defmacro def-normalized-type-test (name type normalized-type)
-  `(deftest ,(prc::concatenate-symbol 'test/persistence/normalized/ name) ()
+  `(deftest ,(concatenate-symbol 'test/persistence/normalized/ name) ()
     (test/persistence/normalized/type ',type ',normalized-type)))
 
 (def-normalized-type-test null/1 unbound nil)
@@ -144,7 +144,7 @@
 (deftest test/persistence/type-check/primitive-type (type)
   (is (primitive-type-p type))
   (is (not (primitive-type-p `(or unbound ,type))))
-  (unless (cl-perec::null-inclusive-type-p type)
+  (unless (null-inclusive-type-p type)
     (is (not (primitive-type-p `(or null ,type)))))
   (is (not (primitive-type-p `(or unbound null ,type))))
   (is (primitive-type-p* type))

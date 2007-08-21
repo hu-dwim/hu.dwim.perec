@@ -16,9 +16,9 @@
       ,@body)))
 
 (deftest test/persistence/set/class ()
-  (let ((referred-set-slot (prc::find-slot 'reference-set-test 'referred-set)))
-    (is (not (prc::primary-table-slot-p referred-set-slot)))
-    (is (not (prc::data-table-slot-p referred-set-slot)))
+  (let ((referred-set-slot (find-slot 'reference-set-test 'referred-set)))
+    (is (not (primary-table-slot-p referred-set-slot)))
+    (is (not (data-table-slot-p referred-set-slot)))
     (is (not (cache-p referred-set-slot)))))
 
 (deftest test/persistence/set/initial-value/1 ()

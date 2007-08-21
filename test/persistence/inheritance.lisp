@@ -15,5 +15,5 @@
       (is (equal value (slot-of (make-instance 'inheritance-t2-test :slot value)))))))
 
 (deftest test/persistence/inheritance/override/1 ()
-  (is (not (cache-p (prc::find-slot (find-class 'inheritance-t1-test) 'slot))))
-  (is (cache-p (prc::find-slot (find-class 'inheritance-t2-test) 'slot))))
+  (is (not (cache-p (find-slot (find-class 'inheritance-t1-test) 'slot))))
+  (is (cache-p (find-slot (find-class 'inheritance-t2-test) 'slot))))

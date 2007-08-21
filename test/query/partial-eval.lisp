@@ -23,7 +23,7 @@
                                 (where (= (count-one) (int-attr-of o))))))
            (*counter* 0))
       (with-transaction
-        (cl-perec::compile-query query)
+        (compile-query query)
         (is (= *counter* 1))
         (is (equal (first (execute-query query)) 1))
         (is (equal (first (execute-query query)) 1))))))
@@ -35,7 +35,7 @@
                                 (where (= (volatile (count-one)) (int-attr-of o))))))
            (*counter* 0))
       (with-transaction
-        (cl-perec::compile-query query)
+        (compile-query query)
         (is (= *counter* 0))
         (is (equal (first (execute-query query)) 1))
         (is (equal (first (execute-query query)) 2))))))

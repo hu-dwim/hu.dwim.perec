@@ -20,11 +20,11 @@
         ,@body)))
 
 (defmacro with-debug-query-compiler (&body body)
-  `(let ((prc::*test-query-compiler* #t))
+  `(let ((*test-query-compiler* #t))
      ,@body))
 
 (defmacro without-debug-query-compiler (&body body)
-  `(let ((prc::*test-query-compiler* #f))
+  `(let ((*test-query-compiler* #f))
      ,@body))
 
 (defmacro with-record-count-check (count &body body)

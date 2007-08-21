@@ -53,7 +53,7 @@
 
 (defmacro def-type-test (name type &optional (test-value nil test-value-p))
   (with-unique-names (value)
-    `(deftest ,(cl-perec::concatenate-symbol "test/persistence/type/" name) ()
+    `(deftest ,(concatenate-symbol "test/persistence/type/" name) ()
       (let ((,value
              ,(when test-value-p
                     `(with-transaction ,test-value)))
@@ -61,7 +61,7 @@
         (declare (ignorable ,value))
         (with-transaction
           (with-confirmed-descructive-changes
-            (cl-perec::ensure-exported
+            (ensure-exported
              (defpclass* type-test ()
                ((,name :type ,type))))))
         (flet ((make-object ()
@@ -71,11 +71,11 @@
                               'type-test
                               ,(when test-value-p
                                      `(list
-                                       (first (slot-definition-initargs (prc::find-slot (find-class 'type-test) ',name)))
+                                       (first (slot-definition-initargs (find-slot (find-class 'type-test) ',name)))
                                        ,value)))))
                (test-object (object)
                  ,(when (and test-value-p test-value)
-                        `(is (= 0 (prc::elt-0-0
+                        `(is (= 0 (elt-0-0
                                    (execute (rdbms::sql-select
                                              :columns (list (rdbms::sql-count-*))
                                              :tables (list (rdbms-name-for 'type-test))
@@ -84,8 +84,8 @@
                                                       :name
                                                       (rdbms::name-of
                                                        (last1
-                                                        (prc::columns-of
-                                                         (prc::find-slot
+                                                        (columns-of
+                                                         (find-slot
                                                           (find-class 'type-test) ',name))))))))))))
                  (is ,(if test-value-p
                           `(object-equal-p ,value (slot-value object ',name))

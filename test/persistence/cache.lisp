@@ -13,7 +13,7 @@
 (defsuite* (test/persistence/cache/slot-access :in nil))
 
 (defun counter+ (counter value)
-  (if prc::*cache-slot-values* counter (+ counter value)))
+  (if *cache-slot-values* counter (+ counter value)))
 
 (defpclass* cache-test ()
   ((name nil :type (or null (text 20)))))
@@ -53,7 +53,7 @@
         (with-transaction
           (with-reloaded-instance instance
             (setf (name-of instance) "the other")))
-        (prc::invalidate-all-cached-slots instance)
+        (invalidate-all-cached-slots instance)
         (is (equal "the other" (name-of instance)))))))
 
 (deftest test/persistence/cache/reference/read-initial-value ()

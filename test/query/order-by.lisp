@@ -18,7 +18,7 @@
     (iter (for (dir attr) on order-spec by 'cddr)
           (for attr-value-1 = (slot-value class1 attr))
           (for attr-value-2 = (slot-value class2 attr))
-          (for compare-fn = (ecase dir (:asc 'prc::less-or-equal-p) (:desc 'prc::greater-or-equal-p)))
+          (for compare-fn = (ecase dir (:asc 'less-or-equal-p) (:desc 'greater-or-equal-p)))
           (cond
             ((funcall compare-fn attr-value-1 attr-value-2) (return #t))
             ((not (equal attr-value-1 attr-value-2)) (return #f)))

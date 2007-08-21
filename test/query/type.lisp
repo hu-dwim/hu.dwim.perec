@@ -4,18 +4,18 @@
 
 (defmacro def-query-type-test (name type &optional (test-value nil test-value-p))
   (with-unique-names (value slot init-arg accessor)
-    `(deftest ,(cl-perec::concatenate-symbol "test/query/type/" name) ()
+    `(deftest ,(concatenate-symbol "test/query/type/" name) ()
       (let ((,value ,(when test-value-p `(with-transaction ,test-value))))
         (declare (ignorable ,value))
         (with-transaction
           (with-confirmed-descructive-changes
-            (cl-perec::ensure-exported
+            (ensure-exported
              (defpclass* query-type-test ()
                ((,name :type ,type)))))
           (purge-instances 'query-type-test))
-        (bind ((,slot (prc::find-slot (find-class 'query-type-test) ',name))
+        (bind ((,slot (find-slot (find-class 'query-type-test) ',name))
                (,init-arg (first (slot-definition-initargs ,slot)))
-               (,accessor (prc::reader-name-of ,slot)))
+               (,accessor (reader-name-of ,slot)))
           (declare (ignorable ,init-arg ,accessor))
           (flet ((make-object ()
                    (apply #'make-instance
@@ -23,7 +23,7 @@
                           ,(when test-value-p `(list ,init-arg ,value))))
                  (test-object ()
                    (declare #+sbcl(sb-ext:muffle-conditions sb-ext:compiler-note))
-                   (is (prc::length=1
+                   (is (length=1
                         (execute-query
                          (make-query
                           ,(if test-value-p

@@ -6,23 +6,12 @@
 
 (in-package :cl-perec-test)
 
-(defun import-cl-perec-symbols ()
-  (import '(cl-perec::primary-table-of
-            cl-perec::primary-tables-of
-            cl-perec::data-tables-of
-            cl-perec::prefetch-p
-            cl-perec::cache-p
-            cl-perec::table-of
-            cl-perec::columns-of
-            cl-perec::depends-on-of
-            cl-perec::depends-on-me-of)))
-
 (defun drop-all-test-tables ()
   (with-transaction
     (mapc #L(drop-table !1)
-          (prc::collect-if #L(and (starts-with !1 "_")
-                                  (search "test" !1))
-                           (list-tables)))))
+          (collect-if #L(and (starts-with !1 "_")
+                             (search "test" !1))
+                      (list-tables)))))
 
 (defmacro with-and-without-caching-slot-values (&body forms)
   `(progn
@@ -49,10 +38,10 @@
 
 (defun retest ()
   (drop-all-test-tables)
-  (mapc #L(awhen (cl-perec::primary-table-of !1)
-            (cl-perec::invalidate-computed-slot it 'prc::ensure-exported))
-        (append (hash-table-values cl-perec::*persistent-classes*)
-                (hash-table-values cl-perec::*persistent-associations*)))
+  (mapc #L(awhen (primary-table-of !1)
+            (invalidate-computed-slot it 'ensure-exported))
+        (append (hash-table-values *persistent-classes*)
+                (hash-table-values *persistent-associations*)))
   (test))
 
 (in-root-suite)

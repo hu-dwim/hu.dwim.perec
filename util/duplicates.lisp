@@ -64,7 +64,7 @@
   (remove-if-not predicate sequence))
 
 (defun length=1 (list)
-  "Returns t if the length of the LIST is 1. (Faster than (eq (length list) 1))"
+  "Returns t if the length of the LIST is 1. (Faster than (= (length list) 1))"
   (and (consp list)
        (null (rest list))))
 

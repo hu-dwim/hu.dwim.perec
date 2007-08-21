@@ -31,7 +31,7 @@
   (with-transaction
     (let ((instance (make-instance 'persistence-test :name "the one")))
       (execute (sql `(delete ,(rdbms-name-for 'persistence-test))))
-      (slot-makunbound instance 'prc::persistent)
+      (slot-makunbound instance 'persistent)
       (is (not (persistent-p instance))))))
   
 (deftest test/persistence/make-persistent/1 ()
@@ -45,7 +45,7 @@
 (deftest test/persistence/make-persistent/2 ()
   (with-transaction
     (let ((instance (make-instance 'persistence-test :name "the one")))
-      (slot-makunbound instance 'prc::persistent)
+      (slot-makunbound instance 'persistent)
       (is (persistent-p instance)))))
 
 (deftest test/persistence/lock-instance/1 ()

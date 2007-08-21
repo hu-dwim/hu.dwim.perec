@@ -241,7 +241,7 @@
 
 (deftest test/query/select/member-1 ()
   (test-query (:select-count 2 :record-count 3 :fixture forum-data)
-    (let ((messages (cdr (prc::select-instances message-test))))
+    (let ((messages (cdr (select-instances message-test))))
       (select (m)
         (from (m message-test))
         (where (member m messages))))))
@@ -260,7 +260,7 @@
 
 (deftest test/query/select/member-4 ()
   (test-query (:select-count 1 :record-count 0 :fixture forum-data)
-    (let ((topics (prc::select-instances topic-test)))
+    (let ((topics (select-instances topic-test)))
       (execute-query
        (make-query
         `(select (m)
