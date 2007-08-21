@@ -159,10 +159,12 @@
           (setf (population-of instance) 2000))))
     (with-transaction
       (with-default-t
-        (is (= 2000 (population-of instance)))))
+        (with-revived-instance instance
+          (is (= 2000 (population-of instance))))))
     (with-transaction
       (with-t t-value
-        (is (= 1000 (population-of instance)))))))
+        (with-revived-instance instance
+          (is (= 1000 (population-of instance))))))))
 
 ;;;;;
 ;;; T
