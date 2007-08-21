@@ -261,6 +261,8 @@
            #:*validity-start*
            #:*validity-end*
            #:values-having-validity
+           #:+beginning-of-time+
+           #:+end-of-time+
 
            ;; turning cache on and off
            #:with-caching-slot-values

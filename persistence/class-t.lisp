@@ -38,15 +38,6 @@
 (def (special-variable :documentation "When a slot value is time dependent then the approximation uses constant values given for time ranges.")
     *validity-end*)
 
-#+nil
-(defpclass* object-with-t ()
-  ((t-value :type timestamp)))
-
-#+nil
-(defpclass* object-with-validity ()
-  ((validity-start :type date)
-   (validity-end :type date)))
-
 (macrolet ((with-partial-date (date &body forms)
              (rebinding (date)
                `(bind ((date-string
@@ -102,8 +93,12 @@
                                ,@forms)))
 
 (defmacro with-validity-range (start end &body forms)
-  `(call-with-validity-range (load-time-value (parse-datestring ,(date-of-first-day-for-partial-date start)))
-                             (load-time-value (parse-datestring ,(date-of-last-day-for-partial-date end)))
+  `(call-with-validity-range ,(if (stringp start)
+                                  `(load-time-value (parse-datestring ,(date-of-first-day-for-partial-date start)))
+                                  start)
+                             ,(if (stringp end)
+                                  `(load-time-value (parse-datestring ,(date-of-last-day-for-partial-date end)))
+                                  end)
                              (lambda ()
                                ,@forms)))
 
@@ -173,7 +168,7 @@
 
 (defcclass* persistent-slot-definition-t (standard-slot-definition)
   ((persistent
-    ;; TODO: remove this shit slot
+    ;; TODO: remove this slot and fix mop
     )
    (time-dependent
     #f
@@ -297,17 +292,41 @@
 ;;; Slot value and friends
 
 (defcondition* unbound-slot-t (unbound-slot)
-  ((t :type timestamp)
+  ((t-value :type timestamp)
    (validity-start :type date)
-   (validity-end :type date)))
+   (validity-end :type date))
+  (:report (lambda (condition stream)
+             (format stream "The slot ~S is unbound in the object ~S"
+                     (cell-error-name condition)
+                     (unbound-slot-instance condition))
+             (when (slot-boundp condition 't-value)
+               (format stream " with t ~A"
+                       (t-value-of condition)))
+             (when (slot-boundp condition 'validity-start)
+               (when (slot-boundp condition 't-value)
+                 (format stream " and"))
+               (format stream " with validity range ~A -> ~A"
+                       (validity-start-of condition)
+                       (validity-end-of condition))))))
 
-(defun slot-unbound-t (instance slot validity-start validity-end)
-  (error 'unbound-slot-t
+(defun slot-unbound-t (instance slot
+                       &key (t-value nil t-value-p) (validity-start nil validity-start-p) (validity-end nil validity-end-p))
+  (apply 'error 'unbound-slot-t
          :name (slot-definition-name slot)
          :instance instance
-         :t *t*
-         :validity-start validity-start
-         :validity-end validity-end))
+         (append
+          (when (or t-value-p
+                    (boundp '*t*))
+            (list :t-value (or t-value
+                         *t*)))
+          (when (or validity-start-p
+                    (boundp '*validity-start*))
+            (list :validity-start (or validity-start
+                                      *validity-start*)))
+          (when (or validity-end-p
+                    (boundp '*validity-end*))
+            (list :validity-end (or validity-end
+                                    *validity-end*))))))
 
 (defun permute (vector indices)
   (let ((vector-copy (make-array (length vector))))
@@ -397,88 +416,134 @@
 ;; TODO: this failes when multiple records are present with the same t but overlapping validity ranges
 ;; (ordering for t does not affect the order of records) THIS MUST BE FORBIDDEN
 (defun collect-values-having-validity (instance slot t-slot records)
-  (let ((size (length records)))
-    (cond ((zerop size)
-           (slot-unbound-t instance slot *validity-start* *validity-end*))
-          ((or (= size 1)
-               (not (time-dependent-p slot)))
-           (let ((rdbms-values (elt-0 records)))
-             (restore-slot-value t-slot rdbms-values 3)))
-          (t
-           ;; TODO: sort arrays
-           (bind ((values (make-array 4 :adjustable #t :fill-pointer 0))
-                  (validity-starts (make-array 4 :adjustable #t :fill-pointer 0))
-                  (validity-ends (make-array 4 :adjustable #t :fill-pointer 0))
-                  (indices (make-array 4 :adjustable #t :fill-pointer 0)))
-             (labels ((push-value-having-validity (value validity-start validity-end)
-                        ;;(format t "~%Push Start: ~A End: ~A Value: ~A" value validity-start validity-end)
-                        (vector-push-extend value values)
-                        (vector-push-extend validity-start validity-starts)
-                        (vector-push-extend validity-end validity-ends)
-                        (vector-push-extend (length indices) indices))
-                      (%collect-values-having-validity (index validity-start validity-end)
-                        ;;(format t "~%Collect Index: ~A Start: ~A End: ~A" index  validity-start validity-end)
-                        (when (local-time<= validity-start validity-end)
-                          (if (< index (length records))
-                              (iter (for i :from index :below (length records))
-                                    (for record = (elt records i))
-                                    (for record-validity-start = (elt record 1))
-                                    (for record-validity-end = (elt record 2))
-                                    (for merged-validity-start = (local-time-max validity-start record-validity-start))
-                                    (for merged-validity-end = (local-time-min validity-end record-validity-end))
-                                    (when (local-time<= merged-validity-start merged-validity-end)
-                                      (push-value-having-validity (restore-slot-value t-slot record 3)
-                                                                  merged-validity-start
-                                                                  merged-validity-end)
-                                      (%collect-values-having-validity (1+ i)
-                                                                       validity-start
-                                                                       (local-time-adjust-days merged-validity-start -1))
-                                      (%collect-values-having-validity (1+ i)
-                                                                       (local-time-adjust-days merged-validity-end 1)
-                                                                       validity-end)
-                                      (return))
-                                    (finally (slot-unbound-t instance slot validity-start validity-end)))
-                              (slot-unbound-t instance slot validity-start validity-end)))))
-               (%collect-values-having-validity 0 *validity-start* *validity-end*)
-               (sort indices #'local-time< :key (lambda (index) (aref validity-starts index)))
-               (permute values indices)
-               (permute validity-starts indices)
-               (permute validity-ends indices)
-               (if (= 1 (length values))
-                   (aref values 0)
-                   (make-instance 'values-having-validity
-                                  :values values
-                                  :validity-starts validity-starts
-                                  :validity-ends validity-ends))))))))
+  (let ((size (length records))
+        (value-index 2))
+    (flet ((validity-start-of (record)
+             (elt record 0))
+           (validity-end-of (record)
+             (elt record 1)))
+      (cond ((zerop size)
+             (slot-unbound-t instance slot))
+            ((or (= size 1)
+                 (not (time-dependent-p slot)))
+             (bind ((record (elt-0 records)))
+               (cond ((local-time< *validity-start* (validity-start-of record))
+                      (slot-unbound-t instance slot
+                                     :validity-start *validity-start*
+                                     :validity-end (local-time-adjust-days (validity-start-of record) -1)))
+                     ((local-time< (validity-end-of record) *validity-end*)
+                      (slot-unbound-t instance slot
+                                     :validity-start (local-time-adjust-days (validity-end-of record) 1)
+                                     :validity-end *validity-end*))
+                     (t
+                      (restore-slot-value t-slot record value-index)))))
+            (t
+             ;; TODO: sort arrays
+             (bind ((values (make-array 4 :adjustable #t :fill-pointer 0))
+                    (validity-starts (make-array 4 :adjustable #t :fill-pointer 0))
+                    (validity-ends (make-array 4 :adjustable #t :fill-pointer 0))
+                    (indices (make-array 4 :adjustable #t :fill-pointer 0)))
+               (labels ((push-value-having-validity (value validity-start validity-end)
+                          ;;(format t "~%Push Start: ~A End: ~A Value: ~A" value validity-start validity-end)
+                          (vector-push-extend value values)
+                          (vector-push-extend validity-start validity-starts)
+                          (vector-push-extend validity-end validity-ends)
+                          (vector-push-extend (length indices) indices))
+                        (%collect-values-having-validity (index validity-start validity-end)
+                          ;;(format t "~%Collect Index: ~A Start: ~A End: ~A" index  validity-start validity-end)
+                          (when (local-time<= validity-start validity-end)
+                            (if (< index (length records))
+                                (iter (for i :from index :below (length records))
+                                      (for record = (elt records i))
+                                      (for record-validity-start = (validity-start-of record))
+                                      (for record-validity-end = (validity-end-of record))
+                                      (for merged-validity-start = (local-time-max validity-start record-validity-start))
+                                      (for merged-validity-end = (local-time-min validity-end record-validity-end))
+                                      (when (local-time<= merged-validity-start merged-validity-end)
+                                        (push-value-having-validity (restore-slot-value t-slot record value-index)
+                                                                    merged-validity-start
+                                                                    merged-validity-end)
+                                        (%collect-values-having-validity (1+ i)
+                                                                         validity-start
+                                                                         (local-time-adjust-days merged-validity-start -1))
+                                        (%collect-values-having-validity (1+ i)
+                                                                         (local-time-adjust-days merged-validity-end 1)
+                                                                         validity-end)
+                                        (return))
+                                      (finally (slot-unbound-t instance slot
+                                                               :validity-start validity-start
+                                                               :validity-end validity-end)))
+                                (slot-unbound-t instance slot
+                                                :validity-start validity-start
+                                                :validity-end validity-end)))))
+                 (%collect-values-having-validity 0 *validity-start* *validity-end*)
+                 (sort indices #'local-time< :key (lambda (index) (aref validity-starts index)))
+                 (permute values indices)
+                 (permute validity-starts indices)
+                 (permute validity-ends indices)
+                 (if (= 1 (length values))
+                     (aref values 0)
+                     (make-instance 'values-having-validity
+                                    :values values
+                                    :validity-starts validity-starts
+                                    :validity-ends validity-ends)))))))))
+
+(defmacro assert-slot-access ()
+  `(debug-only
+    (bind ((temporal-p (temporal-p slot))
+           (time-dependent-p (time-dependent-p slot)))
+      (assert (or temporal-p time-dependent-p)))))
 
 (defmethod slot-value-using-class ((class persistent-class-t)
                                    (instance persistent-object)
                                    (slot persistent-effective-slot-definition-t))
+  (assert-slot-access)
   (aif (integrates-of slot)
        (integrated-time-dependent-slot-value instance it)
-       (bind ((t-slot (t-slot-of slot))
-              (table (table-of t-slot))
-              (columns (columns-of t-slot))
-              (parent-id-column (parent-id-column-of class))
-              (t-value-column (t-value-column-of class))
-              (validity-start-column (validity-start-column-of class))
-              (validity-end-column (validity-end-column-of class))
-              (records
-               ;; TODO: add row limits if not time-dependent
-               ;; TODO: t-value-column is not used, so maybe omit?
-               (select-records (list* t-value-column validity-start-column validity-end-column columns)
-                               (list (name-of table))
-                               (sql-and (id-column-matcher-where-clause instance parent-id-column)
-                                        ;; TODO: hack this out
-                                        (sql-is-not-null (sql-identifier :name (rdbms::name-of (first columns))))
-                                        (sql-and (sql-<= (sql-identifier :name (rdbms::name-of t-value-column))
-                                                         (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))
-                                                 (sql-<= (sql-identifier :name (rdbms::name-of validity-start-column))
-                                                         (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
-                                                 (sql-<= (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f))
-                                                         (sql-identifier :name (rdbms::name-of validity-end-column)))))
-                               (list (sql-sort-spec :sort-key (sql-identifier :name (rdbms::name-of t-value-column)) :ordering :descending)))))
-         (collect-values-having-validity instance slot t-slot records))))
+       (restore-slot-t class instance slot)))
+
+(defun restore-slot-t (class instance slot)
+  (bind ((time-dependent-p (time-dependent-p slot))
+         (temporal-p (temporal-p slot))
+         (t-slot (t-slot-of slot))
+         (table (table-of t-slot))
+         (columns (columns-of t-slot))
+         (parent-id-column (parent-id-column-of class))
+         (t-value-column (when temporal-p
+                           (t-value-column-of class)))
+         (validity-start-column (when time-dependent-p
+                                  (validity-start-column-of class)))
+         (validity-end-column (when time-dependent-p
+                                (validity-end-column-of class)))
+         (records
+          ;; TODO: add row limit = 1 if not time-dependent
+          (select-records (append
+                           (when time-dependent-p
+                             (list validity-start-column validity-end-column))
+                           columns)
+                          (list (name-of table))
+                          (sql-and (id-column-matcher-where-clause instance parent-id-column)
+                                   ;; TODO: hack this out with reader
+                                   (sql-is-not-null (sql-identifier :name (rdbms::name-of (first columns))))
+                                   (apply #'sql-and
+                                          (append
+                                           (when time-dependent-p
+                                             (list
+                                              (sql-<= (sql-identifier :name (rdbms::name-of validity-start-column))
+                                                      (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
+                                              (sql-<= (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f))
+                                                      (sql-identifier :name (rdbms::name-of validity-end-column)))))
+                                           (when temporal-p
+                                             (list
+                                              (sql-<= (sql-identifier :name (rdbms::name-of t-value-column))
+                                                      (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f))))))))
+                          (when temporal-p
+                            (list (sql-sort-spec :sort-key (sql-identifier :name (rdbms::name-of t-value-column)) :ordering :descending))))))
+    (if time-dependent-p
+        (collect-values-having-validity instance slot t-slot records)
+        (if (zerop (length records))
+            (slot-unbound-t instance slot)
+            (restore-slot-value t-slot (elt-0 records) 0)))))
 
 (defmethod (setf slot-value-using-class) (new-value
                                           (class persistent-class-t)
@@ -486,54 +551,100 @@
                                           (slot persistent-effective-slot-definition-t))
   (aif (integrates-of slot)
        (setf (integrated-time-dependent-slot-value instance it) new-value)
-       (bind ((t-class (t-class-of class))
-              (t-slot (t-slot-of slot))
-              (table (table-of t-slot))
-              (table-name (name-of table))
-              (columns (columns-of t-slot))
-              (column-count (length columns))
-              (parent-id-column (parent-id-column-of class))
-              (t-value-column (t-value-column-of class))
-              (validity-start-column (validity-start-column-of class))
-              (validity-end-column (validity-end-column-of class))
-              (rdbms-values (make-array column-count))
-              (update-count))
-         (store-slot-value t-slot new-value rdbms-values 0)
-         (setf update-count
-               (update-records table-name
-                               columns
-                               rdbms-values
-                               (sql-and (id-column-matcher-where-clause instance parent-id-column)
-                                        (sql-= (sql-identifier :name (rdbms::name-of t-value-column))
-                                               (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))
-                                        (sql-= (sql-identifier :name (rdbms::name-of validity-start-column))
-                                               (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f)))
-                                        (sql-= (sql-identifier :name (rdbms::name-of validity-end-column))
-                                               (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f))))))
-         (assert (<= update-count 1))
-         (when (zerop update-count)
-           (bind ((size (+ (* 2 +oid-column-count+) 3 column-count))
-                  (rdbms-values (make-array size))
-                  (index 0))
-             (oid->rdbms-values* (make-class-oid (class-name t-class)) rdbms-values index)
-             (incf index +oid-column-count+)
-             (store-slot-value (parent-slot-of class) instance rdbms-values index)
-             (incf index +oid-column-count+)
-             (setf (aref rdbms-values index) (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))
-             (incf index)
-             (setf (aref rdbms-values index) (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f)))
-             (incf index)
-             (setf (aref rdbms-values index) (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
-             (incf index)
-             (store-slot-value t-slot new-value rdbms-values index)
-             (insert-record table-name
-                            (append +oid-column-names+
-                                    (list* parent-id-column t-value-column validity-start-column validity-end-column columns))
-                            rdbms-values)))
-         (when (typep new-value 'persistent-object)
-           (invalidate-all-cached-slots new-value))
-         ;; TODO: if t-instance is cached either invalidate it or set the value on it
-         new-value)))
+       (store-slot-t class instance slot new-value)))
+
+(defun store-slot-t (class instance slot value)
+  (bind ((time-dependent-p (time-dependent-p slot))
+         (temporal-p (temporal-p slot))
+         (t-class (t-class-of class))
+         (t-slot (t-slot-of slot))
+         (table (table-of t-slot))
+         (table-name (name-of table))
+         (columns (columns-of t-slot))
+         (column-count (length columns))
+         (parent-id-column (parent-id-column-of class))
+         (t-value-column (when temporal-p
+                           (t-value-column-of class)))
+         (validity-start-column (when time-dependent-p
+                                  (validity-start-column-of class)))
+         (validity-end-column (when time-dependent-p
+                                (validity-end-column-of class)))
+         (rdbms-values (make-array column-count))
+         (update-count))
+    (store-slot-value t-slot value rdbms-values 0)
+    (setf update-count
+          (update-records table-name
+                          columns
+                          rdbms-values
+                          (apply 'sql-and (id-column-matcher-where-clause instance parent-id-column)
+                                 (append
+                                  (when time-dependent-p
+                                    (list
+                                     (sql-= (sql-identifier :name (rdbms::name-of validity-start-column))
+                                            (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f)))
+                                     (sql-= (sql-identifier :name (rdbms::name-of validity-end-column))
+                                            (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))))
+                                  (when temporal-p
+                                    (list
+                                     (sql-= (sql-identifier :name (rdbms::name-of t-value-column))
+                                            (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))))))))
+    (assert (<= update-count 1))
+    (when (zerop update-count)
+      (unless temporal-p
+        (bind ((records
+                (select-records (list validity-start-column validity-end-column)
+                                (list (name-of table))
+                                (sql-and (id-column-matcher-where-clause instance parent-id-column)
+                                         ;; TODO: hack this out with reader
+                                         (sql-is-not-null (sql-identifier :name (rdbms::name-of (first columns))))
+                                         (sql-and (sql-<= (sql-identifier :name (rdbms::name-of validity-start-column))
+                                                          (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
+                                                  (sql-<= (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f))
+                                                          (sql-identifier :name (rdbms::name-of validity-end-column))))))))
+          (assert (zerop (length records)) nil "Setting a time dependent but not temporal slot for overlapping validity ranges is not yet supported: between ~A ~A and ~A ~A"
+                  *validity-start* *validity-end* (elt-0 (elt-0 records)) (elt-1 (elt-0 records)))))
+      (bind ((size (+ (* 2 +oid-column-count+) 3 column-count))
+             (rdbms-values (make-array size))
+             (index 0))
+        (oid->rdbms-values* (make-class-oid (class-name t-class)) rdbms-values index)
+        (incf index +oid-column-count+)
+        (store-slot-value (parent-slot-of class) instance rdbms-values index)
+        (incf index +oid-column-count+)
+        (when temporal-p
+          (setf (aref rdbms-values index) (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))
+          (incf index))
+        (when time-dependent-p
+          (setf (aref rdbms-values index) (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f)))
+          (incf index)
+          (setf (aref rdbms-values index) (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
+          (incf index))
+        (store-slot-value t-slot value rdbms-values index)
+        (insert-record table-name
+                       (append +oid-column-names+
+                               (list parent-id-column)
+                               (when temporal-p
+                                 (list t-value-column))
+                               (when time-dependent-p
+                                 (list validity-start-column validity-end-column))
+                               columns)
+                       rdbms-values)))
+    (when (typep value 'persistent-object)
+      (invalidate-all-cached-slots value))
+    ;; TODO: if t-instance is cached either invalidate it or set the value on it
+    value))
+
+(defmethod slot-boundp-using-class ((class persistent-class-t)
+                                    (instance persistent-object)
+                                    (slot persistent-effective-slot-definition-t))
+  (error "Not yet implemented"))
+
+(defmethod slot-makunbound-using-class ((class persistent-class-t)
+                                        (instance persistent-object)
+                                        (slot persistent-effective-slot-definition-t))
+  (error "Not yet implemented"))
+
+;;;;;;;;;;;;;;;;;;;;;
+;;; Association slots 
 
 (defmethod slot-value-using-class ((class persistent-class-t)
                                    (instance persistent-object)
@@ -550,10 +661,9 @@
          (validity-end-column (validity-end-column-of slot))
          (parent-id-column (first (parent-oid-columns-of slot)))
          (child-oid-columns (child-oid-columns-of slot)))
-    ;; TODO: reuse recursive normal slot value querying
     (collect-values-having-validity
      instance slot (child-slot-of slot)
-     (select-records (append (list t-value-column validity-start-column validity-end-column)
+     (select-records (append (list validity-start-column validity-end-column)
                              child-oid-columns)
                      (list table-name)
                      (sql-and (id-column-matcher-where-clause instance parent-id-column)

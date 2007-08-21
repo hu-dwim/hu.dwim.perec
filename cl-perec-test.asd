@@ -67,7 +67,8 @@
                        (:file "m-n-association")
                        (:file "cache")
                        (:file "instance")
-                       (:file "purge")))
+                       (:file "purge")
+                       (:file "class-t")))
              (:module :query
                       :serial t
                       :components
