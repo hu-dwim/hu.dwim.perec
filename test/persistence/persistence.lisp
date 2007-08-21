@@ -33,6 +33,16 @@
       (execute (sql `(delete ,(rdbms-name-for 'persistence-test))))
       (slot-makunbound instance 'persistent)
       (is (not (persistent-p instance))))))
+
+(deftest test/persistence/make-transient/4 ()
+  (let ((instance
+         (with-transaction
+           (make-instance 'persistence-test :name "the one"))))
+    (with-transaction
+      (with-revived-instance instance
+        (prc::invalidate-cached-slot instance (find-slot 'persistence-test 'name))
+        (make-transient instance)
+        (is (equal (name-of instance) "the one"))))))
   
 (deftest test/persistence/make-persistent/1 ()
   (with-transaction

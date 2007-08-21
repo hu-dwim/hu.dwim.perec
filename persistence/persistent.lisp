@@ -280,7 +280,11 @@
 
 (defmethod make-transient ((instance persistent-object))
   (with-caching-slot-values
-    (restore-all-slots instance))
+    (bind ((class (class-of instance))
+           ((values restored-slot-values restored-slots) (restore-all-slots instance)))
+      (iter (for restored-slot-value in restored-slot-values)
+            (for restored-slot in restored-slots)
+            (setf (underlying-slot-boundp-or-value-using-class class instance restored-slot) restored-slot-value))))
   (remove-cached-instance instance)
   (setf (persistent-p instance) #f)
   (purge-instance instance))
