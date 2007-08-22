@@ -183,7 +183,8 @@
   (:method ((instance persistent-object) &key (wait #t))
            (bind ((class (class-of instance))
                   (tables (data-tables-of class))
-                  ((values table-aliases where-clause) (table-aliases-and-where-clause-for-instance instance tables)))
+                  ((values table-aliases where-clause)
+                   (table-aliases-and-where-clause-for-instance (id-of instance) tables)))
              (execute (sql-select :columns (list (make-instance 'sql-all-columns))
                                   :tables table-aliases
                                   :where where-clause
