@@ -149,6 +149,10 @@
            #:*database*
            #:with-transaction
            #:with-transaction*
+           #:call-in-transaction
+           #:begin-transaction
+           #:commit-transaction
+           #:rollback-transaction
            #:*transaction*
            #:register-transaction-hook
            #:mark-transaction-for-commit-only
