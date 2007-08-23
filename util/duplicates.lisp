@@ -43,10 +43,12 @@
 
 (def (function io) find-slot (class-or-name slot-name)
   (find slot-name
-        (class-slots (if (symbolp class-or-name)
-                         (find-class class-or-name)
-                         class-or-name))
-        :key 'slot-definition-name))
+        (the list
+          (class-slots (if (symbolp class-or-name)
+                           (find-class class-or-name)
+                           class-or-name)))
+        :key 'slot-definition-name
+        :test 'eq))
 
 (defmacro aprog1 (ret &body body)
   `(prog1-bind it ,ret ,@body))
