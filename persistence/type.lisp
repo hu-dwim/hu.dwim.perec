@@ -31,6 +31,11 @@
                           (pop body)))
          (type-class-name (type-class-name-for name)))
     `(progn
+      (eval-when (:compile-toplevel :load-toplevel :execute)
+        ;; this import is needed because the name of the type class for types named by cl symbols are interned into
+        ;; the cl-perec package and therefore cannot be exported from *package*. make sure it's imported.
+        (import ',type-class-name ,*package*)
+        (export '(,name ,type-class-name) ,*package*))
       (defclass* ,type-class-name (persistent-type)
         ,(append
           `((name ',name)
@@ -46,9 +51,7 @@
                                          (lambda-list-to-variable-list args :include-&rest #t))))
              :allocation :class))
           (mapcar #L(list !1 nil) (lambda-list-to-variable-list args :include-&rest #t)))
-        (:export-class-name-p #t)
         (:export-accessor-names-p #t))
-      (export ',name)
       (eval-when (:load-toplevel :execute)
         (bind ((class (ensure-finalized (find-class ',type-class-name))))
           ,(when allow-nil-args-p
