@@ -248,21 +248,22 @@
                         "-singleton*"
                         (symbol-package name))))
 
-(defmacro def-singleton-persistent-instance (name &body forms)
+(def (definer e :available-flags "e") singleton-persistent-instance (name &body forms)
   (bind ((singleton-variable-name (singleton-variable-name-for name)))
-    `(progn
-     (defparameter ,singleton-variable-name nil)
-     (define-symbol-macro ,name
-         (progn
-           (aif ,singleton-variable-name
-                (load-instance it)
-                (progn
-                  (register-transaction-hook :before :rollback
-                                             (lambda ()
-                                               (setf ,singleton-variable-name nil)))
-                  (setf ,singleton-variable-name
-                        (progn
-                          ,@forms)))))))))
+    (with-standard-definer-options name
+      `(progn
+        (defparameter ,singleton-variable-name nil)
+        (define-symbol-macro ,name
+            (progn
+              (aif ,singleton-variable-name
+                   (load-instance it)
+                   (progn
+                     (register-transaction-hook :before :rollback
+                                                (lambda ()
+                                                  (setf ,singleton-variable-name nil)))
+                     (setf ,singleton-variable-name
+                           (progn
+                             ,@forms))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Making instances persistent and transient

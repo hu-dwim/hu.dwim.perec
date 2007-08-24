@@ -186,7 +186,6 @@
            #:with-revived-instances
            #:with-reloaded-instance
            #:with-reloaded-instances
-           #:def-singleton-persistent-instance
            #:purge-instance
            #:purge-instances
            #:print-persistent-instance
