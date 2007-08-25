@@ -231,11 +231,15 @@
     ,@body))
 
 (defmacro with-reloaded-instances (instances &body body)
-  "Rebind the variables specified in INSTANCES, reload them in the current transaction and execute BODY in this lexical environment."
-  (unless (every #'symbolp instances)
-    (error "with-reloaded-instances works only on variables"))
-  `(bind ,(iter (for instance :in instances)
-                (collect `(,instance (load-instance ,instance))))
+  "Rebind the variables specified in INSTANCES, reload them in the current transaction and execute BODY in this lexical environment. If an entry is a list then bind with the first form and reload the second form."
+  `(bind ,(iter (for entry :in instances)
+                (for variable = (if (consp entry)
+                                    (first entry)
+                                    entry))
+                (for expression = (if (consp entry)
+                                    (second entry)
+                                    entry))
+                (collect `(,variable (load-instance ,expression))))
     ,@body))
 
 (defmacro with-reloaded-instance (instance &body body)
