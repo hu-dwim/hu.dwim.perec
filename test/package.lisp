@@ -51,5 +51,6 @@
                                 prefetch-p cache-p compute-writer compute-reader
                                 table-of columns-of reader-name-of writer-name-of
                                 depends-on-of depends-on-me-of
+                                extract-values-having-validity-range
                                 compile-query)"))
           :cl-perec-test))

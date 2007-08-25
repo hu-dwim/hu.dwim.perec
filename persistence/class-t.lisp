@@ -6,6 +6,8 @@
 
 (in-package :cl-perec)
 
+;; TODO: add cache support and override make-persistent to be able to delay slot storage
+
 ;; TODO: naming convention is really bad in this file -t means a lot of different things, mass confusion rulez, refactoring is a must
 ;; TODO: do not use t-value for time-dependent only slots, because the number of records increases dramatically
 
@@ -68,6 +70,8 @@
                    (local-time-adjust-days date-2 (- -1 (day-of (local-time::local-time-diff date-2 date-1))))))))
       (:day date-string))))
 
+;; TODO: this should not be part of the public API
+;; TODO: add a keyword argument to with-transaction instread
 (defmacro with-t (timestamp &body forms)
   `(let ((*t* ,(if (stringp timestamp)
                    `(load-time-value (parse-timestring ,timestamp))
@@ -105,6 +109,7 @@
 (defclass transaction-t-mixin ()
   ())
 
+;; TODO: disallow changing the t parameter in a transaction
 (defmethod call-in-transaction :around (database (transaction transaction-t-mixin) function)
   (declare (ignore database function))
   (with-default-t
@@ -114,6 +119,16 @@
   ((values :type (vector t))
    (validity-starts :type (vector date))
    (validity-ends :type (vector date))))
+
+(defun make-single-element-vector (element)
+  (aprog1 (make-array 1)
+    (setf (aref it 0) element)))
+
+(defun make-single-value-having-validity (value validity-start validity-end)
+  (make-instance 'values-having-validity
+                 :values (make-single-element-vector value)
+                 :validity-starts (make-single-element-vector validity-start)
+                 :validity-ends (make-single-element-vector validity-end)))
 
 (defprint-object (instance values-having-validity)
   (write-char #\{)
@@ -147,7 +162,14 @@
     (intern (subseq name 0 (- (length name) 2)) (symbol-package t-class-name))))
 
 (defcclass* persistent-class-t (persistent-class)
-  ((t-class
+  ((persistent-effective-slot-ts
+    (compute-as (collect-if #L(typep !1 'persistent-effective-slot-definition-t) (class-slots -self-)))
+    :type (list persistent-effective-slot-definition-t))
+   (effective-slots-with-underlying-slot-access
+    (compute-as (append (persistent-effective-slots-of -self-) (persistent-effective-slot-ts-of -self-)))
+    :type (list standard-effective-slot-definition)
+    :documentation "A list of slots that support the underlying-slot-value protocol.")
+   (t-class
     (compute-as (find-class (class-name->t-class-name (class-name -self-))))
     :type persistent-class)
    (t-value-column
@@ -164,12 +186,21 @@
     :type column)
    (parent-id-column
     (compute-as (id-column-of (parent-slot-of -self-)))
-    :type column)))
+    :type column))
+  (:documentation "A temporal slot value is cached in the underlying slot. A time dependent slot value is cached as a values-having-validity object."))
 
 (defcclass* persistent-slot-definition-t (standard-slot-definition)
   ((persistent
     ;; TODO: remove this slot and fix mop
     )
+   (prefetch
+    :type boolean
+    :computed-in compute-as
+    :documentation "Prefetched slots are loaded from and stored into the database at once. A prefetched slot must be in a table which can be accessed using a where clause matching to the id of the instance thus it must be in a data table. The default prefetched slot semantics can be overriden on a per direct slot basis.")
+   (cache
+    :type boolean
+    :computed-in compute-as
+    :documentation "All prefetched slots are cached slots but the opposite may not be true. When a cached slot is loaded it's value will be stored in the CLOS instance for fast subsequent read operations. Also whenever a cached slot is set the value will be remembered. The default cached slot semantics can be overriden on a per direct slot basis.")
    (time-dependent
     #f
     :type boolean)
@@ -189,7 +220,13 @@
     (persistent-slot-definition-t standard-effective-slot-definition)
   ((t-slot ;; TODO: naming mass confusion
     (compute-as (find-slot (t-class-of (slot-definition-class -self-)) (slot-definition-name -self-)))
-    :type persistent-effective-slot-definition)))
+    :type persistent-effective-slot-definition)
+   (prefetch
+    (compute-as (prefetch-p (t-slot-of -self-)))
+    :documentation "The cached option is inherited from the corresponding t slot.")
+   (cache
+    (compute-as (cache-p (t-slot-of -self-)))
+    :documentation "The cached option is inherited from the corresponding t slot.")))
 
 (defcclass* persistent-association-end-slot-definition-t (persistent-slot-definition-t)
   ;; TODO: kill association?!
@@ -424,8 +461,7 @@
              (elt record 1)))
       (cond ((zerop size)
              (slot-unbound-t instance slot))
-            ((or (= size 1)
-                 (not (time-dependent-p slot)))
+            ((= size 1)
              (bind ((record (elt-0 records)))
                (cond ((local-time< *validity-start* (validity-start-of record))
                       (slot-unbound-t instance slot
@@ -436,7 +472,10 @@
                                      :validity-start (local-time-adjust-days (validity-end-of record) 1)
                                      :validity-end *validity-end*))
                      (t
-                      (restore-slot-value t-slot record value-index)))))
+                      (make-single-value-having-validity
+                       (restore-slot-value t-slot record value-index)
+                       (validity-start-of record)
+                       (validity-end-of record))))))
             (t
              ;; TODO: sort arrays
              (bind ((values (make-array 4 :adjustable #t :fill-pointer 0))
@@ -481,12 +520,10 @@
                  (permute values indices)
                  (permute validity-starts indices)
                  (permute validity-ends indices)
-                 (if (= 1 (length values))
-                     (aref values 0)
-                     (make-instance 'values-having-validity
-                                    :values values
-                                    :validity-starts validity-starts
-                                    :validity-ends validity-ends)))))))))
+                 (make-instance 'values-having-validity
+                                :values values
+                                :validity-starts validity-starts
+                                :validity-ends validity-ends))))))))
 
 (defmacro assert-slot-access ()
   `(debug-only
@@ -494,16 +531,62 @@
            (time-dependent-p (time-dependent-p slot)))
       (assert (or temporal-p time-dependent-p)))))
 
+(defun extract-values-having-validity-range (values-having-validity requested-validity-start requested-validity-end)
+  (bind ((validity-starts (validity-starts-of values-having-validity))
+         (validity-ends (validity-ends-of values-having-validity))
+         (first-validity-start (aref validity-starts 0))
+         (last-validity-end (aref validity-ends (1- (length validity-ends)))))
+    (when (and (local-time<= first-validity-start requested-validity-start)
+               (local-time<= requested-validity-end last-validity-end))
+      (bind ((values (make-array 8 :adjustable #t :fill-pointer 0))
+             (validity-starts (make-array 8 :adjustable #t :fill-pointer 0))
+             (validity-ends (make-array 8 :adjustable #t :fill-pointer 0))
+             (result
+              (make-instance 'values-having-validity
+                             :values values
+                             :validity-starts validity-starts
+                             :validity-ends validity-ends)))
+        (flet ((push-value-with-validity (value validity-start validity-end)
+                 (vector-push-extend value values)
+                 (vector-push-extend validity-start validity-starts)
+                 (vector-push-extend validity-end validity-ends)))
+          (iter (with in-requested-validity-range = #f)
+                (for (value validity-start validity-end) :in-values-having-validity values-having-validity)
+                (if in-requested-validity-range
+                    (if (local-time<= validity-start requested-validity-end validity-end)
+                        (progn
+                          (push-value-with-validity value validity-start requested-validity-end)
+                          (setf in-requested-validity-range #f))
+                        (push-value-with-validity value validity-start validity-end))
+                    (when (local-time<= validity-start requested-validity-start validity-end)
+                      (push-value-with-validity value requested-validity-start validity-end)
+                      (setf in-requested-validity-range #t)))))
+        (if (= 1 (length values))
+            (aref values 0)
+            result)))))
+
 (defmethod slot-value-using-class ((class persistent-class-t)
                                    (instance persistent-object)
                                    (slot persistent-effective-slot-definition-t))
   (assert-slot-access)
   (assert-instance-slot-correspondence)
-  (bind ((persistent (persistent-p instance)))
+  (bind ((persistent (persistent-p instance))
+         ((values slot-value-cached cached-value) (slot-value-cached-p instance slot))
+         (integrated-slot-name (integrates-of slot)))
     (assert-instance-access)
-    (aif (integrates-of slot)
-         (integrated-time-dependent-slot-value instance it)
-         (restore-slot-t class instance slot))))
+    (if integrated-slot-name
+        (integrated-time-dependent-slot-value instance integrated-slot-name)
+        (progn
+          (when (or (not persistent)
+                    (and *cache-slot-values*
+                         slot-value-cached))
+            (if (time-dependent-p slot)
+                (aif (extract-values-having-validity-range cached-value *validity-start* *validity-end*)
+                     (return-from slot-value-using-class it)
+                     (unless persistent
+                       (slot-unbound-t instance slot)))
+                (return-from slot-value-using-class cached-value)))
+          (restore-slot-t class instance slot)))))
 
 (defun restore-slot-t (class instance slot)
   (bind ((time-dependent-p (time-dependent-p slot))
@@ -543,10 +626,17 @@
                           (when temporal-p
                             (list (sql-sort-spec :sort-key (sql-identifier :name (rdbms::name-of t-value-column)) :ordering :descending))))))
     (if time-dependent-p
-        (collect-values-having-validity instance slot t-slot records)
+        (bind ((values-having-validity
+                (setf (underlying-slot-value-using-class class instance slot)
+                      (collect-values-having-validity instance slot t-slot records)))
+               (values (values-of values-having-validity)))
+          (if (= 1 (length values))
+              (elt values 0)
+              values-having-validity))
         (if (zerop (length records))
             (slot-unbound-t instance slot)
-            (restore-slot-value t-slot (elt-0 records) 0)))))
+            (setf (underlying-slot-value-using-class class instance slot)
+                  (restore-slot-value t-slot (elt-0 records) 0))))))
 
 (defmethod (setf slot-value-using-class) (new-value
                                           (class persistent-class-t)
@@ -554,11 +644,23 @@
                                           (slot persistent-effective-slot-definition-t))
   (assert-slot-access)
   (assert-instance-slot-correspondence)
-  (bind ((persistent (persistent-p instance)))
+  (bind ((persistent (persistent-p instance))
+         (integrated-slot-name (integrates-of slot)))
     (assert-instance-access)
-    (aif (integrates-of slot)
-         (setf (integrated-time-dependent-slot-value instance it) new-value)
-         (store-slot-t class instance slot new-value))))
+    (if integrated-slot-name
+        (setf (integrated-time-dependent-slot-value instance integrated-slot-name) new-value)
+        (progn
+          (if persistent
+              (store-slot-t class instance slot new-value)
+              (assert (not (underlying-slot-boundp-using-class class instance slot))))
+          (when (or (not persistent)
+                    (and *cache-slot-values*
+                         (cache-p slot)))
+            (setf (underlying-slot-value-using-class class instance slot)
+                  (if (time-dependent-p slot)
+                      (make-single-value-having-validity new-value *validity-start* *validity-end*)
+                      new-value)))
+          new-value))))
 
 (defun store-slot-t (class instance slot value)
   (bind ((time-dependent-p (time-dependent-p slot))
@@ -643,11 +745,31 @@
 (defmethod slot-boundp-using-class ((class persistent-class-t)
                                     (instance persistent-object)
                                     (slot persistent-effective-slot-definition-t))
+  ;; TODO: cache slot values and refactor
+  (when (persistent-p instance)
+    (handler-case
+        (slot-value-using-class class instance slot)
+      (unbound-slot-t (e)
+                      (declare (ignore e))
+                      (return-from slot-boundp-using-class #f)))
+    #t)
+  #+nil
   (error "Not yet implemented"))
 
 (defmethod slot-makunbound-using-class ((class persistent-class-t)
                                         (instance persistent-object)
                                         (slot persistent-effective-slot-definition-t))
+  (error "Not yet implemented"))
+
+(defmethod make-persistent-using-class :after ((class persistent-class-t) (instance persistent-object))
+  (dolist (slot (persistent-effective-slot-ts-of class))
+    (bind ((values-having-validity (underlying-slot-boundp-or-value-using-class class instance slot)))
+      (unless (unbound-marker-p values-having-validity)
+        (iter (for (value validity-start validity-end) :in-values-having-validity values-having-validity)
+              (with-validity-range validity-start validity-end
+                (store-slot-t class instance slot value)))))))
+
+(defmethod make-transient-using-class :after ((class persistent-class-t) (instance persistent-object))
   (error "Not yet implemented"))
 
 ;;;;;;;;;;;;;;;;;;;;;
