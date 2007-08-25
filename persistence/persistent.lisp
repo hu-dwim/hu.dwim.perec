@@ -268,22 +268,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Making instances persistent and transient
 
-(defmethod make-persistent ((instance persistent-object))
+(defmethod make-persistent-using-class (class (instance persistent-object))
   (ensure-oid instance)
   (update-instance-cache-for-created-instance instance)
   (store-all-slots instance)
   (setf (persistent-p instance) #t)
   (setf (cached-instance-of (oid-of instance)) instance)
-  (bind ((class (class-of instance))
-         (slots (persistent-effective-slots-of class)))
-    (iter (for slot :in slots)
-          (when (set-type-p (slot-definition-type slot))
-            (invalidate-cached-slot instance slot)))))
+  (iter (for slot :in (persistent-effective-slots-of class))
+        (when (set-type-p (slot-definition-type slot))
+          (invalidate-cached-slot instance slot))))
 
-(defmethod make-transient ((instance persistent-object))
+(defmethod make-transient-using-class (class (instance persistent-object))
   (with-caching-slot-values
-    (bind ((class (class-of instance))
-           ((values restored-slot-values restored-slots) (restore-all-slots instance)))
+    (bind (((values restored-slot-values restored-slots) (restore-all-slots instance)))
       (iter (for restored-slot-value in restored-slot-values)
             (for restored-slot in restored-slots)
             (setf (underlying-slot-boundp-or-value-using-class class instance restored-slot) restored-slot-value))))

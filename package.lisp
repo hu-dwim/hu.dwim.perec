@@ -169,7 +169,9 @@
            #:ensure-persistent
            #:ensure-transient
            #:make-persistent
+           #:make-persistent-using-class
            #:make-transient
+           #:make-transient-using-class
            #:lock-instance
            #:oid-of
            #:persistent-p
