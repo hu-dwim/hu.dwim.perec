@@ -568,21 +568,30 @@
                                    (slot persistent-effective-slot-definition-t))
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance))
-         ((values slot-value-cached cached-value) (slot-value-cached-p instance slot))
          (integrated-slot-name (integrated-slot-name-of slot)))
     (assert-instance-access)
     (if integrated-slot-name
         (integrated-time-dependent-slot-value instance integrated-slot-name)
-        (progn
+        (bind (((values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
           (when (or (not persistent)
                     (and *cache-slot-values*
                          slot-value-cached))
             (if (time-dependent-p slot)
-                (aif (extract-values-having-validity-range cached-value *validity-start* *validity-end*)
-                     (return-from slot-value-using-class it)
-                     (unless persistent
-                       (slot-unbound-t instance slot)))
-                (return-from slot-value-using-class cached-value)))
+                (progn
+                  *validity-start* *validity-end*
+                  (when (temporal-p slot)
+                    *t*)
+                  (if (unbound-marker-p cached-value)
+                      (slot-unbound-t instance slot)
+                      (aif (extract-values-having-validity-range cached-value *validity-start* *validity-end*)
+                           (return-from slot-value-using-class it)
+                           (unless persistent
+                             (slot-unbound-t instance slot)))))
+                (progn
+                  *t*
+                  (if (unbound-marker-p cached-value)
+                      (slot-unbound-t instance slot)
+                      (return-from slot-value-using-class cached-value)))))
           (restore-slot-t class instance slot)))))
 
 (defun restore-slot-t (class instance slot)
