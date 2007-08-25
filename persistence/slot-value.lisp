@@ -155,33 +155,34 @@
 (def (function io) slot-boundp-or-value-using-class (class instance slot return-with)
   (declare (type function return-with))
   (assert-instance-slot-correspondence)
-  (bind ((persistent (persistent-p instance)))
+  (bind ((persistent (persistent-p instance))
+         ((values slot-value-cached cached-value)
+          (slot-value-cached-p instance slot)))
     (assert-instance-access)
-    (cond ((or (not persistent)
-               (and *cache-slot-values*
-                    (slot-value-cached-p instance slot)))
-           (funcall return-with (underlying-slot-boundp-or-value-using-class class instance slot)))
-          (t
-           ;; restore the slot and all other prefetched slots from the database
-           (if (and *cache-slot-values*
-                    (prefetch-p slot))
-               ;; restore all prefetched slot values at once
-               (bind (((values restored-slot-values restored-slots) (restore-prefetched-slots instance))
-                      (slot-value))
-                 (iter (for restored-slot-value in restored-slot-values)
-                       (for restored-slot in restored-slots)
-                       (when (eq slot restored-slot)
-                         (setf slot-value restored-slot-value))
-                       (when (cache-p restored-slot)
-                         (setf (underlying-slot-boundp-or-value-using-class class instance restored-slot)
-                               restored-slot-value)))
-                 (funcall return-with slot-value))
-               ;; only restore the requested slot from the database
-               (bind (((values restored-slot-value restored-slot) (restore-slot instance slot)))
-                 (when (and *cache-slot-values*
-                            (cache-p restored-slot))
-                   (setf (underlying-slot-boundp-or-value-using-class class instance restored-slot) restored-slot-value))
-                 (funcall return-with restored-slot-value)))))))
+    (if (or (not persistent)
+            (and *cache-slot-values*
+                 slot-value-cached))
+        (funcall return-with cached-value)
+        ;; restore the slot and all other prefetched slots from the database
+        (if (and *cache-slot-values*
+                 (prefetch-p slot))
+            ;; restore all prefetched slot values at once
+            (bind (((values restored-slot-values restored-slots) (restore-prefetched-slots instance))
+                   (slot-value))
+              (iter (for restored-slot-value in restored-slot-values)
+                    (for restored-slot in restored-slots)
+                    (when (eq slot restored-slot)
+                      (setf slot-value restored-slot-value))
+                    (when (cache-p restored-slot)
+                      (setf (underlying-slot-boundp-or-value-using-class class instance restored-slot)
+                            restored-slot-value)))
+              (funcall return-with slot-value))
+            ;; only restore the requested slot from the database
+            (bind (((values restored-slot-value restored-slot) (restore-slot instance slot)))
+              (when (and *cache-slot-values*
+                         (cache-p restored-slot))
+                (setf (underlying-slot-boundp-or-value-using-class class instance restored-slot) restored-slot-value))
+              (funcall return-with restored-slot-value))))))
 
 (def (function io) (setf slot-boundp-or-value-using-class) (new-value class instance slot)
   (assert-instance-slot-correspondence)

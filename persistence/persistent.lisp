@@ -35,11 +35,12 @@
            (declare (optimize (speed 3) (debug 0))
                     (dynamic-extent args))
            (assert oid)
-           (bind ((slot-names
-                   (iter (for slot in (class-slots (class-of instance)))
-                         (if (typep slot 'persistent-effective-slot-definition)
-                             (invalidate-cached-slot instance slot)
-                             (collect (slot-definition-name slot))))))
+           (bind ((class (class-of instance))
+                  (effective-slots-with-underlying-slot-access (effective-slots-with-underlying-slot-access-of class))
+                  (slot-names (mapcar #'slot-definition-name
+                                      (set-difference (class-slots class) effective-slots-with-underlying-slot-access))))
+             (dolist (slot effective-slots-with-underlying-slot-access)
+               (invalidate-cached-slot instance slot))
              (apply #'shared-initialize instance slot-names args))))
 
 (defgeneric make-revived-instance (class &key &allow-other-keys)
