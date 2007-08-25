@@ -65,7 +65,7 @@
              (defpclass* type-test ()
                ((,name :type ,type))))))
         (flet ((make-object ()
-                 (execute (sql `(delete ,(rdbms-name-for 'type-test))))
+                 (delete-records (rdbms::sql-table-alias :name (rdbms-name-for 'type-test)))
                  (setf object
                        (apply #'make-instance
                               'type-test

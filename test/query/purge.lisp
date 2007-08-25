@@ -9,8 +9,8 @@
         ;; TODO: eliminate coerce
         (for records-in-database = (sort
                                     (apply 'concatenate 'list
-                                           (coerce (execute (sql `(select (,column-name) (,table-name))))
-                                                   'list))
+                                           (coerce (select-records (list (rdbms::sql-column :name column-name))
+                                                                   (list (rdbms::sql-table-alias :name table-name))) 'list))
                                     #'<=))
         (is (equal records-in-database expected-records)
             "Table ~S: expected ~S, but found ~S" table-name expected-records records-in-database)))

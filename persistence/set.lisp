@@ -73,9 +73,8 @@
 
 (defmethod size ((set persistent-slot-set-container))
   (bind ((slot (slot-of set)))
-    (elt-0-0 (execute (sql (select (count *)
-                             (backquote (name-of (table-of slot)))
-                             (backquote (id-column-matcher-where-clause (instance-of set) (id-column-of slot)))))))))
+    (select-count-* (list (name-of (table-of slot)))
+                    (id-column-matcher-where-clause (instance-of set) (id-column-of slot)))))
 
 (defmethod empty-p ((set persistent-slot-set-container))
   (= 0 (size set)))

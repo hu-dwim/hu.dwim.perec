@@ -30,7 +30,7 @@
 (deftest test/persistence/make-transient/3 ()
   (with-transaction
     (let ((instance (make-instance 'persistence-test :name "the one")))
-      (execute (sql `(delete ,(rdbms-name-for 'persistence-test))))
+      (delete-records (rdbms::sql-table-alias :name (rdbms-name-for 'persistence-test)))
       (slot-makunbound instance 'persistent)
       (is (not (persistent-p instance))))))
 
