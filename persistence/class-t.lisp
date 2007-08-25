@@ -325,6 +325,11 @@
         (apply #'make-instance effective-slot-class initargs))
       (call-next-method)))
 
+(defmethod initialize-instance :after ((instance persistent-effective-slot-definition-t) &key &allow-other-keys)
+  (assert (or (temporal-p instance)
+              (time-dependent-p instance)
+              (integrated-slot-name-of instance))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Slot value and friends
 
@@ -372,7 +377,6 @@
           (setf (aref vector-copy (aref indices i))
                 (aref vector i)))
     (replace vector vector-copy)))
-
 
 (defun day-length-for-date-range (date-1 date-2)
   (1+ (day-of (local-time::local-time-diff date-1 date-2))))
@@ -525,12 +529,6 @@
                                 :validity-starts validity-starts
                                 :validity-ends validity-ends))))))))
 
-(defmacro assert-slot-access ()
-  `(debug-only
-    (bind ((temporal-p (temporal-p slot))
-           (time-dependent-p (time-dependent-p slot)))
-      (assert (or temporal-p time-dependent-p)))))
-
 (defun extract-values-having-validity-range (values-having-validity requested-validity-start requested-validity-end)
   (bind ((validity-starts (validity-starts-of values-having-validity))
          (validity-ends (validity-ends-of values-having-validity))
@@ -568,7 +566,6 @@
 (defmethod slot-value-using-class ((class persistent-class-t)
                                    (instance persistent-object)
                                    (slot persistent-effective-slot-definition-t))
-  (assert-slot-access)
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance))
          ((values slot-value-cached cached-value) (slot-value-cached-p instance slot))
@@ -642,7 +639,6 @@
                                           (class persistent-class-t)
                                           (instance persistent-object)
                                           (slot persistent-effective-slot-definition-t))
-  (assert-slot-access)
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance))
          (integrated-slot-name (integrated-slot-name-of slot)))
@@ -778,7 +774,6 @@
 (defmethod slot-value-using-class ((class persistent-class-t)
                                    (instance persistent-object)
                                    (slot persistent-association-end-effective-slot-definition-t))
-  (assert-slot-access)
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance)))
     (assert-instance-access)
@@ -837,7 +832,6 @@
                                           (class persistent-class-t)
                                           (instance persistent-object)
                                           (slot persistent-association-end-effective-slot-definition-t))
-  (assert-slot-access)
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance)))
     (assert-instance-access)
