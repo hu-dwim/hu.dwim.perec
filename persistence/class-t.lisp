@@ -207,7 +207,7 @@
    (temporal
     #f
     :type boolean)
-   (integrates
+   (integrated-slot-name
     nil
     :type symbol)))
 
@@ -272,7 +272,7 @@
 
 (eval-always
   ;; TODO: kill association?
-  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent :integrates :association)))
+  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent :integrated-slot-name :association)))
 
 (defmethod validate-superclass ((class persistent-class)
                                 (superclass persistent-class-t))
@@ -283,26 +283,26 @@
   t)
 
 (defmethod direct-slot-definition-class ((class persistent-class-t)
-                                         &key instance persistent association time-dependent temporal integrates &allow-other-keys)
+                                         &key instance persistent association time-dependent temporal integrated-slot-name &allow-other-keys)
   (cond (instance
          (class-of instance))
         ((and association
               (or time-dependent temporal))
          (find-class 'persistent-association-end-direct-slot-definition-t))
         ((and persistent
-              (or time-dependent temporal integrates))
+              (or time-dependent temporal integrated-slot-name))
          (find-class 'persistent-direct-slot-definition-t))
         (t
          (call-next-method))))
 
 (defmethod effective-slot-definition-class ((class persistent-class-t)
-                                            &key instance association time-dependent temporal integrates &allow-other-keys)
+                                            &key instance association time-dependent temporal integrated-slot-name &allow-other-keys)
   (cond (instance
          (class-of instance))
         ((and association
               (or time-dependent temporal))
          (find-class 'persistent-association-end-effective-slot-definition-t))
-        ((or time-dependent temporal integrates)
+        ((or time-dependent temporal integrated-slot-name)
          (find-class 'persistent-effective-slot-definition-t))
         (t
          (call-next-method))))
@@ -319,7 +319,7 @@
                                                    (find-slot (class-of !1) slot-option-name)
                                                  (slot-initarg-and-value !1 slot-option-name))
                                              direct-slot-definitions))
-                                     '(temporal time-dependent integrates association)))
+                                     '(temporal time-dependent integrated-slot-name association)))
              (initargs (append slot-initargs standard-initargs))
              (effective-slot-class (apply #'effective-slot-definition-class class :persistent #t initargs)))
         (apply #'make-instance effective-slot-class initargs))
@@ -572,7 +572,7 @@
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance))
          ((values slot-value-cached cached-value) (slot-value-cached-p instance slot))
-         (integrated-slot-name (integrates-of slot)))
+         (integrated-slot-name (integrated-slot-name-of slot)))
     (assert-instance-access)
     (if integrated-slot-name
         (integrated-time-dependent-slot-value instance integrated-slot-name)
@@ -645,7 +645,7 @@
   (assert-slot-access)
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance))
-         (integrated-slot-name (integrates-of slot)))
+         (integrated-slot-name (integrated-slot-name-of slot)))
     (assert-instance-access)
     (if integrated-slot-name
         (setf (integrated-time-dependent-slot-value instance integrated-slot-name) new-value)
