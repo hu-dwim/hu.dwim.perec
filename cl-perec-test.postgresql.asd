@@ -27,6 +27,9 @@
 
 (in-package :cl-perec-system)
 
+(defvar *test-database-connection-specification*
+  '(:host "localhost" :database "perec-test" :user-name "perec-test" :password "test123"))
+
 (defsystem :cl-perec-test.postgresql
   :description "Tests for cl-perec with Postgresql backend."
   :depends-on (:cl-perec-test))

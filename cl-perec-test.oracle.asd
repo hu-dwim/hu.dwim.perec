@@ -27,6 +27,14 @@
 
 (in-package :cl-perec-system)
 
+(defvar *test-database-connection-specification*
+  '(:datasource "(ADDRESS =
+                   (PROTOCOL = TCP)
+                   (HOST = localhost)
+                   (PORT = 1521))"
+    :user-name "perec-test"
+    :password "test123"))
+
 (defsystem :cl-perec-test.oracle
   :description "Tests for cl-perec with Oracle backend."
   :depends-on (:cl-perec-test))
@@ -37,13 +45,10 @@
             (setf *database*
                   (make-instance 'oracle
                                  :transaction-mixin 'transaction-mixin
-                                 :connection-specification
-                                 '(:datasource \"(ADDRESS =
-                                                  (PROTOCOL = TCP)
-                                                  (HOST = localhost)
-                                                  (PORT = 1521))\"
-                                   :user-name \"perec-test\"
-                                   :password \"test123\"))))")))
+                                 :default-result-type 'vector
+                                 :muffle-warnings t
+                                 :transaction-mixin 'transaction-mixin
+                                 :connection-specification cl-perec-system::*test-database-connection-specification*)))")))
 
 (defmethod perform ((o test-op) (c (eql (find-system :cl-perec-test.oracle))))
   (eval (read-from-string "(stefil:funcall-test-with-feedback-message 'test)")))
