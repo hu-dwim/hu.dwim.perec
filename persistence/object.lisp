@@ -27,7 +27,7 @@
     :type t
     :persistent #f
     :documentation "A reference to the transaction to which this instance is currently attached to or nil.")
-   (event
+   (transaction-event
     nil
     :type (member nil :created :modified :deleted)
     :persistent #f
@@ -94,13 +94,13 @@
   (print-persistent-instance self))
 
 (defun created-p (instance)
-  (eq :created (event-of instance)))
+  (eq :created (transaction-event-of instance)))
 
 (defun modified-p (instance)
-  (eq :modified (event-of instance)))
+  (eq :modified (transaction-event-of instance)))
 
 (defun deleted-p (instance)
-  (eq :deleted (event-of instance)))
+  (eq :deleted (transaction-event-of instance)))
 
 (defun ensure-oid (instance)
   "Makes sure that the instance has a valid oid."

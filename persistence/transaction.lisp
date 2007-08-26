@@ -30,8 +30,8 @@
   (and (in-transaction-p)
        (eq (transaction-of instance) *transaction*)))
 
-(defgeneric before-committing-instance (instance event)
-  (:method (instance event)
+(defgeneric before-committing-instance (instance transaction-event)
+  (:method (instance transaction-event)
            (bind ((class (class-of instance)))
              (dolist (slot (persistent-effective-slots-of class))
                (when (eq :on-commit (type-check-of slot))
@@ -39,8 +39,8 @@
                    (when cached-p
                      (check-slot-value-type instance slot slot-value #t))))))))
 
-(defgeneric after-instance-committed (instance event)
-  (:method (instance event)
+(defgeneric after-instance-committed (instance transaction-event)
+  (:method (instance transaction-event)
            (values)))
 
 (defmethod commit-transaction :around (database (transaction transaction-mixin))
