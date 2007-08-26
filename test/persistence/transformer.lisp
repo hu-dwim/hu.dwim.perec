@@ -177,13 +177,9 @@
 (deftest test/persistence/transformer/t/nil ()
   (is-equal-using-transformers t
                                nil
-                               (vector
-                                (flexi-streams:with-output-to-sequence (stream)
-                                  (cl-store:store nil stream)))))
+                               (vector (serializer:serialize nil))))
 
 (deftest test/persistence/transformer/t/something ()
   (is-equal-using-transformers t
                                'something
-                               (vector
-                                (flexi-streams:with-output-to-sequence (stream)
-                                  (cl-store:store 'something stream)))))
+                               (vector (serializer:serialize 'something))))

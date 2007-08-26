@@ -64,15 +64,14 @@
                :arnesi
                :alexandria
                :metabang-bind
-               :s-base64
                :computed-class
                :defclass-star
-               :flexi-streams
                :local-time
                :parse-number
                :contextl
                :metacopy
                :cl-def
+               :cl-serializer
                :cl-ppcre
                :cl-store
                :cl-containers
@@ -104,7 +103,6 @@
              (:file "store")
              (:file "slot-value")
              (:file "persistent")
-             (:file "serialization")
              (:file "standard-type")
              (:file "transformer")
              (:file "set")

@@ -123,28 +123,34 @@
 ;;;;;;;;;;;;;;
 ;;; Serialized
 
+(defvar +persistent-object-code+ #x60)
+
 (defun byte-vector->object-reader (rdbms-values index)
-  (with-input-from-sequence (stream (elt rdbms-values index))
-    (restore stream)))
+  (deserialize (elt rdbms-values index)
+               :deserializer-mapper (lambda (code context)
+                                      (if (eq code +persistent-object-code+)
+                                          #'read-persistent-object
+                                          (cl-serializer::default-deserializer-mapper code context)))))
 
 (defun object->byte-vector-writer (slot-value rdbms-values index)
   (setf (elt rdbms-values index)
-        (with-output-to-sequence (stream)
-          (store slot-value stream))))
+        (serialize slot-value
+                   :buffer-size 10240
+                   :serializer-mapper (lambda (object context)
+                                        (bind (((values code has-identity writer-function)
+                                                (cl-serializer::default-serializer-mapper object context)))
+                                          (if (and (eq code serializer::+standard-object-code+)
+                                                   (typep object 'persistent-object))
+                                              (values +persistent-object-code+ #t #'write-persistent-object)
+                                              (values code has-identity writer-function)))))))
 
-(defun base64->object-reader (rdbms-values index)
-  (with-input-from-sequence (stream
-    (with-input-from-string (base64 (elt rdbms-values index))
-      (decode-base64-bytes base64)))
-    (restore stream)))
-
-(defun object->base64-writer (slot-value rdbms-values index)
-  (setf (elt rdbms-values index)
-        (with-output-to-string (base64)
-          (encode-base64-bytes
-            (with-output-to-sequence (stream)
-              (store slot-value stream))
-           base64))))
+(def serializer::serializer-deserializer persistent-object +persistent-object-code+ persistent-object
+  (let ((oid (oid-of serializer::object)))
+    (serializer::write-integer (oid-class-id oid) serializer::context)
+    (serializer::write-integer (oid-instance-id oid) serializer::context))
+  (load-instance (revive-oid (serializer::read-integer serializer::context)
+                             (serializer::read-integer serializer::context))
+                 :skip-existence-check #t))
 
 ;;;;;;;;;;;;
 ;;; Identity

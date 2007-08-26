@@ -10,20 +10,18 @@
   (:nicknames :prc)
 
   (:use :common-lisp
+        :bind
         :closer-mop
         :iterate
         :arnesi
-        :bind
-        :s-base64
-        :computed-class
         :defclass-star
-        :flexi-streams
+        :computed-class
         :local-time
         :parse-number
         :metacopy-with-contextl
         :cl-def
         :cl-ppcre
-        :cl-store
+        :cl-serializer
         :cl-containers
         :cl-rdbms)
 
@@ -46,10 +44,6 @@
                           #:dequeue
                           #:enqueue
                           #:parent)
-
-  (:shadowing-import-from :flexi-streams
-                          #:octets-to-string
-                          #:string-to-octets)
 
   (:shadowing-import-from :cl-rdbms
                           #:update-index

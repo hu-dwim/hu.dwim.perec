@@ -80,52 +80,61 @@
 (defparameter *oid-class-id->class-name-map* (make-hash-table)
   "This map is used to cache class names by class ids. It gets filled when ensure-class is called for the first time and kept up to date.")
 
-(defun class-id->class-name (class-id)
+(def (function o) class-id->class-name (class-id)
   (aprog1
       (gethash class-id *oid-class-id->class-name-map*)
     (assert it nil "Could not find the class name for the class id ~A, probably the class has not yet been exported." class-id)))
 
-(defun (setf class-id->class-name) (class-name class-id)
+(def (function o) (setf class-id->class-name) (class-name class-id)
   (assert (and class-id class-name (symbolp class-name) (integerp class-id)))
   (awhen (gethash class-id *oid-class-id->class-name-map*)
     (unless (eq it class-name)
       (error "Two different class names have the same class id ~A ~A" it class-name)))
   (setf (gethash class-id *oid-class-id->class-name-map*) class-name))
 
-(defun class-name->class-id (class-name)
+(def (function io) class-name->class-id (class-name)
   (mod (sxhash (symbol-name class-name))
        +oid-maximum-class-id+))
 
-(defun make-class-oid (class-name)
+(def (function io) class-id-and-instance-id->id (class-id instance-id)
+  (oid-mode-ecase
+    (:class-name instance-id)
+    (:class-id instance-id)
+    (:merge (logior (ash instance-id +oid-class-id-bit-size+) class-id))))
+
+(def (function o) make-class-oid (class-name)
   "Creates a fresh and unique oid which was never used before in the relational database."
   (or *oid-instance-id-sequence-exists* (ensure-instance-id-sequence))
-  (bind ((instance-id (next-instance-id))
-         (class-id (class-name->class-id class-name))
-         (id (oid-mode-ecase
-               (:class-name instance-id)
-               (:class-id instance-id)
-               (:merge (logior (ash instance-id +oid-class-id-bit-size+) class-id)))))
+  (bind ((class-id (class-name->class-id class-name))
+         (instance-id (next-instance-id))
+         (id (class-id-and-instance-id->id class-id instance-id)))
     (make-oid :id id
               :instance-id instance-id
               :class-id class-id
               :class-name class-name)))
 
-(defun ensure-instance-id-sequence ()
+(def (function io) revive-oid (class-id instance-id)
+  (make-oid :id (class-id-and-instance-id->id class-id instance-id)
+            :class-id class-id
+            :instance-id instance-id
+            :class-name (class-id->class-name class-id)))
+
+(def (function o) ensure-instance-id-sequence ()
   "Makes sure the instance id sequence exists in the database."
   (unless (sequence-exists-p +oid-instance-id-sequence-name+)
     (create-sequence +oid-instance-id-sequence-name+))
   (setf *oid-instance-id-sequence-exists* #t))
 
-(defun next-instance-id ()
+(def (function o) next-instance-id ()
   (aprog1 (sequence-next +oid-instance-id-sequence-name+)
     (unless (<= (integer-length it) +oid-instance-id-bit-size+)
       (error "Instance id sequence reached its maximum value ~A" +oid-maximum-instance-id+))))
 
-(defun oid->rdbms-values (oid)
+(def (function io) oid->rdbms-values (oid)
   (aprog1 (make-array +oid-column-count+)
     (oid->rdbms-values* oid it 0)))
 
-(defun oid->rdbms-values* (oid rdbms-values index)
+(def (function io) oid->rdbms-values* (oid rdbms-values index)
   "Returns a sufficient list representation for relational database operations of the instance's oid in the order of the corresponding RDBMS columns."
   (bind ((id (oid-id oid)))
     (setf (elt rdbms-values index) id)
@@ -136,10 +145,10 @@
        (setf (elt rdbms-values (1+ index)) (oid-class-id oid)))
       (:merge))))
 
-(defun rdbms-values->oid (rdbms-values)
+(def (function io) rdbms-values->oid (rdbms-values)
   (rdbms-values->oid* rdbms-values 0))
 
-(defun rdbms-values->oid* (rdbms-values index)
+(def (function io) rdbms-values->oid* (rdbms-values index)
   (bind ((id (elt rdbms-values index))
          instance-id
          class-id
