@@ -161,7 +161,7 @@
 
 (defcclass* persistent-class-t (persistent-class)
   ((persistent-effective-slot-ts
-    (compute-as (collect-if #L(typep !1 'persistent-effective-slot-definition-t) (class-slots -self-)))
+    (compute-as (collect-if #L(typep !1 'persistent-effective-slot-definition-t) (standard-effective-slots-of -self-)))
     :type (list persistent-effective-slot-definition-t))
    (effective-slots-with-underlying-slot-access
     (compute-as (append (persistent-effective-slots-of -self-) (persistent-effective-slot-ts-of -self-)))

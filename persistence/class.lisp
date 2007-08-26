@@ -19,12 +19,20 @@
     (compute-as #f)
     :type boolean
     :documentation "An abstract persistent class cannot be instantiated but still can be used in associations and may have slots. Calling make-instance on an abstract persistent class will signal an error. On the other hand abstract classes might not have a primary table and thus handling the instances may require simpler or less SQL statements.")
+   (standard-direct-slots
+    (compute-as (class-direct-slots -self-))
+    :type (list standard-effective-slot-definition)
+    :documentation "All computed slots that needs the direct slots should use this slot so that invalidation will work.")
+   (standard-effective-slots
+    (compute-as (class-slots -self-))
+    :type (list standard-effective-slot-definition)
+    :documentation "All computed slots that needs the effective slots should use this slot so that invalidation will work.")
    (persistent-direct-slots
-    (compute-as (collect-if #L(typep !1 'persistent-direct-slot-definition) (class-direct-slots -self-)))
+    (compute-as (collect-if #L(typep !1 'persistent-direct-slot-definition) (standard-direct-slots-of -self-)))
     :type (list persistent-direct-slot-definition)
     :documentation "The list of direct slots which are defined to be persistent in this class.")
    (persistent-effective-slots
-    (compute-as (collect-if #L(typep !1 'persistent-effective-slot-definition) (class-slots -self-)))
+    (compute-as (collect-if #L(typep !1 'persistent-effective-slot-definition) (standard-effective-slots-of -self-)))
     :type (list persistent-effective-slot-definition)
     :documentation "The list of effective slots which are turned out to be persistent in this class.")
    (effective-slots-with-underlying-slot-access
@@ -690,4 +698,3 @@
     (assert (ends-with (string-upcase (symbol-name (cl-rdbms::name-of column))) "BOUND"))
     (assert (typep (cl-rdbms::type-of column) 'sql-boolean-type))
     column))
-

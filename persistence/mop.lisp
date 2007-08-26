@@ -160,12 +160,9 @@
                     (persistent-effective-slots-of class))))
 
 (defmethod compute-slots :after ((class persistent-class))
-  "Invalidates the cached slot value of persistent-effective-slots whenever the effective slots are recomputed, so that all dependent computed state will be invalidated and recomputed when requested."
-  ;; TODO: add a new slot for all class-slots and class-direct-slots and direct-super-classes and direct-sub-classes
-  ;; TODO: and invalidate only those and replace all calls
-  (invalidate-computed-slot class 'persistent-direct-slots)
-  (invalidate-computed-slot class 'persistent-effective-slots)
-  (invalidate-computed-slot class 'effective-slots-with-underlying-slot-access))
+  "Invalidates the cached slot values whenever the effective slots are recomputed, so that all dependent computed state will be invalidated and recomputed when requested."
+  (invalidate-computed-slot class 'standard-direct-slots)
+  (invalidate-computed-slot class 'standard-effective-slots))
 
 ;;;;;;;;;;;
 ;;; Utility
@@ -224,7 +221,7 @@
              :abstract (first (getf args :abstract))
              (remove-keywords args :direct-slots :direct-superclasses :abstract))
     (setf (find-persistent-class name) class)
-    (invalidate-computed-slot class 'persistent-direct-slots)
+    (invalidate-computed-slot class 'standard-direct-slots)
     ;; update type specific class dependencies
     (mapc #L(bind ((type (normalized-type-for (slot-definition-type !1))))
               (when (set-type-p type)
