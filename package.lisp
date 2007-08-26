@@ -260,6 +260,9 @@
            #:*validity-start*
            #:*validity-end*
            #:values-having-validity
+           #:t-value-of
+           #:validity-start-of
+           #:validity-end-of
            #:+beginning-of-time+
            #:+end-of-time+
 
