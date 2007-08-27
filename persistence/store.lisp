@@ -149,7 +149,7 @@
                           (execute
                            ,(bind ((tables (delete-duplicates (mapcar #'table-of slots)))
                                    ((values table-aliases where-clause)
-                                    (table-aliases-and-where-clause-for-instance (sql-backquote :form '(id-of instance)) tables)))
+                                    (table-aliases-and-where-clause-for-instance (sql-unquote :form '(id-of instance)) tables)))
                                   (rdbms::expand-sql-ast-into-lambda-form
                                    (make-instance 'sql-select
                                                   :columns (mapcan (lambda (slot)
