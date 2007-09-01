@@ -14,18 +14,16 @@
 ;;;;;;;;;;;;;
 ;;; Constants
 
-(define-constant +beginning-of-time+ (parse-timestring "1000-01-01TZ")
-  :test local-time=
-  :documentation "All dates and timestamps for temporal and time dependent slots are equal or greater than the beginning of time.")
+(def (constant e :test 'local-time=) +beginning-of-time+ (parse-timestring "1000-01-01TZ")
+  "All dates and timestamps for temporal and time dependent slots are equal or greater than the beginning of time.")
 
-(define-constant +end-of-time+ (parse-timestring "3000-01-01TZ")
-  :test local-time=
-  :documentation "All dates and timestamps for temporal and time dependent slots are equal or less than the end of time.")
+(def (constant e :test 'local-time=) +end-of-time+ (parse-timestring "3000-01-01TZ")
+  "All dates and timestamps for temporal and time dependent slots are equal or less than the end of time.")
 
-(defconstant +t-delete+ 0
+(def constant +t-delete+ 0
   "Constant used to mark RDBMS records for association slots.")
 
-(defconstant +t-insert+ 1
+(def constant +t-insert+ 1
   "Constant used to mark RDBMS records for association slots.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
