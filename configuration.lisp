@@ -48,15 +48,3 @@
              (dolist (package packages)
                (push (cons package *readtable*) swank:*readtable-alist*))))
       (doit "CL-PEREC" "CL-PEREC-TEST"))))
-
-;; TODO delete this when the patches sent to sbcl-devel are applied
-#+sbcl
-(unless (fdefinition '(setf standard-instance-access))
-  (sb-ext:without-package-locks
-    (defun (setf standard-instance-access) (new-value instance location)
-      (setf (sb-pcl::clos-slots-ref (sb-pcl::std-instance-slots instance) location) new-value))
-    (defun (setf funcallable-standard-instance-access) (new-value instance location)
-      (setf (sb-pcl::clos-slots-ref (sb-pcl::fsc-instance-slots instance) location) new-value))
-    (warn "Your sbcl does not seem to have (setf standard-instance-access); we've just defined it.")))
-
-
