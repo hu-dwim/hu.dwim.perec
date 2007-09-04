@@ -11,27 +11,12 @@
 
 (defsuite* (test/persistence/canonical :in test/persistence))
 
-(defun check-mapped-type (type)
-  (is (or (eq type 'unbound)
-          (eq type 'member)
-          (eq type t)
-          (not (unbound-subtype-p type))))
-  (is (or (eq type 'set)
-          (eq type 'disjunct-set)
-          (eq type 'ordered-set)
-          (eq type 'member)
-          (eq type t)
-          (not (set-type-p type)))))
-
-(deftest test/persistence/canonical/subtypep ()
-  (mapc #'check-mapped-type *mapped-type-precedence-list*))
-
 (deftest test/persistence/canonical/type (type canonical-type)
   (let ((*canonical-types* '(unbound)))
     (is (equalp canonical-type (canonical-type-for type)))))
 
 (defmacro def-canonical-type-test (name type canonical-type)
-  `(deftest ,(concatenate-symbol 'test/persistence/canonical/ name) ()
+  `(deftest ,(concatenate-symbol "test/persistence/canonical/" name) ()
     (test/persistence/canonical/type ',type ',canonical-type)))
 
 (def-canonical-type-test null/1 null null)
@@ -96,12 +81,20 @@
   (is (equalp normalized-type (normalized-type-for type))))
 
 (defmacro def-normalized-type-test (name type normalized-type)
-  `(deftest ,(concatenate-symbol 'test/persistence/normalized/ name) ()
+  `(deftest ,(concatenate-symbol "test/persistence/normalized/" name) ()
     (test/persistence/normalized/type ',type ',normalized-type)))
 
 (def-normalized-type-test null/1 unbound nil)
 
 (def-normalized-type-test unbound/1 unbound nil)
+
+(def-normalized-type-test t/1 t (and (not null)
+                                     (not unbound)))
+
+(def-normalized-type-test serialized/1 serialized serialized)
+(def-normalized-type-test serialized/2 (or unbound serialized) serialized)
+(def-normalized-type-test serialized/3 (or null serialized) serialized)
+(def-normalized-type-test serialized/4 (or unbound null serialized) serialized)
 
 (def-normalized-type-test boolean/1 boolean (and (not null) boolean))
 (def-normalized-type-test boolean/2 (or unbound boolean) (and (not null) boolean))
@@ -135,6 +128,65 @@
 (def-normalized-type-test symbol/2 (or unbound symbol) (and (not null) symbol))
 
 (def-normalized-type-test set/1 (set persistent-object) (and (not null) (set persistent-object)))
+
+;;;;;;;;;;
+;;; Mapped
+
+(defsuite* (test/persistence/mapped :in test/persistence))
+
+(defun check-mapped-type (type)
+  (is (or (eq type 'unbound)
+          (eq type 'member)
+          (eq type t)
+          (not (unbound-subtype-p type))))
+  (is (or (eq type 'set)
+          (eq type 'disjunct-set)
+          (eq type 'ordered-set)
+          (eq type 'member)
+          (eq type t)
+          (not (set-type-p type)))))
+
+(deftest test/persistence/mapped/subtypep ()
+  (mapc #'check-mapped-type *mapped-type-precedence-list*))
+
+(deftest test/persistence/mapped/type-precedence-list ()
+  (iter (for types :on *mapped-type-precedence-list*)
+        (for type-1 = (car types))
+        (iter (for type-2 :in (cdr types))
+              (unless (or (eq 'member type-1)
+                          (eq 'member type-2))
+                (is (not (subtypep type-2 type-1)))))))
+
+(deftest test/persistence/mapped/type (type mapped-type)
+  (is (equalp mapped-type (mapped-type-for (normalized-type-for type)))))
+
+(defmacro def-mapped-type-test (type)
+  `(progn
+    (deftest ,(concatenate-symbol (find-package :cl-perec-test) "test/persistence/mapped/" type "/1") ()
+      (test/persistence/mapped/type ',type ',type))
+    (deftest ,(concatenate-symbol (find-package :cl-perec-test) "test/persistence/mapped/" type "/2") ()
+      (test/persistence/mapped/type '(or unbound ,type) ',type))
+    (deftest ,(concatenate-symbol (find-package :cl-perec-test) "test/persistence/mapped/" type "/3") ()
+      (test/persistence/mapped/type '(or null ,type) ',type))
+    (deftest ,(concatenate-symbol (find-package :cl-perec-test) "test/persistence/mapped/" type "/4") ()
+      (test/persistence/mapped/type '(or null ,type) ',type))))
+
+(def-mapped-type-test boolean)
+
+(def-mapped-type-test serialized)
+
+(def-mapped-type-test form)
+
+(def-mapped-type-test t)
+
+(deftest test/persistence/mapped/null ()
+  (test/persistence/mapped/type 'null nil))
+
+(deftest test/persistence/mapped/unbound ()
+  (test/persistence/mapped/type 'unbound nil))
+
+(deftest test/persistence/mapped/or-null-unbound ()
+  (test/persistence/mapped/type '(or null unbound) nil))
 
 ;;;;;;;;;;;;;;
 ;;; Type check

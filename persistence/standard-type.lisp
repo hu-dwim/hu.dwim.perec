@@ -421,9 +421,16 @@
 ;;;
 ;;; non form -> (type-error)
 
+;; TODO:
+(defun form-p (form)
+  (declare (ignore form))
+  t)
+
 (defptype form (&optional byte-size)
   (declare (ignore byte-size))
-  '(and list
+  '(and (not unbound)
+        (or atom list)
+        (satisfies form-p) ;; TODO: this is to avoid subtypep relationship between serialized and form
         (satisfies maximum-serialized-size-p)))
 
 (defmapping form (sql-character-varying-type)
@@ -469,4 +476,3 @@
 (defmapping ip-address (sql-binary-large-object-type :size 16)
   'unsigned-byte-array->ip-address-reader
   'ip-address->unsigned-byte-array-writer)
-

@@ -231,7 +231,7 @@
     (?type
      type)))
 
-(defvar *mapped-type-precedence-list*
+(defparameter *mapped-type-precedence-list*
   '(nil
     unbound
     null
@@ -251,11 +251,11 @@
     timestamp
     date
     time
-    form
     unsigned-byte-vector
     member
     symbol*
     symbol
+    form
     serialized
     set
     disjunct-set
