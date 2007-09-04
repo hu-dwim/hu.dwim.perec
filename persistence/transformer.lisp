@@ -125,24 +125,25 @@
 
 (defvar +persistent-object-code+ #x60)
 
+(def (function o) deserializer-mapper (code context)
+  (if (eq code +persistent-object-code+)
+      #'read-persistent-object
+      (cl-serializer::default-deserializer-mapper code context)))
+
 (defun byte-vector->object-reader (rdbms-values index)
-  (deserialize (elt rdbms-values index)
-               :deserializer-mapper (lambda (code context)
-                                      (if (eq code +persistent-object-code+)
-                                          #'read-persistent-object
-                                          (cl-serializer::default-deserializer-mapper code context)))))
+  (deserialize (elt rdbms-values index) :deserializer-mapper #'deserializer-mapper))
+
+(def (function o) serializer-mapper (object context)
+  (bind (((values code has-identity writer-function)
+          (cl-serializer::default-serializer-mapper object context)))
+    (if (and (eq code serializer::+standard-object-code+)
+             (typep object 'persistent-object))
+        (values +persistent-object-code+ #t #'write-persistent-object)
+        (values code has-identity writer-function))))
 
 (defun object->byte-vector-writer (slot-value rdbms-values index)
   (setf (elt rdbms-values index)
-        (serialize slot-value
-                   :buffer-size 10240
-                   :serializer-mapper (lambda (object context)
-                                        (bind (((values code has-identity writer-function)
-                                                (cl-serializer::default-serializer-mapper object context)))
-                                          (if (and (eq code serializer::+standard-object-code+)
-                                                   (typep object 'persistent-object))
-                                              (values +persistent-object-code+ #t #'write-persistent-object)
-                                              (values code has-identity writer-function)))))))
+        (serialize slot-value :buffer-size 10240 :serializer-mapper #'serializer-mapper)))
 
 (def serializer::serializer-deserializer persistent-object +persistent-object-code+ persistent-object
   (let ((oid (oid-of serializer::object)))
