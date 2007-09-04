@@ -149,9 +149,12 @@
   (let ((oid (oid-of serializer::object)))
     (serializer::write-integer (oid-class-id oid) serializer::context)
     (serializer::write-integer (oid-instance-id oid) serializer::context))
-  (load-instance (revive-oid (serializer::read-integer serializer::context)
-                             (serializer::read-integer serializer::context))
-                 :skip-existence-check #t))
+  (let ((position (1- (serializer::sc-position serializer::context))))
+    (serializer::announce-identity
+     (load-instance (revive-oid (serializer::read-integer serializer::context)
+                                (serializer::read-integer serializer::context))
+                    :skip-existence-check #t)
+     position serializer::context)))
 
 ;;;;;;;;;;;;
 ;;; Identity
