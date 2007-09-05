@@ -173,6 +173,7 @@
            #:modified-p
            #:deleted-p
            #:instance-in-transaction-p
+           #:instance-in-current-transaction-p
            #:transaction-of
            #:p-eq
            #:load-instance
