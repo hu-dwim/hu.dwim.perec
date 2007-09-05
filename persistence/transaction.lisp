@@ -8,10 +8,8 @@
 
 ;;; with-database, open-database, close-database, with-transaction, with-transaction*, begin, commit, rollback are all inherited from cl-rdbms
 
-(defclass* transaction-mixin ()
-  ((instance-cache
-    (make-instance 'instance-cache)
-    :type instance-cache)))
+(defclass* transaction-mixin (transaction-instance-cache-mixin)
+  ())
 
 (defmethod rdbms::cleanup-transaction :around ((transaction transaction-mixin))
   (unwind-protect
