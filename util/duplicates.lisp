@@ -107,6 +107,19 @@
           new
           list)))
 
+(defun find-tree-root (node parent-function)
+  (find-on-parent-chain node parent-function
+                        (lambda (node)
+                          (if (funcall parent-function node)
+                              nil
+                              node))))
+
+(defun find-on-parent-chain (node parent-function map-function)
+  (iter (for current-node :initially node :then (funcall parent-function current-node))
+        (while current-node)
+        (awhen (funcall map-function current-node)
+          (return it))))
+
 (defun not-yet-implemented (&optional (datum "Not yet implemented." datum-p) &rest args)
   (when datum-p
     (setf datum (strcat "Not yet implemented: " datum)))

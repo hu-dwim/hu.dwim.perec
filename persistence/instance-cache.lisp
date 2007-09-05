@@ -22,7 +22,11 @@
    (deleted-instances
     (make-hash-table :test #'eq)
     :type hash-table
-    :documentation "A map from instances to true indicating that the instance is in the set."))
+    :documentation "A map from instances to true indicating that the instance is in the set.")
+   (bulks
+    (make-hash-table :test #'eq)
+    :type hash-table
+    :documentation "A map from symbols to bulks of instances. Used to cache complex trees, graphs of instances at once."))
   (:documentation "Each transaction has its own transaction level instance cache filled by the operations executed during that transaction. The cache is created empty when the transaction starts and it will be dropped when the transaction ends. Each instance loaded during a transaction will be put here to keep the identity of the in-memory instance throughout the transaction. Moreover the instance cache is responsible to manage the list of created, modified and deleted instances during the transaction."))
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -98,4 +102,57 @@
     (:deleted)
     ((nil)
      (setf (transaction-event-of instance) :deleted)
-     (setf (gethash instance (deleted-instances-of *instance-cache*)) #t))))
+     (setf (gethash instance (deleted-instances-of *transaction*)) #t))))
+
+;;;;;;;;;
+;;; Bulks
+
+(def (function io) cached-bulk-of (bulk)
+  "Returns an instance representing the bulk of persistent instances if it has been already cached in this transaction."
+  (gethash bulk (bulks-of *transaction*)))
+
+(def (function io) (setf cached-bulk-of) (instance bulk)
+  "Stores an instance representing the bulk of persistent instances."
+  (debug-only
+    (assert (not (cached-bulk-of bulk))))
+  (setf (gethash bulk (bulks-of *transaction*)) instance))
+
+(def (function o) cache-to-many-association-ends (instances children-slot-provider parent-accessor)
+  (dolist (instance instances)
+    (when-bind parent (funcall parent-accessor instance)
+      (bind ((parent-class (class-of parent))
+             (parent-children-slot (funcall children-slot-provider parent-class))
+             ((values cached-p children)
+              (slot-value-cached-p parent parent-children-slot)))
+        (assert cached-p)
+        (setf (underlying-slot-boundp-or-value-using-class parent-class parent parent-children-slot)
+              (cons instance children))))))
+
+(def (function o) cache-to-many-association-ends-for-tree (instances children-slot-provider parent-accessor)
+  (dolist (instance instances)
+    (bind ((class (class-of instance))
+           (children-slot (funcall children-slot-provider class)))
+      (setf (underlying-slot-boundp-or-value-using-class class instance children-slot) nil)))
+  (cache-to-many-association-ends instances children-slot-provider parent-accessor)
+  (find-tree-root (first instances) parent-accessor))
+
+(def macro ensure-cached-to-many-association-ends-for-tree (bulk instances children-slot-provider parent-accessor)
+  `(aif (cached-bulk-of ,bulk)
+    it
+    (setf (cached-bulk-of ,bulk)
+     (cache-to-many-association-ends-for-tree ,instances ,children-slot-provider ,parent-accessor))))
+
+(def (function o) cache-to-many-association-ends-for-1-n-association (children children-slot-provider parent-accessor)
+  (dolist (child children)
+    (bind ((parent (funcall parent-accessor child))
+           (parent-class (class-of parent))
+           (parent-children-slot (funcall children-slot-provider parent-class)))
+      (setf (underlying-slot-boundp-or-value-using-class parent-class parent parent-children-slot) nil)))
+  (cache-to-many-association-ends children children-slot-provider parent-accessor)
+  children)
+
+(def macro ensure-cached-to-many-association-ends-for-1-n-association (bulk children children-slot-provider parent-accessor)
+  `(aif (cached-bulk-of ,bulk)
+    it
+    (setf (cached-bulk-of ,bulk)
+     (cache-to-many-association-ends-for-1-n-association ,children ,children-slot-provider ,parent-accessor))))
