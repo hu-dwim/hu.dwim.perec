@@ -3,6 +3,10 @@
 ;;;----------------------------------------------------------------------------
 ;;; SQL mapping of expressions
 ;;;
+
+;;; TODO: inherited associations mapped to column in the derived entity (missing)
+;;;
+
 (defun transform-to-sql (condition)
   "Transforms the CONDITION of an assert to an SQL expression."
     (bind ((sql nil)

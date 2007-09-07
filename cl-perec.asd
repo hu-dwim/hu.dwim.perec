@@ -110,7 +110,8 @@
              (:file "class-t")))
    (:module :query
             :components
-            ((:file "api")
+            ((:file "conditions")
+             (:file "api")
              (:file "copy")
              (:file "macro")
              (:file "syntax")
@@ -118,7 +119,7 @@
              (:file "scroll")
              (:file "result-set" :depends-on ("scroll"))
              (:file "cache")
-             (:file "query" :depends-on ("syntax" "api"))
+             (:file "query" :depends-on ("conditions" "syntax" "api"))
              (:file "sql" :depends-on ("query"))
              (:file "type" :depends-on ("syntax" "query"))
              (:file "partial-eval" :depends-on ("query"))

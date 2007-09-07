@@ -4,6 +4,7 @@
 ;;;
 ;;; See LICENCE for details.
 
+
 (in-package :cl-perec)
 
 ;;(declaim-debug)
@@ -249,25 +250,61 @@
                   (if (and (listp where-cond) (eq 'and (car where-cond)))
                       (rest where-cond)
                       (list where-cond))))))
+           (find-clause (clause-name clauses &optional (optionalp #t))
+             (bind ((found-clauses (remove clause-name clauses :key #'first :test-not #'eql)))
+               (case (length found-clauses)
+                 (0 (unless optionalp
+                      (error 'missing-query-clause-error :form form :clause clause-name)))
+                 (1 (first found-clauses))
+                 (t (error 'duplicated-query-clause-error :form form :clause clause-name)))))
+           (check-where-clause (clause)
+             (when (and clause (not (length=1 (rest clause))))
+               (error 'malformed-query-clause-error
+                      :form form
+                      :clause clause
+                      :detail "One condition expected in WHERE clause."))
+             clause)
+           (check-group-by-clause (clause)
+             clause)
+           (check-having-clause (clause)
+             (when (and clause (not (length=1 (rest clause))))
+               (error 'malformed-query-clause-error
+                      :form form
+                      :clause clause
+                      :detail "One condition expected in HAVING clause."))
+             clause)
+           (check-order-by-clause (clause)
+             (when clause
+               (unless (evenp (length (rest clause)))
+                 (error 'malformed-query-clause-error
+                        :form form
+                        :clause clause
+                        :detail "Plist expected in the body of the ORDER-BY clause."))
+               (iter (for (dir expr) on (rest clause) by #'cddr)
+                     (unless (member dir '(:asc :desc))
+                       (error 'malformed-query-clause-error
+                              :form form
+                              :clause clause
+                              :detail ":ASC or :DESC expected as sorting directions."))))
+             clause)
            (make-select (options select-list clauses)
              (bind ((lexical-variables (make-lexical-variables lexical-variables))
-                    (from-clause (find 'from clauses :key #'first))
-                    (where-clause (find 'where clauses :key #'first))
-                    (group-by-clause (find 'group-by clauses :key #'first))
-                    (having-clause (find 'having clauses :key #'first))
-                    (order-by-clause (find 'order-by clauses :key #'first))
+                    (from-clause (find-clause 'from clauses #f))
+                    (where-clause (check-where-clause (find-clause 'where clauses)))
+                    (group-by-clause (check-group-by-clause (find-clause 'group-by clauses)))
+                    (having-clause (check-having-clause (find-clause 'having clauses)))
+                    (order-by-clause (check-order-by-clause (find-clause 'order-by clauses)))
                     (query-variables (make-query-variables (rest from-clause)))
                     (asserts (make-asserts where-clause (rest from-clause)))
-                    (other-clauses (remove from-clause
+                    (extra-clauses (remove from-clause
                                            (remove where-clause
                                                    (remove group-by-clause
                                                            (remove having-clause
                                                                    (remove order-by-clause clauses)))))))
-               (unless from-clause
-                 (error "Missing FROM clause in: ~:W" form))
-               (when other-clauses
-                 (error "Unrecognized or duplicated clauses ~:W in query ~:W"
-                        other-clauses form))
+               (when extra-clauses
+                 (error 'unrecognized-query-clause-error
+                        :form form
+                        :clause (first (first extra-clauses))))
 
                (apply 'make-instance 'query
                       :lexical-variables lexical-variables
@@ -281,16 +318,16 @@
                       options)))
            (make-purge (options purge-list clauses)
              (bind ((lexical-variables (make-lexical-variables lexical-variables))
-                    (from-clause (find 'from clauses :key 'first))
-                    (where-clause (find 'where clauses :key 'first))
+                    (from-clause (find-clause 'from clauses))
+                    (where-clause (check-where-clause (find-clause 'where clauses)))
                     (query-variables (make-query-variables (rest from-clause)))
                     (asserts (make-asserts where-clause (rest from-clause)))
-                    (other-clauses (remove from-clause (remove where-clause clauses))))
-               (unless from-clause
-                 (error "Missing FROM clause in: ~:W" form))
-               (when other-clauses
-                 (error "Unrecognized or duplicated clauses ~:W in query ~:W"
-                        other-clauses form))
+                    (extra-clauses (remove from-clause (remove where-clause clauses))))
+
+               (when extra-clauses
+                 (error 'unrecognized-query-clause-error
+                        :form form
+                        :clause (first (first extra-clauses))))
 
                (apply 'make-instance 'query
                       :lexical-variables lexical-variables
@@ -312,4 +349,5 @@
       ((purge  (?is ?purge-list listp) . ?clauses)
        (make-purge nil ?purge-list ?clauses))
       (?otherwise
-       (error "Malformed query: ~:W" form)))))
+       (error 'query-syntax-error
+              :form form)))))

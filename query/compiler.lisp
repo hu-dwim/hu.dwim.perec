@@ -151,22 +151,10 @@ with the result of the naively compiled query.")
            ;;       the result is not a set and (set-exclusive-or '(a b b) '(a a b))
            ;;       returns NIL.
            (when (set-exclusive-or ,result-list ,expected-list :test 'equal)
-             (cerror "Return the expected result." 'query-error
+             (cerror "Return the expected result." 'query-result-mismatch-error
                      :query ,query :result ,result-list :expected ,expected-list))
            ,expected))))))
 
-(define-condition query-error ()
-  ((query :initarg :query)
-   (result :initarg :result)
-   (expected :initarg :expected))
-
-  (:report (lambda (condition stream)
-             (format stream "Query ~S failed. Result is ~:W, but expected ~:W."
-                     (slot-value condition 'query)
-                     (slot-value condition 'result)
-                     (slot-value condition 'expected))))
-  
-  (:documentation "Condition signalling that the runtime check of the query failed."))
 
 ;;;;---------------------------------------------------------------------------
 ;;;; Simple query compiler
