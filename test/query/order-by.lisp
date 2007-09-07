@@ -18,7 +18,9 @@
     (iter (for (dir attr) on order-spec by 'cddr)
           (for attr-value-1 = (slot-value class1 attr))
           (for attr-value-2 = (slot-value class2 attr))
-          (for compare-fn = (ecase dir (:asc 'less-or-equal-p) (:desc 'greater-or-equal-p)))
+          (for compare-fn = (ecase dir
+                              (:ascending 'less-or-equal-p)
+                              (:descending 'greater-or-equal-p)))
           (cond
             ((funcall compare-fn attr-value-1 attr-value-2) (return #t))
             ((not (equal attr-value-1 attr-value-2)) (return #f)))
@@ -60,69 +62,69 @@
     (check-ordered
      (select (o)
        (from (o order-by-test))
-       (order-by :asc (int-attr-of o)))
-     (list :asc 'int-attr))))
+       (order-by :ascending (int-attr-of o)))
+     (list :ascending 'int-attr))))
 
 (deftest test/query/select/order-by/integer/desc ()
   (run-order-by-test
     (check-ordered
      (select (o)
        (from (o order-by-test))
-       (order-by :desc (int-attr-of o)))
-     (list :desc 'int-attr))))
+       (order-by :descending (int-attr-of o)))
+     (list :descending 'int-attr))))
 
 (deftest test/query/select/order-by/string/asc ()
   (run-order-by-test
     (check-ordered
      (select (o)
        (from (o order-by-test))
-       (order-by :asc (str-attr-of o)))
-     (list :asc 'str-attr))))
+       (order-by :ascending (str-attr-of o)))
+     (list :ascending 'str-attr))))
 
 (deftest test/query/select/order-by/string/desc ()
   (run-order-by-test
     (check-ordered
      (select (o)
        (from (o order-by-test))
-       (order-by :desc (str-attr-of o)))
-     (list :desc 'str-attr))))
+       (order-by :descending (str-attr-of o)))
+     (list :descending 'str-attr))))
 
 (deftest test/query/select/order-by/date/asc ()
   (run-order-by-test
     (check-ordered
      (select (o)
        (from (o order-by-test))
-       (order-by :asc (date-attr-of o)))
-     (list :asc 'date-attr))))
+       (order-by :ascending (date-attr-of o)))
+     (list :ascending 'date-attr))))
 
 (deftest test/query/select/order-by/date/desc ()
   (run-order-by-test
     (check-ordered
      (select (o)
        (from (o order-by-test))
-       (order-by :desc (date-attr-of o)))
-     (list :desc 'date-attr))))
+       (order-by :descending (date-attr-of o)))
+     (list :descending 'date-attr))))
 
 (deftest test/query/select/order-by/all ()
   (run-order-by-test
     (check-ordered
      (select (o)
        (from (o order-by-test))
-       (order-by :asc (int-attr-of o) :desc (str-attr-of o)))
-     (list :asc 'int-attr :desc 'str-attr))))
+       (order-by :ascending (int-attr-of o) :descending (str-attr-of o)))
+     (list :ascending 'int-attr :descending 'str-attr))))
 
 (deftest test/query/select/order-by/expression ()
   (run-order-by-test
     (check-ordered
      (select (o)
        (from (o order-by-test))
-       (order-by :asc (- (int-attr-of o))))
-     (list :desc 'int-attr))))
+       (order-by :ascending (- (int-attr-of o))))
+     (list :descending 'int-attr))))
 
 (deftest test/query/select/order-by/error ()
   (run-order-by-test
     (signals error
       (select (o)
         (from (o order-by-test))
-        (order-by :asc (int-attr-of 'o))))))
+        (order-by :ascending (int-attr-of 'o))))))
 

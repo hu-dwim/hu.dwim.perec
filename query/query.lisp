@@ -53,7 +53,7 @@
    (order-by
     nil
     :type list
-    :documentation "Format: (:asc <expr1> :desc <expr2> ...)")
+    :documentation "Format: (:ascending <expr1> :descending <expr2> ...)")
    (sql-select-list
     nil)
    (sql-where
@@ -61,7 +61,7 @@
    (sql-order-by
     nil
     :type list
-    :documentation "Format: (:asc <sql-expr-1> :desc <sql-expr-2> ...)")))
+    :documentation "Format: (:ascending <sql-expr-1> :descending <sql-expr-2> ...)")))
 
 (define-copy-method copy-inner-class progn ((self query) copy copy-htable)
   (with-slot-copying (copy copy-htable self)
@@ -169,12 +169,12 @@
 (defmethod add-having ((query query) expression)
   (appendf (having-of query) (list expression)))
 
-(defmethod add-order-by ((query query) expression &optional (direction :asc))
-  (assert (member direction '(:asc :desc)))
+(defmethod add-order-by ((query query) expression &optional (direction :ascending))
+  (assert (member direction '(:asc :ascending :desc :descending)))
   (nconcf (order-by-of query) (list direction expression)))
 
-(defmethod set-order-by ((query query) expression &optional (direction :asc))
-  (assert (member direction '(:asc :desc)))
+(defmethod set-order-by ((query query) expression &optional (direction :ascending))
+  (assert (member direction '(:asc :ascending :desc :descending)))
   (setf (order-by-of query) (list direction expression)))
 
 (defgeneric add-where-clause (query where-clause)
@@ -209,7 +209,7 @@
 (defmethod add-collect ((query simple-query-builder) expression)
   (call-next-method query (preprocess-query-expression query expression)))
 
-(defmethod add-order-by ((query simple-query-builder) expression &optional (direction :asc))
+(defmethod add-order-by ((query simple-query-builder) expression &optional (direction :ascending))
   (call-next-method query (preprocess-query-expression query expression) direction))
 
 ;;;
@@ -281,11 +281,11 @@
                         :clause clause
                         :detail "Plist expected in the body of the ORDER-BY clause."))
                (iter (for (dir expr) on (rest clause) by #'cddr)
-                     (unless (member dir '(:asc :desc))
+                     (unless (member dir '(:asc :ascending :desc :descending))
                        (error 'malformed-query-clause-error
                               :form form
                               :clause clause
-                              :detail ":ASC or :DESC expected as sorting directions."))))
+                              :detail ":ASCENDING or :DESCENDING expected as sorting directions."))))
              clause)
            (make-select (options select-list clauses)
              (bind ((lexical-variables (make-lexical-variables lexical-variables))

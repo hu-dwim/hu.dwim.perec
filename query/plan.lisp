@@ -39,7 +39,7 @@
   (:documentation "Computes a function of the input record."))
 
 (defclass* sort-operation (unary-operation-node)
-  ((sort-spec :type list :documentation "List of :asc/:desc and expression pairs.")))
+  ((sort-spec :type list :documentation "List of :ascending/:descending and expression pairs.")))
 
 (defclass* unique-operation (unary-operation-node)
   ()
@@ -180,7 +180,10 @@
 
 (defun add-sorter (input query)
   (bind ((order-by (order-by-of query)))
-    (if (and order-by (or (member :asc order-by) (member :desc order-by))) ;; FIXME ???
+    (if (and order-by (or (member :asc order-by)
+                          (member :ascending order-by)
+                          (member :desc order-by)
+                          (member :descending order-by))) ;; FIXME ???
         (progn
           (make-instance 'sort-operation
                          :query query
@@ -323,7 +326,9 @@
 (defun order-by-to-sql (order-by)
   (iter (for (dir expr) on order-by by 'cddr)
         (bind (((values sort-key success) (transform-to-sql expr))
-               (ordering (ecase dir (:asc :ascending) (:desc :descending))))
+               (ordering (ecase dir
+                           ((:asc :ascending) :ascending)
+                           ((:desc :descending) :descending))))
           (if success
               (collect `(sql-sort-spec :sort-key ,sort-key :ordering ,ordering))
               (leave)))))
@@ -618,7 +623,9 @@
   `(declare (ignorable ,@(mapcar 'name-of variables))))
 
 (defun generate-comparator (sort-spec-1 sort-spec-2)
-  (bind ((lessp (ecase (first sort-spec-1) (:asc 'lessp) (:desc 'greaterp)))
+  (bind ((lessp (ecase (first sort-spec-1)
+                  ((:asc :ascending) 'lessp)
+                  ((:desc :descending) 'greaterp)))
          (expr1 (second sort-spec-1))
          (expr2 (second sort-spec-2)))
     (if (null (cddr sort-spec-1))       ; last

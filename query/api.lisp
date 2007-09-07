@@ -22,7 +22,7 @@
      <variable-spec>:   <symbol> | (<symbol> <type-expr>)
      <where-clause>:    (where <bool-expr>)
      <order-by-clause>: (order-by <order-spec>*)
-     <order-spec>:      :asc|:desc <expr>
+     <order-spec>:      :ascending|:descending <expr>
 
   Semantics:
 
