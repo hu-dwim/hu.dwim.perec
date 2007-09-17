@@ -58,7 +58,32 @@
                (format stream "Query ~S failed. Result is ~:W, but expected ~:W."
                        query result expected)))))
 
+(defcondition* query-warning (warning)
+  ())
 
+(defcondition* query-compiler-warning (query-warning)
+  ())
+
+(defcondition* slot-not-found-warning (query-compiler-warning)
+  ((accessor)
+   (arg-type)
+   (access-type))
+  (:documentation "Warning signalling that the query compiler cannot find the slot for a slot access.")
+  (:report (lambda (condition stream)
+             (with-slots (accessor arg-type access-type) condition
+                 (format stream "No slot found with type <~A> for slot access (~A <~A>)."
+                         accessor arg-type access-type)))))
+
+(defcondition* ambiguous-slot-warning (query-compiler-warning)
+  ((accessor)
+   (arg-type)
+   (access-type)
+   (slot-names))
+  (:documentation "Warning signalling that the query compiler cannot identify the slot for a slot access.")
+  (:report (lambda (condition stream)
+             (with-slots (accessor arg-type access-type slot-names) condition
+               (format stream "More slots found with type <~A> for slot access (~A <~A>): ~A."
+                       access-type accessor arg-type slot-names)))))
 
 
 

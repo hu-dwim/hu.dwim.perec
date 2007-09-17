@@ -150,12 +150,16 @@
            (concatenate-symbol (class-name (slot-definition-class slot))
                                ":"
                                (slot-definition-name slot))))
-    (warn "Cannot find the slot for the acccessor ~A.
-Candidates are ~A, owner type is ~A, expected type is ~A."
-          (accessor-of access)
-          (mapcar #'qualified-name-of slots)
-          (xtype-of (arg-of access))
-          (xtype-of access))))
+    (if slots
+        (warn 'ambiguous-slot-warning
+              :accessor (accessor-of access)
+              :access-type (xtype-of access)
+              :arg-type (xtype-of (arg-of access))
+              :slot-names (mapcar #'qualified-name-of slots))
+        (warn 'slot-not-found-warning
+              :accessor (accessor-of access)
+              :access-type (xtype-of access)
+              :arg-type (xtype-of (arg-of access))))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Type utils
