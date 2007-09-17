@@ -108,8 +108,14 @@
            (effective-association-ends-for-accessor (accessor-of access))))
 
 (defun find-slot-for-access (access slots)
-  (or (find-slot-by-owner-type (arg-of access) slots)
-      (find-slot-by-slot-type (xtype-of access) slots)))
+  (generalize-slot-access
+   (or (find-slot-by-owner-type (arg-of access) slots)
+       (find-slot-by-slot-type (xtype-of access) slots))))
+
+(defun generalize-slot-access (slot)
+  (aif (and slot (persistent-effective-super-slot-precedence-list-of slot))
+       (first (last it))
+       slot))
 
 (defun find-slot-by-owner-type (owner slots)
   (bind ((owner-type (normalized-type-for* (xtype-of owner))))
@@ -125,7 +131,9 @@
     ((length=1 slots) (first slots))
     ((and (not (eq type +unknown-type+))
           (not (contains-syntax-p type)))
-     (find type slots :key 'slot-definition-type :test #L(subtypep (normalized-type-for* !2) !1)))))
+     (find type slots
+           :key 'slot-definition-type
+           :test #L(subtypep (normalized-type-for* !2) !1)))))
 
 (defun x-element-type-of (type)
   (if (and (consp type)

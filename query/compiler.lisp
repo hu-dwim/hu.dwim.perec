@@ -188,6 +188,7 @@ with the result of the naively compiled query.")
   (parse-query query)
   (normalize-query query)
   (infer-types query)
+  (normalize-association-end-access query)
   (introduce-joined-variables query)
   (partial-eval-asserts query)
   query)
@@ -222,11 +223,7 @@ with the result of the naively compiled query.")
   (:documentation "Normalizes type asserts to (typep ...) forms to ease further processing:
   (typep <object> '<class-name>)               -> (typep <object> <class>)
   (subtypep (class-of <obj>) '<class-name>) -> (typep <object> <class>)
-  (subtypep (class-of <obj>) <type>)         -> (typep <object> <type>)
-
-  if the assoc is 1-1
-  (eq (<primary-assoc-end-accessor> <obj1>) <obj2>) -> 
-                                           (eq (secondary-assoc-end-accessor <obj2>) <obj1>)")
+  (subtypep (class-of <obj>) <type>)         -> (typep <object> <type>)")
   
   (:method (syntax)
            syntax)
@@ -253,7 +250,50 @@ with the result of the naively compiled query.")
              (#M(function-call :fn subtypep
                                :args (#M(function-call :fn class-of :args (?object)) ?type))
                 (make-function-call :fn 'typep :args (list ?object ?type)))
-             ;; TODO reverse 1-1 association-end
+             (?otherwise
+              call))))
+
+(defun normalize-association-end-access (query)
+  "If the assoc is 1-1
+  (eq (<secondary-assoc-end-accessor> <obj1>) <obj2>) -> (eq (primary-assoc-end-accessor <obj2>) <obj1>)"
+  (setf (asserts-of query) (mapcar #'%normalize-association-end-access (asserts-of query))
+        (having-of query) (%normalize-association-end-access (having-of query))))
+
+(defgeneric %normalize-association-end-access (syntax)
+  (:method (syntax)
+           syntax)
+  (:method ((form compound-form))
+           (setf (operands-of form)
+                 (mapcar '%normalize-association-end-access (operands-of form)))
+           form)
+  (:method ((call function-call))
+           (pattern-case call
+             (#M(function-call :fn eq
+                               :args (?or ((?is ?access association-end-access-p) ?object)
+                                          (?object (?is ?access association-end-access-p))))
+                (if (association-end-of ?access)
+                    (bind ((association-end (association-end-of ?access))
+                           (association (association-of association-end))
+                           (other-end (other-association-end-of association-end)))
+                      (ecase (association-kind-of association)
+                        (:1-1
+                         (if (primary-association-end-p association-end)
+                             call
+                             (make-function-call ;; reverse
+                              :xtype (xtype-of call)
+                              :fn 'eq
+                              :args (list
+                                     (make-association-end-access
+                                      :xtype (xtype-of (arg-of ?access))
+                                      :association-end other-end
+                                      :accessor (reader-name-of other-end)
+                                      :args (list ?object))
+                                     (arg-of ?access)))))
+                        (:1-n
+                         call)
+                        (:m-n
+                         call)))
+                    call))
              (?otherwise
               call))))
 
@@ -271,17 +311,28 @@ with the result of the naively compiled query.")
   ;; slot access -> ensure that arg is a query variable with the correct type
   (:method ((access slot-access) query)
            (call-next-method)
-           (when (association-end-access-p (arg-of access))
+           (when (association-end-access-p (arg-of access)) ;; TODO check 1-ary end
              (setf (arg-of access)
                    (joined-variable-for-association-end-access query (arg-of access))))
            (when (slot-of access)
              (setf (arg-of access)
                    (ensure-type query (arg-of access) (slot-definition-class (slot-of access)))))
+           ;;(debug-only (check-slot-access access))
            (values)))
 
 (defun partial-eval-asserts (query)
   (setf (asserts-of query)
         (mapcar #L(partial-eval !1 query) (asserts-of query))))
+
+(defun check-slot-access (access)
+  ""
+  (when (slot-of access)
+    (bind ((slot (slot-of access))
+           (object (arg-of access))
+           (persistent-class (base-type-for (xtype-of object))))
+      (unless (eq persistent-class +unknown-type+)
+        (bind ((table (first (rest (primary-tables-of persistent-class)))))
+          (assert (eq (table-of slot) table)))))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Optimize
@@ -324,7 +375,7 @@ with the result of the naively compiled query.")
 
 (defun ensure-type (query object type)
   (if (eq (xtype-of object) +unknown-type+)
-      (progn (setf (xtype-of object) type) object)
+      (progn (setf (xtype-of object) type) object) ; FIXME?
       (or (and (eq (xtype-of object) type) object)
           (find-joined-variable-by-definition query object nil type)
           (make-new-joined-variable query object nil type))))
