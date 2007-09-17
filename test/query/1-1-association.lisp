@@ -20,6 +20,8 @@
   ())
 
 ;; FIXME: without filnalizing here, MOP gets into infinite loop
+;;   when calculates the type of the slot in the sub-brother-test (compute-effective-slots)
+;;   it calls compute-effective-slots on sub-sister-test and vice versa.
 (eval-when (:load-toplevel :execute)
   (ensure-finalized (find-class 'super-brother-test))
   (ensure-finalized (find-class 'super-sister-test))
@@ -79,4 +81,5 @@
     (is (null (select (b)
                 (from (b sub-brother-test))
                 (where (null (sister-of b))))))))
+
 
