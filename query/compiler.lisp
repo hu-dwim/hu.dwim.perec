@@ -332,9 +332,9 @@ with the result of the naively compiled query.")
 (defun find-joined-variable-by-definition (query object association-end type)
   (find-if
    #L(and (typep !1 'joined-variable)
-          (eq association-end (association-end-of !1))
-          (equal object (object-of !1))
-          (eq (xtype-of !1) type))
+          (eq (association-end-of !1) association-end)
+          (syntax= (object-of !1) object)
+          (eq type (xtype-of !1)))
    (query-variables-of query)))
 
 (defun base-type-for (type)

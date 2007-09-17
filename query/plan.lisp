@@ -653,7 +653,7 @@ If true then all query variables must be under some aggregate call."
                     (cons (when (query-variable-p node) (list node))
                           (when (or (and (function-call-p node)
                                          (aggregate-function-name-p (fn-of node)))
-                                    (member node group-by :test 'pattern-match))
+                                    (member node group-by :test 'syntax=))
                             (list node))))
                   (lambda (parent &rest children)
                     (if (cdr parent)

@@ -305,3 +305,38 @@ Be careful when using in different situations, because it modifies *readtable*."
    (lambda (node) (when (funcall predicate node) node))
    (lambda (parent &rest children) (or parent (some #'identity children)))))
 
+
+(defun syntax= (left right)
+  (cond ((eql left right) #t)
+        ((and (syntax-object-p left) (syntax-object-p right))
+         (syntax-object= left right))
+        ((and (consp left) (consp right))
+         (and (syntax= (first left) (first right))
+              (syntax= (rest left) (rest right))))
+        (t #f)))
+
+(defgeneric syntax-object= (left right)
+  (:method-combination and)
+
+  (:method and ((left syntax-object) (right syntax-object))
+           (syntax= (xtype-of left) (xtype-of right)))
+
+  (:method and ((left unparsed-form) (right unparsed-form))
+           (syntax= (form-of left) (form-of right)))
+
+  (:method and ((left literal-value) (right literal-value))
+           (equalp (value-of left) (value-of right)))
+
+  (:method and ((left variable) (right variable))
+           (eql (name-of left) (name-of right)))
+
+  (:method and ((left joined-variable) (right joined-variable))
+           (and (syntax= (object-of left) (object-of right))
+                (eql (association-end-of left) (association-end-of right))))
+
+  (:method and ((left compound-form) (right compound-form))
+           (and (syntax= (operator-of left) (operator-of right))
+                (syntax= (operands-of left) (operands-of right))))
+
+  (:method and ((left slot-access) (right slot-access))
+           (eql (slot-of left) (slot-of right))))
