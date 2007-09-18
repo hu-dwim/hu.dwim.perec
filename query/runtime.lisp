@@ -157,6 +157,7 @@
 ;; TODO: this was a temporary solution that sped up things quite a bit
 (defcfun (xxx :computed-in compute-as) (type)
   (compute-writer nil type))
+
 ;; TODO: compute-writer is a performance killer (it's available on the slot)
 (defun value->sql-values (value type)
   (assert (not (eq type +unknown-type+)))

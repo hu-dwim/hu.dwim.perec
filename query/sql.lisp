@@ -93,23 +93,28 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            ;; select oids and prefetched slots
            ;; TODO: if no prefetch, select the expressions in the collect clause
            (mapcan
-            (lambda (variable) (sql-columns-for-variable variable (prefetchp query)))
+            (lambda (variable) (sql-columns-for-variable variable (prefetch-mode-of query)))
             (query-variables-of query))))
 
-(defun sql-columns-for-variable (variable prefetchp)
+(defun sql-columns-for-variable (variable prefetch-mode)
   (bind ((table-alias (sql-alias-for variable)))
-    (if prefetchp
-        (nconc
-         (sql-oid-column-references-for variable)
-         (mapcan #L(sql-column-references-for !1 table-alias)
-                 (prefetched-slots-for variable)))
-        (sql-oid-column-references-for variable))))
+    (append
+     (sql-oid-column-references-for variable)
+     (mapcan #L(sql-column-references-for !1 table-alias)
+             (prefetched-slots-for variable prefetch-mode)))))
 
-(defun prefetched-slots-for (variable)
-  (bind ((type (xtype-of variable)))
-    (when (persistent-class-p type)
-      (collect-if #L(eq (table-of !1) (primary-table-of type))
-                  (prefetched-slots-of type)))))
+(defun prefetched-slots-for (variable prefetch-mode)
+  (ecase prefetch-mode
+    (:none nil)
+    (:accessed
+     (bind ((type (xtype-of variable)))
+       (when (persistent-class-p type)
+         (collect-if #L(eq (table-of !1) (primary-table-of type))
+                     (prefetched-slots-of type)))))
+    (:all
+     (bind ((type (xtype-of variable)))
+       (when (persistent-class-p type)
+         (prefetched-slots-of type))))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Table references
@@ -137,7 +142,9 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 
   (:method ((variable query-variable) (alias symbol))
            (assert (not (eq (xtype-of variable) +unknown-type+)))
-           (sql-table-reference-for-type (xtype-of variable) alias))
+           (sql-table-reference-for-type
+            `(join ,(xtype-of variable) ,@(joined-types-of variable))
+            alias))
 
   (:method ((association persistent-association) (alias symbol))
            (assert (eq (association-kind-of association) :m-n))
@@ -172,7 +179,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (bind ((class (find-class type-name #f)))
              (typecase class
                (persistent-class (sql-table-reference-for-type class alias))
-               (otherwise nil))))
+               (otherwise nil)))) ; FIXME signal error
 
   (:method ((type syntax-object) &optional alias) ;; type unknown at compile time
            (make-function-call
@@ -192,25 +199,48 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
                             (sql-table-alias (sql-subquery :query (sql-select-oids-from-table table-ref)))
                             (sql-derived-table (cl-rdbms::subquery-of table-ref)))) ; TODO missing export
                         (ensure-alias (table-ref)
-                          (when (or (typep table-ref 'sql-table-alias)
-                                    (typep table-ref 'sql-derived-table))
-                            (setf (cl-rdbms::alias-of table-ref) alias))
-                          table-ref)
+                          (if (or (typep table-ref 'sql-table-alias)
+                                  (typep table-ref 'sql-derived-table))
+                              (progn
+                                (setf (cl-rdbms::alias-of table-ref) alias)
+                                table-ref)
+                              (sql-derived-table
+                                :subquery table-ref
+                                :alias alias)))
                         (combine-types (sql-set-operation types)
                           (bind ((operands (delete nil
                                                    (mapcar 'sql-table-reference-for-type types))))
                            (case (length operands)
                              (0 nil)
                              (1 (ensure-alias (first operands)))
-                             (t (sql-table-reference-for
+                             (t (ensure-alias
                                  (sql-subquery
                                   :query (apply sql-set-operation
-                                                (mapcar #'ensure-sql-query operands)))
-                                 alias))))))
+                                                (mapcar #'ensure-sql-query operands))))))))
+                        (join-types (types)
+                          (bind ((primary-table-ref (sql-table-reference-for-type
+                                                     (first types) alias))
+                                 (joined-table-refs
+                                  (mapcan
+                                   #L(when (primary-table-of !1)
+                                       (list (sql-table-reference-for (primary-table-of !1) nil)))
+                                   (rest types))))
+                            (cond
+                              ((null primary-table-ref) nil)
+                              ((null joined-table-refs) (ensure-alias primary-table-ref))
+                              (t (ensure-alias
+                                  (reduce #L(sql-joined-table
+                                              :kind :inner
+                                              :left !1
+                                              :right !2
+                                              :using (list +oid-id-column-name+))
+                                          joined-table-refs
+                                          :initial-value primary-table-ref)))))))
                  (case (car combined-type)
                    (or (combine-types 'sql-union (rest combined-type)))
                    (and (combine-types 'sql-intersect (rest combined-type)))
                    (not (not-yet-implemented))
+                   (join (join-types (rest combined-type)))
                    (t (error "Unsupported type constructor in ~A" combined-type)))))))
 
 ;;;----------------------------------------------------------------------------

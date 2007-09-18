@@ -583,9 +583,9 @@
 
 (defun query-variable-binder (query)
   (query-variable-binder2 (query-variables-of query)
-                          (prefetchp query)))
+                          (prefetch-mode-of query)))
 
-(defun query-variable-binder2 (variables &optional (prefetchp #f))
+(defun query-variable-binder2 (variables &optional (prefetch-mode :accessed))
   (lambda (row referenced-by &key suffix (start-index 0))
       (bind ((referenced-variables (collect-query-variables referenced-by))
              (end-index start-index))
@@ -595,7 +595,7 @@
                     (name-of variable))))
           (values
            (iter (for variable in variables)
-                 (for slots = (when prefetchp (prefetched-slots-for variable)))
+                 (for slots = (prefetched-slots-for variable prefetch-mode))
                  (for column-count = (reduce '+ slots
                                              :key 'column-count-of
                                              :initial-value +oid-column-count+))

@@ -190,6 +190,7 @@ with the result of the naively compiled query.")
   (infer-types query)
   (normalize-association-end-access query)
   (introduce-joined-variables query)
+  (add-prefetched-types query)
   (partial-eval-asserts query)
   query)
 
@@ -279,7 +280,7 @@ with the result of the naively compiled query.")
                         (:1-1
                          (if (primary-association-end-p association-end)
                              call
-                             (make-function-call ;; reverse
+                             (make-function-call ;; reverse, FIXME check NULL
                               :xtype (xtype-of call)
                               :fn 'eq
                               :args (list
@@ -334,6 +335,16 @@ with the result of the naively compiled query.")
         (bind ((table (first (rest (primary-tables-of persistent-class)))))
           (assert (eq (table-of slot) table)))))))
 
+(defun add-prefetched-types (query)
+  (when (eq (prefetch-mode-of query) :all)
+    (dolist (variable (query-variables-of query))
+      (bind ((type (xtype-of variable)))
+        (when (persistent-class-p type)
+          (dolist (class (persistent-effective-super-classes-of type))
+            (when (and (primary-table-of class)
+                       (prefetched-slots-of class))
+              (ensure-variable-type variable class))))))))
+
 ;;;----------------------------------------------------------------------------
 ;;; Optimize
 ;;;
@@ -374,11 +385,26 @@ with the result of the naively compiled query.")
       (make-new-joined-variable query object association-end type)))
 
 (defun ensure-type (query object type)
-  (if (eq (xtype-of object) +unknown-type+)
-      (progn (setf (xtype-of object) type) object) ; FIXME?
-      (or (and (eq (xtype-of object) type) object)
-          (find-joined-variable-by-definition query object nil type)
-          (make-new-joined-variable query object nil type))))
+  (acond
+    ((eq (xtype-of object) +unknown-type+)
+     (progn (setf (xtype-of object) type) object)) ; FIXME?
+
+    ((eq (xtype-of object) type)
+     object)
+
+    ((query-variable-p object)
+     (ensure-variable-type object type)
+     object)
+
+    ((find-joined-variable-by-definition query object nil type)
+     it)
+
+    (t
+     (make-new-joined-variable query object nil type))))
+
+(defun ensure-variable-type (variable type)
+  (unless (find type (joined-types-of variable))
+    (push type (joined-types-of variable))))
 
 (defun find-joined-variable-by-definition (query object association-end type)
   (find-if

@@ -25,10 +25,9 @@
     #f
     :accessor uniquep
     :type boolean)
-   (prefetchp
-    #t
-    :accessor prefetchp
-    :type boolean)
+   (prefetch-mode
+    :all
+    :type (member :none :accessed :all))
    (result-type
     'list
     :type (member 'list 'scroll))
@@ -65,7 +64,7 @@
 
 (define-copy-method copy-inner-class progn ((self query) copy copy-htable)
   (with-slot-copying (copy copy-htable self)
-    (copy-slots lexical-variables query-variables flatp uniquep prefetchp result-type
+    (copy-slots lexical-variables query-variables flatp uniquep prefetch-mode result-type
                 asserts action action-args group-by having order-by sql-select-list
                 sql-where sql-order-by)))
 
@@ -83,9 +82,9 @@
               (list :flatp (flatp query)))
             (when (uniquep query)
               (list :uniquep #t))
-            (when (not (prefetchp query))
-              (list :prefetchp #f))
-            (when (not (eq (result-type-of query) 'list))
+            (unless (eq (prefetch-mode-of query) :accessed)
+              (list :prefetch-mode (prefetch-mode-of query)))
+            (unless (eq (result-type-of query) 'list)
               (list :result-type (result-type-of query))))))
 
 (defun mapc-query (fn query)

@@ -48,9 +48,12 @@
         If true then the value of the select list will not be added to the result,
         when it is equal to a previously seen value.
 
-     prefetchp: generalized-boolean
-        If true then the values of slots of the returned objects are cached in the object.
-        Default is true.
+     prefetch-mode: (member :none :accessed :all)
+        Determines which slots filled in the cached objects returned by the query.
+        If :none then only the oid is filled in,
+        if :accessed then only the slots that are stored in accessed tables are filled in,
+        if :all then all slots are filled in.
+        Default is :accessed.
 
   Example:
 
