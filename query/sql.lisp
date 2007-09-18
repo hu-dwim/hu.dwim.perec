@@ -679,7 +679,7 @@ value is equal, when they represent the NIL lisp value)."
   (sql-literal :value #f :type (make-instance 'cl-rdbms::sql-boolean-type)))
 
 (defun sql-true-literal ()
-  (sql-literal :value #t :type (make-instance 'cl-rdbms::sql-booelan-type)))
+  (sql-literal :value #t :type (make-instance 'cl-rdbms::sql-boolean-type)))
 
 ;;;----------------------------------------------------------------------------
 ;;; Helpers
