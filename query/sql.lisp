@@ -130,7 +130,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (sql-table-alias :name (name-of table) :alias alias))
 
   (:method ((subquery sql-subquery) (alias symbol))
-           (sql-derived-table :subquery subquery :alias alias))
+           (sql-derived-table :subquery subquery :alias (or alias (gensym)))) ; Postgresql requires alias
 
   (:method ((class persistent-class) (alias symbol))
            (sql-table-reference-for-type class alias))
@@ -219,7 +219,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
                                                 (mapcar #'ensure-sql-query operands))))))))
                         (join-types (types)
                           (bind ((primary-table-ref (sql-table-reference-for-type
-                                                     (first types) alias))
+                                                     (first types) nil))
                                  (joined-table-refs
                                   (mapcan
                                    #L(when (primary-table-of !1)
