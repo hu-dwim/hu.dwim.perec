@@ -166,7 +166,7 @@
 
 (defmapping integer (sql-integer-type)
   'object->integer-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;;;;;
 ;;; Integer-16
@@ -178,7 +178,7 @@
 
 (defmapping integer-16 (sql-integer-type :bit-size 16)
   'object->integer-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;;;;;
 ;;; Integer-32
@@ -190,7 +190,7 @@
 
 (defmapping integer-32 (sql-integer-type :bit-size 32)
   'object->integer-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;;;;;
 ;;; Integer-64
@@ -202,7 +202,7 @@
 
 (defmapping integer-64 (sql-integer-type :bit-size 64)
   'object->integer-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;
 ;;; Float
@@ -214,7 +214,7 @@
 
 (defmapping float (sql-float-type :bite-size 64)
   'object->number-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;;;
 ;;; Float-32
@@ -227,7 +227,7 @@
 
 (defmapping float-32 (sql-float-type :bit-size 32)
   'object->number-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;;;
 ;;; Float-64
@@ -240,7 +240,7 @@
 
 (defmapping float-64 (sql-float-type :bit-size 64)
   'object->number-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;
 ;;; Double
@@ -252,7 +252,7 @@
 
 (defmapping double-float (sql-float-type :bit-size 64)
   'object->number-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;
 ;;; Number
@@ -264,7 +264,7 @@
 
 (defmapping number (sql-numeric-type)
   'object->number-reader
-  'identity-writer)
+  (identity-writer type))
 
 ;;;;;;;;;;
 ;;; String
@@ -278,8 +278,8 @@
 (defmapping string (if (consp type-specification)
                        (sql-character-type :size (length-of (parse-type type-specification)))
                        (sql-character-large-object-type))
-  'identity-reader
-  'identity-writer)
+  (identity-reader type)
+  (identity-writer type))
 
 ;;;;;;;;
 ;;; Text
@@ -299,9 +299,8 @@
 (defmapping text (if (consp type-specification)
                      (sql-character-varying-type :size (maximum-length-of (parse-type type-specification)))
                      (sql-character-large-object-type))
-  ;; FIXME what about type checking: writing something printable into a text slot silently stores its printed representation
-  'identity-reader
-  'identity-writer)
+  (identity-reader type)
+  (identity-writer type))
 
 ;;;;;;;;;;
 ;;; Symbol
@@ -346,9 +345,8 @@
   '(and local-time
         (satisfies date-p)))
 
-;; TODO: don't use identity-reader, since it may return :NULL
 (defmapping date (sql-date-type)
-  'identity-reader
+  (identity-reader type)
   'date->string-writer)
 
 ;;;;;;;;
@@ -365,9 +363,8 @@
   '(and local-time
         (satisfies time-p)))
 
-;; TODO: don't use identity-reader, since it may return :NULL
 (defmapping time (sql-time-type)
-  'identity-reader
+  (identity-reader type)
   'time->string-writer)
 
 ;;;;;;;;;;;;;
@@ -380,9 +377,8 @@
         (satisfies date-p)
         (satisfies time-p)))
 
-;; TODO: don't use identity-reader, since it may return :NULL
 (defmapping timestamp (sql-timestamp-type :with-timezone #t)
-  'identity-reader
+  (identity-reader type)
   'timestamp->string-writer)
 
 ;;;;;;;;;;;;
@@ -400,8 +396,8 @@
         (satisfies duration-p)))
 
 (defmapping duration (sql-character-varying-type :size 32)
-  'identity-reader
-  'identity-writer)
+  (identity-reader type)
+  (identity-writer type))
 
 ;;;;;;;;
 ;;; List
@@ -464,8 +460,8 @@
                                                                                       (minimum-size-of parsed-type))
                                                                              (maximum-size-of parsed-type))))
                                      (sql-binary-large-object-type))
-  'identity-reader
-  'identity-writer)
+  (identity-reader type)
+  (identity-writer type))
 
 ;;;;;;;;;;;;;;
 ;;; IP address

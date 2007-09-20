@@ -159,11 +159,15 @@
 ;;;;;;;;;;;;
 ;;; Identity
 
-(defun identity-reader (rdbms-values index)
-  (elt rdbms-values index))
+(defun identity-reader (type)
+  (lambda (rdbms-values index)
+    (aprog1 (elt rdbms-values index)
+      (assert (typep it type)))))
 
-(defun identity-writer (slot-value rdbms-values index)
-  (setf (elt rdbms-values index) slot-value))
+(defun identity-writer (type) 
+  (lambda (slot-value rdbms-values index)
+    (assert (typep slot-value type))
+    (setf (elt rdbms-values index) slot-value)))
 
 ;;;;;;;;;;
 ;;; Number
