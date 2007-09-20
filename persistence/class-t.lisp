@@ -83,6 +83,7 @@
 (def (function e) call-with-validity-range (start end trunk)
     (bind ((*validity-start* start)
            (*validity-end* end))
+      (assert (local-time<= start end))
       (funcall trunk)))
 
 (defmacro with-validity (validity &body forms)
