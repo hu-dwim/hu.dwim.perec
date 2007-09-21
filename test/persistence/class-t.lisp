@@ -39,7 +39,7 @@
 
 (deftest test/persistence/class-t/time-dependent/validity-not-specified ()
   (with-transaction
-    (signals unbound-variable (population-of (make-instance 'time-dependent-test)))))
+    (signals unbound-slot-t (population-of (make-instance 'time-dependent-test)))))
 
 (deftest test/persistence/class-t/time-dependent/unbound/1 ()
   (with-transaction
@@ -193,7 +193,7 @@
 (deftest test/persistence/class-t/t/validity-not-specified ()
   (with-transaction
     (with-default-t
-      (signals unbound-variable (population-of (make-instance 't-test))))))
+      (signals unbound-slot-t (population-of (make-instance 't-test))))))
 
 (deftest test/persistence/class-t/t/unbound/1 ()
   (with-transaction

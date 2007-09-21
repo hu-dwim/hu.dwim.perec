@@ -29,14 +29,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Temporal and time dependent
 
-(def (special-variable :documentation "The time machine parameter, modifications made after *T* will not be visible.")
+(def (special-variable :documentation "The time machine parameter, modifications made after *t* will not be visible when accessing temporal values.")
     *t*)
 
 (def (special-variable :documentation "When a slot value is time dependent then the approximation uses constant values given for time ranges.")
-    *validity-start*)
+    *validity-start* +beginning-of-time+)
 
 (def (special-variable :documentation "When a slot value is time dependent then the approximation uses constant values given for time ranges.")
-    *validity-end*)
+    *validity-end* +end-of-time+)
+
+(def (special-variable :documentation "Specifies whether an unbound-slot-error will be thrown when a time dependent slot value is queried and the value is not fully specified for the current validity range.")
+    *signal-unbound-error-for-time-dependent-slots* #t)
 
 (macrolet ((with-partial-date (date &body forms)
              (rebinding (date)
@@ -489,72 +492,64 @@
         (collect (collect-single-slot-values-having-validity-from-instances instance slot t-instances t-slot))))
 
 (defun collect-single-slot-values-having-validity (instance slot value-holders validity-start-function validity-end-function value-function)
-  (let ((size (length value-holders)))
-    (cond ((zerop size)
-           (slot-unbound-t instance slot))
-          ((= size 1)
-           (bind ((record (elt-0 value-holders)))
-             (cond ((local-time< *validity-start* (funcall validity-start-function record))
-                    (slot-unbound-t instance slot
-                                    :validity-start *validity-start*
-                                    :validity-end (local-time-adjust-days (funcall validity-start-function record) -1)))
-                   ((local-time< (funcall validity-end-function record) *validity-end*)
-                    (slot-unbound-t instance slot
-                                    :validity-start (local-time-adjust-days (funcall validity-end-function record) 1)
-                                    :validity-end *validity-end*))
-                   (t
-                    (make-single-value-having-validity
-                     (funcall value-function record)
-                     *validity-start*
-                     *validity-end*)))))
-          (t
-           ;; TODO: sort arrays
-           (bind ((values (make-array 4 :adjustable #t :fill-pointer 0))
-                  (validity-starts (make-array 4 :adjustable #t :fill-pointer 0))
-                  (validity-ends (make-array 4 :adjustable #t :fill-pointer 0))
-                  (indices (make-array 4 :adjustable #t :fill-pointer 0)))
-             (labels ((push-value-having-validity (value validity-start validity-end)
-                        ;;(format t "~%Push Start: ~A End: ~A Value: ~A" value validity-start validity-end)
-                        (vector-push-extend value values)
-                        (vector-push-extend validity-start validity-starts)
-                        (vector-push-extend validity-end validity-ends)
-                        (vector-push-extend (length indices) indices))
-                      (%collect-values-having-validity (index validity-start validity-end)
-                        ;;(format t "~%Collect Index: ~A Start: ~A End: ~A" index  validity-start validity-end)
-                        (when (local-time<= validity-start validity-end)
-                          (if (< index (length value-holders))
-                              (iter (for i :from index :below (length value-holders))
-                                    (for record = (elt value-holders i))
-                                    (for record-validity-start = (funcall validity-start-function record))
-                                    (for record-validity-end = (funcall validity-end-function record))
-                                    (for merged-validity-start = (local-time-max validity-start record-validity-start))
-                                    (for merged-validity-end = (local-time-min validity-end record-validity-end))
-                                    (when (local-time<= merged-validity-start merged-validity-end)
-                                      (push-value-having-validity (funcall value-function record)
-                                                                  merged-validity-start
-                                                                  merged-validity-end)
-                                      (%collect-values-having-validity (1+ i)
-                                                                       validity-start
-                                                                       (local-time-adjust-days merged-validity-start -1))
-                                      (%collect-values-having-validity (1+ i)
-                                                                       (local-time-adjust-days merged-validity-end 1)
-                                                                       validity-end)
-                                      (return))
-                                    (finally (slot-unbound-t instance slot
-                                                             :validity-start validity-start
-                                                             :validity-end validity-end)))
-                              (slot-unbound-t instance slot
-                                              :validity-start validity-start
-                                              :validity-end validity-end)))))
-               (%collect-values-having-validity 0 *validity-start* *validity-end*)
-               (sort indices #'local-time< :key (lambda (index) (aref validity-starts index)))
-               (permute values indices)
-               (permute validity-starts indices)
-               (permute validity-ends indices)
-               (make-instance 'values-having-validity
-                              :values values
-                              :validity-starts validity-starts
-                              :validity-ends validity-ends)))))))
+  (if (zerop (length value-holders))
+      (if *signal-unbound-error-for-time-dependent-slots*
+          (slot-unbound-t instance slot)
+          +unbound-slot-marker+)
+      (bind ((values (make-array 4 :adjustable #t :fill-pointer 0))
+             (validity-starts (make-array 4 :adjustable #t :fill-pointer 0))
+             (validity-ends (make-array 4 :adjustable #t :fill-pointer 0))
+             (indices (make-array 4 :adjustable #t :fill-pointer 0)))
+        (labels ((push-value-having-validity (value validity-start validity-end)
+                   ;;(format t "~%Push Start: ~A End: ~A Value: ~A" value validity-start validity-end)
+                   (vector-push-extend value values)
+                   (vector-push-extend validity-start validity-starts)
+                   (vector-push-extend validity-end validity-ends)
+                   (vector-push-extend (length indices) indices))
+                 (%collect-values-having-validity (index validity-start validity-end)
+                   ;;(format t "~%Collect Index: ~A Start: ~A End: ~A" index  validity-start validity-end)
+                   (when (local-time<= validity-start validity-end)
+                     (if (< index (length value-holders))
+                         (iter (for i :from index :below (length value-holders))
+                               (for record = (elt value-holders i))
+                               (for record-validity-start = (funcall validity-start-function record))
+                               (for record-validity-end = (funcall validity-end-function record))
+                               (for merged-validity-start = (local-time-max validity-start record-validity-start))
+                               (for merged-validity-end = (local-time-min validity-end record-validity-end))
+                               (when (local-time<= merged-validity-start merged-validity-end)
+                                 (push-value-having-validity (funcall value-function record)
+                                                             merged-validity-start
+                                                             merged-validity-end)
+                                 (%collect-values-having-validity (1+ i)
+                                                                  validity-start
+                                                                  (local-time-adjust-days merged-validity-start -1))
+                                 (%collect-values-having-validity (1+ i)
+                                                                  (local-time-adjust-days merged-validity-end 1)
+                                                                  validity-end)
+                                 (return))
+                               (finally (if *signal-unbound-error-for-time-dependent-slots*
+                                            (slot-unbound-t instance slot
+                                                            :validity-start validity-start
+                                                            :validity-end validity-end)
+                                            (push-value-having-validity +unbound-slot-marker+
+                                                                        validity-start
+                                                                        validity-end))))
+                         (if *signal-unbound-error-for-time-dependent-slots*
+                             (slot-unbound-t instance slot
+                                             :validity-start validity-start
+                                             :validity-end validity-end)
+                             (push-value-having-validity +unbound-slot-marker+
+                                                         validity-start
+                                                         validity-end))))))
+          (%collect-values-having-validity 0 *validity-start* *validity-end*)
+          (sort indices #'local-time< :key (lambda (index) (aref validity-starts index)))
+          (permute values indices)
+          (permute validity-starts indices)
+          (permute validity-ends indices)
+          (make-instance 'values-having-validity
+                         :values values
+                         :validity-starts validity-starts
+                         :validity-ends validity-ends)))))
 
 ;; TODO: support querying and caching multiple slots at once
 (defun extract-values-having-validity (values-having-validity requested-validity-start requested-validity-end)
@@ -579,15 +574,12 @@
             (iter (with in-requested-validity-range = #f)
                   (for (value validity-start validity-end) :in-values-having-validity values-having-validity)
                   (if in-requested-validity-range
-                      (if (local-time<= validity-start requested-validity-end validity-end)
-                          (progn
-                            (push-value-with-validity value validity-start requested-validity-end)
-                            (setf in-requested-validity-range #f))
-                          (push-value-with-validity value validity-start validity-end))
-                      (progn
-                        (when (local-time<= validity-start requested-validity-start validity-end)
-                          (push-value-with-validity value requested-validity-start validity-end)
-                          (setf in-requested-validity-range #t))))))
+                      (when (local-time<= validity-start requested-validity-end validity-end)
+                        (push-value-with-validity value validity-start requested-validity-end)
+                        (setf in-requested-validity-range #f))
+                      (when (local-time<= validity-start requested-validity-start validity-end)
+                        (push-value-with-validity value requested-validity-start validity-end)
+                        (setf in-requested-validity-range #t)))))
           (values #t
                   (if (= 1 (length values))
                       (aref values 0)
@@ -613,7 +605,9 @@
                   (when (temporal-p slot)
                     *t*)
                   (if (unbound-marker-p cached-value)
-                      (slot-unbound-t instance slot)
+                      (if *signal-unbound-error-for-time-dependent-slots*
+                          (slot-unbound-t instance slot)
+                          cached-value)
                       (bind (((values covers-validity-range-p value)
                               (extract-values-having-validity cached-value *validity-start* *validity-end*)))
                            (if covers-validity-range-p
