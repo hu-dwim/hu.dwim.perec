@@ -349,9 +349,9 @@
                 (funcall (wrapper-function-for wrapper-2)
                          slot
                          type
-                         (funcall (if (eq transformer-type 'reader)
-                                      'compute-reader*
-                                      'compute-writer*)
+                         (funcall (ecase transformer-type
+                                    (reader 'compute-reader*)
+                                    (writer 'compute-writer*))
                                   mapped-type
                                   normalized-type)
                          column-count)
@@ -492,18 +492,12 @@
                          ((persistent-class-type-p normalized-type)
                           (append
                            (when complex-type-p
-                             (list
-                              (make-instance 'column
-                                             :name (rdbms-name-for (concatenate-symbol name "-bound") :column)
-                                             :type (sql-boolean-type))))
+                             (list (make-bound-column name)))
                            (make-columns-for-reference-slot class-name name)))
                          ((primitive-type-p normalized-type)
                           (append
                            (when complex-type-p
-                             (list
-                              (make-instance 'column
-                                             :name (rdbms-name-for (concatenate-symbol name "-bound") :column)
-                                             :type (sql-boolean-type))))
+                             (list (make-bound-column name)))
                            (list
                             (make-instance 'column
                                            :name (rdbms-name-for name :column)
@@ -692,6 +686,13 @@
                              :name (rdbms-name-for (concatenate-symbol column-name "-class-id") :column)
                              :type +oid-class-id-sql-type+)))
        (:merge)))))
+
+(defun make-bound-column (name)
+  (make-instance 'column
+                 :name (rdbms-name-for (concatenate-symbol name "-bound") :column)
+                 :type (sql-boolean-type)
+                 :constraints (list (sql-not-null-constraint))
+                 :default-value #f))
 
 (defun bound-column-of (slot)
   (bind ((column (first (columns-of slot))))
