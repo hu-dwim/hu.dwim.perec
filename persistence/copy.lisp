@@ -6,18 +6,18 @@
 
 (in-package :cl-perec)
 
-(define-copy-protocol copy-persistent-object)
+(define-copy-protocol copy-into-transaction-cache)
 
-(define-copy-method (copy-self copy-persistent-object)
+(define-copy-method (copy-self copy-into-transaction-cache)
     ((instance persistent-object))
   (prc::make-revived-instance (class-of instance) :oid (prc::oid-of instance)))
 
-(define-copy-method (copy-self copy-persistent-object)
+(define-copy-method (copy-self copy-into-transaction-cache)
     ((instance local-time))
   ;; TODO: new instance
   instance)
 
-(define-copy-method (copy-inner-class copy-persistent-object) progn
+(define-copy-method (copy-inner-class copy-into-transaction-cache) progn
   ((old persistent-object) (new persistent-object) hash-table)
   (bind ((class (class-of old)))
     (dolist (slot (closer-mop:class-slots class))
@@ -32,5 +32,5 @@
              (setf (closer-mop:standard-instance-access new (closer-mop:slot-definition-location slot))
                    (closer-mop:standard-instance-access old (closer-mop:slot-definition-location slot))))))))
 
-(define-copy-method (copy-inner-class copy-persistent-object) progn
+(define-copy-method (copy-inner-class copy-into-transaction-cache) progn
   ((old local-time) (new local-time) hash-table))
