@@ -107,6 +107,7 @@
              (:file "transformer")
              (:file "set")
              (:file "association-end-set")
+             (:file "copy")
              (:file "class-t")))
    (:module :query
             :components
