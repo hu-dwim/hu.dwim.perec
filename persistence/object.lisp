@@ -47,7 +47,7 @@
 ;;;;;;;;;;;;;;;
 ;;; MOP methods
 
-(defmethod initialize-instance :around ((instance persistent-object) &rest args &key persistent &allow-other-keys)
+(defmethod initialize-instance :around ((instance persistent-object) &rest args &key persistent)
   (bind ((class (class-of instance)))
     (when persistent
       (ensure-exported class))
