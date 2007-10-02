@@ -157,7 +157,7 @@
                            (set-type-class-for normalized-type)
                            type)))
       (unless (typep slot-value check-type)
-        (error 'slot-type-error :instance instance :slot slot :datum slot-value :expected-type type)))))
+        (cerror "Ignore type error" 'slot-type-error :instance instance :slot slot :datum slot-value :expected-type type)))))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; Canonical type
