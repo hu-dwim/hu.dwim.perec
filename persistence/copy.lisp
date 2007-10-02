@@ -6,31 +6,55 @@
 
 (in-package :cl-perec)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Copy persistent obejct
+
+(define-copy-protocol copy-persistent-instance)
+
+(define-copy-method (copy-self copy-persistent-instance) ((instance persistent-object))
+  (bind ((class (class-of instance)))
+    (make-instance class :persistent #f :oid (make-class-oid (class-name class)))))
+
+(define-copy-method (metacopy-with-contextl::copy-final copy-persistent-instance) ((instance persistent-object) (copy persistent-object))
+  (ensure-persistent copy))
+
+(define-copy-method (copy-inner-class copy-persistent-instance) progn ((instance persistent-object) (copy persistent-object) hash-table)
+  (bind ((class (class-of instance)))
+    (dolist (slot (closer-mop:class-slots class))
+      (when (typep slot 'persistent-effective-slot-definition)
+        (slot-boundp-or-value-using-class class instance slot
+                                          #L(unless (unbound-slot-marker-p !1)
+                                              (setf (slot-value-using-class class copy slot)
+                                                    (copy-one !1 hash-table))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Copy into transaction cache
+
 (define-copy-protocol copy-into-transaction-cache)
 
-(define-copy-method (copy-self copy-into-transaction-cache)
-    ((instance persistent-object))
-  (prc::make-revived-instance (class-of instance) :oid (prc::oid-of instance)))
+(define-copy-method (copy-self copy-into-transaction-cache) ((instance persistent-object))
+  (make-revived-instance (class-of instance) :oid (oid-of instance)))
 
-(define-copy-method (copy-self copy-into-transaction-cache)
-    ((instance local-time))
-  ;; TODO: new instance
-  instance)
+(define-copy-method (metacopy-with-contextl::copy-final copy-into-transaction-cache) ((instance persistent-object) (copy persistent-object))
+  (setf (cached-instance-of instance) (oid-of instance)))
 
-(define-copy-method (copy-inner-class copy-into-transaction-cache) progn
-  ((old persistent-object) (new persistent-object) hash-table)
-  (bind ((class (class-of old)))
+(define-copy-method (copy-inner-class copy-into-transaction-cache) progn ((instance persistent-object) (copy persistent-object) hash-table)
+  (bind ((class (class-of instance)))
     (dolist (slot (closer-mop:class-slots class))
-      (cond ((typep slot 'prc::persistent-effective-slot-definition)
-             (bind (((values cached-p value) (prc::slot-value-cached-p old slot)))
+      (cond ((typep slot 'persistent-effective-slot-definition)
+             (bind (((values cached-p value) (slot-value-cached-p instance slot)))
                (when cached-p
-                 (setf (prc::underlying-slot-boundp-or-value-using-class class new slot)
-                       (if (prc::unbound-marker-p value)
+                 (setf (underlying-slot-boundp-or-value-using-class class copy slot)
+                       (if (unbound-marker-p value)
                            value
                            (copy-one value hash-table))))))
             ((typep slot 'closer-mop:standard-effective-slot-definition)
-             (setf (closer-mop:standard-instance-access new (closer-mop:slot-definition-location slot))
-                   (closer-mop:standard-instance-access old (closer-mop:slot-definition-location slot))))))))
+             (setf (closer-mop:standard-instance-access copy (closer-mop:slot-definition-location slot))
+                   (closer-mop:standard-instance-access instance (closer-mop:slot-definition-location slot))))))))
+
+(define-copy-method (copy-self copy-into-transaction-cache) ((instance local-time))
+  ;; TODO: copy instance
+  instance)
 
 (define-copy-method (copy-inner-class copy-into-transaction-cache) progn
-  ((old local-time) (new local-time) hash-table))
+  ((instance local-time) (copy local-time) hash-table))

@@ -186,6 +186,8 @@
            #:purge-instance
            #:purge-instances
            #:print-persistent-instance
+           #:copy-persistent-instance
+           #:copy-into-transaction-cache
 
            ;; most of the collection API is inherited from cl-containers 
            #:insert-item

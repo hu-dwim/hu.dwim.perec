@@ -151,7 +151,6 @@
           (setf (slot-value-using-class class instance slot) (instance-exists-in-database-p instance)))
       (call-next-method)))
 
-
 (def (function io) slot-boundp-or-value-using-class (class instance slot return-with)
   (declare (type function return-with))
   (assert-instance-slot-correspondence)
