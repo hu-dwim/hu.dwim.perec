@@ -126,7 +126,7 @@
 (defvar +persistent-object-oid-code+ #x60)
 
 (def (function o) deserializer-mapper (code context)
-  (if (eq code +persistent-object-code+)
+  (if (eq code +persistent-object-oid-code+)
       #'read-persistent-object-oid
       (cl-serializer::default-deserializer-mapper code context)))
 
