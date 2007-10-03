@@ -108,8 +108,8 @@
              (:file "set")
              (:file "association-end-set")
              (:file "copy")
-             (:file "class-t")
-             (:file "export")))
+             (:file "export")
+             (:file "class-t")))
    (:module :query
             :components
             ((:file "conditions")
