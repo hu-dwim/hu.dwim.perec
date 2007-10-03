@@ -123,11 +123,11 @@
 ;;;;;;;;;;;;;;
 ;;; Serialized
 
-(defvar +persistent-object-code+ #x60)
+(defvar +persistent-object-oid-code+ #x60)
 
 (def (function o) deserializer-mapper (code context)
   (if (eq code +persistent-object-code+)
-      #'read-persistent-object
+      #'read-persistent-object-oid
       (cl-serializer::default-deserializer-mapper code context)))
 
 (defun byte-vector->object-reader (rdbms-values index)
@@ -138,23 +138,22 @@
           (cl-serializer::default-serializer-mapper object context)))
     (if (and (eq code serializer::+standard-object-code+)
              (typep object 'persistent-object))
-        (values +persistent-object-code+ #t #'write-persistent-object)
+        (values +persistent-object-oid-code+ #t #'write-persistent-object-oid)
         (values code has-identity writer-function))))
 
 (defun object->byte-vector-writer (slot-value rdbms-values index)
   (setf (elt rdbms-values index)
         (serialize slot-value :buffer-size 10240 :serializer-mapper #'serializer-mapper)))
 
-(def serializer::serializer-deserializer persistent-object +persistent-object-code+ persistent-object
+(def serializer::serializer-deserializer persistent-object-oid +persistent-object-oid-code+ persistent-object
   (let ((oid (oid-of serializer::object)))
     (serializer::write-integer (oid-class-id oid) serializer::context)
     (serializer::write-integer (oid-instance-id oid) serializer::context))
-  (let ((position (1- (serializer::sc-position serializer::context))))
-    (serializer::announce-identity
-     (load-instance (revive-oid (serializer::read-integer serializer::context)
-                                (serializer::read-integer serializer::context))
-                    :skip-existence-check #t)
-     position serializer::context)))
+  (serializer::announce-identity
+   (load-instance (revive-oid (serializer::read-integer serializer::context)
+                              (serializer::read-integer serializer::context))
+                  :skip-existence-check #t)
+   serializer::context))
 
 ;;;;;;;;;;;;
 ;;; Identity
