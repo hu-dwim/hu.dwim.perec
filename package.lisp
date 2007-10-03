@@ -279,7 +279,12 @@
 
            ;; type check
            #:with-type-checking-slot-values
-           #:without-type-checking-slot-values))
+           #:without-type-checking-slot-values
+
+           ;; export,import
+           #:write-persistent-object-oid
+           #:read-persistent-object-oid
+           ))
 
 (in-package :cl-perec)
 
