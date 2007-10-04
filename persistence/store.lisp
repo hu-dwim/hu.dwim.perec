@@ -126,7 +126,7 @@
                             where-clause))
            (record (unless (and allow-missing
                                 (zerop (length records)))
-                     (debug-only (assert (= 1 (length records))))
+                     (assert (= 1 (length records)) nil "The persistent instance ~A is missing from the database" instance)
                      (elt-0 records))))
       (declare (type vector records))
       (declare (type (or null vector) record))
