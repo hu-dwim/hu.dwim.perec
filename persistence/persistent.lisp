@@ -292,3 +292,36 @@
   (remove-cached-instance instance)
   (setf (persistent-p instance) #f)
   (purge-instance instance))
+
+;;;;;;;;;;;;;;;;;;;;;
+;;; Broken references
+
+(defun signal-broken-references ()
+  ;; TODO: query compiler is loaded later
+  (funcall 'execute-query
+           (funcall 'make-query '(select (instance)
+                                  (from (instance persistent-object)))))
+  (bind ((tables nil)
+         (table->referer-slots-map (make-hash-table)))
+    (iter (for (class-name class) :in-hashtable *persistent-classes*)
+          (pushnew (primary-table-of class) tables)
+          (dolist (slot (persistent-effective-slots-of class))
+            (when (persistent-class-type-p* (slot-definition-type slot))
+              (bind ((oid-table (table-of slot))
+                     (referer-slots (gethash oid-table table->referer-slots-map)))
+                (unless (find (columns-of slot) referer-slots :key 'columns-of :test 'equal)
+                  (setf (gethash oid-table table->referer-slots-map)
+                        (pushnew slot referer-slots)))))))
+    (iter (for (table referer-slots) :in-hashtable table->referer-slots-map)
+          (dolist (referer-slot referer-slots)
+            (for records = (select-records (append +oid-column-names+ (columns-of referer-slot)) (list (name-of table))))
+            (iter (for record :in-sequence records)
+                  (bind ((referer-oid (rdbms-values->oid record))
+                         (referred-oid
+                          (unless (eq :null (elt record +oid-column-count+))
+                            (rdbms-values->oid* record +oid-column-count+))))
+                    (when (and referred-oid
+                               (not (cached-instance-of referred-oid)))
+                      (bind ((referer (cached-instance-of referer-oid)))
+                        (cerror "Slot ~A in ~A has a broken reference to ~A" (slot-definition-name referer-slot) referer
+                                (make-instance (oid-class-name referred-oid) :persistent #f :oid referred-oid))))))))))
