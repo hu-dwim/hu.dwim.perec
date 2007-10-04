@@ -320,11 +320,11 @@
   (local-time :universal (elt rdbms-values index) :timezone +utc-zone+))
 
 (defun date->string-writer (slot-value rdbms-values index)
-  (assert (eq (timezone-of slot-value) +utc-zone+))
+  (assert (local-time::timezone= (timezone-of slot-value) +utc-zone+))
   (setf (elt rdbms-values index) (format-timestring slot-value :omit-time-part-p #t)))
 
 (defun time->string-writer (slot-value rdbms-values index)
-  (assert (eq (timezone-of slot-value) +utc-zone+))
+  (assert (local-time::timezone= (timezone-of slot-value) +utc-zone+))
   (setf (elt rdbms-values index) (format-timestring slot-value :omit-date-part-p #t :omit-timezone-part-p #t)))
 
 (defun timestamp->string-writer (slot-value rdbms-values index)
