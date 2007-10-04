@@ -274,9 +274,16 @@
   (:method ((access association-end-access))
            nil))
 
+;; TODO needs review
 (defgeneric null-check-for (syntax)
   (:method (syntax)
            nil)
+
+  (:method ((variable lexical-variable))
+           (bind ((type (xtype-of variable)))
+             (if (maybe-null-subtype-p type)
+                 `(sql-is-null ,(syntax-to-sql variable))
+                 nil)))
 
   (:method ((access slot-access))
            (bind ((type (xtype-of access))
