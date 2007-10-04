@@ -323,5 +323,6 @@
                     (when (and referred-oid
                                (not (cached-instance-of referred-oid)))
                       (bind ((referer (cached-instance-of referer-oid)))
-                        (cerror "Slot ~A in ~A has a broken reference to ~A" (slot-definition-name referer-slot) referer
+                        (cerror "Let's see if there's more" "Slot ~A in ~A has a broken reference to ~A"
+                                (slot-definition-name referer-slot) referer
                                 (make-instance (oid-class-name referred-oid) :persistent #f :oid referred-oid))))))))))
