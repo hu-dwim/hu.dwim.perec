@@ -38,7 +38,7 @@
             (funcall persistent-object-deserializer prototype-or-class-name context)))
         (cl-serializer::default-deserializer-mapper code context))))
 
-(def (function e) write-persistent-object-slot-values (instance context &key exclude-slots)
+(def (function e) write-persistent-object-slot-values (instance context &key exclude-slots include-oid)
   (bind ((class (class-of instance))
          (slots (collect-if
                  (lambda (slot)
@@ -46,6 +46,9 @@
                         (not (eq (closer-mop:slot-definition-allocation slot) :class))
                         (not (member (closer-mop:slot-definition-name slot) exclude-slots))))
                  (closer-mop:class-slots class))))
+    (serializer::serialize-element (if include-oid #t #f) context)
+    (when include-oid
+      (write-persistent-object-oid instance context))
     (serializer::write-variable-length-positive-integer (length slots) context)
     (dolist (slot slots)
         (serializer::serialize-symbol (closer-mop:slot-definition-name slot) context)
@@ -57,7 +60,12 @@
   (bind ((class (etypecase prototype-or-class-name
                   (symbol (find-class prototype-or-class-name))
                   (persistent-object (class-of prototype-or-class-name))))
-         (instance (make-instance class :persistent #f :oid (make-class-oid (class-name class)))))
+         (oid-saved (serializer::deserialize-element context))
+         (oid (if oid-saved
+                  (revive-oid (cl-serializer::read-integer context)
+                              (cl-serializer::read-integer context))
+                  (make-class-oid (class-name class))))
+         (instance (make-instance class :persistent #f :oid oid)))
     (serializer::announce-identity instance context)
     (iter (repeat (the fixnum (serializer::read-variable-length-positive-integer context)))
           (for slot-name = (serializer::deserialize-symbol context))
