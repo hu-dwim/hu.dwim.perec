@@ -207,6 +207,7 @@
   "Stores the non lazy list without local side effects into the database."
   (delete-slot-set instance slot)
   (when values
+    #+nil
     (dolist (value values)
       (check-slot-value-type instance slot value))
     (let ((rdbms-values (make-array +oid-column-count+)))
