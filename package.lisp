@@ -233,6 +233,7 @@
            #:result-type-of
            #:define-query-macro
            #:like
+           #:re-like
            #:avg
            #:sum
            #:volatile

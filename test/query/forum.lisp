@@ -283,18 +283,6 @@
         (from (topic topic-test))
         (where (equal (title-of topic) (strcat "topic" num)))))))
 
-(deftest test/query/select/regex-1 ()
-  (test-query (:select-count 1 :record-count 1 :fixture forum-data)
-    (select (topic)
-      (from (topic topic-test))
-      (where (scan "t.*picx?1" (title-of topic))))))
-
-(deftest test/query/select/regex-2 ()
-  (test-query (:select-count 1 :record-count 1 :fixture forum-data)
-    (select (topic)
-      (from (topic topic-test))
-      (where (scan "picx?1" (title-of topic) :start 2 :end 6)))))
-
 (deftest test/query/select/like ()
   (test-query (:select-count 1 :record-count 1 :fixture forum-data)
     (select (topic)

@@ -523,8 +523,9 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (define-sql-operator 'subseq 'sql-subseq)
 (define-sql-operator 'strcat 'sql-\|\|)
 
-(define-sql-operator 'like 'sql-like)
-(define-sql-operator 'scan 'sql-regex-match)
+(define-sql-operator 'like 'sql-like*)
+
+(define-sql-operator 're-like 'sql-regex-match)
 
 (define-sql-operator 'null 'sql-is-null)
 
@@ -588,15 +589,29 @@ value is equal, when they represent the NIL lisp value)."
 
 (defun sql-subseq (seq start &optional end)
   "TODO: other sequnce types"
-  (if (or (not (numberp start)) (> start 0) end)
-      (sql-substring seq (sql-+ start 1) (sql-- (sql-length seq) start))
-      seq))
+  (cond
+    ((and (numberp start) (= start 0) (null end)) seq)
+    ((null end) (sql-substring seq (sql-+ start 1) (sql-- (sql-length seq) start)))
+    (t (sql-substring seq (sql-+ start 1) (sql-- end start)))))
 
 (defun sql-substring (str start length)
   (sql-function-call :name "substr" :arguments (list str start length)))
 
-(defun sql-regex-match (regex target &key (start 0) end)
-  (sql-regexp-like :string (sql-subseq target start end) :pattern regex))
+(defun sql-boolean->boolean (val)
+  (typecase val
+    (null #f)
+    (sql-literal (cl-rdbms::value-of val))
+    (t #t)))
+
+(defun sql-like* (string pattern &key (start 0) end (case-sensitive-p #t))
+  (sql-like :string (sql-subseq string start end)
+            :pattern pattern
+            :case-sensitive-p (sql-boolean->boolean case-sensitive-p)))
+
+(defun sql-regex-match (string pattern &key (start 0) end (case-sensitive-p #t))
+  (sql-regexp-like :string (sql-subseq string start end)
+                   :pattern pattern
+                   :case-sensitive-p (sql-boolean->boolean case-sensitive-p)))
 
 (defun sql-length (str)
   (sql-function-call :name "length" :arguments (list str)))

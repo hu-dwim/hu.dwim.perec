@@ -11,13 +11,24 @@
 ;;;
 ;;; Lisp implementation of some SQL funtion
 ;;;
-(defun like (str pattern)
+(defun like (string pattern &key (start 0) end (case-sensitive-p #t))
   "Matches STR with PATTERN. In the pattern _ and % wildcards can be used"
   (flet ((like-pattern->regex (pattern)
            (setf pattern (regex-replace-all "([.*+?(){}|^$])" pattern "\\\\\\1"))
            (setf pattern (regex-replace-all "(?<!\\\\)_" pattern "."))
            (setf pattern (regex-replace-all "(?<!\\\\)%" pattern ".*"))))
-    (if (scan (like-pattern->regex pattern) str) #t #f)))
+    (re-like string
+             (like-pattern->regex pattern)
+             :start start
+             :end end
+             :case-sensitive-p case-sensitive-p)))
+
+(defun re-like (string pattern &key (start 0) end (case-sensitive-p #t))
+  (bind ((end (or end (length string))))
+    (generalized-boolean->boolean
+     (if case-sensitive-p
+         (scan pattern string :start start :end end)
+         (scan (create-scanner pattern :case-insensitive-mode #t) string :start start :end end)))))
 
 ;;;
 ;;; Markers for partial eval
