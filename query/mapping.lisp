@@ -55,7 +55,7 @@
 
   (:method (value type literal)
            (cond
-             ((keywordp value) value)
+             ((and (keywordp value) (eq type +unknown-type+)) value)
              ((syntax-object-p type) `(value->sql-literal ,literal ,(backquote-type-syntax type)))
              (t (value->sql-literal value type)))))
 
