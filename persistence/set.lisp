@@ -52,6 +52,7 @@
 (defmethod insert-item ((set persistent-slot-set-container) (item persistent-object))
   (bind ((slot (slot-of set))
          (instance (instance-of set)))
+    ;; TODO: this is incorrect, add test?
     (check-slot-value-type instance slot item)
     (let ((rdbms-values (make-array +oid-column-count+)))
       (object-writer instance rdbms-values 0)

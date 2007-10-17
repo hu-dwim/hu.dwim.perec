@@ -209,6 +209,7 @@
   (when values
     #+nil
     (dolist (value values)
+      ;; TODO: this is incorrect, add test?
       (check-slot-value-type instance slot value))
     (let ((rdbms-values (make-array +oid-column-count+)))
       (object-writer instance rdbms-values 0)
@@ -240,6 +241,7 @@
   (delete-m-n-association-end-set instance slot)
   (when value
     (mapc #L(progn
+              ;; TODO: this is incorrect, add test?
               (check-slot-value-type instance slot !1)
               (insert-into-m-n-association-end-set instance slot !1))
           value)))
