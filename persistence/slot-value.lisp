@@ -12,9 +12,13 @@
 (def (function io) not-cached-slot-marker-p (value)
   (eq +not-cached-slot-marker+ value))
 
+(def (function io) assert-instance-access (instance persistent)
+  (assert (or (not persistent) (instance-in-current-transaction-p instance)) nil
+          "Accessing a persistent ~A while it is not attached to the current transaction." instance))
+
 (defmacro assert-instance-slot-correspondence ()
   `(debug-only
-    (assert (eq (class-of instance) (slot-definition-class slot)))))
+     (assert (eq (class-of instance) (slot-definition-class slot)))))
 
 (defgeneric propagate-cache-changes (class instance slot new-value)
   (:documentation "Partially invalidate or update the cache to reflect setting the slot of instance to new-value.")
@@ -25,6 +29,7 @@
 (def (function o) invalidate-all-cached-slots (instance)
   "Invalidates all cached slot values in the instance."
   (bind ((class (class-of instance)))
+    (assert-instance-access instance (persistent-p instance))
     (iter (for slot in (persistent-effective-slots-of class))
           (when (cache-p slot)
             (invalidate-cached-slot instance slot)))))
@@ -123,10 +128,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CLOS MOP slot-value-using-class and friends
 
-(defmacro assert-instance-access ()
-  `(assert (or (not persistent) (instance-in-current-transaction-p instance)) nil
-    "Accessing a persistent ~A while it is not attached to the current transaction." instance))
-
 (defmethod slot-value-using-class ((class persistent-class)
                                    (instance persistent-object)
                                    (slot standard-effective-slot-definition))
@@ -157,7 +158,7 @@
   (bind ((persistent (persistent-p instance))
          ((values slot-value-cached cached-value)
           (slot-value-cached-p instance slot)))
-    (assert-instance-access)
+    (assert-instance-access instance persistent)
     (if (or (not persistent)
             (and *cache-slot-values*
                  slot-value-cached))
@@ -186,7 +187,7 @@
 (def (function io) (setf slot-boundp-or-value-using-class) (new-value class instance slot)
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance)))
-    (assert-instance-access)
+    (assert-instance-access instance persistent)
     ;; always store the slot into the database
     (when persistent
       (store-slot instance slot new-value)

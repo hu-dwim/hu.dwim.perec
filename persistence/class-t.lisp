@@ -592,7 +592,7 @@
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance))
          (integrated-slot-name (integrated-slot-name-of slot)))
-    (assert-instance-access)
+    (assert-instance-access instance persistent)
     (if integrated-slot-name
         (integrated-time-dependent-slot-value instance integrated-slot-name)
         (bind (((values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
@@ -678,7 +678,7 @@
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance))
          (integrated-slot-name (integrated-slot-name-of slot)))
-    (assert-instance-access)
+    (assert-instance-access instance persistent)
     (if integrated-slot-name
         (setf (integrated-time-dependent-slot-value instance integrated-slot-name) new-value)
         (progn
@@ -812,7 +812,7 @@
                                    (slot persistent-association-end-effective-slot-definition-t))
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance)))
-    (assert-instance-access)
+    (assert-instance-access instance persistent)
     (if (eq :1 (cardinality-kind-of (child-slot-of slot)))
         (select-1-1-association-t-record instance slot)
         (select-1-n-association-t-records instance slot))))
@@ -870,7 +870,7 @@
                                           (slot persistent-association-end-effective-slot-definition-t))
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance)))
-    (assert-instance-access)
+    (assert-instance-access instance persistent)
     (if (eq :1 (cardinality-kind-of (child-slot-of slot)))
         (insert-1-1-association-t-record instance slot new-value)
         ;; TODO: get first and delete those
