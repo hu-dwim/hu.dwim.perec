@@ -27,7 +27,7 @@
 
 (in-package :cl-perec-system)
 
-(setf *load-with-debug-p* t)
+(setf *load-as-production-p* nil)
 
 (defsystem :cl-perec-test
   :description "Tests for cl-perec."

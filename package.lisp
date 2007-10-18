@@ -300,9 +300,9 @@
   :appender (make-instance 'brief-stream-log-appender :stream *debug-io*))
 
 (defun transform-function-definer-options (options)
-  (if cl-perec-system:*load-with-debug-p*
-      (remove-keywords options :inline :optimize)
-      options))
+  (if cl-perec-system:*load-as-production-p*
+      options
+      (remove-keywords options :inline :optimize)))
 
 ;; TODO get rid of this, use string names
 (defun rdbms-name-for (name &optional thing)

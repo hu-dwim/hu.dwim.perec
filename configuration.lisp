@@ -27,10 +27,27 @@
      (declare (ignore s c n))
      nil)))
 
-(defmacro debug-only (&body body)
-  (if (member :debug *features*)
-      `(progn ,@body)
+(def macro debug-only (&body body)
+  (if cl-perec-system:*load-as-production-p*
+      (values)
+      `(progn
+         ,@body)))
+
+(def macro debug-only* (&body body)
+  `(unless cl-perec-system:*load-as-production-p*
+     ,@body))
+
+(def macro production-only (&body body)
+  (if cl-perec-system:*load-as-production-p*
+      `(progn
+         ,@body)
       (values)))
+
+(def macro production-only* (&body body)
+  `(if cl-perec-system:*load-as-production-p*
+       (progn
+         ,@body)
+       (values)))
 
 (defun file-header ()
   `(eval-always

@@ -25,14 +25,14 @@
 (defpackage :cl-perec-system
   (:use :cl :asdf)
 
-  (:export #:*load-with-debug-p*
+  (:export #:*load-as-production-p*
            #:*test-database-connection-specification*))
 
 (in-package :cl-perec-system)
 
 (find-system :cl-rdbms) ; make sure all the cl-rdbms systems get defined
 
-(defvar *load-with-debug-p* nil)
+(defvar *load-as-production-p* t)
 
 (defclass local-cl-source-file (cl-source-file)
   ())
@@ -40,7 +40,7 @@
 (defmethod perform :around ((op operation) (component local-cl-source-file))
   (let ((*features* *features*)
         (*readtable* (copy-readtable *readtable*)))
-    (when *load-with-debug-p*
+    (unless *load-as-production-p*
       (pushnew :debug *features*))
     (ignore-errors
       (let ((setup-readtable-fn (read-from-string "cl-perec::setup-readtable")))
