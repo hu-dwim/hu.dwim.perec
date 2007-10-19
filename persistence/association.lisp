@@ -114,6 +114,14 @@
 ;;;;;;;;;;;
 ;;; Compute
 
+(defmethod compute-reader ((slot persistent-association-end-effective-slot-definition) type)
+  (when (eq (cardinality-kind-of slot) :1)
+    (call-next-method)))
+
+(defmethod compute-writer ((slot persistent-association-end-effective-slot-definition) type)
+  (when (eq (cardinality-kind-of slot) :1)
+    (call-next-method)))
+
 (defmethod compute-primary-table ((association persistent-association) current-table)
   (when (eq (association-kind-of association) :m-n)
     (make-instance 'association-primary-table
@@ -176,11 +184,15 @@
 (defparameter *persistent-associations* (make-hash-table)
   "A mapping from association names to association instances.")
 
-(defun find-association (name)
+(def function find-association (name)
   (gethash name *persistent-associations*))
 
-(defun (setf find-association) (new-value name)
+(def function (setf find-association) (new-value name)
   (setf (gethash name *persistent-associations*) new-value))
+
+(def function finalize-persistent-associations ()
+  (iter (for (association-name association) :in-hashtable *persistent-associations*)
+        (ensure-all-computed-slots-are-valid association)))
 
 (def (function io) to-one-association-end-p (association-end)
   (eq (cardinality-kind-of association-end) :1))

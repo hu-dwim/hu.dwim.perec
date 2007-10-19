@@ -360,9 +360,11 @@
        wrapper-2
        column-count))))
 
-(defun compute-reader (slot type)
-  "Maps a type to a one parameter lambda which will be called with the received RDBMS values."
-  (compute-transformer 'reader slot type))
+(defgeneric compute-reader (slot type)
+  (:documentation "Maps a type to a one parameter lambda which will be called with the received RDBMS values.")
+
+  (:method (slot type)
+    (compute-transformer 'reader slot type)))
 
 (defgeneric compute-reader* (type type-specification)
   (:method (type type-specification)
@@ -379,9 +381,11 @@
            (declare (ignore type-specification))
            'object-reader))
 
-(defun compute-writer (slot type)
-  "Maps a type to a one parameter lambda which will be called with the slot value."
-  (compute-transformer 'writer slot type))
+(defgeneric compute-writer (slot type)
+  (:documentation "Maps a type to a one parameter lambda which will be called with the slot value.")
+  
+  (:method (slot type)
+    (compute-transformer 'writer slot type)))
 
 (defgeneric compute-writer* (type type-specification)
   (:method (type type-specification)
@@ -556,6 +560,7 @@
        (subtypep type '(ordered-set persistent-object))))
 
 (defun set-type-class-for (type)
+  ;; FIXME: class inheritance merges the type and it's fragile anyway
   (second
    (find-if #L(member (first (ensure-list !1))
                       '(set disjunct-set ordered-set))
@@ -605,6 +610,12 @@
 
 (defun (setf find-persistent-class) (new-value name)
   (setf (gethash name *persistent-classes*) new-value))
+
+(def function finalize-persistent-classes ()
+  (iter (for (class-name class) :in-hashtable *persistent-classes*)
+        (ensure-all-computed-slots-are-valid class)
+        (dolist (slot (class-slots class))
+          (ensure-all-computed-slots-are-valid slot))))
 
 (defun persistent-class-p (class)
   (typep class 'persistent-class))

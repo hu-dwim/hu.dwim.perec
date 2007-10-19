@@ -23,3 +23,13 @@
                (let ((*exporting-to-rdbms* #t))
                  (with-transaction
                    (call-next-method))))))
+
+(def function ensure-all-computed-slots-are-valid (thing)
+  (bind ((class (class-of thing)))
+    (dolist (slot (class-slots class))
+      (when (typep slot 'cc::computed-effective-slot-definition)
+        (ignore-errors
+          ;; KLUDGE FIXME please!
+          (slot-value-using-class class thing slot))))))
+
+
