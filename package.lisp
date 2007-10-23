@@ -143,6 +143,8 @@
            #:*database*
            #:with-transaction
            #:with-transaction*
+           #:with-readonly-transaction
+           #:in-transaction-p
            #:call-in-transaction
            #:begin-transaction
            #:commit-transaction
