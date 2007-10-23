@@ -6,24 +6,33 @@
 
 (in-package :cl-perec)
 
-(defvar *compiled-query-cache* (make-hash-table :test #'equal))
+(def special-variable *compiled-query-cache*)
+
+(def (with-macro e) with-compiled-query-cache (cache)
+  (bind ((*compiled-query-cache* cache))
+    -body-))
+
+(def (function e) make-compiled-query-cache ()
+  (make-hash-table :test #'equal))
+
+(def (function e) clear-compiled-query-cache (&optional (cache *compiled-query-cache*))
+  (clrhash cache))
+
+(defun get-compiled-query (query)
+  (if (boundp '*compiled-query-cache*)
+      (let ((compiled-query (gethash (query-hash-key-for query) *compiled-query-cache*)))
+        (when (not compiled-query)
+          ;; TODO: the query is copied here because the caller can change it
+          ;;       the change should remove the query from the cache instead
+          (setf query (copy-query query))
+          (setf compiled-query (compute-as* (:kind computed-class::standalone) (eval (compile-query query))))
+          (setf (gethash (query-hash-key-for query) *compiled-query-cache*) compiled-query))
+        (computed-state-value compiled-query))
+      (progn
+        (warn "*COMPILED-QUERY-CACHE* is unbound, query compiler cache is disabled. See WITH-COMPILED-QUERY-CACHE and MAKE-COMPILED-QUERY-CACHE.")
+        (eval (compile-query query)))))
 
 (defmethod execute-query (query &rest lexical-variable-values)
   (let ((compiled-query (get-compiled-query query)))
     (apply compiled-query lexical-variable-values)))
 
-(defun clear-compiled-query-cache ()
-  (clrhash *compiled-query-cache*))
-
-(defun get-compiled-query (query)
-  (let ((compiled-query (gethash (query-hash-key-for query) *compiled-query-cache*)))
-    (when (not compiled-query)
-      ;; TODO: the query is copied here because the caller can change it
-      ;;       the change should remove the query from the cache instead
-      (setf query (copy-query query))
-      (setf compiled-query (compute-as* (:kind computed-class::standalone) (eval (compile-query query))))
-      (setf (gethash (query-hash-key-for query) *compiled-query-cache*) compiled-query))
-    (computed-state-value compiled-query)))
-
-(defun remove-compiled-query (query)
-  (remhash (query-hash-key-for query) *compiled-query-cache*))

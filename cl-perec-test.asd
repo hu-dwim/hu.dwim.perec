@@ -92,7 +92,9 @@
   (in-package :cl-perec-test)
   (pushnew :debug *features*)
   (declaim (optimize (debug 3)))
-  (warn "Pushed :debug in *features*, set (declaim (optimize (debug 3))) and set *database*."))
+  (warn "Pushed :debug in *features*, set (declaim (optimize (debug 3))), set *database* and *compiled-query-cache*.")
+  (eval (let ((*package* (find-package :cl-perec)))
+          (read-from-string "(setf *compiled-query-cache* (make-compiled-query-cache))"))))
 
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :cl-perec-test))))
   nil)
