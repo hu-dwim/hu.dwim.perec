@@ -25,8 +25,8 @@
 (defpackage :cl-perec-system
   (:use :cl :asdf)
 
-  (:export #:*load-as-production-p*
-           #:*test-database-connection-specification*))
+  (:export
+   #:*load-as-production-p*))
 
 (in-package :cl-perec-system)
 
@@ -80,6 +80,7 @@
   :components
   ((:file "package")
    (:file "configuration")
+   (:file "logging")
    (:module :util
             :serial t
             :components

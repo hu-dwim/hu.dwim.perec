@@ -10,6 +10,7 @@
   (:nicknames :prc)
 
   (:use :common-lisp
+        :cl-perec-system
         :bind
         :closer-mop
         :iterate
@@ -295,11 +296,6 @@
 (import-sql-constructor-names)
 
 (define-computed-universe compute-as)
-
-(deflogger qlog ()
-  :level +warn+
-  :compile-time-level +dribble+
-  :appender (make-instance 'brief-stream-log-appender :stream *debug-io*))
 
 (defun transform-function-definer-options (options)
   (if cl-perec-system:*load-as-production-p*
