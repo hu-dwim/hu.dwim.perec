@@ -12,6 +12,10 @@
   (bind ((*compiled-query-cache* cache))
     -body-))
 
+(def (macro e) with-new-compiled-query-cache (&body body)
+  `(with-compiled-query-cache (make-compiled-query-cache)
+     ,@body))
+
 (def (function e) make-compiled-query-cache ()
   (make-hash-table :test #'equal))
 
