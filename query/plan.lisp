@@ -355,172 +355,172 @@
   (:documentation "Compiles a PLAN to executable lisp code.")
 
   (:method ((list-node list-result-node))
-           (with-slots (list) list-node
-             `(make-list-result-set ',list)))
+    (with-slots (list) list-node
+      `(make-list-result-set ',list)))
 
   (:method ((sql-query sql-query-node))
-           (with-slots (query result-type distinct columns tables where group-by having order-by)
-               sql-query
-             `(open-result-set
-               ',result-type
-               ,(partial-eval
-                 `(sql-select
-                   :distinct ,distinct
-                   :columns (list ,@columns)
-                   :tables  (list ,@tables)
-                   :where ,where
-                   :group-by (list ,@group-by)
-                   :having ,having
-                   :order-by (list ,@order-by))
-                 query)
-               ,@(when (eq result-type 'scroll)
-                       (list (partial-eval
-                              `(sql-select
-                                :columns (list (cl-rdbms::sql-count-*))
-                                :tables (list (sql-table-reference-for
-                                               (sql-subquery
-                                                :query
-                                                (sql-select
-                                                 :distinct ,distinct
-                                                 :columns (list ,@columns)
-                                                 :tables (list ,@tables)
-                                                 :where ,where
-                                                 :group-by (list ,@group-by)
-                                                 :having ,having
-                                                 ))
-                                               'records)))
-                              query))))))
+    (with-slots (query result-type distinct columns tables where group-by having order-by)
+        sql-query
+      `(open-result-set
+        ',result-type
+        ,(partial-eval
+          `(sql-select
+             :distinct ,distinct
+             :columns (list ,@columns)
+             :tables  (list ,@tables)
+             :where ,where
+             :group-by (list ,@group-by)
+             :having ,having
+             :order-by (list ,@order-by))
+          query)
+        ,@(when (eq result-type 'scroll)
+                (list (partial-eval
+                       `(sql-select
+                          :columns (list (cl-rdbms::sql-count-*))
+                          :tables (list (sql-table-reference-for
+                                         (sql-subquery
+                                           :query
+                                           (sql-select
+                                             :distinct ,distinct
+                                             :columns (list ,@columns)
+                                             :tables (list ,@tables)
+                                             :where ,where
+                                             :group-by (list ,@group-by)
+                                             :having ,having
+                                             ))
+                                         'records)))
+                       query))))))
 
   (:method ((filter filter-operation))
-           (with-slots (input condition) filter
-             (with-unique-names (row)
-               (bind (((values bindings condition) (funcall (binder-of input) row condition)))
-                 `(make-filtered-result-set
-                  ,(%compile-plan input)
-                  (lambda (,row)
-                    (let (,@bindings)
-                      ,condition)))))))
+    (with-slots (input condition) filter
+      (with-unique-names (row)
+        (bind (((values bindings condition) (funcall (binder-of input) row condition)))
+          `(make-filtered-result-set
+            ,(%compile-plan input)
+            (lambda (,row)
+              (let (,@bindings)
+                ,condition)))))))
 
   (:method ((projection projection-operation))
-           (with-slots (input values) projection
-             (with-unique-names (row)
-               (bind (((values bindings values) (funcall (binder-of input) row values)))
-                `(make-mapped-result-set
-                  ,(%compile-plan input)
-                  (lambda (,row)
-                    (let (,@bindings)
-                      ;;,(ignorable-variables-declaration variables)
-                      (list ,@values))))))))
+    (with-slots (input values) projection
+      (with-unique-names (row)
+        (bind (((values bindings values) (funcall (binder-of input) row values)))
+          `(make-mapped-result-set
+            ,(%compile-plan input)
+            (lambda (,row)
+              (let (,@bindings)
+                ;;,(ignorable-variables-declaration variables)
+                (list ,@values))))))))
 
   (:method ((sort sort-operation))
-           (with-slots (input sort-spec) sort
-             (with-unique-names (row1 row2)
-               (flet ((rename-variables (expr suffix)
-                        (bind ((variables (collect-query-variables expr))
-                               (subs (mapcar #L(cons !1 (concatenate-symbol (name-of !1) suffix))
-                                             variables)))
-                          (substitute-syntax expr subs))))
-                 (bind ((binder (binder-of input))
-                        (bindings1 (funcall binder row1 sort-spec :suffix "1"))
-                        (bindings2 (funcall binder row2 sort-spec :suffix "2"))
-                        (sort-spec1 (rename-variables (copy-query sort-spec) "1")) ;; FIXME
-                        (sort-spec2 (rename-variables (copy-query sort-spec) "2")))
-                   `(make-ordered-result-set
-                     ,(%compile-plan input)
-                     (lambda (,row1 ,row2)
-                       (let (,@bindings1 ,@bindings2)
-                         ,(generate-comparator sort-spec1 sort-spec2)))))))))
+    (with-slots (input sort-spec) sort
+      (with-unique-names (row1 row2)
+        (flet ((rename-variables (expr suffix)
+                 (bind ((variables (collect-query-variables expr))
+                        (subs (mapcar #L(cons !1 (concatenate-symbol (name-of !1) suffix))
+                                      variables)))
+                   (substitute-syntax expr subs))))
+          (bind ((binder (binder-of input))
+                 (bindings1 (funcall binder row1 sort-spec :suffix "1"))
+                 (bindings2 (funcall binder row2 sort-spec :suffix "2"))
+                 (sort-spec1 (rename-variables (copy-query sort-spec) "1")) ;; FIXME
+                 (sort-spec2 (rename-variables (copy-query sort-spec) "2")))
+            `(make-ordered-result-set
+              ,(%compile-plan input)
+              (lambda (,row1 ,row2)
+                (let (,@bindings1 ,@bindings2)
+                  ,(generate-comparator sort-spec1 sort-spec2)))))))))
 
   (:method ((delta unique-operation))
-           (with-slots (input) delta
-             `(make-unique-result-set
-               ,(%compile-plan input))))
+    (with-slots (input) delta
+      `(make-unique-result-set
+        ,(%compile-plan input))))
 
   (:method ((gamma group-operation))
-           (with-slots (input group-by collected-expressions) gamma
-             (with-unique-names (row acc)
-               (bind ((binder (binder-of input))
-                      ((values group-by-bindings group-by) (funcall binder row group-by))
-                      ((values collect-bindings collected-expressions) (funcall binder row collected-expressions)))
-                 `(make-grouped-result-set
-                  ,(%compile-plan input)
-                  (lambda (,row)
-                    (declare (ignorable ,row))
-                    (let (,@group-by-bindings)
-                      (list ,@group-by))) ;; FIXME compared with equal, not ok for local-time
-                  (lambda ()
-                    ,(aggregate-init-fn-body-for collected-expressions))
-                  (lambda (,row ,acc)
-                    (let (,@collect-bindings)
-                      ,(aggregate-collect-fn-body-for acc collected-expressions)))
-                  (lambda (,acc)
-                    ,(aggregate-map-fn-body-for acc collected-expressions)))))))
+    (with-slots (input group-by collected-expressions) gamma
+      (with-unique-names (row acc)
+        (bind ((binder (binder-of input))
+               ((values group-by-bindings group-by) (funcall binder row group-by))
+               ((values collect-bindings collected-expressions) (funcall binder row collected-expressions)))
+          `(make-grouped-result-set
+            ,(%compile-plan input)
+            (lambda (,row)
+              (declare (ignorable ,row))
+              (let (,@group-by-bindings)
+                (list ,@group-by))) ;; FIXME compared with equal, not ok for local-time
+            (lambda ()
+              ,(aggregate-init-fn-body-for collected-expressions))
+            (lambda (,row ,acc)
+              (let (,@collect-bindings)
+                ,(aggregate-collect-fn-body-for acc collected-expressions)))
+            (lambda (,acc)
+              ,(aggregate-map-fn-body-for acc collected-expressions)))))))
 
   (:method ((conversion conversion-operation))
-           (with-slots (input result-type flatp) conversion
-             (ecase result-type
-               (list `(to-list ,(%compile-plan input) :flatp ,flatp))
-               (scroll `(to-scroll ,(%compile-plan input) :flatp ,flatp)))))
+    (with-slots (input result-type flatp) conversion
+      (ecase result-type
+        (list `(to-list ,(%compile-plan input) :flatp ,flatp))
+        (scroll `(to-scroll ,(%compile-plan input) :flatp ,flatp)))))
 
   (:method ((delete delete-operation))
-           (with-slots (input variables) delete
-             (etypecase input
-               ;;
-               ;; There are list filter conditions:
-               ;;   execute the filter+delete by iterating on the objects to be deleted
-               ;;   use execute :visitor because it's implemented with cursors
-               (filter-operation
-                (bind ((input2 (input-of input))
-                       (condition (condition-of input)))
-                  (assert (typep input2 'sql-query-node))
-                  (with-unique-names (row)
-                    (bind ((bindings (funcall (binder-of input) row (append variables condition))))
-                      `(execute ,(%compile-plan input2)
-                       :visitor
-                       (lambda (,row)
-                         (let ,bindings
-                           (when ,condition
-                             ,@(mapcar
-                                (lambda (variable) `(make-transient ,variable))
-                                variables)))))))))
-               ;; sql deletes
-               (sql-query-node
-                (assert (length=1 variables)) ; FIXME
-                (bind ((variable (first (variables-of delete)))
-                       (type (xtype-of variable))
-                       (tables (when (persistent-class-p type) (tables-for-delete type))))
-                  (if (length=1 tables) ; simple delete
-                      `(execute ,(sql-delete-from-table (first tables) :where (where-of input)))
-                      (bind ((temp-table (rdbms-name-for 'deleted-ids :table))
-                             (select-deleted-ids `(sql-select
-                                                   :columns (list
-                                                             ,(sql-id-column-reference-for
-                                                               variable))
-                                                   :tables  (list
-                                                             ,@(tables-of input))
-                                                   :where ,(where-of input)))
-                             (create-table (create-temporary-table temp-table
-                                                                   (list
-                                                                    (sql-column
-                                                                     :name +oid-id-column-name+
-                                                                     :type +oid-id-sql-type+))
-                                                                   select-deleted-ids
-                                                                   *database*))
-                             (delete-where `(sql-subquery
-                                             :query
-                                             (sql-select
-                                              :columns (list ',+oid-id-column-name+)
-                                              :tables (list ',temp-table))))
-                             (deletes (delete nil
-                                              (mapcar
-                                               (lambda (table)
-                                                 (sql-delete-for-subselect table delete-where))
-                                               tables)))
-                             (drop-table (drop-temporary-table temp-table *database*)))
-                        `(execute-protected
-                          ,create-table
-                          (list ,@deletes)
-                          ,drop-table)))))))))
+    (with-slots (input variables) delete
+      (etypecase input
+        ;;
+        ;; There are list filter conditions:
+        ;;   execute the filter+delete by iterating on the objects to be deleted
+        ;;   use execute :visitor because it's implemented with cursors
+        (filter-operation
+         (bind ((input2 (input-of input))
+                (condition (condition-of input)))
+           (assert (typep input2 'sql-query-node))
+           (with-unique-names (row)
+             (bind ((bindings (funcall (binder-of input) row (append variables condition))))
+               `(execute ,(%compile-plan input2)
+                         :visitor
+                         (lambda (,row)
+                           (let ,bindings
+                             (when ,condition
+                               ,@(mapcar
+                                  (lambda (variable) `(make-transient ,variable))
+                                  variables)))))))))
+        ;; sql deletes
+        (sql-query-node
+         (assert (length=1 variables))  ; FIXME
+         (bind ((variable (first (variables-of delete)))
+                (type (xtype-of variable))
+                (tables (when (persistent-class-p type) (tables-for-delete type))))
+           (if (length=1 tables)        ; simple delete
+               `(execute ,(sql-delete-from-table (first tables) :where (where-of input)))
+               (bind ((temp-table (rdbms-name-for 'deleted-ids :table))
+                      (select-deleted-ids `(sql-select
+                                             :columns (list
+                                                       ,(sql-id-column-reference-for
+                                                         variable))
+                                             :tables  (list
+                                                       ,@(tables-of input))
+                                             :where ,(where-of input)))
+                      (create-table (create-temporary-table temp-table
+                                                            (list
+                                                             (sql-column
+                                                               :name +oid-id-column-name+
+                                                               :type +oid-id-sql-type+))
+                                                            select-deleted-ids
+                                                            *database*))
+                      (delete-where `(sql-subquery
+                                       :query
+                                       (sql-select
+                                         :columns (list ',+oid-id-column-name+)
+                                         :tables (list ',temp-table))))
+                      (deletes (delete nil
+                                       (mapcar
+                                        (lambda (table)
+                                          (sql-delete-for-subselect table delete-where))
+                                        tables)))
+                      (drop-table (drop-temporary-table temp-table *database*)))
+                 `(execute-protected
+                   ,create-table
+                   (list ,@deletes)
+                   ,drop-table)))))))))
 
 (defgeneric create-temporary-table (table-name columns subselect database)
   (:method (table-name columns subselect database)
