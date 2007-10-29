@@ -29,6 +29,13 @@
     :documentation "A map from symbols to bulks of instances. Used to cache complex trees, graphs of instances at once."))
   (:documentation "Each transaction has its own transaction level instance cache filled by the operations executed during that transaction. The cache is created empty when the transaction starts and it will be dropped when the transaction ends. Each instance loaded during a transaction will be put here to keep the identity of the in-memory instance throughout the transaction. Moreover the instance cache is responsible to manage the list of created, modified and deleted instances during the transaction."))
 
+(defmethod rdbms::cleanup-transaction :after ((transaction transaction-instance-cache-mixin))
+  (setf (instances-of transaction) nil)
+  (setf (created-instances-of transaction) nil)
+  (setf (modified-instances-of transaction) nil)
+  (setf (deleted-instances-of transaction) nil)
+  (setf (bulks-of transaction) nil))
+
 ;;;;;;;;;;;;;;;;;;;;
 ;;; Single Instances
 

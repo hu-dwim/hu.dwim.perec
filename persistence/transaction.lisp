@@ -11,7 +11,7 @@
 (defclass* transaction-mixin (transaction-instance-cache-mixin)
   ())
 
-(defmethod rdbms::cleanup-transaction :around ((transaction transaction-mixin))
+(defmethod rdbms::cleanup-transaction ((transaction transaction-mixin))
   (unwind-protect
        (call-next-method)
     (map-cached-instances
