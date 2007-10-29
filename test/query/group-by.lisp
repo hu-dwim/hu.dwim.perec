@@ -65,7 +65,7 @@
      '((nil 0) ("1" 1) ("2" 1) ("3" 1))
      :test 'equalp))))
 
-(def-group-by-test test/query/group-by/child ()
+(def-group-by-test test/query/group-by/parent ()
   (bind ((p1 (select-first-matching-instance group-by-test (where (= (int-attr-of -instance-) 1))))
          (p2 (select-first-matching-instance group-by-test (where (= (int-attr-of -instance-) 2))))
          (p3 (select-first-matching-instance group-by-test (where (= (int-attr-of -instance-) 3)))))
@@ -76,5 +76,18 @@
          (from (parent group-by-test) (child group-by-child-test))
          (where (eq parent (parent-of child)))
          (group-by parent))
+       `((,p1 1) (,p2 2) (,p3 3))
+       :test 'equalp)))))
+
+(def-group-by-test test/query/group-by/parent/2 ()
+  (bind ((p1 (select-first-matching-instance group-by-test (where (= (int-attr-of -instance-) 1))))
+         (p2 (select-first-matching-instance group-by-test (where (= (int-attr-of -instance-) 2))))
+         (p3 (select-first-matching-instance group-by-test (where (= (int-attr-of -instance-) 3)))))
+    (is
+     (null
+      (set-exclusive-or
+       (select ((parent-of child) (max (int-attr-of child)))
+         (from (child group-by-child-test))
+         (group-by (parent-of child)))
        `((,p1 1) (,p2 2) (,p3 3))
        :test 'equalp)))))

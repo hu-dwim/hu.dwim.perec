@@ -233,7 +233,7 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
         (iter (for record in-sequence (records-of inner))
               (for key = (funcall group-by-fn record))
               (aggregate key record))
-        (when (= (hash-table-count ht) 0)
+        (when (= (hash-table-count ht) 0) ;; input result-set is empty
           (setf (gethash nil ht) (funcall init-fn)))
         (setf contents
               (aprog1 (make-array (hash-table-count ht))
