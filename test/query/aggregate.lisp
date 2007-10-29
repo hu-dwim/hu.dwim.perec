@@ -74,3 +74,11 @@
      (and (= (first result) 3)
           (local-time= (second result) (parse-datestring "2001-01-01"))
           (local-time= (third result) (parse-datestring "2001-01-03"))))))
+
+(def-aggregate-test test/query/aggregate/empty ()
+  (is
+   (equal
+    (select ((max (int-attr-of o)))
+      (from (o aggregate-test))
+      (where (> (int-attr-of o) 10)))
+    '(nil))))

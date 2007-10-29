@@ -577,7 +577,7 @@
        (iter (for field in names)
              (for i from start-index)
              (for variable = (if suffix (concatenate-symbol field suffix) field))
-             (collect `(,variable (elt ,row ,i))))
+             (collect `(,variable (if (eq (elt ,row ,i) :null) nil (elt ,row ,i))))) ;; FIXME call restore-slot-value
        (substitute-syntax referenced-by substitutions)  ;; FIXME mutating
        (+ start-index (length names))))))
 

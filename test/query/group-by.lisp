@@ -51,5 +51,5 @@
      (select ((str-attr-of o) (count (int-attr-of o)))
        (from (o group-by-test))
        (group-by (str-attr-of o)))
-     '((:null 0) ("1" 1) ("2" 1) ("3" 1))
+     '((nil 0) ("1" 1) ("2" 1) ("3" 1))
      :test 'equalp))))
