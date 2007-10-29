@@ -575,10 +575,15 @@
     (lambda (row referenced-by &key suffix (start-index 0))
       (values
        (iter (for field in names)
+             (for expr in exprs)
              (for i from start-index)
              (for variable = (if suffix (concatenate-symbol field suffix) field))
-             (collect `(,variable (if (eq (elt ,row ,i) :null) nil (elt ,row ,i))))) ;; FIXME call restore-slot-value
-       (substitute-syntax referenced-by substitutions)  ;; FIXME mutating
+             (collect
+                 `(,variable
+                   ,(if (query-variable-p expr)
+                        `(cache-instance-with-prefetched-slots ,row ,i ,(xtype-of expr) nil '(1))
+                        `(if (eq (elt ,row ,i) :null) nil (elt ,row ,i)))))) ;; FIXME call restore-slot-value
+       (substitute-syntax referenced-by substitutions) ;; FIXME mutating
        (+ start-index (length names))))))
 
 (defun query-variable-binder (query)
@@ -650,7 +655,9 @@ If true then all query variables must be under some aggregate call."
   (bind ((result (syntax-fold
                   expr
                   (lambda (node)
-                    (cons (when (query-variable-p node) (list node))
+                    (cons (when (and (query-variable-p node)
+                                     (not (member node group-by :test 'syntax=)))
+                            (list node))
                           (when (or (and (function-call-p node)
                                          (aggregate-function-name-p (fn-of node)))
                                     (member node group-by :test 'syntax=))
