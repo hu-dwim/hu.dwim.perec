@@ -44,10 +44,9 @@
   :default-component-class local-cl-source-file
   :components
   ((:module :test
-            :serial t
 	    :components
             ((:file "package")
-             (:file "suite")
+             (:file "suite" :depends-on ("package"))
              (:module :persistence
                       :components
                       ((:file "table")
@@ -67,7 +66,6 @@
                        (:file "purge")
                        (:file "class-t")))
              (:module :query
-                      :serial t
                       :components
                       ((:file "suite")
                        (:file "forum")

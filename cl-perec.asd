@@ -76,42 +76,42 @@
                :cl-store
                :cl-containers
                :cl-rdbms)
-  :serial t
   :components
   ((:file "package")
-   (:file "configuration")
-   (:file "logging")
+   (:file "configuration" :depends-on ("package"))
+   (:file "logging" :depends-on ("package"))
    (:module :util
-            :serial t
+            :depends-on ("configuration" "logging")
             :components
             ((:file "duplicates")
              (:file "pattern-matcher")
              (:file "logic")))
    (:module :persistence
-            :serial t
+            :depends-on ("util")
             :components
             ((:file "api")
              (:file "common")
              (:file "oid")
-             (:file "table")
+             (:file "table" :depends-on ("common" "oid"))
              (:file "type")
-             (:file "class")
-             (:file "association")
-             (:file "mop")
-             (:file "object")
+             (:file "class" :depends-on ("table" "type"))
+             (:file "association" :depends-on ("class"))
+             (:file "mop" :depends-on ("class" "association"))
+             (:file "object" :depends-on ("api" "mop"))
              (:file "transaction")
              (:file "instance-cache")
-             (:file "store")
+             (:file "store" :depends-on ("oid"))
              (:file "slot-value")
-             (:file "persistent")
-             (:file "standard-type")
+             (:file "persistent" :depends-on ("oid"))
+             (:file "standard-type" :depends-on ("type"))
              (:file "transformer")
              (:file "set")
-             (:file "association-end-set")
-             (:file "copy")
-             (:file "export")
-             (:file "class-t")))
+             (:file "association-end-set" :depends-on ("object"))
+             (:file "copy" :depends-on ("object"))
+             (:file "export" :depends-on ("object"))
+             (:file "class-t" :depends-on ("class" "object"))))
    (:module :query
+            :depends-on ("util")
             :components
             ((:file "conditions")
              (:file "api")
