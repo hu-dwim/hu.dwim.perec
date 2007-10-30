@@ -54,11 +54,13 @@
       (iter (for slot :in prefetched-slots)
             (for (the fixnum column-count) :in column-counts)
             (for (the fixnum index) :initially (+ start +oid-column-count+) :then (the fixnum (+ index column-count)))
-            (if (eq instance-class class)
-                (setf (underlying-slot-boundp-or-value-using-class class instance slot)
-                      (restore-slot-value slot row index))
-                (setf (underlying-slot-boundp-or-value instance (slot-definition-name slot))
-                      (restore-slot-value slot row index)))))
+            (for instance-slot = (if (eq instance-class class)
+                                     slot
+                                     (find-slot instance-class (slot-definition-name slot))))
+            (for value = (restore-slot-value instance-slot row index))
+            (setf (underlying-slot-boundp-or-value-using-class instance-class instance instance-slot) value)
+            ;; TODO: maybe this shoud be a prefetch option?
+            (propagate-cache-changes instance-class instance instance-slot value)))
     instance))
 
 (defun column-count-of (slot)
