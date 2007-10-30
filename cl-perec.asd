@@ -111,7 +111,7 @@
              (:file "export" :depends-on ("object"))
              (:file "class-t" :depends-on ("class" "object"))))
    (:module :query
-            :depends-on ("util")
+            :depends-on ("util" "persistence")
             :components
             ((:file "conditions")
              (:file "api")
