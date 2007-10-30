@@ -195,6 +195,10 @@
                (call-next-method)))
 
   ;; (null (accessor variable))
+
+  ;; TODO NOT EXIST (subselect)
+  ;;   e.g ((and (association-end-access-p expr) (not (contains-syntax-p expr)))
+  ;;         `(cache-instance-with-prefetched-slots ,row ,i ,(normalized-type-for (xtype-of expr)) nil '(1)))
   (:method ((fn (eql 'null)) (n-args (eql 1)) (access slot-access) arg2 call)
            (bind ((slot (slot-of access)))
              (if (and slot
