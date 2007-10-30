@@ -578,18 +578,20 @@
              (for expr in exprs)
              (for i from start-index)
              (for variable = (if suffix (concatenate-symbol field suffix) field))
+             (for type = (xtype-of expr))
              (collect
                  `(,variable
                    ,(cond
                      ((query-variable-p expr)
-                      `(cache-instance-with-prefetched-slots ,row ,i ,(xtype-of expr) nil '(1)))
-                     ((and (association-end-access-p expr) (not (contains-syntax-p expr)))
-                      `(cache-instance-with-prefetched-slots ,row ,i ,(normalized-type-for (xtype-of expr)) nil '(1)))
-                     ((association-end-access-p expr)
-                      `(cache-instance-with-prefetched-slots
-                        ,row ,i
-                        (normalized-type-for ,(backquote-type-syntax (xtype-of expr))) nil '(1)))
-                     (t `(if (eq (elt ,row ,i) :null) nil (elt ,row ,i))))))) ;; FIXME call restore-slot-value
+                      `(object-reader ,row ,i))
+                     ((and (association-end-access-p expr)
+                           (not (contains-syntax-p type))
+                           (not (eq type +unknown-type+)))
+                      `(funcall ,(compute-reader nil (xtype-of expr)) ,row ,i))
+                     ((and (association-end-access-p expr) (not (eq type +unknown-type+)))
+                      `(funcall (compute-reader nil ,(backquote-type-syntax (xtype-of expr))) ,row ,i))
+                     (t
+                      `(if (eq (elt ,row ,i) :null) nil (elt ,row ,i))))))) ;; FIXME call reader
        (substitute-syntax referenced-by substitutions) ;; FIXME mutating
        (+ start-index (length names))))))
 
