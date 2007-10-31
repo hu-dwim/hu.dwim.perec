@@ -33,7 +33,7 @@
 
 (defun query-macro-expander-of (name)
   "Returns the expander of the query macro named NAME, or NIL."
-  (get name 'query-macro))
+  (and (symbolp name) (get name 'query-macro)))
 
 (defun (setf query-macro-expander-of) (value name)
   "Sets the expander of the query macro named NAME."
