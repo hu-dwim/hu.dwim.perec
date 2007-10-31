@@ -39,6 +39,12 @@
 (defun static (x)
   x)
 
+;;; 
+;;; SQL text fragments
+;;;
+(defmacro sql-text (string)
+  `(sql-fragment :sql ,string))
+
 ;;;
 ;;; Caching
 ;;;

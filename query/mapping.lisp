@@ -247,7 +247,7 @@
       (t
        (sql-map-failed))))
   
-  (:method ((macro (eql 'sql-fragment)) n-args arg1 arg2 call)
+  (:method ((macro (eql 'sql-text)) n-args arg1 arg2 call)
     call))
 
 (defun free-of-query-variables-p (syntax)

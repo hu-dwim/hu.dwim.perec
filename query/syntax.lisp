@@ -295,7 +295,7 @@ Be careful when using in different situations, because it modifies *readtable*."
            (funcall g (funcall f compound) (syntax-fold (operands-of compound) f g)))
 
   (:method ((unparsed unparsed-form) f g)
-           (funcall g (funcall f unparsed) (syntax-fold (form-of unparsed))))
+           (funcall g (funcall f unparsed) (syntax-fold (form-of unparsed) f g)))
 
   (:method ((cons cons) f g)
            (funcall g (funcall f cons) (syntax-fold (car cons) f g) (syntax-fold (cdr cons) f g))))

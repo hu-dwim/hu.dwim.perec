@@ -24,12 +24,12 @@
        (select ((int-attr-of o))
          (from (o embedded-sql-test))
          (where (and (eq (int-attr-of o)
-                         (sql-fragment :sql "(select max(_int_attr) from _embedded_sql_test)")))))
+                         (sql-text "(select max(_int_attr) from _embedded_sql_test)")))))
        '(3))))
 
 (def-embedded-sql-test test/query/embedded-sql/select-form ()
   (is (equal
-       (select ((int-attr-of o) (sql-fragment :sql "(select max(_int_attr) from _embedded_sql_test)"))
+       (select ((int-attr-of o) (sql-text "(select max(_int_attr) from _embedded_sql_test)"))
          (from (o embedded-sql-test))
          (order-by :ascending (int-attr-of o)))
        '((1 3) (2 3) (3 3)))))
@@ -38,13 +38,13 @@
   (is (equal
        (select ((int-attr-of o))
          (from (o embedded-sql-test))
-         (order-by :descending (sql-fragment :sql "_o._int_attr")))
+         (order-by :descending (sql-text "_o._int_attr")))
        '(3 2 1))))
 
 (def-embedded-sql-test test/query/embedded-sql/group-by ()
   (is (equal
        (select ((max (int-attr-of o)))
          (from (o embedded-sql-test))
-         (group-by (sql-fragment :sql "_o._string_attr"))
+         (group-by (sql-text "_o._string_attr"))
          (order-by :ascending (max (int-attr-of o))))
        '(2 3))))

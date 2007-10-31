@@ -308,7 +308,7 @@
                      (collects (collects-of (query-of projection)))
                      (persistent-object-query-p (some (lambda (expr)
                                                         (bind ((type (xtype-of expr)))
-                                                          (and (not (sql-fragment-p expr))
+                                                          (and (not (sql-text-p expr))
                                                                (or (eql type +unknown-type+)
                                                                    (syntax-object-p type)
                                                                    (persistent-class-p type)
@@ -342,9 +342,9 @@
               (collect form into lisp-forms)))
         (finally (return-from to-sql (values sql-forms lisp-forms)))))
 
-(defun sql-fragment-p (expr)
+(defun sql-text-p (expr)
   (and (macro-call-p expr)
-       (eq (macro-of expr) 'sql-fragment)))
+       (eq (macro-of expr) 'sql-text)))
 
 
 ;;;

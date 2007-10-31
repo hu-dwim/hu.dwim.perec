@@ -241,6 +241,7 @@
            #:sum
            #:volatile
            #:static
+           #:sql-text
 
            ;; scroll
            #:scroll
