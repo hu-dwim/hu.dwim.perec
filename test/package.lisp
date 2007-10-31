@@ -29,7 +29,8 @@
   (:shadowing-import-from :cl-perec
                           #:time
                           #:form
-                          #:set))
+                          #:set
+                          #:sql-fragment))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (import (let ((*package* (find-package :cl-perec)))

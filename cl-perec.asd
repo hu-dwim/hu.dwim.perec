@@ -80,13 +80,13 @@
   ((:file "package")
    (:file "configuration" :depends-on ("package"))
    (:file "logging" :depends-on ("package"))
-   (:module :util
+   (:module "util"
             :depends-on ("configuration" "logging")
             :components
             ((:file "duplicates")
              (:file "pattern-matcher")
              (:file "logic")))
-   (:module :persistence
+   (:module "persistence"
             :depends-on ("util")
             :components
             ((:file "api")
@@ -110,7 +110,7 @@
              (:file "copy" :depends-on ("object"))
              (:file "export" :depends-on ("object"))
              (:file "class-t" :depends-on ("class" "object"))))
-   (:module :query
+   (:module "query"
             :depends-on ("util" "persistence")
             :components
             ((:file "conditions")

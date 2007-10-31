@@ -1,0 +1,50 @@
+(in-package :cl-perec-test)
+
+(defsuite* (test/query/embedded-sql :in test/query))
+
+(defpclass* embedded-sql-test ()
+  ((int-attr :type integer-32)
+   (string-attr :type (text 10))))
+
+(defixture embedded-sql-data
+  (with-transaction
+    (purge-instances 'embedded-sql-test)
+    (make-instance 'embedded-sql-test :int-attr 1 :string-attr "a")
+    (make-instance 'embedded-sql-test :int-attr 2 :string-attr "a")
+    (make-instance 'embedded-sql-test :int-attr 3 :string-attr "b")))
+
+(defmacro def-embedded-sql-test (name (&rest args) &body body)
+  `(deftest ,name ,args
+    (with-setup embedded-sql-data
+      (with-transaction
+        ,@body))))
+
+(def-embedded-sql-test test/query/embedded-sql/where ()
+  (is (equal
+       (select ((int-attr-of o))
+         (from (o embedded-sql-test))
+         (where (and (eq (int-attr-of o)
+                         (sql-fragment :sql "(select max(_int_attr) from _embedded_sql_test)")))))
+       '(3))))
+
+(def-embedded-sql-test test/query/embedded-sql/select-form ()
+  (is (equal
+       (select ((int-attr-of o) (sql-fragment :sql "(select max(_int_attr) from _embedded_sql_test)"))
+         (from (o embedded-sql-test))
+         (order-by :ascending (int-attr-of o)))
+       '((1 3) (2 3) (3 3)))))
+
+(def-embedded-sql-test test/query/embedded-sql/order-by ()
+  (is (equal
+       (select ((int-attr-of o))
+         (from (o embedded-sql-test))
+         (order-by :descending (sql-fragment :sql "_o._int_attr")))
+       '(3 2 1))))
+
+(def-embedded-sql-test test/query/embedded-sql/group-by ()
+  (is (equal
+       (select ((max (int-attr-of o)))
+         (from (o embedded-sql-test))
+         (group-by (sql-fragment :sql "_o._string_attr"))
+         (order-by :ascending (max (int-attr-of o))))
+       '(2 3))))

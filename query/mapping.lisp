@@ -239,13 +239,16 @@
 
 (defgeneric macro-call-to-sql (macro n-args arg1 arg2 call)
   (:method (macro n-args arg1 arg2 call)
-           (cond
-             ((sql-operator-p macro)
-              `(funcall ',(sql-operator-for macro) ,@(mapcar 'syntax-to-sql (args-of call))))
-             ((every 'free-of-query-variables-p (args-of call))
-              `(value->sql-literal ,call ,(backquote-type-syntax (xtype-of call))))
-             (t
-              (sql-map-failed)))))
+    (cond
+      ((sql-operator-p macro)
+       `(funcall ',(sql-operator-for macro) ,@(mapcar 'syntax-to-sql (args-of call))))
+      ((every 'free-of-query-variables-p (args-of call))
+       `(value->sql-literal ,call ,(backquote-type-syntax (xtype-of call))))
+      (t
+       (sql-map-failed))))
+  
+  (:method ((macro (eql 'sql-fragment)) n-args arg1 arg2 call)
+    call))
 
 (defun free-of-query-variables-p (syntax)
   (typecase syntax
