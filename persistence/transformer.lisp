@@ -10,15 +10,18 @@
 ;;; Unbound
 
 (def (function io) is-vector-of-constant (vector value index length)
-  (declare (type (or null fixnum) length)
-           (type fixnum index))
-  (iter (for i :from index)
-        (repeat length)
-        (always (eql (elt vector i) value))))
+  (declare (type fixnum index length)
+           (type symbol value)
+           (type simple-vector vector))
+  (iter (for i :from index :below (the fixnum (+ index length)))
+        (declare (type fixnum i))
+        (always (eql (aref vector i) value))))
 
 (defmacro def-transformer-wrapper (name &body forms)
-  `(defun ,name (slot type function column-number)
-    (declare (ignorable slot type column-number))
+  `(def (function o) ,name (slot type function column-number)
+    (declare (ignorable slot type column-number)
+             #-debug(type function function)
+             (type fixnum column-number))
     ,@forms))
 
 (def-transformer-wrapper unbound-reader
@@ -38,6 +41,7 @@
 (def-transformer-wrapper unbound-writer
   (bind ((unbound-rdbms-value (make-array column-number :initial-element :null)))
     (lambda (slot-value rdbms-values index)
+      (declare (type simple-vector rdbms-values))
       (if (unbound-slot-marker-p slot-value)
           (replace rdbms-values unbound-rdbms-value :start1 index)
           (funcall function slot-value rdbms-values index)))))
@@ -70,6 +74,7 @@
 (def-transformer-wrapper null-writer
   (bind ((nil-rdbms-values (make-array column-number :initial-element :null)))
     (lambda (slot-value rdbms-values index)
+      (declare (type simple-vector rdbms-values))
       (if slot-value
           (funcall function slot-value rdbms-values index)
           (replace rdbms-values nil-rdbms-values :start1 index)))))

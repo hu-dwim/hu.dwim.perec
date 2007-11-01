@@ -267,18 +267,31 @@
 ;;; Type mapping
 
 (defmacro defmapping (name sql-type reader writer)
-  `(progn
-    (defmethod compute-column-type* ((type (eql ',name)) type-specification)
-      (declare (ignorable type-specification))
-      ,sql-type)
+  (flet ((function-designator-p (transformer)
+           (and (consp transformer)
+                (eq (first transformer) 'quote)
+                (symbolp (second transformer))
+                (second transformer))))
+    `(progn
+       (defmethod compute-column-type* ((type (eql ',name)) type-specification)
+         (declare (ignorable type-specification))
+         ,sql-type)
 
-    (defmethod compute-reader* ((type (eql ',name)) type-specification)
-      (declare (ignorable type-specification))
-      ,reader)
+       (defmethod compute-reader* ((type (eql ',name)) type-specification)
+         (declare (ignorable type-specification))
+         ,(aif (function-designator-p reader)
+               `(if cl-perec-system:*load-as-production-p*
+                    (fdefinition ',it)
+                    ',it)
+               reader))
 
-    (defmethod compute-writer* ((type (eql ',name)) type-specification)
-      (declare (ignorable type-specification))
-      ,writer)))
+       (defmethod compute-writer* ((type (eql ',name)) type-specification)
+         (declare (ignorable type-specification))
+         ,(aif (function-designator-p writer)
+               `(if cl-perec-system:*load-as-production-p*
+                    (fdefinition ',it)
+                    ',it)
+               writer)))))
 
 ;;;;;;;;;;;;;;;
 ;;; Type parser

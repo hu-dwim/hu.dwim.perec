@@ -374,12 +374,16 @@
   (:method ((type symbol) type-specification)
            (declare (ignore type-specification))
            (if (persistent-class-type-p type)
-               'object-reader
+               (if cl-perec-system:*load-as-production-p*
+                   #'object-reader
+                   'object-reader)
                (call-next-method)))
 
   (:method ((type persistent-class) type-specification)
            (declare (ignore type-specification))
-           'object-reader))
+           (if cl-perec-system:*load-as-production-p*
+               #'object-reader
+               'object-reader)))
 
 (defgeneric compute-writer (slot type)
   (:documentation "Maps a type to a one parameter lambda which will be called with the slot value.")
@@ -395,12 +399,16 @@
   (:method ((type symbol) type-specification)
            (declare (ignore type-specification))
            (if (persistent-class-type-p type)
-               'object-writer
+               (if cl-perec-system:*load-as-production-p*
+                   #'object-writer
+                   'object-writer)
                (call-next-method)))
 
   (:method ((type persistent-class) type-specification)
            (declare (ignore type-specification))
-           'object-writer))
+           (if cl-perec-system:*load-as-production-p*
+               #'object-writer
+               'object-writer)))
 
 (defgeneric compute-primary-table (class current-table)
   (:method ((class persistent-class) current-table)
