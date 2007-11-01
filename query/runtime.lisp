@@ -92,99 +92,101 @@
 ;;;
 ;;; Conversion between lisp and sql values
 ;;;
-(defgeneric value->sql-literal (value type &optional args)
+(def (function io) value->sql-literal (value type)
+  (value->sql-literal* value type nil nil nil))
+
+(defgeneric value->sql-literal* (value type writer column-count normalized-type &optional args)
 
   ;; Runtime cast error
   
-  (:method (value type &optional args)
-           (error "Can not cast ~A to ~A" value (compose-type type args)))
+  (:method (value type writer column-count normalized-type &optional args)
+    (declare (ignore writer column-count normalized-type))
+    (error "Can not cast ~A to ~A" value (compose-type type args)))
+
+  ;; Compute writer/normalized type
+  (:method (value (type symbol) (writer null) (column-count null) normalized-type &optional args)
+    (bind (((values writer wrapper-1 wrapper-2 column-count) (compute-writer nil (compose-type type args))))
+      (declare (ignore wrapper-1 wrapper-2))
+      (value->sql-literal* value type writer column-count normalized-type args)))
+
+  (:method (value (type symbol) writer column-count (normalized-type null) &optional args)
+    (value->sql-literal* value type writer column-count (normalized-type-for (compose-type type args)) args))
 
   ;; Supported types
   
-  (:method (value (type symbol) &optional args)
+  (:method (value (type symbol) writer column-count normalized-type &optional args)
            (assert (not (eql type +unknown-type+)))
-           (bind ((type (compose-type type args))
-                  (normalized-type (normalized-type-for type)))
-             (sql-literal :value (value->sql-value value type)
-                          :type (unless (persistent-class-type-p normalized-type)
-                                  (compute-column-type type)))))
+           (assert (and writer column-count))
+           (bind ((type (compose-type type args)))
+             (sql-literal :value (value->sql-value value type writer column-count)
+                         :type (unless (persistent-class-type-p normalized-type)
+                                 (compute-column-type type)))))
 
-  (:method (value (type persistent-class) &optional args)
+  (:method (value (type persistent-class) writer column-count normalized-type &optional args)
            (assert (null args))
            (assert (typep value type))
-           (value->sql-literal value (class-name type)))
+           (value->sql-literal* value (class-name type) writer column-count normalized-type args))
 
-  (:method (value (type cons) &optional args)
+  (:method (value (type cons) writer column-count normalized-type &optional args)
            (assert (null args))
-           (value->sql-literal value (first type) (rest type)))
+           (value->sql-literal* value (first type) writer column-count normalized-type (rest type)))
 
   ;; Infer type from value
 
-  (:method (value (type (eql +unknown-type+)) &optional args)
+  (:method (value (type (eql +unknown-type+)) writer column-count normalized-type &optional args)
            (declare (ignore args))
            (error "Could not infer SQL type for literal: ~S" value))
 
-  (:method ((value persistent-object) (type (eql +unknown-type+)) &optional args)
+  (:method ((value persistent-object) (type (eql +unknown-type+)) writer column-count normalized-type &optional args)
            (assert (null args))
-           (value->sql-literal value (type-of value)))
+           (value->sql-literal* value (type-of value) writer column-count normalized-type))
  
-  (:method ((value string) (type (eql +unknown-type+)) &optional args) ; TODO
+  (:method ((value string) (type (eql +unknown-type+)) writer column-count normalized-type &optional args) ; TODO
            (assert (null args))
-           (value->sql-literal value 'string))
+           (value->sql-literal* value 'string writer column-count normalized-type))
 
-  (:method ((value integer) (type (eql +unknown-type+)) &optional args)
+  (:method ((value integer) (type (eql +unknown-type+)) writer column-count normalized-type &optional args)
            (assert (null args))
            (if (<= (- #.(expt 2 31)) value #.(1- (expt 2 31)))
-               (value->sql-literal value 'integer-32)
-               (value->sql-literal value 'integer)))
+               (value->sql-literal* value 'integer-32 writer column-count normalized-type)
+               (value->sql-literal* value 'integer writer column-count normalized-type)))
 
-  (:method ((value number) (type (eql +unknown-type+)) &optional args)
+  (:method ((value number) (type (eql +unknown-type+)) writer column-count normalized-type &optional args)
            (assert (null args))
-           (value->sql-literal value 'number))
+           (value->sql-literal* value 'number writer column-count normalized-type))
 
   ;; Iterate on lists
 
-  (:method ((value list) (type (eql 'set)) &optional args)
+  (:method ((value list) (type (eql 'set)) writer column-count normalized-type &optional args)
            (assert (not (null args)))
            (assert (every #L(typep !1 (first args)) value))
-           (sql-literal :value (mapcar #L(value->sql-literal !1 (first args)) value)))
+           (sql-literal :value (mapcar
+                                #L(value->sql-literal* !1 (first args) writer column-count normalized-type )
+                                value)))
 
-  (:method ((value list) (type (eql +unknown-type+)) &optional args) ; FIXME hopefully not a form
+  (:method ((value list) (type (eql +unknown-type+)) writer column-count normalized-type &optional args) ; FIXME hopefully not a form
            (assert (null args))
-           (sql-literal :value (mapcar #L(value->sql-literal !1 type) value))))
+           (sql-literal :value (mapcar
+                                #L(value->sql-literal* !1 type writer column-count normalized-type)
+                                value))))
 
-;; TODO: this was a temporary solution that sped up things quite a bit
-(defcfun (yyy :computed-in compute-as) (type)
-  (normalized-type-for type))
-
-;; TODO: normalized-type-for is a performance killer (don't have an idea yet)
-(defun value->sql-value (value type)
+(defun value->sql-value (value type writer column-count)
+  (declare (type function writer) (integer column-count))
   (assert (not (eq type +unknown-type+)))
-  (bind ((sql-values (value->sql-values value type)))
-    (case (length sql-values)
+  (assert (<= 1 column-count 2))
+  (bind ((sql-values (make-array 2)))
+    (declare (dynamic-extent sql-values))
+    (funcall writer value sql-values 0)
+    (ecase column-count
       (1 (elt sql-values 0))
       (2 (cond
-           ((persistent-class-type-p (normalized-type-for type)) ; only id column used
+           ((persistent-object-p value) ; only id column used
             (elt sql-values 0))
            ((and (null-subtype-p type) (unbound-subtype-p type))
             (assert (elt sql-values 0)) ; check if BOUND
             (elt sql-values 1))         ; omit BOUND column
            (t
-            (error "unsupported multi-column type: ~A" type))))
-      (t (error "unsupported multi-column type: ~A" type)))))
-
-;; TODO: this was a temporary solution that sped up things quite a bit
-(defcfun (xxx :computed-in compute-as) (type)
-  (compute-writer nil type))
-
-;; TODO: compute-writer is a performance killer (it's available on the slot)
-(defun value->sql-values (value type)
-  (assert (not (eq type +unknown-type+)))
-  (bind (((values writer wrapper-1 wrapper-2 column-count) (compute-writer nil type))
-         (rdbms-values (make-array column-count)))
-    (declare (ignore wrapper-1 wrapper-2))
-    (funcall writer value rdbms-values 0)
-    rdbms-values))
+            (error "unsupported multi-column type: ~A" type)))))))
 
 (defun compose-type (type args)
   (if args (cons type args) type))

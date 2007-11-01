@@ -32,7 +32,21 @@
            (literal-to-sql (value-of literal) (xtype-of literal) literal))
 
   (:method ((variable lexical-variable))
-           `(value->sql-literal ,(name-of variable) ,(backquote-type-syntax (xtype-of variable))))
+    (bind ((type (xtype-of variable)))
+      (if (or (eq type +unknown-type+) (contains-syntax-p type))
+          `(value->sql-literal ,(name-of variable)
+                               ,(backquote-type-syntax type))
+          (bind ((element-type (if (and (consp type) (eq (first type) 'set))
+                                   (x-element-type-of type)
+                                   type))
+                 (normalized-type (normalized-type-for element-type))
+                 ((values writer wrapper-1 wrapper-2 column-count) (compute-writer nil normalized-type)))
+            (declare (ignore wrapper-1 wrapper-2))
+            `(value->sql-literal* ,(name-of variable)
+                                  ,(backquote-type-syntax type)
+                                  ,writer
+                                  ,column-count
+                                  ',normalized-type)))))
 
   (:method ((variable query-variable))
            (sql-id-column-reference-for variable))
