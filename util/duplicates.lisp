@@ -8,15 +8,22 @@
 
 ;;; THE CONTENT OF THIS FILE IS COPIED OVER FROM SOME OTHER LIBRARIES TO DECREASE THE NUMBER OF DEPENDENCIES
 
-(defun canonical-symbol-name (symbol)
+(def (function o) canonical-symbol-name (symbol)
   "Returns the package name and symbol name concatenated."
-  (strcat
-   (package-name (symbol-package symbol))
-   "::"
-   (symbol-name symbol)))
+  (declare (type symbol symbol))
+  ;; TODO: check for valid symbol names and ':'
+  (concatenate 'string
+               (package-name (symbol-package symbol))
+               "::"
+               (symbol-name symbol)))
 
-(defun symbol-from-canonical-name (name)
-  (read-from-string name))
+(def (function o) symbol-from-canonical-name (name)
+  (declare (type string name))
+  (bind ((pos (position #\: name))
+         (package-name (subseq name 0 pos))
+         (symbol-name (subseq name (+ 2 pos)))
+         (package (find-package package-name)))
+    (intern symbol-name package)))
 
 (defun concatenate-symbol (&rest args)
   "Args are processed as parts of the result symbol with an exception: when a package is encountered then it is stored as the target package at intern."
