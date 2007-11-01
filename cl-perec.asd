@@ -126,7 +126,7 @@
              (:file "sql" :depends-on ("query"))
              (:file "type" :depends-on ("syntax" "query"))
              (:file "partial-eval" :depends-on ("query"))
-             (:file "mapping" :depends-on ("query" "sql" "partial-eval"))
+             (:file "mapping" :depends-on ("query" "sql" "partial-eval" "runtime"))
              (:file "plan" :depends-on ("mapping" "result-set" "runtime"))
              (:file "compiler" :depends-on ("copy" "plan" "macro"))))))
 

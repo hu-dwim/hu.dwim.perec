@@ -90,103 +90,126 @@
        (when cleanup (execute cleanup))))
 
 ;;;
+;;; Writer
+;;;
+
+(defstruct (type-info (:conc-name ti-))
+  writer
+  column-count
+  column-type
+  unbound-subtype-p
+  null-subtype-p)
+
+(def function compute-type-info (type)
+  (when (and (not (eq type +unknown-type+)) (not (contains-syntax-p type)))
+    (bind ((set-type-p (and (consp type) (eq (first type) 'set)))
+           (element-type (if set-type-p (second type) type))
+           ((values writer wrapper-1 wrapper-2 column-count) (compute-writer nil element-type))
+           (normalized-type (normalized-type-for element-type))
+           (mapped-type (mapped-type-for normalized-type))
+           (unbound-subtype-p (unbound-subtype-p type))
+           (null-subtype-p (and (null-subtype-p type) (not (null-subtype-p mapped-type))))
+           (column-type (unless (persistent-class-type-p normalized-type)
+                          (compute-column-type* mapped-type normalized-type))))
+      (declare (ignore wrapper-1 wrapper-2))
+      (make-type-info
+       :writer writer
+       :column-count column-count
+       :column-type column-type
+       :unbound-subtype-p unbound-subtype-p
+       :null-subtype-p null-subtype-p))))
+
+;;;
 ;;; Conversion between lisp and sql values
 ;;;
-(def (function io) value->sql-literal (value type)
-  (value->sql-literal* value type nil nil nil))
-
-(defgeneric value->sql-literal* (value type writer column-count normalized-type &optional args)
+(defgeneric value->sql-literal (value type type-info &optional args)
 
   ;; Runtime cast error
   
-  (:method (value type writer column-count normalized-type &optional args)
-    (declare (ignore writer column-count normalized-type))
+  (:method (value type type-info &optional args)
+    (declare (ignore type-info))
     (error "Can not cast ~A to ~A" value (compose-type type args)))
 
-  ;; Compute writer/normalized type
-  (:method (value (type symbol) (writer null) (column-count null) normalized-type &optional args)
-    (bind (((values writer wrapper-1 wrapper-2 column-count) (compute-writer nil (compose-type type args))))
-      (declare (ignore wrapper-1 wrapper-2))
-      (value->sql-literal* value type writer column-count normalized-type args)))
-
-  (:method (value (type symbol) writer column-count (normalized-type null) &optional args)
-    (value->sql-literal* value type writer column-count (normalized-type-for (compose-type type args)) args))
+  ;; Compute type-info
+  
+  (:method (value (type symbol) (type-info null) &optional args)
+    (value->sql-literal value type (compute-type-info (compose-type type args)) args))
 
   ;; Supported types
   
-  (:method (value (type symbol) writer column-count normalized-type &optional args)
-           (assert (not (eql type +unknown-type+)))
-           (assert (and writer column-count))
-           (bind ((type (compose-type type args)))
-             (sql-literal :value (value->sql-value value type writer column-count)
-                         :type (unless (persistent-class-type-p normalized-type)
-                                 (compute-column-type type)))))
+  (:method (value (type symbol) type-info &optional args)
+    (declare (ignore args))
+    (assert (not (eql type +unknown-type+)))
+    (assert type-info)
 
-  (:method (value (type persistent-class) writer column-count normalized-type &optional args)
-           (assert (null args))
-           (assert (typep value type))
-           (value->sql-literal* value (class-name type) writer column-count normalized-type args))
+    (sql-literal :value (value->sql-value value type-info)
+                 :type (ti-column-type type-info)))
 
-  (:method (value (type cons) writer column-count normalized-type &optional args)
-           (assert (null args))
-           (value->sql-literal* value (first type) writer column-count normalized-type (rest type)))
+  (:method (value (type persistent-class) type-info &optional args)
+    (assert (null args))
+    (assert (typep value type))
+    (value->sql-literal value (class-name type) type-info args))
+
+  (:method (value (type cons) type-info &optional args)
+    (assert (null args))
+    (value->sql-literal value (first type) type-info (rest type)))
 
   ;; Infer type from value
 
-  (:method (value (type (eql +unknown-type+)) writer column-count normalized-type &optional args)
-           (declare (ignore args))
-           (error "Could not infer SQL type for literal: ~S" value))
+  (:method (value (type (eql +unknown-type+)) type-info &optional args)
+    (declare (ignore args))
+    (error "Could not infer SQL type for literal: ~S" value))
 
-  (:method ((value persistent-object) (type (eql +unknown-type+)) writer column-count normalized-type &optional args)
-           (assert (null args))
-           (value->sql-literal* value (type-of value) writer column-count normalized-type))
+  (:method ((value persistent-object) (type (eql +unknown-type+)) type-info &optional args)
+    (assert (null args))
+    (value->sql-literal value (type-of value) type-info))
  
-  (:method ((value string) (type (eql +unknown-type+)) writer column-count normalized-type &optional args) ; TODO
-           (assert (null args))
-           (value->sql-literal* value 'string writer column-count normalized-type))
+  (:method ((value string) (type (eql +unknown-type+)) type-info &optional args) ; TODO
+    (assert (null args))
+    (value->sql-literal value 'string type-info))
 
-  (:method ((value integer) (type (eql +unknown-type+)) writer column-count normalized-type &optional args)
-           (assert (null args))
-           (if (<= (- #.(expt 2 31)) value #.(1- (expt 2 31)))
-               (value->sql-literal* value 'integer-32 writer column-count normalized-type)
-               (value->sql-literal* value 'integer writer column-count normalized-type)))
+  (:method ((value integer) (type (eql +unknown-type+)) type-info &optional args)
+    (assert (null args))
+    (if (<= (- #.(expt 2 31)) value #.(1- (expt 2 31)))
+        (value->sql-literal value 'integer-32 type-info)
+        (value->sql-literal value 'integer type-info)))
 
-  (:method ((value number) (type (eql +unknown-type+)) writer column-count normalized-type &optional args)
-           (assert (null args))
-           (value->sql-literal* value 'number writer column-count normalized-type))
+  (:method ((value number) (type (eql +unknown-type+)) type-info &optional args)
+    (assert (null args))
+    (value->sql-literal value 'number type-info))
 
   ;; Iterate on lists
 
-  (:method ((value list) (type (eql 'set)) writer column-count normalized-type &optional args)
-           (assert (not (null args)))
-           (assert (every #L(typep !1 (first args)) value))
-           (sql-literal :value (mapcar
-                                #L(value->sql-literal* !1 (first args) writer column-count normalized-type )
-                                value)))
+  (:method ((value list) (type (eql 'set)) type-info &optional args)
+    (assert (not (null args)))
+    (assert (every #L(typep !1 (first args)) value))
+    (sql-literal :value (mapcar
+                         #L(value->sql-literal !1 (first args) type-info)
+                         value)))
 
-  (:method ((value list) (type (eql +unknown-type+)) writer column-count normalized-type &optional args) ; FIXME hopefully not a form
-           (assert (null args))
-           (sql-literal :value (mapcar
-                                #L(value->sql-literal* !1 type writer column-count normalized-type)
-                                value))))
+  (:method ((value list) (type (eql +unknown-type+)) type-info &optional args) ; FIXME hopefully not a form
+    (assert (null args))
+    (sql-literal :value (mapcar
+                         #L(value->sql-literal !1 type type-info)
+                         value))))
 
-(defun value->sql-value (value type writer column-count)
-  (declare (type function writer) (integer column-count))
-  (assert (not (eq type +unknown-type+)))
-  (assert (<= 1 column-count 2))
+(defun value->sql-value (value type-info)
+  (declare (type type-info type-info))
+  (assert type-info)
+  (assert (<= 1 (ti-column-count type-info) 2))
   (bind ((sql-values (make-array 2)))
     (declare (dynamic-extent sql-values))
-    (funcall writer value sql-values 0)
-    (ecase column-count
+    (funcall (ti-writer type-info) value sql-values 0)
+    (ecase (ti-column-count type-info)
       (1 (elt sql-values 0))
       (2 (cond
            ((persistent-object-p value) ; only id column used
             (elt sql-values 0))
-           ((and (null-subtype-p type) (unbound-subtype-p type))
+           ((and (ti-null-subtype-p type-info) (ti-unbound-subtype-p type-info))
             (assert (elt sql-values 0)) ; check if BOUND
             (elt sql-values 1))         ; omit BOUND column
            (t
-            (error "unsupported multi-column type: ~A" type)))))))
+            (error "unsupported multi-column type: ~A" (ti-column-type type-info))))))))
 
 (defun compose-type (type args)
   (if args (cons type args) type))

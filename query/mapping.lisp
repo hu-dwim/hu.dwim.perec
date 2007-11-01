@@ -25,28 +25,14 @@
   
   (:method (syntax)
            (if (free-of-query-variables-p syntax)
-               `(value->sql-literal ,syntax ,(backquote-type-syntax (xtype-of syntax)))
+               (emit-sql-literal syntax)
                (sql-map-failed)))
 
   (:method ((literal literal-value))
            (literal-to-sql (value-of literal) (xtype-of literal) literal))
 
   (:method ((variable lexical-variable))
-    (bind ((type (xtype-of variable)))
-      (if (or (eq type +unknown-type+) (contains-syntax-p type))
-          `(value->sql-literal ,(name-of variable)
-                               ,(backquote-type-syntax type))
-          (bind ((element-type (if (and (consp type) (eq (first type) 'set))
-                                   (x-element-type-of type)
-                                   type))
-                 (normalized-type (normalized-type-for element-type))
-                 ((values writer wrapper-1 wrapper-2 column-count) (compute-writer nil normalized-type)))
-            (declare (ignore wrapper-1 wrapper-2))
-            `(value->sql-literal* ,(name-of variable)
-                                  ,(backquote-type-syntax type)
-                                  ,writer
-                                  ,column-count
-                                  ',normalized-type)))))
+    (emit-sql-literal variable))
 
   (:method ((variable query-variable))
            (sql-id-column-reference-for variable))
@@ -70,13 +56,13 @@
   (:method (value type literal)
            (cond
              ((and (keywordp value) (eq type +unknown-type+)) value)
-             ((syntax-object-p type) `(value->sql-literal ,literal ,(backquote-type-syntax type)))
-             (t (value->sql-literal value type)))))
+             ((syntax-object-p type) (emit-sql-literal literal))
+             (t (value->sql-literal value type (compute-type-info type))))))
 
 (defgeneric slot-access-to-sql (accessor arg access)
   (:method (accessor arg access)
            (if (free-of-query-variables-p access)
-               `(value->sql-literal ,access ,(backquote-type-syntax (xtype-of access)))
+               (emit-sql-literal access)
                (sql-map-failed)))
 
   (:method (accessor (variable query-variable) (access slot-access))
@@ -128,7 +114,7 @@
              ;; evaluate it at runtime and insert its value into the SQL query.
              ;; The persistent-objects in the value are converted to object ids.
              ((every 'free-of-query-variables-p (args-of call))
-              `(value->sql-literal ,call ,(backquote-type-syntax (xtype-of call))))
+              (emit-sql-literal call))
              ;; Otherwise the assert containing the function call cannot be mapped to SQL.
              (t
               (sql-map-failed))))
@@ -257,7 +243,7 @@
       ((sql-operator-p macro)
        `(funcall ',(sql-operator-for macro) ,@(mapcar 'syntax-to-sql (args-of call))))
       ((every 'free-of-query-variables-p (args-of call))
-       `(value->sql-literal ,call ,(backquote-type-syntax (xtype-of call))))
+       (emit-sql-literal call))
       (t
        (sql-map-failed))))
   
@@ -294,6 +280,18 @@
 
   (:method ((access association-end-access))
            nil))
+
+(def function emit-sql-literal (syntax)
+  (bind ((type (xtype-of syntax))
+         (type-info (compute-type-info type)))
+    (if type-info
+        `(value->sql-literal ,syntax
+                             ,(backquote-type-syntax type)
+                             ,type-info)
+        `(value->sql-literal ,syntax
+                             ,(backquote-type-syntax type)
+                             (compute-type-info ,(backquote-type-syntax type))))))
+
 
 ;; TODO needs review
 (defgeneric null-check-for (syntax)
