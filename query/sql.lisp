@@ -130,7 +130,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (sql-table-alias :name (name-of table) :alias alias))
 
   (:method ((subquery sql-subquery) (alias symbol))
-           (sql-derived-table :subquery subquery :alias (or alias (gensym)))) ; Postgresql requires alias
+           (sql-derived-table :subquery subquery :alias (or alias (gensym "pg")))) ; Postgresql requires alias
 
   (:method ((class persistent-class) (alias symbol))
            (sql-table-reference-for-type class alias))
@@ -163,7 +163,10 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   (:method (element (syntax syntax-object))
            (make-function-call :fn 'sql-table-reference-for :args (list element syntax))))
 
-(defgeneric sql-table-reference-for-type (type &optional alias)
+(def function sql-table-reference-for-type (type &optional alias)
+  (sql-table-reference-for-type* (simplify-persistent-class-type type) alias))
+
+(defgeneric sql-table-reference-for-type* (type &optional alias)
   
   (:method ((class persistent-class) &optional alias)
            (ensure-class-and-subclasses-exported class)
@@ -172,13 +175,12 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
                (0 nil)
                (1 (sql-table-reference-for (first tables) alias))
                (t (sql-table-reference-for
-                   (sql-subquery :query (sql-select-oids-from-tables tables 'sql-union))
-                   alias)))))
+                   (sql-subquery :query (sql-select-oids-from-tables tables 'sql-union)) alias)))))
 
   (:method ((type-name symbol) &optional alias)
            (bind ((class (find-class type-name #f)))
              (typecase class
-               (persistent-class (sql-table-reference-for-type class alias))
+               (persistent-class (sql-table-reference-for-type* class alias))
                (otherwise nil)))) ; FIXME signal error
 
   (:method ((type syntax-object) &optional alias) ;; type unknown at compile time
@@ -209,17 +211,17 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
                                 :alias alias)))
                         (combine-types (sql-set-operation types)
                           (bind ((operands (delete nil
-                                                   (mapcar 'sql-table-reference-for-type types))))
-                           (case (length operands)
-                             (0 nil)
-                             (1 (ensure-alias (first operands)))
-                             (t (ensure-alias
-                                 (sql-subquery
-                                  :query (apply sql-set-operation
-                                                (mapcar #'ensure-sql-query operands))))))))
+                                                   (mapcar 'sql-table-reference-for-type* types))))
+                            (case (length operands)
+                              (0 nil)
+                              (1 (ensure-alias (first operands)))
+                              (t (ensure-alias
+                                  (sql-subquery
+                                    :query (apply sql-set-operation
+                                                  (mapcar #'ensure-sql-query operands))))))))
                         (join-types (types)
-                          (bind ((primary-table-ref (sql-table-reference-for-type
-                                                     (first types) nil))
+                          (bind ((primary-table-ref (sql-table-reference-for-type*
+                                                     (first types) (gensym "x")))
                                  (joined-table-refs
                                   (mapcan
                                    #L(when (primary-table-of !1)
@@ -296,10 +298,10 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
             :where ,(sql-join-condition-for variable type nil))))
         (sql-false-literal))))
 
-(defun sql-exists-subselect-for-association-end (variable association-end)
+(defun sql-exists-subselect-for-association-end (variable association-end &optional class)
   "Returns an sql expression which evaluates to true iff the query variable VARIABLE
- has associated objects through ASSOCIATION-END."
-  (bind ((class (slot-definition-class (other-association-end-of association-end)))
+ has associated objects through ASSOCIATION-END with class CLASS."
+  (bind ((class (or class (slot-definition-class (other-association-end-of association-end))))
          (table-ref (sql-table-reference-for class (sql-alias-for class))))
     (if table-ref
         `(sql-exists

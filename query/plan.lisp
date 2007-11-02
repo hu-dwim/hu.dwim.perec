@@ -310,7 +310,7 @@
                                                         (bind ((type (xtype-of expr)))
                                                           (and (not (sql-text-p expr))
                                                                (or (eql type +unknown-type+)
-                                                                   (syntax-object-p type)
+                                                                   (contains-syntax-p type)
                                                                    (persistent-class-p type)
                                                                    (set-type-p type)))))
                                                       collects))

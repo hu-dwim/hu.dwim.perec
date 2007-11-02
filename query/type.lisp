@@ -229,3 +229,42 @@
              ',(first combined-type)
              ,@(mapcar 'backquote-type-syntax (rest combined-type)))))
 
+(defun type= (type-1 type-2)
+  (or (equalp type-1 type-2)
+      (and (or (persistent-class-p type-1) (symbolp type-1))
+           (or (persistent-class-p type-2) (symbolp type-2))
+           (eq (find-persistent-class* type-1)
+               (find-persistent-class* type-2)))))
+
+(defgeneric simplify-persistent-class-type (type)
+  
+  (:method ((class persistent-class))
+           class)
+
+  (:method ((type-name symbol))
+           (bind ((class (find-class type-name #f)))
+             (typecase class
+               (persistent-class class)
+               (otherwise type-name)))) ; FIXME signal error?
+
+  (:method ((type syntax-object)) ;; type unknown at compile time
+           type)
+
+  (:method ((combined-type list))
+           (if (contains-syntax-p combined-type)
+               ;; delay until run-time
+               combined-type
+               ;; and/or/not types
+               (case (car combined-type)
+                 ((or and join)
+                  (bind  ((operands (remove-duplicates (mapcar #'simplify-persistent-class-type
+                                                               (rest combined-type))
+                                                       :test #'type=)))
+                    (if (length=1 operands)
+                        (first operands)
+                        (cons (car combined-type) operands))))
+                 (not
+                  `(not ,(simplify-persistent-class-type (second combined-type))))
+                 (t
+                  (error "Unsupported type constructor in ~A" combined-type))))))
+

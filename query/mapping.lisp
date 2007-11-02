@@ -194,6 +194,27 @@
                (sql-exists-subselect-for-variable variable (value-of type))
                (call-next-method)))
 
+  ;; (typep (x-of v) type)
+  (:method ((fn (eql 'typep)) (n-args (eql 2)) (access association-end-access) (type literal-value) call)
+    ;; TODO refine the conditions
+    (if (and (association-end-of access)
+             (query-variable-p (arg-of access))
+             (persistent-class-p (value-of type)))
+        (bind ((association-end (association-end-of access))
+               (association (association-of association-end)))
+          (ecase (association-kind-of association)
+            (:1-1
+             (if (primary-association-end-p association-end)
+                 (sql-exists-subselect-for-association-end (arg-of access) association-end (value-of type))
+                 (call-next-method)))
+            (:1-n
+             (if (to-one-association-end-p association-end)
+                 (sql-exists-subselect-for-association-end (arg-of access) association-end (value-of type))
+                 (call-next-method)))
+            (:m-n
+             (call-next-method))))
+        (call-next-method)))
+
   ;; (null (accessor variable))
 
   ;; TODO NOT EXIST (subselect)
