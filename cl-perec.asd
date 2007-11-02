@@ -103,13 +103,13 @@
              (:file "store" :depends-on ("oid"))
              (:file "slot-value")
              (:file "persistent" :depends-on ("oid"))
-             (:file "standard-type" :depends-on ("type"))
+             (:file "standard-type" :depends-on ("type" "store"))
              (:file "transformer")
              (:file "set")
              (:file "association-end-set" :depends-on ("object"))
              (:file "copy" :depends-on ("object"))
              (:file "export" :depends-on ("object"))
-             (:file "class-t" :depends-on ("class" "object"))))
+             (:file "class-t" :depends-on ("class" "object" "slot-value"))))
    (:module "query"
             :depends-on ("util" "persistence")
             :components
