@@ -51,6 +51,7 @@
                                  :connection-specification cl-perec-system::*test-database-connection-specification*)))")))
 
 (defmethod perform ((o test-op) (c (eql (find-system :cl-perec-test.oracle))))
+  (asdf:operate 'asdf:load-op :cl-perec-test.oracle)
   (eval (read-from-string "(stefil:funcall-test-with-feedback-message 'test)")))
 
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :cl-perec-test.oracle))))
