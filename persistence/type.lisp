@@ -280,17 +280,17 @@
        (defmethod compute-reader* ((type (eql ',name)) type-specification)
          (declare (ignorable type-specification))
          ,(aif (function-designator-p reader)
-               `(if cl-perec-system:*load-as-production-p*
-                    (fdefinition ',it)
-                    ',it)
+               (if cl-perec-system:*load-as-production-p*
+                   `(fdefinition ',it)
+                   `',it)
                reader))
 
        (defmethod compute-writer* ((type (eql ',name)) type-specification)
          (declare (ignorable type-specification))
          ,(aif (function-designator-p writer)
-               `(if cl-perec-system:*load-as-production-p*
-                    (fdefinition ',it)
-                    ',it)
+               (if cl-perec-system:*load-as-production-p*
+                   `(fdefinition ',it)
+                   `',it)
                writer)))))
 
 ;;;;;;;;;;;;;;;
