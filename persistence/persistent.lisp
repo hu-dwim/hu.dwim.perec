@@ -170,30 +170,28 @@
 (defgeneric lock-instance (instance &key wait)
   (:documentation "Lock instance in the current transaction. If wait is false and the instance cannot be locked then an condition will be thrown.")
 
-  (:method :around (instance &key wait)
-           (if wait
-               (call-next-method)
-               (handler-case
-                   (progn
-                     (call-next-method)
-                     #t)
-                 (error (e)
-                        (declare (ignore e))
-                        (return-from lock-instance #f)))))
-
   (:method ((instance persistent-object) &key (wait #t))
-           (bind ((class (class-of instance))
-                  (tables (data-tables-of class))
-                  ((values table-aliases where-clause)
-                   (table-aliases-and-where-clause-for-instance (id-of instance) tables))
-                  (records
-                   (execute (sql-select :columns (list (sql-column-alias :table (name-of (first tables))
-                                                                         :column +oid-id-column-name+))
-                                        :tables table-aliases
-                                        :where where-clause
-                                        :for :update
-                                        :wait wait))))
-             (assert (= 1 (length records))))))
+           (flet ((body ()
+                    (bind ((class (class-of instance))
+                           (tables (data-tables-of class))
+                           ((values table-aliases where-clause)
+                            (table-aliases-and-where-clause-for-instance (id-of instance) tables))
+                           (records
+                            (execute (sql-select :columns (list (sql-column-alias :table (name-of (first tables))
+                                                                                  :column +oid-id-column-name+))
+                                                 :tables table-aliases
+                                                 :where where-clause
+                                                 :for :update
+                                                 :wait wait))))
+                      (assert (= 1 (length records))))
+                    #t))
+             (declare (dynamic-extent #'body))
+             (if wait
+                 (body)
+                 (handler-case
+                     (body)
+                   (unable-to-obtain-lock-error ()
+                     (return-from lock-instance #f)))))))
 
 (defgeneric lock-slot (instance slot &key wait)
   ;; TODO: implement
