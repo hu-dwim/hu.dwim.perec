@@ -187,7 +187,7 @@
                   ((values table-aliases where-clause)
                    (table-aliases-and-where-clause-for-instance (id-of instance) tables))
                   (records
-                   (execute (sql-select :columns (list (sql-column-alias :table (first table-aliases)
+                   (execute (sql-select :columns (list (sql-column-alias :table (name-of (first tables))
                                                                          :column +oid-id-column-name+))
                                         :tables table-aliases
                                         :where where-clause
