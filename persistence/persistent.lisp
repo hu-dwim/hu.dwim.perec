@@ -185,14 +185,17 @@
            (bind ((class (class-of instance))
                   (tables (data-tables-of class))
                   ((values table-aliases where-clause)
-                   (table-aliases-and-where-clause-for-instance (id-of instance) tables)))
-             (execute (sql-select :columns (list (make-instance 'sql-all-columns))
-                                  :tables table-aliases
-                                  :where where-clause
-                                  :for :update
-                                  :wait wait)))))
+                   (table-aliases-and-where-clause-for-instance (id-of instance) tables))
+                  (records
+                   (execute (sql-select :columns (list (sql-column-alias :table (first table-aliases)
+                                                                         :column +oid-id-column-name+))
+                                        :tables table-aliases
+                                        :where where-clause
+                                        :for :update
+                                        :wait wait))))
+             (assert (= 1 (length records))))))
 
-(defgeneric lock-slot (instance slot)
+(defgeneric lock-slot (instance slot &key wait)
   ;; TODO: implement
   )
 
