@@ -101,7 +101,7 @@
              (:file "transaction")
              (:file "instance-cache")
              (:file "store" :depends-on ("oid"))
-             (:file "slot-value")
+             (:file "slot-value" :depends-on ("store"))
              (:file "persistent" :depends-on ("oid"))
              (:file "standard-type" :depends-on ("type" "store"))
              (:file "transformer")
