@@ -198,20 +198,22 @@
 
 (def (function io) (setf slot-boundp-or-value-using-class) (new-value class instance slot)
   (assert-instance-slot-correspondence)
-  (bind ((persistent (persistent-p instance)))
+  (bind ((persistent (persistent-p instance))
+         (cache (cache-p slot)))
     (assert-instance-access instance persistent)
     ;; always store the slot into the database
     (when persistent
       (bind (((values slot-value-cached cached-value)
               (slot-value-cached-p instance slot)))
-        (unless (and slot-value-cached
+        (unless (and cache
+                     slot-value-cached
                      (slot-value-equal-p cached-value new-value))
           (store-slot instance slot new-value)
           (update-instance-cache-for-modified-instance instance))))
     (propagate-cache-changes class instance slot new-value)
     (when (or (not persistent)
               (and *cache-slot-values*
-                   (cache-p slot)))
+                   cache))
       (setf (underlying-slot-boundp-or-value-using-class class instance slot) new-value))
     new-value))
 
