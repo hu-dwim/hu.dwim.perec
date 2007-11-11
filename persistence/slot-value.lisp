@@ -47,6 +47,18 @@
      (not (not-cached-slot-marker-p value))
      value)))
 
+(defgeneric slot-value-equal-p (value-1 value-2)
+  (:documentation "When a new slot value is set in a persistent slot it will be compared to the cached value and will not be propagated to the database when this function returns true.")
+
+  (:method (value-1 value-2)
+    (eq value-1 value-2))
+
+  (:method ((value-1 number) (value-2 number))
+    (= value-1 value-2))
+
+  (:method ((value-1 string) (value-2 string))
+    (string= value-1 value-2)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Primitve slot value
 
@@ -190,8 +202,12 @@
     (assert-instance-access instance persistent)
     ;; always store the slot into the database
     (when persistent
-      (store-slot instance slot new-value)
-      (update-instance-cache-for-modified-instance instance))
+      (bind (((values slot-value-cached cached-value)
+              (slot-value-cached-p instance slot)))
+        (unless (and slot-value-cached
+                     (slot-value-equal-p cached-value new-value))
+          (store-slot instance slot new-value)
+          (update-instance-cache-for-modified-instance instance))))
     (propagate-cache-changes class instance slot new-value)
     (when (or (not persistent)
               (and *cache-slot-values*
