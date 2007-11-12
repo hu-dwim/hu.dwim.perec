@@ -286,6 +286,10 @@
            #:with-type-checking-slot-values
            #:without-type-checking-slot-values
 
+           ;; update optimization
+           #:with-storing-equal-slot-values
+           #:without-storing-equal-slot-values
+
            ;; export,import
            #:write-persistent-object-oid
            #:read-persistent-object-oid

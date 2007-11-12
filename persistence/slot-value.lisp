@@ -9,6 +9,16 @@
 (defparameter *cache-slot-values* #t
   "True means slot values will be cached in the slots of the persistent instances. Writing a slot still goes directly to the database but it will be also stored in the instance. If the instance's state is modified in the database it is up to the modifier to clear the list of cached slots from the instance using the invalidate functions. The purpose of the slot value cache is to increase performance and reduce the number of database interactions during a transaction.")
 
+(def special-variable *skip-storing-equal-slot-values* #f)
+
+(def macro with-storing-equal-slot-values (&body forms)
+  `(bind ((*skip-storing-equal-slot-values* #f))
+     ,@forms))
+
+(def macro without-storing-equal-slot-values (&body forms)
+  `(bind ((*skip-storing-equal-slot-values* #t))
+     ,@forms))
+
 (def (function io) not-cached-slot-marker-p (value)
   (eq +not-cached-slot-marker+ value))
 
@@ -207,6 +217,7 @@
               (slot-value-cached-p instance slot)))
         (unless (and cache
                      slot-value-cached
+                     *skip-storing-equal-slot-values*
                      (slot-value-equal-p cached-value new-value))
           (store-slot instance slot new-value)
           (update-instance-cache-for-modified-instance instance))))
