@@ -3,7 +3,7 @@
 (defsuite* (test/query/type :in test/query))
 
 (defmacro def-query-type-test (name type &optional (test-value nil test-value-p))
-  (with-unique-names (value slot init-arg accessor)
+  (with-unique-names (value slot init-arg accessor result)
     `(deftest ,(concatenate-symbol "test/query/type/" name) ()
       (let ((,value ,(when test-value-p `(with-transaction ,test-value))))
         (declare (ignorable ,value))
@@ -23,20 +23,38 @@
                           ,(when test-value-p `(list ,init-arg ,value))))
                  (test-object ()
                    (declare #+sbcl(sb-ext:muffle-conditions sb-ext:compiler-note))
+                   ,(if test-value-p
+                        `(bind ((test-fn (if (typep ,value 'local-time)
+                                             'local-time=
+                                             'equal))
+                                (,result (execute-query
+                                            (make-query
+                                             `(select ((,,accessor o))
+                                                (from (o query-type-test))
+                                                (where (,test-fn (,,accessor o) ',,value)))))))
+                           (is (and (length=1 ,result)
+                                    (object-equal-p (first ,result) ,value))))
+                        `(is (length=1
+                              (execute-query
+                               (make-query
+                                `(select (o)
+                                   (from (o query-type-test))
+                                   (where (not (slot-boundp o ',',name)))))))))
+                   #+nil
                    (is (length=1
                         (execute-query
                          (make-query
                           ,(if test-value-p
                                `(if (typep ,value 'local-time)
-                                 `(select (o)
-                                   (from (o query-type-test))
-                                   (where (local-time= (,,accessor o) ',,value)))
-                                 `(select (o)
-                                   (from (o query-type-test))
-                                   (where (equal (,,accessor o) ',,value))))
+                                    `(select (o)
+                                       (from (o query-type-test))
+                                       (where (local-time= (,,accessor o) ',,value)))
+                                    `(select (o)
+                                       (from (o query-type-test))
+                                       (where (equal (,,accessor o) ',,value))))
                                ``(select (o)
-                                  (from (o query-type-test))
-                                  (where (not (slot-boundp o ',',name)))))))))))
+                                   (from (o query-type-test))
+                                   (where (not (slot-boundp o ',',name)))))))))))
             (with-transaction
               (make-object)
               (test-object))))))))

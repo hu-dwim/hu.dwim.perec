@@ -318,9 +318,9 @@
                 (if (or lisp-exprs persistent-object-query-p) ;; TODO refine condition
                     projection                                ;; all needed table is joined?
                     (progn
-                      (setf (binder-of sql-query) (binder-of projection)
+                      (setf (binder-of sql-query) (field-binder collects) ;;(binder-of projection)
                             (columns-of sql-query) sql-exprs)
-                      sql-query))))
+                      projection))))
              (t
               projection))))
 
@@ -589,16 +589,28 @@
                    ,(cond
                      ((query-variable-p expr)
                       `(object-reader ,row ,i))
-                     ((and (association-end-access-p expr)
+                     ((and (slot-access-p expr)
                            (not (contains-syntax-p type))
                            (not (eq type +unknown-type+)))
-                      `(funcall ,(compute-reader nil (xtype-of expr)) ,row ,i))
-                     ((and (association-end-access-p expr) (not (eq type +unknown-type+)))
-                      `(funcall (compute-reader nil ,(backquote-type-syntax (xtype-of expr))) ,row ,i))
+                      `(funcall ',(compute-column-reader (xtype-of expr)) ,row ,i))
+                     ((and (slot-access-p expr) (not (eq type +unknown-type+)))
+                      `(funcall (compute-column-reader ,(backquote-type-syntax (xtype-of expr))) ,row ,i))
                      (t
                       `(if (eq (elt ,row ,i) :null) nil (elt ,row ,i))))))) ;; FIXME call reader
        (substitute-syntax referenced-by substitutions) ;; FIXME mutating
        (+ start-index (length names))))))
+
+(defcfun (compute-column-reader :memoize-test-fn equalp :computed-in compute-as) (type)
+  (bind (((values normalized-type null-subtype-p unbound-subtype-p) (destructure-type type))
+         (mapped-type (mapped-type-for normalized-type))
+         (reader (compute-reader* mapped-type normalized-type)))
+    (if (or null-subtype-p unbound-subtype-p)
+        (lambda (row index)
+          (bind ((value (elt row index)))
+            (if (eq value :null)
+                nil
+                (funcall reader row index))))
+        reader)))
 
 (defun query-variable-binder (query)
   (query-variable-binder2 (query-variables-of query)
