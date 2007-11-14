@@ -222,6 +222,7 @@
            #:select-instances
            #:select-similar-instance
            #:select-similar-instances
+           #:select-the-only-one
            #:make-query
            #:current-query-variable-of
            #:add-lexical-variable

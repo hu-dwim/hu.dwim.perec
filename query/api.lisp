@@ -139,11 +139,20 @@
     (case (element-count scroll)
       (0 nil)
       (1 (first-page! scroll) (elt (elements scroll) 0))
-      (otherwise (error "Query did not return unique result.")))))
+      (otherwise (error "Query did not return only one result.")))))
 
 (defmacro select-instances (&optional variable &body body)
   "Select objects using one variable and collect the values of that variable based upon a set of asserts."
   `(simple-select (:result-type list) ,variable ,@body))
+
+(defmacro select-the-only-one (&whole select-form (&rest select-list) &body clauses)
+  (declare (ignore clauses select-list))
+  `(let ((scroll (select (:result-type scroll :flatp #t) ,@(rest select-form))))
+     (setf (page-size scroll) 1)
+     (case (element-count scroll)
+       (0 nil)
+       (1 (first-page! scroll) (elt (elements scroll) 0))
+       (otherwise (error "Query did not return only one result.")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Execute and compile
