@@ -188,6 +188,7 @@
            #:with-reloaded-instances
            #:purge-instance
            #:purge-instances
+           #:count-instances
            #:print-persistent-instance
            #:copy-persistent-instance
            #:copy-into-transaction-cache

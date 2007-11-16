@@ -197,6 +197,19 @@
   ;; TODO: implement
   )
 
+;;;;;;;;;
+;;; Count
+
+(defgeneric count-instances (class)
+  (:documentation "Counts all instances of the given class")
+
+  (:method ((class-name symbol))
+    (count-instances (find-class class-name)))
+
+  (:method ((class persistent-class))
+    (elt-0-0 (execute (sql-select :columns (list (sql-count (sql-all-columns)))
+                                  :tables (list (name-of (primary-table-of class))))))))
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;;; Revive and reload
 
