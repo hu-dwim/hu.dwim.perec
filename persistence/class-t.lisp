@@ -382,8 +382,13 @@
     (replace vector vector-copy)))
 
 (defun day-length-for-date-range (date-1 date-2)
-  (assert (and (valid-date-p date-1)
-               (valid-date-p date-2)))
+  (flet ((valid-date-p (local-time)
+           (and local-time
+                (eq (timezone-of local-time) +utc-zone+)
+                (zerop (sec-of local-time))
+                (zerop (usec-of local-time)))))
+    (assert (and (valid-date-p date-1)
+                 (valid-date-p date-2))))
   (1+ (- (day-of date-1) (day-of date-2))))
 
 (defun integrated-time-dependent-slot-value (instance slot-name)
