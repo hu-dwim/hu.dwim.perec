@@ -82,9 +82,9 @@ if it was fully evaluated.")
                       call)))
 
   ;; (typep query-variable t1) -> nil
-  ;;    when the types t1 and (xtype-of query-variable) does not have common subtypes
+  ;;    when the types t1 and (persistent-type-of query-variable) does not have common subtypes
   (:method ((fn (eql 'typep)) (n-args (eql 2)) (variable query-variable) (type persistent-class) args call)
-           (let ((variable-type (xtype-of variable)))
+           (let ((variable-type (persistent-type-of variable)))
              (if (and (persistent-class-p variable-type)
                       (null (intersection (adjoin type (persistent-effective-sub-classes-of type))
                                           (adjoin variable-type (persistent-effective-sub-classes-of variable-type)))))
@@ -95,7 +95,7 @@ if it was fully evaluated.")
   ;; (member x <list>) -> (member x <list2>) where list2 contains those elements of list,
   ;;                                         that have matching type
   (:method ((fn (eql 'member)) (n-args (eql 2)) object (list list) args call)
-           (bind ((type (xtype-of object))
+           (bind ((type (persistent-type-of object))
                   (list (if (persistent-class-p type) (collect-if #L(typep !1 type) list) list)))
              (cond
                ((null list) nil)
@@ -128,7 +128,7 @@ if it was fully evaluated.")
 (defun syntax-from-value (value orig-syntax)
   (cond
     ((syntax-object-p value) value)
-    ((syntax-object-p orig-syntax) (make-literal-value :value value :xtype (xtype-of orig-syntax)))
+    ((syntax-object-p orig-syntax) (make-literal-value :value value :persistent-type (persistent-type-of orig-syntax)))
     (t (make-literal-value :value value))))
 
 (defun syntax-from-generalized-boolean (value)

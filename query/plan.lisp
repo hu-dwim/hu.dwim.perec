@@ -307,7 +307,7 @@
               (bind ((sql-query (input-of projection))
                      (collects (collects-of (query-of projection)))
                      (persistent-object-query-p (some (lambda (expr)
-                                                        (bind ((type (xtype-of expr)))
+                                                        (bind ((type (persistent-type-of expr)))
                                                           (and (not (sql-text-p expr))
                                                                (or (eql type +unknown-type+)
                                                                    (contains-syntax-p type)
@@ -492,7 +492,7 @@
         (sql-query-node
          (assert (length=1 variables))  ; FIXME
          (bind ((variable (first (variables-of delete)))
-                (type (xtype-of variable))
+                (type (persistent-type-of variable))
                 (tables (when (persistent-class-p type) (tables-for-delete type))))
            (if (length=1 tables)        ; simple delete
                `(execute ,(sql-delete-from-table (first tables) :where (where-of input)))
@@ -583,7 +583,7 @@
              (for expr in exprs)
              (for i from start-index)
              (for variable = (if suffix (concatenate-symbol field suffix) field))
-             (for type = (xtype-of expr))
+             (for type = (persistent-type-of expr))
              (collect
                  `(,variable
                    ,(cond
@@ -592,9 +592,9 @@
                      ((and (slot-access-p expr)
                            (not (contains-syntax-p type))
                            (not (eq type +unknown-type+)))
-                      `(funcall ',(compute-column-reader (xtype-of expr)) ,row ,i))
+                      `(funcall ',(compute-column-reader (persistent-type-of expr)) ,row ,i))
                      ((and (slot-access-p expr) (not (eq type +unknown-type+)))
-                      `(funcall (compute-column-reader ,(backquote-type-syntax (xtype-of expr))) ,row ,i))
+                      `(funcall (compute-column-reader ,(backquote-type-syntax (persistent-type-of expr))) ,row ,i))
                      (t
                       `(if (eq (elt ,row ,i) :null) nil (elt ,row ,i))))))) ;; FIXME call reader
        (substitute-syntax referenced-by substitutions) ;; FIXME mutating
@@ -634,7 +634,7 @@
                  (incf end-index column-count)
                  (if (member variable referenced-variables)
                      (collect `(,(name-for variable)
-                                (cache-instance-with-prefetched-slots ,row ,i ,(xtype-of variable) ',slots
+                                (cache-instance-with-prefetched-slots ,row ,i ,(persistent-type-of variable) ',slots
                                  ',(mapcar #'column-count-of slots))))))
            referenced-by
            end-index)))))

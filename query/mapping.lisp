@@ -29,7 +29,7 @@
                (sql-map-failed)))
 
   (:method ((literal literal-value))
-           (literal-to-sql (value-of literal) (xtype-of literal) literal))
+           (literal-to-sql (value-of literal) (persistent-type-of literal) literal))
 
   (:method ((variable lexical-variable))
     (emit-sql-literal variable))
@@ -219,7 +219,7 @@
 
   ;; TODO NOT EXIST (subselect)
   ;;   e.g ((and (association-end-access-p expr) (not (contains-syntax-p expr)))
-  ;;         `(cache-instance-with-prefetched-slots ,row ,i ,(normalized-type-for (xtype-of expr)) nil '(1)))
+  ;;         `(cache-instance-with-prefetched-slots ,row ,i ,(normalized-type-for (persistent-type-of expr)) nil '(1)))
   (:method ((fn (eql 'null)) (n-args (eql 1)) (access slot-access) arg2 call)
            (bind ((slot (slot-of access)))
              (if (and slot
@@ -288,7 +288,7 @@
            nil)
 
   (:method ((access slot-access))
-           (bind ((type (xtype-of access))
+           (bind ((type (persistent-type-of access))
                   (slot (slot-of access))
                   (variable (arg-of access)))
              (debug-only (assert (not (contains-syntax-p type))))
@@ -303,7 +303,7 @@
            nil))
 
 (def function emit-sql-literal (syntax)
-  (bind ((type (xtype-of syntax))
+  (bind ((type (persistent-type-of syntax))
          (type-info (compute-type-info type)))
     (if type-info
         `(value->sql-literal ,syntax
@@ -320,13 +320,13 @@
            nil)
 
   (:method ((variable lexical-variable))
-           (bind ((type (xtype-of variable)))
+           (bind ((type (persistent-type-of variable)))
              (if (maybe-null-subtype-p type)
                  `(sql-is-null ,(syntax-to-sql variable))
                  nil)))
 
   (:method ((access slot-access))
-           (bind ((type (xtype-of access))
+           (bind ((type (persistent-type-of access))
                   (slot (slot-of access))
                   (variable (arg-of access)))
              (debug-only (assert (not (contains-syntax-p type))))

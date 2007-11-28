@@ -91,7 +91,7 @@ Be careful when using in different situations, because it modifies *readtable*."
 (defconstant +unknown-type+ :unknown)
 
 (define-syntax-node syntax-object ()
-  ((xtype +unknown-type+)
+  ((persistent-type +unknown-type+)
    (volatilep :accessor volatilep)))
 
 (define-syntax-node unparsed-form (syntax-object)
@@ -113,7 +113,7 @@ Be careful when using in different situations, because it modifies *readtable*."
   ())
 
 (define-syntax-node query-variable (variable)
-  ((xtype +persistent-object-class+)
+  ((persistent-type +persistent-object-class+)
    (joined-types nil)))
 
 (define-syntax-node joined-variable (query-variable)
@@ -320,7 +320,7 @@ Be careful when using in different situations, because it modifies *readtable*."
   (:method-combination and)
 
   (:method and ((left syntax-object) (right syntax-object))
-           (syntax= (xtype-of left) (xtype-of right)))
+           (syntax= (persistent-type-of left) (persistent-type-of right)))
 
   (:method and ((left unparsed-form) (right unparsed-form))
            (syntax= (form-of left) (form-of right)))

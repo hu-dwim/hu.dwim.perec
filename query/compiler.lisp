@@ -281,11 +281,11 @@ with the result of the naively compiled query.")
                          (if (primary-association-end-p association-end)
                              call
                              (make-function-call ;; reverse, FIXME check NULL
-                              :xtype (xtype-of call)
+                              :persistent-type (persistent-type-of call)
                               :fn 'eq
                               :args (list
                                      (make-association-end-access
-                                      :xtype (xtype-of (arg-of ?access))
+                                      :persistent-type (persistent-type-of (arg-of ?access))
                                       :association-end other-end
                                       :accessor (reader-name-of other-end)
                                       :args (list ?object))
@@ -330,7 +330,7 @@ with the result of the naively compiled query.")
   (when (slot-of access)
     (bind ((slot (slot-of access))
            (object (arg-of access))
-           (persistent-class (base-type-for (xtype-of object))))
+           (persistent-class (base-type-for (persistent-type-of object))))
       (unless (eq persistent-class +unknown-type+)
         (bind ((table (first (rest (primary-tables-of persistent-class)))))
           (assert (eq (table-of slot) table)))))))
@@ -338,7 +338,7 @@ with the result of the naively compiled query.")
 (defun add-prefetched-types (query)
   (when (eq (prefetch-mode-of query) :all)
     (dolist (variable (query-variables-of query))
-      (bind ((type (xtype-of variable)))
+      (bind ((type (persistent-type-of variable)))
         (when (persistent-class-p type)
           (dolist (class (persistent-effective-super-classes-of type))
             (when (and (primary-table-of class)
@@ -377,19 +377,19 @@ with the result of the naively compiled query.")
    query
    (arg-of access)
    (association-end-of access)
-   (base-type-for (xtype-of access))))
+   (base-type-for (persistent-type-of access))))
 
 (defun ensure-joined-variable (query object association-end type)
-  (or (and (query-variable-p object) (eq (xtype-of object) type) object)
+  (or (and (query-variable-p object) (eq (persistent-type-of object) type) object)
       (find-joined-variable-by-definition query object association-end type)
       (make-new-joined-variable query object association-end type)))
 
 (defun ensure-type (query object type)
   (acond
-    ((eq (xtype-of object) +unknown-type+)
-     (progn (setf (xtype-of object) type) object)) ; FIXME?
+    ((eq (persistent-type-of object) +unknown-type+)
+     (progn (setf (persistent-type-of object) type) object)) ; FIXME?
 
-    ((eq (xtype-of object) type)
+    ((eq (persistent-type-of object) type)
      object)
 
     ((query-variable-p object)
@@ -411,7 +411,7 @@ with the result of the naively compiled query.")
    #L(and (typep !1 'joined-variable)
           (eq (association-end-of !1) association-end)
           (syntax= (object-of !1) object)
-          (eq type (xtype-of !1)))
+          (eq type (persistent-type-of !1)))
    (query-variables-of query)))
 
 (defun base-type-for (type)
@@ -427,7 +427,7 @@ with the result of the naively compiled query.")
   "Creates a new joined variable."
   (bind ((name (generate-joined-variable-name type))
          (variable (make-joined-variable :name name :object object
-                                         :association-end association-end :xtype type)))
+                                         :association-end association-end :persistent-type type)))
     (add-joined-variable query variable)
     variable))
 

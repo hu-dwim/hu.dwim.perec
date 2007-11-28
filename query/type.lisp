@@ -10,8 +10,12 @@
 ;;;;
 ;;;;   persistent classes (types of persistent objects)
 ;;;;   names of persistent classes
-;;;;   type specifiers for slots (see persistence/standard-type.lisp)
-;;;;   and,or,not combinations
+;;;;   and,or,not
+;;;;   satisfies, member, eql,
+;;;;   unbound, null, nil, t, serialized, boolean, integer, integer-16, integer-32, integer-64,
+;;;;   float, float-32, float-64, double, number, string, text, symbol, symbol*, date, time, timestamp,
+;;;;   duration, list, form, unsigned-byte, vector, unsigned-byte-vector, ip-address,
+;;;;   set, disjunct-set, ordered-set
 ;;;;
 ;;;; Type expression:
 ;;;;   an expression that evaluates to a type specifier
@@ -46,12 +50,12 @@
 (defgeneric %infer-types (syntax query &optional toplevel)
   (:method (syntax query &optional toplevel)
            (declare (ignore query toplevel))
-           (xtype-of syntax))
+           (persistent-type-of syntax))
 
   (:method ((form compound-form) query &optional toplevel)
            (declare (ignore toplevel))
            (mapc #L(%infer-types !1 query #f) (operands-of form))
-           (xtype-of form))
+           (persistent-type-of form))
 
   (:method ((access slot-access) query &optional toplevel)
            (declare (ignore toplevel))
@@ -60,9 +64,9 @@
              (setf (slot-of access)
                    (find-slot-for-access access (slots-for-slot-access access))))
            (when (slot-of access)
-             (setf (xtype-of access)
+             (setf (persistent-type-of access)
                    (slot-definition-type (slot-of access))))
-           (xtype-of access))
+           (persistent-type-of access))
 
   ;; toplevel (eq <obj1> <obj2>)    -> (type-of <obj1>) == (type-of <obj2>)
   ;; toplevel (member <obj1> <obj2>) -> (type-of <obj1>) <= (x-element-type-of <obj2>)
@@ -78,7 +82,7 @@
                   (when arg-with-known-type
                     (iter (for arg in (args-of call))
                           (when (has-default-type-p arg)
-                            (setf (xtype-of arg) (xtype-of arg-with-known-type))
+                            (setf (persistent-type-of arg) (persistent-type-of arg-with-known-type))
                             (%infer-types arg query))))))
                (member
                 (when (= (length (args-of call)) 2)
@@ -86,19 +90,19 @@
                          (obj2 (second (args-of call))))
                     (cond
                       ((and (not (has-default-type-p obj1)) (has-default-type-p obj2))
-                       (setf (xtype-of obj2) `(set ,(xtype-of obj1)))
+                       (setf (persistent-type-of obj2) `(set ,(persistent-type-of obj1)))
                        (%infer-types obj2 query))
                       ((and (has-default-type-p obj1) (not (has-default-type-p obj2)))
-                       (setf (xtype-of obj1) (x-element-type-of (xtype-of obj2)))
+                       (setf (persistent-type-of obj1) (x-element-type-of (persistent-type-of obj2)))
                        (%infer-types obj1 query))))))))
-           (xtype-of call)))
+           (persistent-type-of call)))
 
 (defun restrict-variable-type (variable type)
-  (let ((orig-type (xtype-of variable)))
+  (let ((orig-type (persistent-type-of variable)))
     (cond
-      ((eq orig-type +persistent-object-class+) (setf (xtype-of variable) type))
-      ((and (listp orig-type) (eq (first orig-type) 'and)) (appendf (xtype-of variable) type))
-      (t (setf (xtype-of variable) (list 'and orig-type type))))))
+      ((eq orig-type +persistent-object-class+) (setf (persistent-type-of variable) type))
+      ((and (listp orig-type) (eq (first orig-type) 'and)) (appendf (persistent-type-of variable) type))
+      (t (setf (persistent-type-of variable) (list 'and orig-type type))))))
 
 (defgeneric slots-for-slot-access (access)
   (:method ((access slot-access))
@@ -110,7 +114,7 @@
 (defun find-slot-for-access (access slots)
   (generalize-slot-access
    (or (find-slot-by-owner-type (arg-of access) slots)
-       (find-slot-by-slot-type (xtype-of access) slots))))
+       (find-slot-by-slot-type (persistent-type-of access) slots))))
 
 (defun generalize-slot-access (slot)
   (aif (and slot (persistent-effective-super-slot-precedence-list-of slot))
@@ -118,7 +122,7 @@
        slot))
 
 (defun find-slot-by-owner-type (owner slots)
-  (bind ((owner-type (normalized-type-for* (xtype-of owner))))
+  (bind ((owner-type (normalized-type-for* (persistent-type-of owner))))
     (acond
      ((length=1 slots)
       (first slots))
@@ -161,13 +165,13 @@
     (if slots
         (warn 'ambiguous-slot-warning
               :accessor (accessor-of access)
-              :access-type (xtype-of access)
-              :arg-type (xtype-of (arg-of access))
+              :access-type (persistent-type-of access)
+              :arg-type (persistent-type-of (arg-of access))
               :slot-names (mapcar #'qualified-name-of slots))
         (warn 'slot-not-found-warning
               :accessor (accessor-of access)
-              :access-type (xtype-of access)
-              :arg-type (xtype-of (arg-of access))))))
+              :access-type (persistent-type-of access)
+              :arg-type (persistent-type-of (arg-of access))))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Type utils
@@ -194,9 +198,9 @@
       (normalized-type-for type)))
 
 (defun has-default-type-p (syntax)
-  (eq (xtype-of syntax)
+  (eq (persistent-type-of syntax)
       (funcall (slot-definition-initfunction
-                (find-slot (class-name (class-of syntax)) 'xtype)))))
+                (find-slot (class-name (class-of syntax)) 'persistent-type)))))
 
 (defun contains-syntax-p (type)
   (or (typep type 'syntax-object)

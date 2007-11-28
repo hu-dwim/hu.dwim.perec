@@ -107,12 +107,12 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   (ecase prefetch-mode
     (:none nil)
     (:accessed
-     (bind ((type (xtype-of variable)))
+     (bind ((type (persistent-type-of variable)))
        (when (persistent-class-p type)
          (collect-if #L(eq (table-of !1) (primary-table-of type))
                      (prefetched-slots-of type)))))
     (:all
-     (bind ((type (xtype-of variable)))
+     (bind ((type (persistent-type-of variable)))
        (when (persistent-class-p type)
          (prefetched-slots-of type))))))
 
@@ -141,9 +141,9 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
                 (error "No persistent class named '~A~%" class-name)))
 
   (:method ((variable query-variable) (alias symbol))
-           (assert (not (eq (xtype-of variable) +unknown-type+)))
+           (assert (not (eq (persistent-type-of variable) +unknown-type+)))
            (sql-table-reference-for-type
-            `(join ,(xtype-of variable) ,@(joined-types-of variable))
+            `(join ,(persistent-type-of variable) ,@(joined-types-of variable))
             alias))
 
   (:method ((association persistent-association) (alias symbol))
@@ -317,7 +317,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   (bind ((1-association-end (other-association-end-of n-association-end))
          (n-class (slot-definition-class 1-association-end))
          (n-var (make-query-variable :name (gensym (symbol-name (class-name n-class)))
-                                     :xtype n-class))
+                                     :persistent-type n-class))
          (table-ref (sql-table-reference-for n-var n-var)))
     (cond
       (table-ref

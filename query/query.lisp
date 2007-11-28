@@ -111,7 +111,7 @@
   (mapcar 'name-of (query-variables-of query)))
 
 (defun get-query-variable-types (query)
-  (mapcar 'xtype-of (query-variables-of query)))
+  (mapcar 'persistent-type-of (query-variables-of query)))
 
 (defun add-joined-variable (query variable)
   (push variable (query-variables-of query)))
