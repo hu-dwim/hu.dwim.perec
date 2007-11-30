@@ -194,6 +194,7 @@
     (nil nil)
     (boolean 'boolean)
     (double 'double)
+    (keyword 'keyword)
     ((?is ?type canonical-type-p)
      type)
     ((?is ?type class-type-p)

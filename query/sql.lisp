@@ -458,18 +458,6 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 ;;;----------------------------------------------------------------------------
 ;;; Operators
 
-(defvar *sql-operators* (make-hash-table)
-  "Map from lisp function names to the corresponding SQL operator.")
-
-(defun sql-operator-p (operator)
-  (gethash operator *sql-operators*))
-
-(defun sql-operator-for (operator)
-  (gethash operator *sql-operators*))
-
-(defun define-sql-operator (lisp-operator sql-operator)
-  (setf (gethash lisp-operator *sql-operators*) sql-operator))
-
 (defun chained-operator (binary-operator &optional default)
   (lambda (first-arg &rest more-args)
     (if (null more-args)
@@ -488,48 +476,6 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
                      (for first previous (car rest-args) initially first-arg)
                      (iter (for second in rest-args)
                            (in outer (collect (funcall binary-operator first second)))))))))
-
-(define-sql-operator 'eq 'sql-equal)
-(define-sql-operator 'eql 'sql-equal)
-(define-sql-operator 'equal 'sql-equal)
-(define-sql-operator '= (chained-operator 'sql-= #t))
-;; (define-sql-operator 'string= 'sql-string=) ; sql-string= tricky to implement because string=
-                                               ; accepts chars and symbols too, use equal instead
-
-(define-sql-operator 'and 'sql-and)
-(define-sql-operator 'or 'sql-or)
-(define-sql-operator 'not 'sql-not)
-
-(define-sql-operator '> (chained-operator 'sql-> #t))
-(define-sql-operator '< (chained-operator 'sql-< #t))
-(define-sql-operator '>= (chained-operator 'sql->= #t))
-(define-sql-operator '<= (chained-operator 'sql-<= #t))
-(define-sql-operator '/= (pairwise-operator 'sql-<> #t))
-
-(define-sql-operator 'local-time= (chained-operator 'sql-= #t))
-(define-sql-operator 'local-time/= (chained-operator 'sql-/= #t))
-(define-sql-operator 'local-time> (chained-operator 'sql-> #t))
-(define-sql-operator 'local-time< (chained-operator 'sql-< #t))
-(define-sql-operator 'local-time>= (chained-operator 'sql->= #t))
-(define-sql-operator 'local-time<= (chained-operator 'sql-<= #t))
-
-(define-sql-operator '+ 'sql-+)
-(define-sql-operator '- 'sql--)
-(define-sql-operator '* 'sql-*)
-(define-sql-operator '/ 'sql-/)
-(define-sql-operator 'mod 'sql-%)
-(define-sql-operator 'expt 'sql-^)
-(define-sql-operator 'sqrt 'sql-\|/)
-(define-sql-operator 'abs 'sql-@)
-
-(define-sql-operator 'subseq 'sql-subseq)
-(define-sql-operator 'strcat 'sql-\|\|)
-
-(define-sql-operator 'like 'sql-like*)
-
-(define-sql-operator 're-like 'sql-regex-match)
-
-(define-sql-operator 'null 'sql-is-null)
 
 (defun sql-equal (sql-expr-1 sql-expr-2 &key unbound-check-1 unbound-check-2 null-check-1 null-check-2)
   "Generates an equality test for the two sql expression and the corresponding boundness checks.
@@ -600,20 +546,11 @@ value is equal, when they represent the NIL lisp value)."
   (sql-function-call :name "substr" :arguments (list str start length)))
 
 (defun sql-boolean->boolean (val)
+  "TODO eliminate this fn"
   (typecase val
     (null #f)
     (sql-literal (cl-rdbms::value-of val))
     (t #t)))
-
-(defun sql-like* (string pattern &key (start 0) end (case-sensitive-p #t))
-  (sql-like :string (sql-subseq string start end)
-            :pattern pattern
-            :case-sensitive-p (sql-boolean->boolean case-sensitive-p)))
-
-(defun sql-regex-match (string pattern &key (start 0) end (case-sensitive-p #t))
-  (sql-regexp-like :string (sql-subseq string start end)
-                   :pattern pattern
-                   :case-sensitive-p (sql-boolean->boolean case-sensitive-p)))
 
 (defun sql-length (str)
   (sql-function-call :name "length" :arguments (list str)))
@@ -624,7 +561,6 @@ value is equal, when they represent the NIL lisp value)."
   "Map from lisp function symbol to the corresponing SQL aggregate function.")
 
 (defstruct aggregate-function
-  (sql)
   (initial-state nil :type function)
   (accumulate nil :type function)
   (extract nil :type function))
@@ -638,35 +574,29 @@ value is equal, when they represent the NIL lisp value)."
 (defmacro define-aggregate-function (function-name &rest args)
   `(progn
     (setf (gethash ',function-name *aggregate-functions*)
-     (make-aggregate-function ,@args))
-    (define-sql-operator ',function-name ,(getf args :sql))))
+     (make-aggregate-function ,@args))))
 
 (define-aggregate-function count
-    :sql 'sql-count
     :initial-state (constantly 0)
     :accumulate (lambda (val state) (if val (1+ state) state))
     :extract #'identity)
 
 (define-aggregate-function min
-    :sql 'sql-min
     :initial-state (constantly nil)
     :accumulate (lambda (val state) (if (or (null state) (and val (lessp val state))) val state))
     :extract #'identity)
 
 (define-aggregate-function max
-    :sql 'sql-max
     :initial-state (constantly nil)
     :accumulate (lambda (val state) (if (or (null state) (and val (greaterp val state))) val state))
     :extract #'identity)
 
 (define-aggregate-function sum
-    :sql 'sql-sum
     :initial-state (constantly nil)
     :accumulate (lambda (val state) (if val (if state (+ state val) val) state))
     :extract #'identity)
 
 (define-aggregate-function avg
-    :sql 'sql-avg
     :initial-state (constantly (cons 0 0))
     :accumulate (lambda (val state) (if val
                                         (cons (1+ (car state))

@@ -197,6 +197,12 @@
   (declare (type type-info type-info))
   (assert type-info)
   (assert (<= 1 (ti-column-count type-info) 2))
+
+  ;; KLUDGE: oddly enough, the current writer for boolean -> sql-boolean-type mapping
+  ;; creates "TRUE" or "FALSE". (should be #t or #f)
+  (when (typep (ti-column-type type-info) 'sql-boolean-type)
+    (return-from value->sql-value (if value #t #f)))
+  
   (bind ((sql-values (make-array 2)))
     (declare (dynamic-extent sql-values))
     (funcall (ti-writer type-info) value sql-values 0)

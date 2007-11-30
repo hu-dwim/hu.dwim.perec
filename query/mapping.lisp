@@ -24,9 +24,7 @@
   (:documentation "Maps a lisp form to SQL.")
   
   (:method (syntax)
-           (if (free-of-query-variables-p syntax)
-               (emit-sql-literal syntax)
-               (sql-map-failed)))
+    (syntax-to-sql-literal-if-possible syntax))
 
   (:method ((literal literal-value))
            (literal-to-sql (value-of literal) (persistent-type-of literal) literal))
@@ -55,15 +53,13 @@
 
   (:method (value type literal)
            (cond
-             ((and (keywordp value) (eq type +unknown-type+)) value)
+             ((and (keywordp value) (eq type 'keyword)) value)
              ((syntax-object-p type) (emit-sql-literal literal))
              (t (value->sql-literal value type (compute-type-info type))))))
 
 (defgeneric slot-access-to-sql (accessor arg access)
   (:method (accessor arg access)
-           (if (free-of-query-variables-p access)
-               (emit-sql-literal access)
-               (sql-map-failed)))
+    (syntax-to-sql-literal-if-possible access))
 
   (:method (accessor (variable query-variable) (access slot-access))
            ;; slot accessor
@@ -94,43 +90,9 @@
 (defgeneric function-call-to-sql (fn n-args arg1 arg2 call)
 
   (:method (fn n-args arg1 arg2 call)
-           (cond
-             ;; eq,eql and friends
-             ;;   special cases: one or both of the args is NIL
-             ;;                  one or both of the args is unbound
-             ((member fn '(eq eql equal))
-              (sql-equal
-               (syntax-to-sql arg1)
-               (syntax-to-sql arg2)
-               :unbound-check-1 (unbound-check-for arg1)
-               :unbound-check-2 (unbound-check-for arg2)
-               :null-check-1 (null-check-for arg1)
-               :null-check-2 (null-check-for arg2)))
-             ;; (<fn> <arg> ...), where <fn> has SQL counterpart
-             ;; e.g. (+ 1 2) --> (1 + 2)
-             ((sql-operator-p fn)
-              `(funcall ',(sql-operator-for fn) ,@(mapcar 'syntax-to-sql (args-of call))))
-             ;; When the function call does not depend on query variables
-             ;; evaluate it at runtime and insert its value into the SQL query.
-             ;; The persistent-objects in the value are converted to object ids.
-             ((every 'free-of-query-variables-p (args-of call))
-              (emit-sql-literal call))
-             ;; Otherwise the assert containing the function call cannot be mapped to SQL.
-             (t
-              (sql-map-failed))))
-
-  ;; member form -> in (ignore keyword args, TODO)
-  (:method ((fn (eql 'member)) n-args arg1 arg2 call)
-           (cond
-             ((literal-value-p arg2)
-              (if (null (value-of arg2))
-                  (sql-false-literal)
-                  `(sql-in ,(syntax-to-sql arg1) ,(syntax-to-sql arg2))))
-             ((free-of-query-variables-p arg2)
-              `(if (null ,(unparse-query-syntax arg2))
-                (sql-false-literal)
-                ,(unparse-query-syntax `(sql-in ,(syntax-to-sql arg1) ,(syntax-to-sql arg2)))))
-             (t `(sql-in ,(syntax-to-sql arg1) ,(syntax-to-sql arg2)))))
+           (aif (get fn 'sql-mapper)
+                (apply it (args-of call))
+                (syntax-to-sql-literal-if-possible call)))
 
   ;; (member <object> (<association-end-accessor> <query-variable>))
   ;; e.g. (member m1 (messages-of topic)) --> (_m1.topic_id = _topic.id)
@@ -228,15 +190,6 @@
                  (sql-slot-is-null (arg-of access) slot)
                  (call-next-method))))
 
-  ;; (slot-boundp variable slot-name)
-  (:method ((fn (eql 'slot-boundp)) (n-args (eql 2)) (variable query-variable) (slot-name literal-value) call)
-           ;; TODO: accept non-literal slot-name
-           (bind ((slot-name (when (symbolp (value-of slot-name)) (value-of slot-name)))
-                  (slot (when slot-name (find-slot-definition variable slot-name))))
-             (if (and slot (typep slot 'persistent-effective-slot-definition))
-                 (sql-slot-boundp variable slot)
-                 (sql-map-failed))))
-
   ;; (length (<n-ary-association-end-accessor> <query-var>))
   ;; e.g. (length (messages-of topic)) -->
   ;;         (select count(_m.id) from _message _m where _m.topic_id = _topic.id)
@@ -260,16 +213,17 @@
 
 (defgeneric macro-call-to-sql (macro n-args arg1 arg2 call)
   (:method (macro n-args arg1 arg2 call)
-    (cond
-      ((sql-operator-p macro)
-       `(funcall ',(sql-operator-for macro) ,@(mapcar 'syntax-to-sql (args-of call))))
-      ((every 'free-of-query-variables-p (args-of call))
-       (emit-sql-literal call))
-      (t
-       (sql-map-failed))))
+    (aif (get macro 'sql-mapper)
+         (apply it (args-of call))
+         (syntax-to-sql-literal-if-possible call)))
   
   (:method ((macro (eql 'sql-text)) n-args arg1 arg2 call)
     call))
+
+(def (function io) syntax-to-sql-literal-if-possible (syntax)
+  (if (free-of-query-variables-p syntax)
+      (emit-sql-literal syntax)
+      (sql-map-failed)))
 
 (defun free-of-query-variables-p (syntax)
   (typecase syntax
@@ -336,5 +290,327 @@
 
   (:method ((access association-end-access))
            nil))
+
+
+;;;----------------------------------------------------------------------------
+;;; Functions mapped to SQL in queries
+;;;
+;;;
+
+(def definer query-function (name args &body body)
+  ""
+  (bind (((values body declarations documentation) (alexandria:parse-body body
+                                                                          :documentation #t
+                                                                          :whole -whole-))
+         (declarations (apply #'append (mapcar #'cdr declarations)))
+         (persistent-type-declaration (find 'persistent-type declarations :key #'first))
+         (other-declarations (remove persistent-type-declaration declarations)))
+    (declare (ignore documentation)) ;; TODO
+    (with-unique-names (all-args)
+        `(progn
+           ,@(when persistent-type-declaration
+                   `((declaim-ftype ,name ,(second persistent-type-declaration))))
+
+           (setf (get ',name 'sql-mapper)
+                 (lambda (&rest ,all-args)
+                   (apply
+                    (lambda ,args
+                      ,@(when other-declarations
+                           `((declare ,@other-declarations)))
+                      ,@body)
+                    (mapcar #'syntax-to-sql ,all-args))))))))
+
+;;; TODO unify with the previous one
+(def definer query-function* (name args &body body)
+  ""
+  (bind (((values body declarations documentation) (alexandria:parse-body body
+                                                                          :documentation #t
+                                                                          :whole -whole-))
+         (declarations (apply #'append (mapcar #'cdr declarations)))
+         (persistent-type-declaration (find 'persistent-type declarations :key #'first))
+         (other-declarations (remove persistent-type-declaration declarations)))
+    (declare (ignore documentation)) ;; TODO
+    (with-unique-names (all-args)
+      `(progn
+         ,@(when persistent-type-declaration
+                 `((declaim-ftype ,name ,(second persistent-type-declaration))))
+
+         (setf (get ',name 'sql-mapper)
+               (lambda (&rest ,all-args)
+                 (apply
+                  (lambda ,args
+                    ,@(when other-declarations
+                            `((declare ,@other-declarations)))
+                    ,@body)
+                  (mapcar (lambda (syntax)
+                            (if (and (literal-value-p syntax)
+                                     (eq (persistent-type-of syntax) 'keyword))
+                                (value-of syntax)
+                                syntax))
+                          ,all-args))))))))
+;;;
+;;; Logical functions
+;;;
+(def query-function and (&rest values)
+  ""
+  (declare (persistent-type (function (&rest boolean) boolean)))
+  `(sql-and ,@values))
+
+(def query-function or (&rest values)
+  ""
+  (declare (persistent-type (function (&rest boolean) boolean)))
+  `(sql-or ,@values))
+
+(def query-function not (value)
+  ""
+  (declare (persistent-type (function (boolean) boolean)))
+  `(sql-not ,value))
+
+;;;
+;;; Comparison 
+;;;
+(def query-function* eq (first second)
+  "documentation"
+  (declare (persistent-type (forall (a) (function (a a) boolean))))
+  (sql-equal (syntax-to-sql first)
+             (syntax-to-sql second)
+             :unbound-check-1 (unbound-check-for first)
+             :unbound-check-2 (unbound-check-for second)
+             :null-check-1 (null-check-for first)
+             :null-check-2 (null-check-for second)))
+
+(def query-function* eql (first second)
+  "documentation"
+  (declare (persistent-type (forall (a) (function (a a) boolean))))
+  (sql-equal (syntax-to-sql first)
+             (syntax-to-sql second)
+             :unbound-check-1 (unbound-check-for first)
+             :unbound-check-2 (unbound-check-for second)
+             :null-check-1 (null-check-for first)
+             :null-check-2 (null-check-for second)))
+
+(def query-function* equal (first second)
+  "documentation"
+  (declare (persistent-type (forall (a) (function (a a) boolean)))) ; TODO compare (or null a) with a?
+  (sql-equal (syntax-to-sql first)
+             (syntax-to-sql second)
+             :unbound-check-1 (unbound-check-for first)
+             :unbound-check-2 (unbound-check-for second)
+             :null-check-1 (null-check-for first)
+             :null-check-2 (null-check-for second)))
+
+;; (define-sql-operator 'string= 'sql-string=) ; sql-string= tricky to implement because string=
+                                               ; accepts chars and symbols too, use equal instead
+
+
+(def query-function = (number &rest numbers)
+  ""
+  (declare (persistent-type (forall ((a (or null number))) (function (a &rest a) boolean))))
+  `(funcall ,(chained-operator 'sql-= #t) ,number ,@numbers))
+
+(def query-function /= (number &rest numbers)
+  ""
+  (declare (persistent-type (forall ((a (or null number))) (function (a &rest a) boolean))))
+  `(funcall ,(pairwise-operator 'sql-<> #t) ,number ,@numbers))
+
+(def query-function < (number &rest numbers)
+  ""
+  (declare (persistent-type (forall ((a (or null number))) (function (a &rest a) boolean))))
+  `(funcall ,(chained-operator 'sql-< #t) ,number ,@numbers))
+
+(def query-function > (number &rest numbers)
+  ""
+  (declare (persistent-type (forall ((a (or null number))) (function (a &rest a) boolean))))
+  `(funcall ,(chained-operator 'sql-> #t) ,number ,@numbers))
+
+(def query-function <= (number &rest numbers)
+  ""
+  (declare (persistent-type (forall ((a (or null number))) (function (a &rest a) boolean))))
+  `(funcall ,(chained-operator 'sql-<= #t) ,number ,@numbers))
+
+(def query-function >= (number &rest numbers)
+  ""
+  (declare (persistent-type (forall ((a (or null number))) (function (a &rest a) boolean))))
+  `(funcall ,(chained-operator 'sql->= #t) ,number ,@numbers))
+
+(def query-function local-time= (&rest values)
+  ""
+  (declare (persistent-type (forall ((a (or null date time timestamp))) (function (&rest a) boolean))))
+  `(funcall ,(chained-operator 'sql-= #t) ,@values))
+
+(def query-function local-time/= (&rest values)
+  ""
+  (declare (persistent-type (forall ((a (or null date time timestamp))) (function (&rest a) boolean))))
+  `(funcall ,(chained-operator 'sql-/= #t) ,@values)) ;; TODO should not be pairwise-operator?
+
+(def query-function local-time> (&rest values)
+  ""
+  (declare (persistent-type (forall ((a (or null date time timestamp))) (function (&rest a) boolean))))
+  `(funcall ,(chained-operator 'sql-> #t) ,@values))
+
+(def query-function local-time< (&rest values)
+  ""
+  (declare (persistent-type (forall ((a (or null date time timestamp))) (function (&rest a) boolean))))
+  `(funcall ,(chained-operator 'sql-< #t) ,@values))
+
+(def query-function local-time>= (&rest values)
+  ""
+  (declare (persistent-type (forall ((a (or null date time timestamp))) (function (&rest a) boolean))))
+  `(funcall ,(chained-operator 'sql->= #t) ,@values))
+
+(def query-function local-time<= (&rest values)
+  ""
+  (declare (persistent-type (forall ((a (or null date time timestamp))) (function (&rest a) boolean))))
+  `(funcall ,(chained-operator 'sql-<= #t) ,@values))
+
+;;;
+;;; Arithmetic
+;;;
+(def query-function + (&rest numbers)
+  ""
+  (declare (persistent-type (forall ((a number)) (function (&rest a) a))))
+  `(sql-+ ,@numbers))
+
+(def query-function - (number &rest numbers)
+  ""
+  (declare (persistent-type (forall ((a number)) (function (a &rest a) a))))
+  `(sql-- ,number ,@numbers))
+
+(def query-function * (&rest numbers)
+  ""
+  (declare (persistent-type (forall ((a number)) (function (&rest a) a))))
+  `(sql-* ,@numbers))
+
+(def query-function / (number &rest numbers)
+  ""
+  (declare (persistent-type (forall ((a number)) (function (a &rest a) a))))
+  `(sql-/ ,number ,@numbers))
+
+(def query-function mod (number divisor)
+  ""
+  (declare (persistent-type (forall ((a integer)) (function (a a) a))))
+  `(sql-% ,number ,divisor))
+
+(def query-function expt (base power)
+  ""
+  (declare (persistent-type (forall ((a number)) (function (a a) a))))
+  `(sql-^ ,base ,power))
+
+(def query-function sqrt (number)
+  ""
+  (declare (persistent-type (forall ((a number)) (function (a) a)))) ;; FIXME return type
+  `(sql-\|/ ,number))
+
+(def query-function abs (number)
+  ""
+  (declare (persistent-type (forall ((a number)) (function (a) a))))
+  `(sql-@ ,number))
+
+;;;
+;;; String manipulation
+;;;
+
+(def query-function strcat (&rest strings)
+  ""
+  (declare (persistent-type (forall ((a string)) (function (&rest a) a))))
+  `(sql-\|\| ,@strings))
+
+(def query-function subseq (string start &optional end) ;; TODO other sequence types
+  ""
+  (declare (persistent-type (forall ((a string)) (function (a integer-32 &optional integer-32) a))))
+  `(sql-subseq ,string ,start ,end))
+
+(def query-function like (string pattern &key (start 0) end (case-sensitive-p #t))
+  ""
+  (declare (persistent-type (forall ((a string))
+                                    (function (a a &key (:start integer-32)
+                                                 (:end (or null integer-32)) (:case-sensitive-p boolean))
+                                              boolean))))
+  `(sql-like :string (sql-subseq ,string ,start ,end)
+             :pattern ,pattern
+             :case-sensitive-p ,(sql-boolean->boolean case-sensitive-p)))
+
+(def query-function re-like (string pattern &key (start 0) end (case-sensitive-p #t))
+  ""
+  (declare (persistent-type (forall ((a string))
+                                    (function (a a &key (:start integer-32)
+                                                 (:end (or null integer-32)) (:case-sensitive-p boolean))
+                                              boolean))))
+  `(sql-regexp-like :string (sql-subseq ,string ,start ,end)
+                    :pattern ,pattern
+                    :case-sensitive-p ,(sql-boolean->boolean case-sensitive-p)))
+
+
+;;;
+;;; Aggregate functions
+;;;
+
+(def query-function count (column)
+  ""
+  (declare (persistent-type (forall (a) (function (a) integer))))
+  `(sql-count ,column))
+
+(def query-function min (column)
+  ""
+  (declare (persistent-type (forall ((a (or null number string date time timestamp))) (function (a) a))))
+  `(sql-min ,column))
+
+(def query-function max (column)
+  ""
+  (declare (persistent-type (forall ((a (or null number string date time timestamp))) (function (a) a))))
+  `(sql-max ,column))
+
+(def query-function sum (column)
+  ""
+  (declare (persistent-type (forall ((a (or null number))) (function (a) a))))
+  `(sql-sum ,column))
+
+(def query-function avg (column)
+  ""
+  (declare (persistent-type (forall ((a (or null number))) (function (a) a))))
+  `(sql-avg ,column))
+
+;;;
+;;; Misc
+;;;
+
+(def query-function length (sequence)
+  ""
+  (declare (persistent-type (function (set) integer-32))) ;; FIXME ambigous string/list
+  `(sql-length ,sequence)) ; FIXME works only for strings
+
+(def query-function null (object)
+  (declare (persistent-type (forall (a) (function (a) boolean))))
+  `(sql-is-null ,object))
+
+(def query-function* slot-boundp (object slot-name)
+  ""
+  (declare (persistent-type (forall ((a persistent-object)) (function (a symbol) boolean))))
+  (if (and (query-variable-p object) (literal-value-p slot-name))
+      (bind ((slot-name (when (symbolp (value-of slot-name)) (value-of slot-name)))
+             (slot (when slot-name (find-slot-definition object slot-name))))
+        (if (and slot (typep slot 'persistent-effective-slot-definition))
+            (sql-slot-boundp object slot)
+            (sql-map-failed)))
+      (syntax-to-sql-literal-if-possible (make-function-call :fn 'slot-boundp
+                                                             :args (list object slot-name)))))
+
+(def query-function* member (item list &rest ignored &key test)
+  "TODO disjunct-set, ordered-set types"
+  (declare (persistent-type (forall (a) (function (a (set a) &key (:test (or symbol function))) boolean)))
+           (ignore test ignored))
+  (cond
+    ((literal-value-p list)
+     (if (null (value-of list))
+         (sql-false-literal)
+         `(sql-in ,(syntax-to-sql item) ,(syntax-to-sql list))))
+    ((free-of-query-variables-p list)
+     `(if (null ,(unparse-query-syntax list))
+          (sql-false-literal)
+          ,(unparse-query-syntax `(sql-in ,(syntax-to-sql item) ,(syntax-to-sql list)))))
+    (t `(sql-in ,(syntax-to-sql item) ,(syntax-to-sql list)))))
+
+
+
 
 

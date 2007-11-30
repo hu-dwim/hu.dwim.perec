@@ -21,6 +21,165 @@
 ;;;;   an expression that evaluates to a type specifier
 ;;;;
 
+;;;
+;;; Declare function types
+;;;
+(def function persistent-ftype-of (name)
+  (get name 'persistent-ftype +unknown-type+))
+
+(def function (setf persistent-ftype-of) (type-specifier name)
+  (setf (get name 'persistent-ftype) type-specifier))
+
+(def macro declaim-ftype (names &body type-spec)
+  (assert (length=1 type-spec))
+  `(progn
+     ,@(iter (for name in (ensure-list names))
+             (collect `(setf  (persistent-ftype-of ',name) ',(first type-spec))))))
+
+;;;
+;;; Infer function argument and return types
+;;;
+
+(def function type-variables-of (type-specifier)
+  (ecase (first type-specifier)
+    (forall (mapcar
+             (lambda (var-spec)
+               (etypecase var-spec
+                 (cons (cons (first var-spec) (second var-spec)))
+                 (symbol (cons var-spec t))))
+             (second type-specifier)))
+    (function nil)))
+
+(def function arg-types-of (type-specifier)
+  (ecase (first type-specifier)
+    (forall (arg-types-of (third type-specifier)))
+    (function (second type-specifier))))
+
+(def function return-type-of (type-specifier)
+  (ecase (first type-specifier)
+    (forall (return-type-of (third type-specifier)))
+    (function (third type-specifier))))
+
+(def function contains-type-variable-p (type-pattern type-variables)
+  (etypecase type-pattern
+    (null #f)
+    (symbol (assoc type-pattern type-variables))
+    (atom #f)
+    (cons (or (contains-type-variable-p (car type-pattern) type-variables)
+              (contains-type-variable-p (cdr type-pattern) type-variables)))))
+
+(def function match-types (type-specifier args &optional type-variables)
+  "Success: return type + type of each arg; failed: return NIL."
+  (ecase (first type-specifier)
+    (forall
+     (match-types (third type-specifier)
+                  args
+                  (append (type-variables-of type-specifier) type-variables)))
+    (function
+     (bind ((expected-arg-types (expand-arg-typespec (second type-specifier) args))
+            (expected-return-type (third type-specifier)))
+       (when expected-arg-types
+         (bind ((arg-types (mapcar #'persistent-type-of args))
+                (type-variable-bindings (match-type-patterns expected-arg-types arg-types type-variables)))
+           (when (and (not (eq type-variable-bindings :failed))
+                      (every (lambda (variable)
+                               (assoc (car variable) type-variable-bindings))
+                             type-variables))
+             (substitute-type-variables (list* expected-return-type expected-arg-types)
+                                        type-variable-bindings))))))))
+
+(def function match-type-patterns (patterns types type-variables)
+  (bind (type-environment)
+    (iter (for pattern in patterns)
+          (for type in types)
+          (setf type-environment (match-type-pattern pattern type type-variables type-environment))
+          (until (eq type-environment :failed))
+          (finally (return type-environment)))))
+
+(def function match-type-pattern (pattern type type-variables type-environment)
+  (cond
+    ((eq type-environment :failed) :failed)
+    ((eq type +unknown-type+) type-environment)
+    ((and (symbolp pattern) (assoc pattern type-variables))
+     (if (assoc pattern type-environment)
+         (if (match-type-pattern (cdr (assoc pattern type-environment)) type type-variables type-environment)
+             type-environment
+             (error "Inconsistent types: ~S and ~S" (cdr (assoc pattern type-environment)) type))
+         (if (subtypep type (cdr (assoc pattern type-variables)))
+             (acons pattern type type-environment)
+             (error "Expected type: ~S, found type: ~S" (cdr (assoc pattern type-variables)) type))))
+    ((not (contains-type-variable-p pattern type-variables))
+     (if (subtypep type pattern)
+         type-environment
+         :failed))
+    ((listp pattern)
+     (if (subtypep type (first pattern))
+         (if (listp type)
+             (match-type-pattern (second pattern) (second type) type-variables type-environment) ;; FIXME
+             type-environment)
+         :failed))
+    (t :failed)))
+
+(def function parse-arg-typespec (arg-typespec)
+  (iter (with rest-arg-type = nil)
+        (with last-marker = nil)
+        (for next-arg in arg-typespec)
+        (if (member next-arg '(&optional &rest &key))
+            (setf last-marker next-arg)
+            (ecase last-marker
+              ((nil) (collect next-arg into mandatory-arg-types))
+              (&optional (collect next-arg into optional-arg-types))
+              (&rest (assert (null rest-arg-type))
+                     (setf rest-arg-type next-arg))
+              (&key (assert (and (listp next-arg) (keywordp (first next-arg)) (second next-arg)))
+                    (collect (cons (first next-arg) (second next-arg)) into key-arg-types))))
+        (finally (return (values mandatory-arg-types optional-arg-types rest-arg-type key-arg-types)))))
+
+(def function expand-arg-typespec (arg-typespec args)
+  (bind (((values mandatory-arg-types optional-arg-types rest-arg-type key-arg-types) (parse-arg-typespec arg-typespec))
+         (args args)
+         (result nil))
+
+    (iter (for type in mandatory-arg-types)
+          (if (null args)
+              (progn
+                (warn "Missing mandatory arg with type ~S" type)
+                (return-from expand-arg-typespec nil))
+              (progn
+                (pop args)
+                (push type result))))
+
+    (iter (for type in optional-arg-types)
+          (while args)
+          (pop args)
+          (push type result))
+
+    (iter (while args)
+          (for next-arg = (pop args))
+          (for next-keyword = (typecase next-arg
+                                (keyword next-arg)
+                                (literal-value (when (keywordp (value-of next-arg))
+                                                 (value-of next-arg)))))
+          (acond
+           ((and next-keyword (assoc next-keyword key-arg-types))
+            (unless args
+              (warn "Missing value for &key param: ~S" next-keyword)
+              (return-from expand-arg-typespec nil))
+            (push 'keyword result)
+            (pop args)
+            (push (cdr it) result))
+           (rest-arg-type
+            (push rest-arg-type result))
+           (t
+            (warn "Extra arg: ~S" next-arg)
+            (return-from expand-arg-typespec nil))))
+
+    (reverse result)))
+
+(def function substitute-type-variables (patterns type-variable-bindings)
+  (sublis type-variable-bindings patterns))
+
+
 
 ;;;----------------------------------------------------------------------------
 ;;; Type inference
@@ -29,7 +188,7 @@
 (defun infer-types (query)
   "Annotates types to the SYNTAX nodes of the query."
   (process-toplevel-typep-asserts query)
-  (mapc-query #L(%infer-types !1 query #t) query)
+  (mapc-query #L(%infer-types !1 query) query)
   (mapc-query #'check-types query))
 
 (defun process-toplevel-typep-asserts (query)
@@ -47,55 +206,39 @@
               (list assert))))
          (asserts-of query))))
 
-(defgeneric %infer-types (syntax query &optional toplevel)
-  (:method (syntax query &optional toplevel)
-           (declare (ignore query toplevel))
-           (persistent-type-of syntax))
+(defgeneric %infer-types (syntax query)
+  (:method (syntax query)
+    (declare (ignore query))
+    (persistent-type-of syntax))
 
-  (:method ((form compound-form) query &optional toplevel)
-           (declare (ignore toplevel))
-           (mapc #L(%infer-types !1 query #f) (operands-of form))
-           (persistent-type-of form))
+  (:method ((form compound-form) query)
+    (mapc #L(%infer-types !1 query) (operands-of form))
+    (bind ((operator (operator-of form))
+           (operands (operands-of form))
+           (type (persistent-ftype-of operator)))
+      (when (and type (not (eq type +unknown-type+)))
+        (when-bind inferred-types (match-types type operands)
+          (setf (persistent-type-of form) (first inferred-types))
+          (iter (for type in (rest inferred-types))
+                (for operand in operands)
+                (when (has-default-type-p operand)
+                  (setf (persistent-type-of operand)
+                        (if (or (lexical-variable-p operand)
+                                (and (literal-value-p operand) (not (value-of operand))))
+                            (ensure-null-subtypep type)
+                            type))
+                  (%infer-types operand query))))))
+    (persistent-type-of form))
 
-  (:method ((access slot-access) query &optional toplevel)
-           (declare (ignore toplevel))
-           (call-next-method)
-           (unless (slot-of access)
-             (setf (slot-of access)
-                   (find-slot-for-access access (slots-for-slot-access access))))
-           (when (slot-of access)
-             (setf (persistent-type-of access)
-                   (slot-definition-type (slot-of access))))
-           (persistent-type-of access))
-
-  ;; toplevel (eq <obj1> <obj2>)    -> (type-of <obj1>) == (type-of <obj2>)
-  ;; toplevel (member <obj1> <obj2>) -> (type-of <obj1>) <= (x-element-type-of <obj2>)
-  (:method ((call function-call) query &optional toplevel)
-           (call-next-method)
-           (when toplevel
-             (case (fn-of call)
-               ((eq eql equal
-                    = local-time= local-time/=
-                    local-time< local-time> local-time<= local-time>=)
-                (bind ((arg-with-known-type (find-if (lambda (arg) (not (has-default-type-p arg)))
-                                                     (args-of call))))
-                  (when arg-with-known-type
-                    (iter (for arg in (args-of call))
-                          (when (has-default-type-p arg)
-                            (setf (persistent-type-of arg) (persistent-type-of arg-with-known-type))
-                            (%infer-types arg query))))))
-               (member
-                (when (= (length (args-of call)) 2)
-                  (bind ((obj1 (first (args-of call)))
-                         (obj2 (second (args-of call))))
-                    (cond
-                      ((and (not (has-default-type-p obj1)) (has-default-type-p obj2))
-                       (setf (persistent-type-of obj2) `(set ,(persistent-type-of obj1)))
-                       (%infer-types obj2 query))
-                      ((and (has-default-type-p obj1) (not (has-default-type-p obj2)))
-                       (setf (persistent-type-of obj1) (x-element-type-of (persistent-type-of obj2)))
-                       (%infer-types obj1 query))))))))
-           (persistent-type-of call)))
+  (:method ((access slot-access) query)
+    (call-next-method)
+    (unless (slot-of access)
+      (setf (slot-of access)
+            (find-slot-for-access access (slots-for-slot-access access))))
+    (when (slot-of access)
+      (setf (persistent-type-of access)
+            (slot-definition-type (slot-of access))))
+    (persistent-type-of access)))
 
 (defun restrict-variable-type (variable type)
   (let ((orig-type (persistent-type-of variable)))
@@ -139,23 +282,21 @@
            :key 'slot-definition-type
            :test #L(subtypep (normalized-type-for* !2) !1)))))
 
-(defun x-element-type-of (type)
-  (if (and (consp type)
-           (eq (first type) 'set))
-      (or (second type) +unknown-type+)
-      nil))
-
 (defgeneric check-types (syntax)
 
   (:method (syntax)
-           (values))
+    #+nil
+    (when (eq (persistent-type-of syntax) +unknown-type+)
+      (warn "No type found: ~S" (unparse-query-syntax syntax)))
+    (values))
 
   (:method ((form compound-form))
-           (mapc #'check-types (operands-of form)))
+    (mapc #'check-types (operands-of form))
+    (call-next-method))
 
   (:method ((access slot-access))
-           (when (null (slot-of access))
-             (slot-not-found-warning access (slots-for-slot-access access)))))
+    (when (null (slot-of access))
+      (slot-not-found-warning access (slots-for-slot-access access)))))
 
 (defun slot-not-found-warning (access slots)
   (flet ((qualified-name-of (slot)
@@ -212,6 +353,13 @@
       (bind (((values normalized-type null-subtype-p unbound-subtype-p) (destructure-type type)))
         (declare (ignore normalized-type unbound-subtype-p))
         null-subtype-p)))
+
+(defun ensure-null-subtypep (type)
+  (if (null-subtype-p type)
+      type
+      `(or null ,type)))
+
+
 
 (defgeneric backquote-type-syntax (type)
   (:documentation "Generates a type expression that evaluates to the type.")
