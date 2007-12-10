@@ -386,7 +386,7 @@
            (and local-time
                 (eq (timezone-of local-time) +utc-zone+)
                 (zerop (sec-of local-time))
-                (zerop (usec-of local-time)))))
+                (zerop (nsec-of local-time)))))
     (assert (and (valid-date-p date-1)
                  (valid-date-p date-2))))
   (1+ (- (day-of date-1) (day-of date-2))))
