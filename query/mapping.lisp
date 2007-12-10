@@ -299,14 +299,28 @@
 
 (def definer query-function (name args &body body)
   ""
-  (bind (((values body declarations documentation) (alexandria:parse-body body
-                                                                          :documentation #t
-                                                                          :whole -whole-))
-         (declarations (apply #'append (mapcar #'cdr declarations)))
-         (persistent-type-declaration (find 'persistent-type declarations :key #'first))
-         (other-declarations (remove persistent-type-declaration declarations)))
-    (declare (ignore documentation)) ;; TODO
-    (with-unique-names (all-args)
+  (flet ((parse-definer-options (options)
+           (when (and -definer-
+                      (not (keywordp (first options)))
+                      (not (null options)))
+             (iter (for flag :in-vector (string-downcase (pop options)))
+                   (case flag
+                     (#\l
+                      (push #t options)
+                      (push :lisp-args options))
+                     (t (error "Flag '~A' is not available for definer ~S" flag (name-of -definer-))))))
+           options))
+    (bind (((values body declarations documentation) (alexandria:parse-body body
+                                                                            :documentation #t
+                                                                            :whole -whole-))
+           (declarations (apply #'append (mapcar #'cdr declarations)))
+           (persistent-type-declaration (find 'persistent-type declarations :key #'first))
+           (other-declarations (remove persistent-type-declaration declarations))
+           (options (parse-definer-options -options-))
+           (lisp-args-p (getf options :lisp-args #f)))
+      (declare (ignore documentation)) ;; TODO
+
+      (with-unique-names (all-args)
         `(progn
            ,@(when persistent-type-declaration
                    `((declaim-ftype ,name ,(second persistent-type-declaration))))
@@ -316,38 +330,17 @@
                    (apply
                     (lambda ,args
                       ,@(when other-declarations
-                           `((declare ,@other-declarations)))
+                              `((declare ,@other-declarations)))
                       ,@body)
-                    (mapcar #'syntax-to-sql ,all-args))))))))
+                    ,(if lisp-args-p
+                         `(mapcar (lambda (syntax)
+                                    (if (and (literal-value-p syntax)
+                                             (eq (persistent-type-of syntax) 'keyword))
+                                        (value-of syntax)
+                                        syntax))
+                                  ,all-args)
+                         `(mapcar #'syntax-to-sql ,all-args))))))))))
 
-;;; TODO unify with the previous one
-(def definer query-function* (name args &body body)
-  ""
-  (bind (((values body declarations documentation) (alexandria:parse-body body
-                                                                          :documentation #t
-                                                                          :whole -whole-))
-         (declarations (apply #'append (mapcar #'cdr declarations)))
-         (persistent-type-declaration (find 'persistent-type declarations :key #'first))
-         (other-declarations (remove persistent-type-declaration declarations)))
-    (declare (ignore documentation)) ;; TODO
-    (with-unique-names (all-args)
-      `(progn
-         ,@(when persistent-type-declaration
-                 `((declaim-ftype ,name ,(second persistent-type-declaration))))
-
-         (setf (get ',name 'sql-mapper)
-               (lambda (&rest ,all-args)
-                 (apply
-                  (lambda ,args
-                    ,@(when other-declarations
-                            `((declare ,@other-declarations)))
-                    ,@body)
-                  (mapcar (lambda (syntax)
-                            (if (and (literal-value-p syntax)
-                                     (eq (persistent-type-of syntax) 'keyword))
-                                (value-of syntax)
-                                syntax))
-                          ,all-args))))))))
 ;;;
 ;;; Logical functions
 ;;;
@@ -369,7 +362,7 @@
 ;;;
 ;;; Comparison 
 ;;;
-(def query-function* eq (first second)
+(def (query-function :lisp-args #t) eq (first second)
   "documentation"
   (declare (persistent-type (forall (a) (function (a a) boolean))))
   (sql-equal (syntax-to-sql first)
@@ -379,7 +372,7 @@
              :null-check-1 (null-check-for first)
              :null-check-2 (null-check-for second)))
 
-(def query-function* eql (first second)
+(def (query-function :lisp-args #t) eql (first second)
   "documentation"
   (declare (persistent-type (forall (a) (function (a a) boolean))))
   (sql-equal (syntax-to-sql first)
@@ -389,7 +382,7 @@
              :null-check-1 (null-check-for first)
              :null-check-2 (null-check-for second)))
 
-(def query-function* equal (first second)
+(def (query-function :lisp-args #t) equal (first second)
   "documentation"
   (declare (persistent-type (forall (a) (function (a a) boolean)))) ; TODO compare (or null a) with a?
   (sql-equal (syntax-to-sql first)
@@ -583,7 +576,7 @@
   (declare (persistent-type (forall (a) (function (a) boolean))))
   `(sql-is-null ,object))
 
-(def query-function* slot-boundp (object slot-name)
+(def (query-function :lisp-args #t) slot-boundp (object slot-name)
   ""
   (declare (persistent-type (forall ((a persistent-object)) (function (a symbol) boolean))))
   (if (and (query-variable-p object) (literal-value-p slot-name))
@@ -595,7 +588,7 @@
       (syntax-to-sql-literal-if-possible (make-function-call :fn 'slot-boundp
                                                              :args (list object slot-name)))))
 
-(def query-function* member (item list &rest ignored &key test)
+(def (query-function :lisp-args #t) member (item list &rest ignored &key test)
   "TODO disjunct-set, ordered-set types"
   (declare (persistent-type (forall (a) (function (a (set a) &key (:test (or symbol function))) boolean)))
            (ignore test ignored))
