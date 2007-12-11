@@ -61,15 +61,14 @@
   (defun date-of-last-day-for-partial-date (date)
     (with-partial-date date
       (:year (strcat date-string "-12-31"))
-      (:month (let ((date-1 (parse-datestring (strcat date-string "-01")))
-                    (date-2 (parse-datestring (strcat date-string "-31"))))
+      (:month (let ((date-1 (parse-datestring (strcat date-string "-01"))))
                 ;; TODO use local-time:with-decoded-local-time
                 (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
                     (decode-local-time date-1)
                   (declare (ignore nsec sec min hour day day-of-week daylight-saving-time-p original-timezone))
                   (setf date-1 (encode-local-time 0 0 0 0 1 (1+ month) year))
                   (format-datestring
-                   (local-time-adjust-days date-2 (- -1 (day-of (local-time::local-time-diff date-2 date-1))))))))
+                   (local-time-adjust-days date-1 -1)))))
       (:day date-string))))
 
 ;; TODO: this should not be part of the public API
