@@ -4,6 +4,7 @@
 
 (defpclass* expression-test ()
   ((string-attr :type (text 50))
+   (or-null-string-attr :type (or null (text 50)))
    (date-attr :type date)))
 
 (defixture expression-data
@@ -36,6 +37,12 @@
     (select (o)
       (from (o expression-test))
       (where (like (string-attr-of o) "r%g" :start 2 :end 6)))))
+
+(deftest test/query/expression/like-3 ()
+  (test-query (:select-count 1 :record-count 1 :fixture expression-data)
+    (select (o)
+      (from (o expression-test))
+      (where (like (or-null-string-attr-of o) "s%ng_")))))
 
 (deftest test/query/expression/like-ci ()
   (test-query (:select-count 1 :record-count 2 :fixture expression-data)
