@@ -515,7 +515,7 @@
 
 (def query-function like (string pattern &key (start 0) end (case-sensitive-p #t))
   ""
-  (declare (persistent-type (forall ((a string))
+  (declare (persistent-type (forall ((a (or null string)))
                                     (function (a a &key (:start integer-32)
                                                  (:end (or null integer-32)) (:case-sensitive-p boolean))
                                               boolean))))
@@ -525,7 +525,7 @@
 
 (def query-function re-like (string pattern &key (start 0) end (case-sensitive-p #t))
   ""
-  (declare (persistent-type (forall ((a string))
+  (declare (persistent-type (forall ((a (or null string)))
                                     (function (a a &key (:start integer-32)
                                                  (:end (or null integer-32)) (:case-sensitive-p boolean))
                                               boolean))))
