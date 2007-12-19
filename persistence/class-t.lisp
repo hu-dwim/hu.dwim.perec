@@ -63,9 +63,10 @@
       (:year (strcat date-string "-12-31"))
       (:month (let ((date-1 (parse-datestring (strcat date-string "-01")))
                     (date-2 (parse-datestring (strcat date-string "-31"))))
-                (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
+                ;; TODO use local-time:with-decoded-local-time
+                (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
                     (decode-local-time date-1)
-                  (declare (ignore usec sec min hour day day-of-week daylight-saving-time-p original-timezone))
+                  (declare (ignore nsec sec min hour day day-of-week daylight-saving-time-p original-timezone))
                   (setf date-1 (encode-local-time 0 0 0 0 1 (1+ month) year))
                   (format-datestring
                    (local-time-adjust-days date-2 (- -1 (day-of (local-time::local-time-diff date-2 date-1))))))))
