@@ -73,7 +73,6 @@
                :cl-def
                :cl-serializer
                :cl-ppcre
-               :cl-store
                :cl-containers
                :cl-rdbms)
   :components
