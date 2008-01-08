@@ -38,6 +38,7 @@
              (if cache-p
                  (unless (unbound-slot-marker-p old-slot-value)
                    (dolist (child old-slot-value)
+                     ;; FIXME: other-slot must be from the type (class-of child) use slot-name instead?
                      (invalidate-cached-slot child other-slot)))
                  (invalidate-cached-1-n-association-end-set-slot other-slot))))))))
 
