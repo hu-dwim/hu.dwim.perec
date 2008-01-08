@@ -19,8 +19,8 @@
   (s1-of (make-instance 'c2 :s1 "hello" :s2 12)))
 
 (with-transaction
-  (select ((o c1))
-    (collect o)))
+  (select (o)
+    (from (o c1))))
 
 (defpclass c3 ()
   ((s3 :type c1 :initarg :s3 :accessor s3-of)))
@@ -44,6 +44,6 @@
 
 (with-transaction
   (let ((c4 (select-first-matching-instance c4)))
-    (select ((c1 c1))
-      (assert (eq c4 (c4-of c1)))
-      (collect c4 (s1-of c1)))))
+    (select ((c4-of c1) (s1-of c1))
+      (from (c1 c1))
+      (where (eq c4 (c4-of c1))))))
