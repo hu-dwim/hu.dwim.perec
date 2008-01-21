@@ -292,3 +292,20 @@ equal under TEST to result of evaluating INITIAL-VALUE."
 (defun generalized-boolean->boolean (value)
   (if value #t #f))
 
+(defun permute (vector indices)
+  (let ((vector-copy (make-array (length vector))))
+    (declare (dynamic-extent vector-copy))
+    (iter (for i :from 0 :below (length vector))
+          (setf (aref vector-copy (aref indices i))
+                (aref vector i)))
+    (replace vector vector-copy)))
+
+(defun day-length-for-date-range (date-1 date-2)
+  (flet ((valid-date-p (local-time)
+           (and local-time
+                (eq (timezone-of local-time) +utc-zone+)
+                (zerop (sec-of local-time))
+                (zerop (nsec-of local-time)))))
+    (assert (and (valid-date-p date-1)
+                 (valid-date-p date-2))))
+  (1+ (- (day-of date-1) (day-of date-2))))

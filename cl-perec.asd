@@ -107,8 +107,19 @@
              (:file "set")
              (:file "association-end-set" :depends-on ("object"))
              (:file "copy" :depends-on ("object"))
-             (:file "export" :depends-on ("object"))
-             (:file "class-t" :depends-on ("class" "object" "slot-value"))))
+             (:file "export" :depends-on ("object"))))
+   (:module "tesites"
+            :depends-on ("persistence")
+            :components
+            ((:file "api")
+             (:file "class")
+             (:file "association" :depends-on ("class"))
+             (:file "mop" :depends-on ("class" "association"))
+             (:file "transaction")
+             (:file "values-having-validity" :depends-on ("api"))
+             (:file "store" :depends-on ("values-having-validity"))
+             (:file "slot-value" :depends-on ("store"))
+             (:file "persistent")))
    (:module "query"
             :depends-on ("util" "persistence")
             :components

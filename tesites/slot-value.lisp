@@ -1,0 +1,157 @@
+;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;;
+;;; Copyright (c) 2006 by the authors.
+;;;
+;;; See LICENCE for details.
+
+(in-package :cl-perec)
+
+(defcondition* unbound-slot-t (unbound-slot)
+  ((t-value :type timestamp)
+   (validity-start :type date)
+   (validity-end :type date))
+  (:report (lambda (condition stream)
+             (format stream "The slot ~S is unbound in the object ~S"
+                     (cell-error-name condition)
+                     (unbound-slot-instance condition))
+             (when (slot-boundp condition 't-value)
+               (format stream " with t ~A"
+                       (t-value-of condition)))
+             (when (slot-boundp condition 'validity-start)
+               (when (slot-boundp condition 't-value)
+                 (format stream " and"))
+               (format stream " with validity range ~A -> ~A"
+                       (validity-start-of condition)
+                       (validity-end-of condition))))))
+
+(defun slot-unbound-t (instance slot
+                       &key (t-value nil t-value-p) (validity-start nil validity-start-p) (validity-end nil validity-end-p))
+  (apply 'error 'unbound-slot-t
+         :name (slot-definition-name slot)
+         :instance instance
+         (append
+          (when (or t-value-p
+                    (boundp '*t*))
+            (list :t-value (or t-value
+                         *t*)))
+          (when (or validity-start-p
+                    (boundp '*validity-start*))
+            (list :validity-start (or validity-start
+                                      *validity-start*)))
+          (when (or validity-end-p
+                    (boundp '*validity-end*))
+            (list :validity-end (or validity-end
+                                    *validity-end*))))))
+
+(defun integrated-time-dependent-slot-value (instance slot-name)
+  (bind ((slot-values (slot-value instance slot-name)))
+    (if (typep slot-values 'values-having-validity)
+        (iter (for (value validity-start validity-end index) :in-values-having-validity slot-values)
+              (summing (* value (day-length-for-date-range validity-end validity-start))))
+        (* slot-values (day-length-for-date-range *validity-end* *validity-start*)))))
+
+(defun (setf integrated-time-dependent-slot-value) (new-value instance slot-name)
+  (setf (slot-value instance slot-name)
+        (/ new-value (day-length-for-date-range *validity-end* *validity-start*))))
+
+(defmethod slot-value-using-class ((class persistent-class-t)
+                                   (instance persistent-object)
+                                   (slot persistent-effective-slot-definition-t))
+  (assert-instance-slot-correspondence)
+  (bind ((persistent (persistent-p instance))
+         (integrated-slot-name (integrated-slot-name-of slot)))
+    (assert-instance-access instance persistent)
+    (if integrated-slot-name
+        (integrated-time-dependent-slot-value instance integrated-slot-name)
+        (bind (((values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
+          (when (or (not persistent)
+                    (and *cache-slot-values*
+                         slot-value-cached))
+            (if (time-dependent-p slot)
+                (progn
+                  *validity-start* *validity-end*
+                  (when (temporal-p slot)
+                    *t*)
+                  (if (unbound-marker-p cached-value)
+                      (if *signal-unbound-error-for-time-dependent-slots*
+                          (slot-unbound-t instance slot)
+                          cached-value)
+                      (bind (((values covers-validity-range-p value)
+                              (extract-values-having-validity cached-value *validity-start* *validity-end*)))
+                           (if covers-validity-range-p
+                               (return-from slot-value-using-class value)
+                               (unless persistent
+                                 (slot-unbound-t instance slot))))))
+                (progn
+                  *t*
+                  (if (unbound-marker-p cached-value)
+                      (slot-unbound-t instance slot)
+                      (return-from slot-value-using-class cached-value)))))
+          (restore-slot-t class instance slot)))))
+
+(defmethod (setf slot-value-using-class) (new-value
+                                          (class persistent-class-t)
+                                          (instance persistent-object)
+                                          (slot persistent-effective-slot-definition-t))
+  (assert-instance-slot-correspondence)
+  (bind ((persistent (persistent-p instance))
+         (integrated-slot-name (integrated-slot-name-of slot)))
+    (assert-instance-access instance persistent)
+    (if integrated-slot-name
+        (setf (integrated-time-dependent-slot-value instance integrated-slot-name) new-value)
+        (progn
+          (if persistent
+              (store-slot-t class instance slot new-value)
+              (assert (not (underlying-slot-boundp-using-class class instance slot))))
+          (when (or (not persistent)
+                    (and *cache-slot-values*
+                         (cache-p slot)))
+            (setf (underlying-slot-value-using-class class instance slot)
+                  (if (time-dependent-p slot)
+                      (make-single-value-having-validity new-value *validity-start* *validity-end*)
+                      new-value)))
+          new-value))))
+
+(defmethod slot-boundp-using-class ((class persistent-class-t)
+                                    (instance persistent-object)
+                                    (slot persistent-effective-slot-definition-t))
+  ;; TODO: cache slot values and refactor
+  (when (persistent-p instance)
+    (handler-case
+        (slot-value-using-class class instance slot)
+      (unbound-slot-t (e)
+                      (declare (ignore e))
+                      (return-from slot-boundp-using-class #f)))
+    #t)
+  #+nil
+  (error "Not yet implemented"))
+
+(defmethod slot-makunbound-using-class ((class persistent-class-t)
+                                        (instance persistent-object)
+                                        (slot persistent-effective-slot-definition-t))
+  (error "Not yet implemented"))
+
+;;;;;;;;;;;;;;;;;;;;;
+;;; Association slots 
+
+(defmethod slot-value-using-class ((class persistent-class-t)
+                                   (instance persistent-object)
+                                   (slot persistent-association-end-effective-slot-definition-t))
+  (assert-instance-slot-correspondence)
+  (bind ((persistent (persistent-p instance)))
+    (assert-instance-access instance persistent)
+    (if (eq :1 (cardinality-kind-of (child-slot-of slot)))
+        (select-1-1-association-t-record instance slot)
+        (select-1-n-association-t-records instance slot))))
+
+(defmethod (setf slot-value-using-class) (new-value
+                                          (class persistent-class-t)
+                                          (instance persistent-object)
+                                          (slot persistent-association-end-effective-slot-definition-t))
+  (assert-instance-slot-correspondence)
+  (bind ((persistent (persistent-p instance)))
+    (assert-instance-access instance persistent)
+    (if (eq :1 (cardinality-kind-of (child-slot-of slot)))
+        (insert-1-1-association-t-record instance slot new-value)
+        ;; TODO: get first and delete those
+        (insert-1-n-association-delta-t-records instance slot new-value +t-insert+))))

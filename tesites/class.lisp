@@ -1,0 +1,85 @@
+;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;;
+;;; Copyright (c) 2006 by the authors.
+;;;
+;;; See LICENCE for details.
+
+(in-package :cl-perec)
+
+(defcclass* persistent-class-t (persistent-class)
+  ((persistent-effective-slot-ts
+    (compute-as (collect-if #L(typep !1 'persistent-effective-slot-definition-t) (standard-effective-slots-of -self-)))
+    :type (list persistent-effective-slot-definition-t))
+   (effective-slots-with-underlying-slot-access
+    (compute-as (append (persistent-effective-slots-of -self-) (persistent-effective-slot-ts-of -self-)))
+    :type (list standard-effective-slot-definition)
+    :documentation "A list of slots that support the underlying-slot-value protocol.")
+   (t-class
+    (compute-as (find-class (class-name->t-class-name (class-name -self-))))
+    :type persistent-class)
+   (t-value-column
+    (compute-as (first (columns-of (find-slot (t-class-of -self-) 't-value))))
+    :type column)
+   (validity-start-column
+    (compute-as (first (columns-of (find-slot (t-class-of -self-) 'validity-start))))
+    :type column)
+   (validity-end-column
+    (compute-as (first (columns-of (find-slot (t-class-of -self-) 'validity-end))))
+    :type column)
+   (parent-slot
+    (compute-as (find-slot (t-class-of -self-) (class-name -self-)))
+    :type column)
+   (parent-id-column
+    (compute-as (id-column-of (parent-slot-of -self-)))
+    :type column))
+  (:documentation "A temporal slot value is cached in the underlying slot. A time dependent slot value is cached as a values-having-validity object."))
+
+(defcclass* persistent-slot-definition-t (standard-slot-definition)
+  ((persistent
+    ;; TODO: remove this slot and fix mop
+    )
+   (prefetch
+    :type boolean
+    :computed-in compute-as
+    :documentation "Prefetched slots are loaded from and stored into the database at once. A prefetched slot must be in a table which can be accessed using a where clause matching to the id of the instance thus it must be in a data table. The default prefetched slot semantics can be overriden on a per direct slot basis.")
+   (cache
+    :type boolean
+    :computed-in compute-as
+    :documentation "All prefetched slots are cached slots but the opposite may not be true. When a cached slot is loaded it's value will be stored in the CLOS instance for fast subsequent read operations. Also whenever a cached slot is set the value will be remembered. The default cached slot semantics can be overriden on a per direct slot basis.")
+   (time-dependent
+    #f
+    :type boolean)
+   (temporal
+    #f
+    :type boolean)
+   (integrated-slot-name
+    nil
+    :type symbol)))
+
+(defcclass* persistent-direct-slot-definition-t
+    (persistent-slot-definition-t standard-direct-slot-definition)
+  ()
+  (:metaclass identity-preserving-class))
+
+(defcclass* persistent-effective-slot-definition-t
+    (persistent-slot-definition-t standard-effective-slot-definition)
+  ((t-slot ;; TODO: naming mass confusion
+    (compute-as (find-slot (t-class-of (slot-definition-class -self-)) (slot-definition-name -self-)))
+    :type persistent-effective-slot-definition)
+   (prefetch
+    (compute-as (prefetch-p (t-slot-of -self-)))
+    :documentation "The cached option is inherited from the corresponding t slot.")
+   (cache
+    (compute-as (cache-p (t-slot-of -self-)))
+    :documentation "The cached option is inherited from the corresponding t slot.")))
+
+(eval-always
+  ;; TODO: kill association?
+  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent :integrated-slot-name :association)))
+
+(defun class-name->t-class-name (class-name)
+  (concatenate-symbol class-name "-t"))
+
+(defun t-class-name->class-name (t-class-name)
+  (bind ((name (symbol-name t-class-name)))
+    (intern (subseq name 0 (- (length name) 2)) (symbol-package t-class-name))))
