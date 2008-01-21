@@ -48,7 +48,7 @@
             ((:file "package")
              (:file "suite" :depends-on ("package"))
              (:module "persistence"
-                      :depends-on ("package" "suite")
+                      :depends-on ("suite")
                       :components
                       ((:file "table")
                        (:file "transformer")
@@ -64,10 +64,17 @@
                        (:file "m-n-association")
                        (:file "cache")
                        (:file "instance")
-                       (:file "purge")
-                       (:file "class-t")))
+                       (:file "purge")))
+             (:module "tesites"
+                      :depends-on ("suite")
+                      :components
+                      ((:file "partial-date")
+                       (:file "values-having-validity")
+                       (:file "temporal")
+                       (:file "time-dependent")
+                       (:file "tesites")))
              (:module "query"
-                      :depends-on ("package" "suite")
+                      :depends-on ("suite")
                       :components
                       ((:file "suite")
                        (:file "forum" :depends-on ("suite"))
