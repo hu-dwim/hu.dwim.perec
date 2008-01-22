@@ -6,6 +6,9 @@
 
 (in-package :cl-perec)
 
+(defcclass* persistent-association-t (persistent-association)
+  ())
+
 (defcclass* persistent-association-end-slot-definition-t (persistent-slot-definition-t)
   ;; TODO: kill association?!
   ((association)))

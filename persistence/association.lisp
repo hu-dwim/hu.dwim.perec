@@ -1,5 +1,8 @@
 (in-package :cl-perec)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Persistent association and slot meta objects
+
 ;; TODO: make sure that 1-1 and 1-n associations both store the foreign key in the primary-association-end's table 
 
 (defcclass* persistent-association (exportable)

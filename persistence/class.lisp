@@ -6,8 +6,8 @@
 
 (in-package :cl-perec)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Persistent class and slot meta instances
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Persistent class and slot meta objects
 
 ;; TODO: add oid-columns for persistent-class
 ;; TODO: support flattenning abstract superclass slots into subclasses
