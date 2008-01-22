@@ -9,15 +9,15 @@
   ((population :type integer-32 :time-dependent #t :temporal #t))
   (:metaclass persistent-class-t))
 
-(defpclass* t-test-t ()
+(defpclass* t-test-h ()
   ((t-value :type timestamp)
    (validity-start :type timestamp)
    (validity-end :type timestamp)
    (population :type (or unbound integer-32))))
 
 (defassociation*
-  ((:class t-test-t :slot t-test :type t-test)
-   (:class t-test :slot t-ts :type (set t-test-t))))
+  ((:class t-test-h :slot t-test :type t-test)
+   (:class t-test :slot t-hs :type (set t-test-h))))
 
 (deftest test/tesites/t/t-not-specified ()
   (with-transaction
