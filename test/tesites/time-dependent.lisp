@@ -1,7 +1,5 @@
 (in-package :cl-perec-test)
 
-(defsuite* (test/tesites :in test/persistence))
-
 ;;;;;;;;;;;;;;;;;;
 ;;; Time dependent
 

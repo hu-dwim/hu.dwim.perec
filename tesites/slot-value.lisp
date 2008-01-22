@@ -74,7 +74,7 @@
                     *t*)
                   (if (unbound-marker-p cached-value)
                       (slot-unbound-t instance slot)
-                      (bind (((values covers-validity-range-p value)
+                      (bind (((values value covers-validity-range-p)
                               (extract-values-having-validity cached-value *validity-start* *validity-end*)))
                            (if covers-validity-range-p
                                (return-from slot-value-using-class value)
@@ -106,7 +106,7 @@
                          (cache-p slot)))
             (setf (underlying-slot-value-using-class class instance slot)
                   (if (time-dependent-p slot)
-                      (make-single-value-having-validity new-value *validity-start* *validity-end*)
+                      (make-single-values-having-validity new-value *validity-start* *validity-end*)
                       new-value)))
           new-value))))
 
