@@ -113,14 +113,16 @@
             :components
             ((:file "common")
              (:file "api" :depends-on ("common"))
-             (:file "class")
+             (:file "type")
+             (:file "class" :depends-on ("type"))
              (:file "association" :depends-on ("class"))
              (:file "mop" :depends-on ("class" "association"))
              (:file "transaction")
              (:file "values-having-validity" :depends-on ("api"))
              (:file "store" :depends-on ("values-having-validity"))
              (:file "slot-value" :depends-on ("store"))
-             (:file "persistent")))
+             (:file "persistent")
+             (:file "transformer")))
    (:module "query"
             :depends-on ("util" "persistence")
             :components

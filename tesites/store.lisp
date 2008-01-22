@@ -6,6 +6,22 @@
 
 (in-package :cl-perec)
 
+(eval-always
+  (unless (fboundp 'make-h-unused-slot-marker)
+    (defstruct h-unused-slot-marker
+      "This structure is used to mark unused slot values for persistent slots. The type for that marker must be a subtype of t and cannot be a subtype of any other type.")))
+
+(define-constant +h-unused-slot-marker+ (make-h-unused-slot-marker)
+  :test equalp
+  :documentation "This value is used to signal unbound slot value returned from database.")
+
+(defmethod make-load-form ((instance h-unused-slot-marker) &optional environment)
+  (declare (ignore environment))
+  '+h-unused-slot-marker+)
+
+(def (function io) h-unused-slot-marker-p (value)
+  (eq +h-unused-slot-marker+ value))
+
 (defun restore-slot-t (class instance slot)
   (bind ((time-dependent-p (time-dependent-p slot))
          (temporal-p (temporal-p slot))

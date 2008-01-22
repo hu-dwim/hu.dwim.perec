@@ -9,14 +9,14 @@
   ((population :type integer-32 :time-dependent #t))
   (:metaclass persistent-class-t))
 
-(defpclass* time-dependent-test-t ()
+(defpclass* time-dependent-test-h ()
   ((validity-start :type timestamp)
    (validity-end :type timestamp)
    (population :type (or unbound integer-32))))
 
 (defassociation*
-  ((:class time-dependent-test-t :slot time-dependent-test :type time-dependent-test)
-   (:class time-dependent-test :slot time-dependent-test-ts :type (set time-dependent-test-t))))
+  ((:class time-dependent-test-h :slot time-dependent-test :type time-dependent-test)
+   (:class time-dependent-test :slot time-dependent-test-hs :type (set time-dependent-test-h))))
 
 (deftest test/tesites/time-dependent/validity-not-specified ()
   (with-transaction
