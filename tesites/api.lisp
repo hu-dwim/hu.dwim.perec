@@ -10,89 +10,62 @@
 ;;; Constants
 
 (def (constant e :test 'local-time=) +beginning-of-time+ (parse-timestring "1000-01-01TZ")
-  "All dates and timestamps for temporal and time dependent slots are equal or greater than the beginning of time.")
+  "All timestamps for temporal and time dependent slots are equal or greater than the beginning of time. Basically there should be no timestamp before the beginning of time.")
 
 (def (constant e :test 'local-time=) +end-of-time+ (parse-timestring "3000-01-01TZ")
-  "All dates and timestamps for temporal and time dependent slots are equal or less than the end of time.")
+  "All timestamps for temporal and time dependent slots are equal or less than the end of time. Basically there should be no timestamp after the end of time.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Temporal and time dependent
 
-(def (special-variable :documentation "The time machine parameter, modifications made after *t* will not be visible when accessing temporal values.")
+(def (special-variable :documentation "The time machine parameter, modifications made in the database after *t* will not be visible when accessing temporal values. This parameter can be set only once for a transaction.")
     *t*)
 
-(def (special-variable :documentation "When a slot value is time dependent then the approximation uses constant values given for time ranges.")
+(def (special-variable :documentation "When dealing with time dependent slots this is the start timestamp of the value's validity. The time dependent approximation uses constant values for time intervals.")
     *validity-start* +beginning-of-time+)
 
-(def (special-variable :documentation "When a slot value is time dependent then the approximation uses constant values given for time ranges.")
+(def (special-variable :documentation "When dealing with time dependent slots this is the end timestamp of the value's validity. The time dependent approximation uses constant values for time intervals.")
     *validity-end* +end-of-time+)
 
-(def (special-variable :documentation "Specifies whether an unbound-slot-error will be thrown when a time dependent slot value is queried and the value is not fully specified for the current validity range.")
-    *signal-unbound-error-for-time-dependent-slots* #t)
+;;;;;;;;;;;;;
+;;; Arguments
 
-;;;;;;;;;;;
-;;; Public 
+(def (macro e) with-t (timestamp &body forms)
+  `(progn
+     (assert (not (boundp '*t*)) nil "Changing the time machine parameter *t* is not allowed within a single transaction.")
+     (bind ((*t*
+             ,(if (stringp timestamp)
+                  `(load-time-value (parse-timestring ,timestamp))
+                  timestamp)))
+       ,@forms)))
 
-(macrolet ((with-partial-date (date &body forms)
-             (rebinding (date)
-               `(bind ((date-string
-                        (if (typep ,date 'local-time)
-                            (format-datestring ,date)
-                            ,date)))
-                 (ecase (ecase (count #\- date-string)
-                          (0 :year)
-                          (1 :month)
-                          (2 :day))
-                   ,@forms)))))
-  (defun date-of-first-day-for-partial-date (date)
-    (with-partial-date date
-      (:year (strcat date-string "-01-01"))
-      (:month (strcat date-string "-01"))
-      (:day date-string)))
-
-  (defun date-of-last-day-for-partial-date (date)
-    (with-partial-date date
-      (:year (strcat date-string "-12-31"))
-      (:month (let ((date (parse-datestring (strcat date-string "-01"))))
-                (with-decoded-local-time (:month month :year year) date
-                  (setf date (encode-local-time 0 0 0 0 1 (1+ month) year :timezone +utc-zone+))
-                  (format-datestring
-                   (local-time-adjust-days date -1)))))
-      (:day date-string))))
-
-;; TODO: maybe this should not be part of the public API
-;; TODO: add a keyword argument to with-transaction instread
-(defmacro with-t (timestamp &body forms)
-  `(let ((*t* ,(if (stringp timestamp)
-                   `(load-time-value (parse-timestring ,timestamp))
-                   timestamp)))
-    ,@forms))
-
-(defmacro with-default-t (&body forms)
+(def (macro e) with-default-t (&body forms)
   `(with-t (transaction-timestamp)
-    ,@forms))
+     ,@forms))
 
 (def (function e) call-with-validity-range (start end trunk)
-    (bind ((*validity-start* start)
-           (*validity-end* end))
-      (assert (local-time<= start end))
-      (funcall trunk)))
+  (bind ((*validity-start* start)
+         (*validity-end* end))
+    (assert (local-time<= start end))
+    (funcall trunk)))
 
-(defmacro with-validity (validity &body forms)
+(def (macro e) with-validity (validity &body forms)
   (assert (not (stringp (first forms))) nil
           "Evaluating the atom ~S in the body of with-validity doesn't make too much sense, you probably would like to use with-validity-range instead"
           (first forms))
-  `(call-with-validity-range (load-time-value (parse-datestring ,(date-of-first-day-for-partial-date validity)))
-                             (load-time-value (parse-datestring ,(date-of-last-day-for-partial-date validity)))
-                             (lambda ()
-                               ,@forms)))
+  `(call-with-validity-range
+    (load-time-value (parse-timestring ,(first-moment-for-partial-timestamp validity)))
+    (load-time-value (parse-timestring ,(last-moment-for-partial-timestamp validity)))
+    (lambda ()
+      ,@forms)))
 
-(defmacro with-validity-range (start end &body forms)
-  `(call-with-validity-range ,(if (stringp start)
-                                  `(load-time-value (parse-datestring ,(date-of-first-day-for-partial-date start)))
-                                  start)
-                             ,(if (stringp end)
-                                  `(load-time-value (parse-datestring ,(date-of-last-day-for-partial-date end)))
-                                  end)
-                             (lambda ()
-                               ,@forms)))
+(def (macro e) with-validity-range (start end &body forms)
+  `(call-with-validity-range
+    ,(if (stringp start)
+         `(load-time-value (parse-timestring ,(first-moment-for-partial-timestamp start)))
+         start)
+    ,(if (stringp end)
+         `(load-time-value (parse-timestring ,(last-moment-for-partial-timestamp end)))
+         end)
+    (lambda ()
+      ,@forms)))

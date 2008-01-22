@@ -148,9 +148,11 @@
       (make-transient-using-class (class-of instance) instance)
       (error "Instance ~A is already transient, you may want to use ensure-transient instead" instance)))
 
-(defgeneric make-persistent-using-class (class instance))
+(defgeneric make-persistent-using-class (class instance)
+  (:documentation "Extension point"))
 
-(defgeneric make-transient-using-class (class instance))
+(defgeneric make-transient-using-class (class instance)
+  (:documentation "Extension point"))
 
 ;;;;;;;;;;;;;;
 ;;; collection

@@ -12,8 +12,8 @@
   (:metaclass persistent-class-t))
 
 (defpclass* time-dependent-test-t ()
-  ((validity-start :type date)
-   (validity-end :type date)
+  ((validity-start :type timestamp)
+   (validity-end :type timestamp)
    (population :type (or unbound integer-32))))
 
 (defassociation*
@@ -88,9 +88,9 @@
             (for (value validity-start validity-end) :in-values-having-validity (population-of -instance-))
             (ecase index
               (0 (is (= 2006 value))
-                 (is (local-time= (parse-datestring "2006-01-01") validity-start))
-                 (is (local-time= (parse-datestring "2006-12-31") validity-end)))
+                 (is (local-time= (parse-timestring "2006-01-01") validity-start))
+                 (is (local-time= (parse-timestring "2006-12-31") validity-end)))
               (1 (is (= 2007 value))
-                 (is (local-time= (parse-datestring "2007-01-01") validity-start))
-                 (is (local-time= (parse-datestring "2007-12-31") validity-end))))))))
+                 (is (local-time= (parse-timestring "2007-01-01") validity-start))
+                 (is (local-time= (parse-timestring "2007-12-31") validity-end))))))))
 

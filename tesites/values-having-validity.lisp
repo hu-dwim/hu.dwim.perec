@@ -14,8 +14,8 @@
 
 (defclass* values-having-validity ()
   ((values :type (vector t))
-   (validity-starts :type (vector date))
-   (validity-ends :type (vector date))))
+   (validity-starts :type (vector timestamp))
+   (validity-ends :type (vector timestamp))))
 
 (defun make-single-element-vector (element)
   (aprog1 (make-array 1)
@@ -145,9 +145,7 @@
 
 (defun collect-single-slot-values-having-validity (instance slot value-holders validity-start-function validity-end-function value-function)
   (if (zerop (length value-holders))
-      (if *signal-unbound-error-for-time-dependent-slots*
-          (slot-unbound-t instance slot)
-          +unbound-slot-marker+)
+      (slot-unbound-t instance slot)
       (bind ((values (make-array 4 :adjustable #t :fill-pointer 0))
              (validity-starts (make-array 4 :adjustable #t :fill-pointer 0))
              (validity-ends (make-array 4 :adjustable #t :fill-pointer 0))
@@ -179,20 +177,12 @@
                                                                   (local-time-adjust-days merged-validity-end 1)
                                                                   validity-end)
                                  (return))
-                               (finally (if *signal-unbound-error-for-time-dependent-slots*
-                                            (slot-unbound-t instance slot
-                                                            :validity-start validity-start
-                                                            :validity-end validity-end)
-                                            (push-value-having-validity +unbound-slot-marker+
-                                                                        validity-start
-                                                                        validity-end))))
-                         (if *signal-unbound-error-for-time-dependent-slots*
-                             (slot-unbound-t instance slot
-                                             :validity-start validity-start
-                                             :validity-end validity-end)
-                             (push-value-having-validity +unbound-slot-marker+
-                                                         validity-start
-                                                         validity-end))))))
+                               (finally (slot-unbound-t instance slot
+                                                        :validity-start validity-start
+                                                        :validity-end validity-end)))
+                         (slot-unbound-t instance slot
+                                         :validity-start validity-start
+                                         :validity-end validity-end)))))
           (%collect-values-having-validity 0 *validity-start* *validity-end*)
           (sort indices #'local-time< :key (lambda (index) (aref validity-starts index)))
           (permute values indices)

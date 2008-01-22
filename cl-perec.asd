@@ -111,7 +111,8 @@
    (:module "tesites"
             :depends-on ("persistence")
             :components
-            ((:file "api")
+            ((:file "common")
+             (:file "api" :depends-on ("common"))
              (:file "class")
              (:file "association" :depends-on ("class"))
              (:file "mop" :depends-on ("class" "association"))

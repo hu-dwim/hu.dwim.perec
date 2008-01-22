@@ -11,8 +11,8 @@
 
 (defpclass* t-test-t ()
   ((t-value :type timestamp)
-   (validity-start :type date)
-   (validity-end :type date)
+   (validity-start :type timestamp)
+   (validity-end :type timestamp)
    (population :type (or unbound integer-32))))
 
 (defassociation*

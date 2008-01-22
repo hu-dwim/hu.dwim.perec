@@ -68,7 +68,7 @@
              (:module "tesites"
                       :depends-on ("suite")
                       :components
-                      ((:file "partial-date")
+                      ((:file "partial-timestamp")
                        (:file "values-having-validity")
                        (:file "temporal")
                        (:file "time-dependent")

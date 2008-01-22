@@ -39,7 +39,7 @@
                                 *test-query-compiler* +unbound-slot-marker+ +not-cached-slot-marker+
                                 elt-0-0 elt-0 elt-1
                                 canonical-type-for normalized-type-for mapped-type-for 
-                                date-of-first-day-for-partial-date date-of-last-day-for-partial-date
+                                first-moment-for-partial-timestamp last-moment-for-partial-timestamp
                                 less-or-equal-p greater-or-equal-p
                                 validity-start validity-end t-value unbound-slot-t
                                 find-slot length=1 collect-if concatenate-symbol

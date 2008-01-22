@@ -8,8 +8,8 @@
 
 (defcondition* unbound-slot-t (unbound-slot)
   ((t-value :type timestamp)
-   (validity-start :type date)
-   (validity-end :type date))
+   (validity-start :type timestamp)
+   (validity-end :type timestamp))
   (:report (lambda (condition stream)
              (format stream "The slot ~S is unbound in the object ~S"
                      (cell-error-name condition)
@@ -47,12 +47,12 @@
   (bind ((slot-values (slot-value instance slot-name)))
     (if (typep slot-values 'values-having-validity)
         (iter (for (value validity-start validity-end index) :in-values-having-validity slot-values)
-              (summing (* value (day-length-for-date-range validity-end validity-start))))
-        (* slot-values (day-length-for-date-range *validity-end* *validity-start*)))))
+              (summing (* value (local-time- validity-end validity-start))))
+        (* slot-values (local-time- *validity-end* *validity-start*)))))
 
 (defun (setf integrated-time-dependent-slot-value) (new-value instance slot-name)
   (setf (slot-value instance slot-name)
-        (/ new-value (day-length-for-date-range *validity-end* *validity-start*))))
+        (/ new-value (local-time- *validity-end* *validity-start*))))
 
 (defmethod slot-value-using-class ((class persistent-class-t)
                                    (instance persistent-object)
@@ -73,9 +73,7 @@
                   (when (temporal-p slot)
                     *t*)
                   (if (unbound-marker-p cached-value)
-                      (if *signal-unbound-error-for-time-dependent-slots*
-                          (slot-unbound-t instance slot)
-                          cached-value)
+                      (slot-unbound-t instance slot)
                       (bind (((values covers-validity-range-p value)
                               (extract-values-having-validity cached-value *validity-start* *validity-end*)))
                            (if covers-validity-range-p
@@ -134,6 +132,8 @@
 ;;;;;;;;;;;;;;;;;;;;;
 ;;; Association slots 
 
+;; TODO: slot value using class should not be different for association slots
+;; TODO: it should simply handle cache and database store according to the rules
 (defmethod slot-value-using-class ((class persistent-class-t)
                                    (instance persistent-object)
                                    (slot persistent-association-end-effective-slot-definition-t))
