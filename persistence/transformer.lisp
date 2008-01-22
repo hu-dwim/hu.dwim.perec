@@ -15,7 +15,7 @@
            (type simple-vector vector))
   (iter (for i :from index :below (the fixnum (+ index length)))
         (declare (type fixnum i))
-        (always (eql (aref vector i) value))))
+        (always (eql (elt vector i) value))))
 
 (defmacro def-transformer-wrapper (name &body forms)
   `(def (function o) ,name (slot type function column-number)

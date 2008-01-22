@@ -17,7 +17,7 @@
 
 (defmethod make-load-form ((instance unbound-marker) &optional environment)
   (declare (ignore environment))
-  '(make-unbound-marker))
+  '+unbound-slot-marker+)
 
 (def (function io) unbound-slot-marker-p (value)
   (eq +unbound-slot-marker+ value))
