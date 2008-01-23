@@ -19,9 +19,6 @@
   (declare (ignore environment))
   '+h-unused-slot-marker+)
 
-(def (function io) h-unused-slot-marker-p (value)
-  (eq +h-unused-slot-marker+ value))
-
 (defun restore-slot-t (class instance slot)
   (bind ((time-dependent-p (time-dependent-p slot))
          (temporal-p (temporal-p slot))

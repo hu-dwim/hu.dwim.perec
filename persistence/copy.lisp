@@ -45,7 +45,7 @@
              (bind (((values cached-p value) (slot-value-cached-p instance slot)))
                (when cached-p
                  (setf (underlying-slot-boundp-or-value-using-class class copy slot)
-                       (if (unbound-marker-p value)
+                       (if (unbound-slot-marker-p value)
                            value
                            (copy-one value hash-table))))))
             ((typep slot 'closer-mop:standard-effective-slot-definition)

@@ -72,7 +72,7 @@
                   *validity-start* *validity-end*
                   (when (temporal-p slot)
                     *t*)
-                  (if (unbound-marker-p cached-value)
+                  (if (unbound-slot-marker-p cached-value)
                       (slot-unbound-t instance slot)
                       (bind (((values value covers-validity-range-p)
                               (extract-values-having-validity cached-value *validity-start* *validity-end*)))
@@ -82,7 +82,7 @@
                                  (slot-unbound-t instance slot))))))
                 (progn
                   *t*
-                  (if (unbound-marker-p cached-value)
+                  (if (unbound-slot-marker-p cached-value)
                       (slot-unbound-t instance slot)
                       (return-from slot-value-using-class cached-value)))))
           (restore-slot-t class instance slot)))))
