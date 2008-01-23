@@ -256,9 +256,10 @@
 
 (defgeneric compute-persistent-effective-super-classes (class)
   (:method ((class persistent-class))
-           (remove-if #L(eq class !1)
-                      (collect-if #L(typep !1 'persistent-class)
-                                  (class-precedence-list class)))))
+           (delete-duplicates
+            (append (persistent-direct-super-classes-of class)
+                    (iter (for super-class in (persistent-direct-super-classes-of class))
+                          (appending (persistent-effective-super-classes-of super-class)))))))
 
 (defgeneric compute-persistent-effective-sub-classes (class)
   (:method ((class persistent-class))
