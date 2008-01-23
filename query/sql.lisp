@@ -268,8 +268,8 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defun sql-id-column-reference-for (qualifier)
   (sql-column-reference-for +oid-id-column-name+ qualifier))
 
-(defun sql-bound-column-reference-for (slot qualifier)
-  (sql-column-reference-for (bound-column-of slot) qualifier))
+(defun sql-tag-column-reference-for (slot qualifier)
+  (sql-column-reference-for (tag-column-of slot) qualifier))
 
 (defgeneric sql-column-references-for (element qualifier)
   (:method ((column-names sequence) qualifier)
@@ -434,7 +434,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (bind ((slot-type (slot-definition-type slot)))
              (cond
                ((complex-type-p slot-type)
-                (sql-bound-column-reference-for slot variable))
+                (sql-tag-column-reference-for slot variable))
                ((unbound-subtype-p slot-type)
                 (sql-is-not-null (sql-column-reference-for slot variable)))
                (t ;; TODO: should be handled by partial eval
@@ -448,7 +448,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
              (cond
                ((complex-type-p slot-type)
                 (sql-and
-                 (sql-is-not-null (sql-bound-column-reference-for slot variable))
+                 (sql-is-not-null (sql-tag-column-reference-for slot variable))
                  (sql-is-null (sql-column-reference-for slot variable))))
                ((null-subtype-p slot-type)
                 (sql-is-null (sql-column-reference-for slot variable)))

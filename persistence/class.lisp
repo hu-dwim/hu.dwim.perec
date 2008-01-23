@@ -504,12 +504,12 @@
                          ((persistent-class-type-p normalized-type)
                           (append
                            (when complex-type-p
-                             (list (make-bound-column name)))
+                             (list (make-tag-column name)))
                            (make-columns-for-reference-slot class-name name)))
                          ((primitive-type-p normalized-type)
                           (append
                            (when complex-type-p
-                             (list (make-bound-column name)))
+                             (list (make-tag-column name)))
                            (list
                             (make-instance 'column
                                            :name (rdbms-name-for name :column)
@@ -706,15 +706,15 @@
                              :type +oid-class-id-sql-type+)))
        (:merge)))))
 
-(defun make-bound-column (name)
+(defun make-tag-column (name)
   (make-instance 'column
-                 :name (rdbms-name-for (concatenate-symbol name "-bound") :column)
+                 :name (rdbms-name-for (concatenate-symbol name "-tag") :column)
                  :type (sql-boolean-type)
                  :constraints (list (sql-not-null-constraint))
                  :default-value #f))
 
-(defun bound-column-of (slot)
-  (bind ((column (first (columns-of slot))))
-    (assert (ends-with (string-upcase (symbol-name (cl-rdbms::name-of column))) "BOUND"))
-    (assert (typep (cl-rdbms::type-of column) 'sql-boolean-type))
-    column))
+(defun tag-column-of (slot)
+  (find-if (lambda (column)
+             (and (ends-with (string-downcase (symbol-name (cl-rdbms::name-of column))) "-tag")
+                  (typep (cl-rdbms::type-of column) 'sql-boolean-type)))
+           (columns-of slot)))
