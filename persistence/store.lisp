@@ -19,9 +19,6 @@
   (declare (ignore environment))
   '+unbound-slot-marker+)
 
-(def (function io) unbound-slot-marker-p (value)
-  (eq +unbound-slot-marker+ value))
-
 ;;;;;;;;;;;
 ;;; Utility
 
