@@ -186,49 +186,82 @@
 (defun disjunct-type-p (type-1 type-2)
   (equal '(#t #t)
          (multiple-value-list
-             (subtypep (canonical-type-for `(and ,type-1 ,type-2)) nil))))
+          (subtypep `(and ,type-1 ,type-2) nil))))
+
+(defun disjunct-type-p* (type-1 type-2)
+  (equal '(#t #t)
+         (multiple-value-list
+          (subtypep (canonical-type-for `(and ,type-1 ,type-2)) nil))))
 
 (defun canonical-type-for* (type)
   (pattern-case type
+    ;; universal type
     (t t)
+    ;; empty type
     (nil nil)
+    ;; some primitive types
     (boolean 'boolean)
     (double 'double)
     (keyword 'keyword)
+    ;; known to be canonical
     ((?is ?type canonical-type-p)
      type)
+    ;; simple class
     ((?is ?type class-type-p)
      type)
+    ;; (and a (not a)) -> nil
     ((?or (and (?* ?x) ?a (?* ?y) (not ?a) (?* ?z))
           (and (?* ?x) (not ?a) (?* ?y) ?a (?* ?z)))
      nil)
+    ;; (and a a) -> a
     ((and (?* ?x) ?a (?* ?y) ?a (?* ?z))
      (canonical-type-for (list* 'and (append ?x (list ?a) ?y ?z))))
+    ;; (or a (not a)) -> t
     ((?or (or (?* ?x) ?a (?* ?y) (not ?a) (?* ?z))
           (or (?* ?x) (not ?a) (?* ?y) ?a (?* ?z)))
      t)
+    ;; (or a a) -> a
     ((or (?* ?x) ?a (?* ?y) ?a (?* ?z))
      (canonical-type-for (list* 'or (append ?x (list ?a) ?y ?z))))
+    ;; persistent classes without intersecion
     ((and (?* ?x) ?a (?* ?x) ?b (?* ?z)
           (?if (and (persistent-class-type-p ?a)
                     (persistent-class-type-p ?b)
                     (not (intersection (list* (find-class* ?a) (persistent-effective-sub-classes-of (find-class* ?a)))
                                        (list* (find-class* ?b) (persistent-effective-sub-classes-of (find-class* ?b))))))))
      nil)
-    ((?or (and (?* ?x) ?a (?* ?y) (not ?b) (?* ?z)
+    ;; (disjunct-type-p a b) -> nil
+    ((?or (and (?* ?x) ?a (?* ?y) ?b (?* ?z)
                (?if (disjunct-type-p ?a ?b)))
-          (and (?* ?x) (not ?b) (?* ?y) ?a (?* ?z)
+          (and (?* ?x) ?b (?* ?y) ?a (?* ?z)
                (?if (disjunct-type-p ?a ?b))))
+     nil)
+    ;; (disjunct-type-p a (not b)) -> a
+    ((?or (and (?* ?x) ?a (?* ?y) (not ?b) (?* ?z)
+               (?if (or (disjunct-type-p ?a ?b)
+                        (disjunct-type-p* ?a ?b))))
+          (and (?* ?x) (not ?b) (?* ?y) ?a (?* ?z)
+               (?if (or (disjunct-type-p ?a ?b)
+                        (disjunct-type-p* ?a ?b))))
+          ;; (subtypep a b) -> a
+          (and (?* ?x) ?a (?* ?y) ?b (?* ?z)
+               (?if (subtypep ?a ?b)))
+          (and (?* ?x) ?b (?* ?y) ?a (?* ?z)
+               (?if (subtypep ?a ?b))))
      (canonical-type-for `(and ,@?x ,@?y ,?a ,@?z)))
+    ;; recursion for and/or arguments
     (((?or or and not) . ?args)
      (list* (first type) (mapcar #'canonical-type-for (cdr type))))
+    ;; expand types
     ((?is ?type symbolp)
      (canonical-type-for (substitute-type-arguments type nil)))
+    ;; known system type
     ((?is ?type type-specifier-p)
      (let ((substituted-type (substitute-type-arguments (first type) (cdr type))))
        (if (not (equal substituted-type type))
            (canonical-type-for substituted-type)
            type)))
+    ;; no more options
     (?type
      type)))
 
