@@ -3,7 +3,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS model classes
 
-;; TODO: use sql-table when available
+;; TODO: use sql-table when available from cl-rdbms
 (defcclass* table (exportable)
   ((name
     :type symbol

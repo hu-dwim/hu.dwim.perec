@@ -137,7 +137,7 @@
                (collect (restore-slot-value slot record i)))
          slots)))))
 
-;; TODO:
+;; TODO: use this to eliminate generating SQL AST garbage upon slot access
 ;; (funcall (compile-restore-prefetched-slots (class-of instance)) instance allow-missing)
 (def function compile-restore-prefetched-slots (class)
   "Restores all prefetched slots at once without local side effects from the database. Executes a single select statement."

@@ -28,8 +28,8 @@
   (bind ((class (class-of thing)))
     (dolist (slot (class-slots class))
       (when (typep slot 'cc::computed-effective-slot-definition)
+        ;; KLUDGE: FIXME: please!
         (ignore-errors
-          ;; KLUDGE FIXME please!
           (slot-value-using-class class thing slot))))))
 
 

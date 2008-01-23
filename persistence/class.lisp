@@ -10,7 +10,7 @@
 ;;; Persistent class and slot meta objects
 
 ;; TODO: add oid-columns for persistent-class
-;; TODO: support flattenning abstract superclass slots into subclasses
+;; TODO: support flattenning abstract superclass slot columns into subclasses, so that abstract superclasses will not have tables
 ;; TODO: support flattenning subclasses into superclass and dispatch on type
 ;; TODO: support flattenning (1-1) associations and slots with persistent object subtype into referer's primary table
 
