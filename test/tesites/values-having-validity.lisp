@@ -3,7 +3,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Values having validity
 
-(defsuite* (test/tesites/time-dependent :in test/tesites))
+(defsuite* (test/tesites/values-having-validty :in test/tesites))
 
 (deftest test/tesites/values-having-validty/collect/single-value ()
   (is (= 1000
