@@ -17,14 +17,20 @@
    (t-class
     (compute-as (find-class (class-name->t-class-name (class-name -self-))))
     :type persistent-class)
+   (t-value-slot
+    (compute-as (find-slot (t-class-of -self-) 't-value)))
    (t-value-column
-    (compute-as (first (columns-of (find-slot (t-class-of -self-) 't-value))))
+    (compute-as (first (columns-of (t-value-slot-of -self-))))
     :type column)
+   (validity-start-slot
+    (compute-as (find-slot (t-class-of -self-) 'validity-start)))
    (validity-start-column
-    (compute-as (first (columns-of (find-slot (t-class-of -self-) 'validity-start))))
+    (compute-as (first (columns-of (validity-start-slot-of -self-))))
     :type column)
+   (validity-end-slot
+    (compute-as (find-slot (t-class-of -self-) 'validity-end)))
    (validity-end-column
-    (compute-as (first (columns-of (find-slot (t-class-of -self-) 'validity-end))))
+    (compute-as (first (columns-of (validity-end-slot-of -self-))))
     :type column)
    (parent-slot
     (compute-as (find-slot (t-class-of -self-) (class-name -self-)))
