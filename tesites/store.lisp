@@ -9,9 +9,9 @@
 (defun restore-slot-t (class instance slot)
   (bind ((time-dependent-p (time-dependent-p slot))
          (temporal-p (temporal-p slot))
-         (t-slot (t-slot-of slot))
-         (table (table-of t-slot))
-         (columns (columns-of t-slot))
+         (h-slot (h-slot-of slot))
+         (table (table-of h-slot))
+         (columns (columns-of h-slot))
          (parent-id-column (parent-id-column-of class))
          (t-value-column (when temporal-p
                            (t-value-column-of class)))
@@ -46,7 +46,7 @@
     (if time-dependent-p
         (bind ((values-having-validity
                 (setf (underlying-slot-value-using-class class instance slot)
-                      (collect-single-slot-values-having-validity-from-records instance slot records t-slot 2)))
+                      (collect-single-slot-values-having-validity-from-records instance slot records h-slot 2)))
                (values (values-of values-having-validity)))
           (if (= 1 (length values))
               (elt values 0)
@@ -54,16 +54,16 @@
         (if (zerop (length records))
             (slot-unbound-t instance slot)
             (setf (underlying-slot-value-using-class class instance slot)
-                  (restore-slot-value t-slot (elt-0 records) 0))))))
+                  (restore-slot-value h-slot (elt-0 records) 0))))))
 
 (defun store-slot-t (class instance slot value)
   (bind ((time-dependent-p (time-dependent-p slot))
          (temporal-p (temporal-p slot))
-         (t-class (t-class-of class))
-         (t-slot (t-slot-of slot))
-         (table (table-of t-slot))
+         (h-class (h-class-of class))
+         (h-slot (h-slot-of slot))
+         (table (table-of h-slot))
          (table-name (name-of table))
-         (columns (columns-of t-slot))
+         (columns (columns-of h-slot))
          (column-count (length columns))
          (parent-id-column (parent-id-column-of class))
          (t-value-column (when temporal-p
@@ -74,7 +74,7 @@
                                 (validity-end-column-of class)))
          (rdbms-values (make-array column-count))
          (update-count))
-    (store-slot-value t-slot value rdbms-values 0)
+    (store-slot-value h-slot value rdbms-values 0)
     (setf update-count
           (update-records table-name
                           columns
@@ -109,7 +109,7 @@
       (bind ((size (+ (* 2 +oid-column-count+) 3 column-count))
              (rdbms-values (make-array size))
              (index 0))
-        (oid->rdbms-values* (make-class-oid (class-name t-class)) rdbms-values index)
+        (oid->rdbms-values* (make-class-oid (class-name h-class)) rdbms-values index)
         (incf index +oid-column-count+)
         (store-slot-value (parent-slot-of class) instance rdbms-values index)
         (incf index +oid-column-count+)
@@ -121,7 +121,7 @@
           (incf index)
           (setf (aref rdbms-values index) (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
           (incf index))
-        (store-slot-value t-slot value rdbms-values index)
+        (store-slot-value h-slot value rdbms-values index)
         (insert-record table-name
                        (append +oid-column-names+
                                (list parent-id-column)
@@ -187,7 +187,7 @@
      *validity-end*)))
 
 (defun insert-1-1-association-t-record (parent slot child)
-  (bind ((t-class (t-class-of slot))
+  (bind ((h-class (h-class-of slot))
          (table (table-of slot))
          (table-name (name-of table))
          (t-value-column (t-value-column-of slot))
@@ -197,7 +197,7 @@
          (child-oid-columns (child-oid-columns-of slot))
          (rdbms-values (make-array (+ (* 3 +oid-column-count+) 4)))
          (index 0))
-    (oid->rdbms-values* (make-class-oid (class-name t-class)) rdbms-values index)
+    (oid->rdbms-values* (make-class-oid (class-name h-class)) rdbms-values index)
     (incf index +oid-column-count+)
     (oid->rdbms-values* (oid-of parent) rdbms-values index)
     (incf index +oid-column-count+)
@@ -214,7 +214,7 @@
                    rdbms-values)))
 
 (defun insert-1-n-association-delta-t-records (parent slot children action)
-  (bind ((t-class (t-class-of slot))
+  (bind ((h-class (h-class-of slot))
          (table (table-of slot))
          (table-name (name-of table))
          (t-value-column (t-value-column-of slot))
@@ -226,7 +226,7 @@
     (iter (for child :in children)
           (for rdbms-values = (make-array (+ (* 3 +oid-column-count+) 4)))
           (for index = 0)
-          (oid->rdbms-values* (make-class-oid (class-name t-class)) rdbms-values index)
+          (oid->rdbms-values* (make-class-oid (class-name h-class)) rdbms-values index)
           (incf index +oid-column-count+)
           (oid->rdbms-values* (oid-of parent) rdbms-values index)
           (incf index +oid-column-count+)

@@ -14,26 +14,26 @@
     (compute-as (append (persistent-effective-slots-of -self-) (persistent-effective-slot-ts-of -self-)))
     :type (list standard-effective-slot-definition)
     :documentation "A list of slots that support the underlying-slot-value protocol.")
-   (t-class
-    (compute-as (find-class (class-name->t-class-name (class-name -self-))))
+   (h-class
+    (compute-as (find-class (t-class-name->h-class-name (class-name -self-))))
     :type persistent-class)
    (t-value-slot
-    (compute-as (find-slot (t-class-of -self-) 't-value)))
+    (compute-as (find-slot (h-class-of -self-) 't-value)))
    (t-value-column
     (compute-as (first (columns-of (t-value-slot-of -self-))))
     :type column)
    (validity-start-slot
-    (compute-as (find-slot (t-class-of -self-) 'validity-start)))
+    (compute-as (find-slot (h-class-of -self-) 'validity-start)))
    (validity-start-column
     (compute-as (first (columns-of (validity-start-slot-of -self-))))
     :type column)
    (validity-end-slot
-    (compute-as (find-slot (t-class-of -self-) 'validity-end)))
+    (compute-as (find-slot (h-class-of -self-) 'validity-end)))
    (validity-end-column
     (compute-as (first (columns-of (validity-end-slot-of -self-))))
     :type column)
    (parent-slot
-    (compute-as (find-slot (t-class-of -self-) (class-name -self-)))
+    (compute-as (find-slot (h-class-of -self-) (class-name -self-)))
     :type column)
    (parent-id-column
     (compute-as (id-column-of (parent-slot-of -self-)))
@@ -69,23 +69,23 @@
 
 (defcclass* persistent-effective-slot-definition-t
     (persistent-slot-definition-t standard-effective-slot-definition)
-  ((t-slot ;; TODO: naming mass confusion
-    (compute-as (find-slot (t-class-of (slot-definition-class -self-)) (slot-definition-name -self-)))
+  ((h-slot
+    (compute-as (find-slot (h-class-of (slot-definition-class -self-)) (slot-definition-name -self-)))
     :type persistent-effective-slot-definition)
    (prefetch
-    (compute-as (prefetch-p (t-slot-of -self-)))
-    :documentation "The cached option is inherited from the corresponding t slot.")
+    (compute-as (prefetch-p (h-slot-of -self-)))
+    :documentation "The cached option is inherited from the corresponding h slot.")
    (cache
-    (compute-as (cache-p (t-slot-of -self-)))
-    :documentation "The cached option is inherited from the corresponding t slot.")))
+    (compute-as (cache-p (h-slot-of -self-)))
+    :documentation "The cached option is inherited from the corresponding h slot.")))
 
 (eval-always
   ;; TODO: kill association?
   (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent :integrated-slot-name :association)))
 
-(defun class-name->t-class-name (class-name)
-  (concatenate-symbol class-name "-t"))
+(defun t-class-name->h-class-name (class-name)
+  (concatenate-symbol class-name "-h"))
 
-(defun t-class-name->class-name (t-class-name)
+(defun h-class-name->t-class-name (t-class-name)
   (bind ((name (symbol-name t-class-name)))
     (intern (subseq name 0 (- (length name) 2)) (symbol-package t-class-name))))
