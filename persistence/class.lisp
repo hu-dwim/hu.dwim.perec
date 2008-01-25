@@ -119,7 +119,7 @@
     (compute-as (canonical-type-for (specified-type-of -self-)))
     :type (or symbol cons)
     :documentation "The canonical form of the specified type. See canonical-type-for for more details.")
-   (canonical-type
+   (normalized-type
     (compute-as (normalized-type-for (canonical-type-of -self-)))
     :type (or symbol cons)
     :documentation "The normalized form of the specified type. See normalized-type-for for more details.")
