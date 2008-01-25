@@ -242,13 +242,14 @@
                       (class-direct-slots class)))))
 
 (defun ensure-slot-reader* (class slot)
-  (bind ((reader (concatenate-symbol (reader-name-of slot) "*"))
-         (reader-gf (ensure-generic-function reader :lambda-list '(instance))))
-    (ensure-method reader-gf
-                   `(lambda (instance)
-                     (with-lazy-slot-value-collections
-                       (slot-value-using-class ,class instance ,slot)))
-                   :specializers (list class))))
+  (when-bind reader-name (reader-name-of slot)
+    (bind ((reader (concatenate-symbol reader-name "*"))
+           (reader-gf (ensure-generic-function reader :lambda-list '(instance))))
+      (ensure-method reader-gf
+                     `(lambda (instance)
+                        (with-lazy-slot-value-collections
+                          (slot-value-using-class ,class instance ,slot)))
+                     :specializers (list class)))))
 
 (defun slot-initarg-and-value (instance slot-name)
   (when (slot-boundp instance slot-name)

@@ -40,6 +40,34 @@
     :type column))
   (:documentation "A temporal slot value is cached in the underlying slot. A time dependent slot value is cached as a values-having-validity object."))
 
+(defmethod expand-defpclass-form ((metaclass persistent-class-t) defclass-macro name superclasses slots options)
+  (bind ((t-class-name name)
+         (h-class-name (t-class-name->h-class-name t-class-name))
+         (processed-options (remove-if #L(member (first !1) '(:metaclass :slot-definition-transformer)) options))
+         (h-superclasses (append (when (find-if #L(find :temporal !1) slots)
+                                   (list 'temporal-object))
+                                 (when (find-if #L(find :time-dependent !1) slots)
+                                   (list 'time-dependent-object))
+                                 (list 'h-object))))
+    `(progn
+       ,(call-next-method)
+       (,defclass-macro ,h-class-name ,h-superclasses
+         ,(mapcar (lambda (slot-definition)
+                    (bind ((slot-name (car slot-definition))
+                           (slot-options (cdr slot-definition)))
+                      (list* slot-name
+                             (aprog1 (remf-keywords slot-options :time-dependent :temporal :integrates)
+                               (setf (getf it :type) `(or h-unused ,(getf it :type)))))))
+                  (collect-if #L(or (member :time-dependent !1)
+                                    (member :temporal !1))
+                              slots))
+         (:metaclass ,(h-class-name->t-class-name (class-name (class-of metaclass))))
+         ,@processed-options)
+       (defassociation
+         ((:class ,h-class-name :slot t-object :type ,t-class-name)
+          (:class ,t-class-name :slot h-objects :type (set ,h-class-name))))
+       (find-class ',name))))
+
 (defcclass* persistent-slot-definition-t (standard-slot-definition)
   ((persistent
     ;; TODO: remove this slot and fix mop
@@ -83,12 +111,12 @@
   ;; TODO: kill association?
   (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent :integrated-slot-name :association)))
 
-(defun t-class-name->h-class-name (class-name)
-  (concatenate-symbol class-name "-h"))
+(def function t-class-name->h-class-name (t-class-name)
+  (concatenate-symbol t-class-name "-h"))
 
-(defun h-class-name->t-class-name (t-class-name)
-  (bind ((name (symbol-name t-class-name)))
-    (intern (subseq name 0 (- (length name) 2)) (symbol-package t-class-name))))
+(def function h-class-name->t-class-name (h-class-name)
+  (bind ((name (symbol-name h-class-name)))
+    (intern (subseq name 0 (- (length name) 2)) (symbol-package h-class-name))))
 
 (defmethod export-to-rdbms ((class persistent-class-t))
   (call-next-method)
