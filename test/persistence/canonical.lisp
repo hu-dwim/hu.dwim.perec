@@ -12,8 +12,7 @@
 (defsuite* (test/persistence/canonical :in test/persistence))
 
 (deftest test/persistence/canonical/type (type canonical-type)
-  (let ((*canonical-types* '(unbound)))
-    (is (equalp canonical-type (canonical-type-for type)))))
+  (is (equalp canonical-type (canonical-type-for type))))
 
 (defmacro def-canonical-type-test (name type canonical-type)
   `(deftest ,(concatenate-symbol "test/persistence/canonical/" name) ()
@@ -84,20 +83,19 @@
   `(deftest ,(concatenate-symbol "test/persistence/normalized/" name) ()
     (test/persistence/normalized/type ',type ',normalized-type)))
 
-(def-normalized-type-test null/1 unbound nil)
+(def-normalized-type-test null/1 null nil)
 
 (def-normalized-type-test unbound/1 unbound nil)
 
-(def-normalized-type-test t/1 t (and (not null)
-                                     (not unbound)))
+(def-normalized-type-test t/1 t t)
 
 (def-normalized-type-test serialized/1 serialized serialized)
 (def-normalized-type-test serialized/2 (or unbound serialized) serialized)
 (def-normalized-type-test serialized/3 (or null serialized) serialized)
 (def-normalized-type-test serialized/4 (or unbound null serialized) serialized)
 
-(def-normalized-type-test boolean/1 boolean (and (not null) boolean))
-(def-normalized-type-test boolean/2 (or unbound boolean) (and (not null) boolean))
+(def-normalized-type-test boolean/1 boolean boolean)
+(def-normalized-type-test boolean/2 (or unbound boolean) boolean)
 
 (def-normalized-type-test integer/1 integer integer)
 (def-normalized-type-test integer/2 (or unbound integer) integer)
@@ -124,10 +122,10 @@
 (def-normalized-type-test string/3 (or null string) string)
 (def-normalized-type-test string/4 (or unbound null string) string)
 
-(def-normalized-type-test symbol/1 symbol (and (not null) symbol))
-(def-normalized-type-test symbol/2 (or unbound symbol) (and (not null) symbol))
+(def-normalized-type-test symbol/1 symbol symbol)
+(def-normalized-type-test symbol/2 (or unbound symbol) symbol)
 
-(def-normalized-type-test set/1 (set persistent-object) (and (not null) (set persistent-object)))
+(def-normalized-type-test set/1 (set persistent-object) (set persistent-object))
 
 ;;;;;;;;;;
 ;;; Mapped
@@ -144,7 +142,7 @@
           (eq type 'ordered-set)
           (eq type 'member)
           (eq type t)
-          (not (set-type-p type)))))
+          (not (set-type-p* type)))))
 
 (deftest test/persistence/mapped/subtypep ()
   (mapc #'check-mapped-type *mapped-type-precedence-list*))
@@ -154,7 +152,11 @@
         (for type-1 = (car types))
         (iter (for type-2 :in (cdr types))
               (unless (or (eq 'member type-1)
-                          (eq 'member type-2))
+                          (eq 'member type-2)
+                          (and (member type-1 '(float float-32 float-64 double))
+                               (member type-2 '(float float-32 float-64 double)))
+                          (and (member type-1 '(set ordered-set disjunct-set))
+                               (member type-2 '(set ordered-set disjunct-set))))
                 (is (not (subtypep type-2 type-1)))))))
 
 (deftest test/persistence/mapped/type (type mapped-type)
@@ -196,8 +198,7 @@
 (deftest test/persistence/type-check/primitive-type (type)
   (is (primitive-type-p type))
   (is (not (primitive-type-p `(or unbound ,type))))
-  (unless (null-inclusive-type-p type)
-    (is (not (primitive-type-p `(or null ,type)))))
+  (is (not (primitive-type-p `(or null ,type))))
   (is (not (primitive-type-p `(or unbound null ,type))))
   (is (primitive-type-p* type))
   (is (primitive-type-p* `(or unbound ,type)))
@@ -205,13 +206,15 @@
   (is (primitive-type-p* `(or null unbound ,type))))
 
 (deftest test/persistence/type-check/boolean ()
-  (test/persistence/type-check/primitive-type 'boolean))
+  (test/persistence/type-check/primitive-type 'boolean)
+  (is (not (null-subtype-p 'boolean))))
 
 (deftest test/persistence/type-check/string ()
   (test/persistence/type-check/primitive-type 'string))
 
 (deftest test/persistence/type-check/symbol ()
-  (test/persistence/type-check/primitive-type 'symbol))
+  (test/persistence/type-check/primitive-type 'symbol)
+  (is (not (null-subtype-p 'symbol))))
 
 (defpclass primitive-type-test ()
   ())

@@ -419,7 +419,7 @@ with the result of the naively compiled query.")
     (if (eq normalized-type +unknown-type+)
        +unknown-type+
        (cond
-          ((set-type-p normalized-type) (find-class (set-type-class-for normalized-type)))
+          ((set-type-p* normalized-type) (find-class (set-type-class-for normalized-type)))
           ((persistent-class-name-p normalized-type) (find-class normalized-type))
           (t normalized-type)))))
 

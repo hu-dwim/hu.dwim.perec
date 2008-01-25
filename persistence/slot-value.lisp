@@ -3,11 +3,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Caching slot values in instances
 
-(defconstant +not-cached-slot-marker+ '+not-cached-slot-marker+
-  "This value is stored in slots to indicate that the slot value is not cached.")
+(def (constant :documentation "This value is stored in slots to indicate that the slot value is not cached.")
+    +not-cached-slot-marker+ '+not-cached-slot-marker+)
 
-(defparameter *cache-slot-values* #t
-  "True means slot values will be cached in the slots of the persistent instances. Writing a slot still goes directly to the database but it will be also stored in the instance. If the instance's state is modified in the database it is up to the modifier to clear the list of cached slots from the instance using the invalidate functions. The purpose of the slot value cache is to increase performance and reduce the number of database interactions during a transaction.")
+(def (special-variable :documentation "True means slot values will be cached in the slots of the persistent instances. Writing a slot still goes directly to the database but it will be also stored in the instance. If the instance's state is modified in the database it is up to the modifier to clear the list of cached slots from the instance using the invalidate functions. The purpose of the slot value cache is to increase performance and reduce the number of database interactions during a transaction.")
+    *cache-slot-values* #t)
 
 (def special-variable *skip-storing-equal-slot-values* #f)
 
@@ -26,7 +26,7 @@
   (assert (or (not persistent) (instance-in-current-transaction-p instance)) nil
           "Accessing a persistent ~A while it is not attached to the current transaction." instance))
 
-(defmacro assert-instance-slot-correspondence ()
+(def macro assert-instance-slot-correspondence ()
   `(debug-only
      (assert (eq (class-of instance) (slot-definition-class slot)))))
 

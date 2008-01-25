@@ -13,12 +13,10 @@
 (defparameter +transformer-integer-test-value+ 42)
 
 (defun is-equal-using-writer (type slot-value rdbms-values)
-  (let ((written-rdbms-values (make-array (length rdbms-values))))
-    (funcall (compute-writer nil type) slot-value written-rdbms-values 0)
-    (is (equalp rdbms-values written-rdbms-values))))
+  (is (equalp rdbms-values (lisp-value->rdbms-values type slot-value))))
 
 (defun is-equal-using-reader (type slot-value rdbms-values)
-  (is (equalp slot-value (funcall (compute-reader nil type) rdbms-values 0))))
+  (is (equalp slot-value (rdbms-values->lisp-value type rdbms-values))))
 
 (defun is-equal-using-transformers (type slot-value rdbms-values)
   (is-equal-using-reader type slot-value rdbms-values)

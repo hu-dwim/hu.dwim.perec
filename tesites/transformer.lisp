@@ -6,16 +6,12 @@
 
 (in-package :cl-perec)
 
-(def-transformer-wrapper h-unused-reader
-  (lambda (rdbms-values index)
-    (if (is-vector-of-constant rdbms-values :null index column-number)
-        +h-unused-slot-marker+
-        (funcall function rdbms-values index))))
+(def function h-unused-reader (rdbms-values index)
+  (if (eq :null (elt rdbms-values index))
+      +h-unused-slot-marker+
+      +type-error-marker+))
 
-(def-transformer-wrapper h-unused-writer
-  (bind ((h-unused-rdbms-value (make-array column-number :initial-element :null)))
-    (lambda (slot-value rdbms-values index)
-      (declare (type simple-vector rdbms-values))
-      (if (h-unused-slot-marker-p slot-value)
-          (replace rdbms-values h-unused-rdbms-value :start1 index)
-          (funcall function slot-value rdbms-values index)))))
+(def function h-unused-writer (slot-value rdbms-values index)
+  (if (h-unused-slot-marker-p slot-value)
+      (setf (elt rdbms-values index) :null)
+      +type-error-marker+))

@@ -294,7 +294,7 @@
   (setf (persistent-p instance) #t)
   (setf (cached-instance-of (oid-of instance)) instance)
   (iter (for slot :in (persistent-effective-slots-of class))
-        (when (set-type-p (slot-definition-type slot))
+        (when (set-type-p* (canonical-type-of slot))
           (invalidate-cached-slot instance slot))))
 
 (defmethod make-transient-using-class (class (instance persistent-object))
@@ -320,7 +320,7 @@
     (iter (for (class-name class) :in-hashtable *persistent-classes*)
           (pushnew (primary-table-of class) tables)
           (dolist (slot (persistent-effective-slots-of class))
-            (when (persistent-class-type-p* (slot-definition-type slot))
+            (when (persistent-class-type-p* (canonical-type-of slot))
               (bind ((oid-table (table-of slot))
                      (referer-slots (gethash oid-table table->referer-slots-map)))
                 (unless (find (columns-of slot) referer-slots :key 'columns-of :test 'equal)

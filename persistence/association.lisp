@@ -43,10 +43,10 @@
     (compute-as nil)
     :type persistent-association)
    (associated-class
-    (compute-as (awhen (normalized-type-for (slot-definition-type -self-))
-                  (if (set-type-p it)
-                      (find-class (set-type-class-for it))
-                      (find-class it))))
+    (compute-as (bind ((type (canonical-type-of -self-)))
+                  (find-class (if (set-type-p* type)
+                                  (set-type-class-for type)
+                                  (persistent-class-type-for type)))))
     :type persistent-class)
    (association-end-query
     (compute-as (compute-association-end-query -self-))
@@ -78,13 +78,13 @@
 (defcclass* persistent-association-end-direct-slot-definition
     (persistent-association-end-slot-definition persistent-direct-slot-definition)
   ((min-cardinality
-    (compute-as (bind ((type (slot-definition-type -self-)))
+    (compute-as (bind ((type (canonical-type-of -self-)))
                   (if (and (not (null-subtype-p type))
                            (not (unbound-subtype-p type)))
                       1
                       0))))
    (max-cardinality
-    (compute-as (if (set-type-p (slot-definition-type -self-))
+    (compute-as (if (set-type-p* (canonical-type-of -self-))
                     :n
                     1)))
    (other-association-end
@@ -117,11 +117,15 @@
 ;;;;;;;;;;;
 ;;; Compute
 
-(defmethod compute-reader ((slot persistent-association-end-effective-slot-definition) type)
+(defmethod compute-slot-mapping ((slot persistent-association-end-effective-slot-definition))
   (when (eq (cardinality-kind-of slot) :1)
     (call-next-method)))
 
-(defmethod compute-writer ((slot persistent-association-end-effective-slot-definition) type)
+(defmethod compute-slot-reader ((slot persistent-association-end-effective-slot-definition))
+  (when (eq (cardinality-kind-of slot) :1)
+    (call-next-method)))
+
+(defmethod compute-slot-writer ((slot persistent-association-end-effective-slot-definition))
   (when (eq (cardinality-kind-of slot) :1)
     (call-next-method)))
 
@@ -162,7 +166,7 @@
       (:m-n (make-columns-for-reference-slot (class-name (slot-definition-class slot))
                                              (strcat (slot-definition-name slot)
                                                      "-for-"
-                                                     (set-type-class-for (normalized-type-for (slot-definition-type slot)))))))))
+                                                     (set-type-class-for (canonical-type-of slot))))))))
 
 (defmethod compute-data-table-slot-p ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))

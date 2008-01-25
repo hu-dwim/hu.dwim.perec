@@ -9,9 +9,11 @@
 ;;;;;;;;;;;;;;;;;;
 ;;; Defining types
 
-(defparameter *persistent-types* (make-hash-table))
+(def constant +type-error-marker+ '+type-error-marker+)
 
-(defclass* persistent-type ()
+(def special-variable *persistent-types* (make-hash-table))
+
+(def class* persistent-type ()
   ((name
     :type symbol)
    (documentation
@@ -23,7 +25,7 @@
    (substituter
     :type function)))
 
-(defmacro defptype (name args &body body)
+(def macro defptype (name args &body body)
   (bind ((common-lisp-type-p (eq (symbol-package name) (find-package :common-lisp)))
          (allow-nil-args-p (or (null args)
                                (member (first args) '(&rest &optional))))
@@ -84,14 +86,14 @@
 (def (function io) (setf find-type) (new-value type)
   (setf (gethash (first (ensure-list type)) *persistent-types*) new-value))
 
-(defun type-class-name-for (type)
+(def function type-class-name-for (type)
   (concatenate-symbol (if (eq (symbol-package type)
                               (find-package :common-lisp))
                           (find-package :cl-perec)
                           (symbol-package type))
                       type "-type"))
 
-(defun type-super-class-name-for (name type)
+(def function type-super-class-name-for (name type)
   (cond ((and (symbolp type)
               (not (eq name type)))
          (if (find-class (type-class-name-for type) nil)
@@ -112,22 +114,22 @@
         (t
          'persistent-type)))
 
-(defun type-specifier-p (type)
+(def function type-specifier-p (type)
   (find-type type :otherwise #f))
 
-(defun substitute-type-arguments (type args)
+(def function substitute-type-arguments (type args)
   (apply (substituter-of (find-type type)) args))
 
 ;;;;;;;;;;;;;;;;
 ;;; Type checker
 
-(defparameter *type-check-slot-values* #t)
+(def special-variable *type-check-slot-values* #t)
 
-(defmacro with-type-checking-slot-values (&body body)
+(def (macro e) with-type-checking-slot-values (&body body)
   `(bind ((*type-check-slot-values* #t))
     ,@body))
 
-(defmacro without-type-checking-slot-values (&body body)
+(def (macro e) without-type-checking-slot-values (&body body)
   `(bind ((*type-check-slot-values* #f))
     ,@body))
 
@@ -147,14 +149,15 @@
              (type-error-expected-type condition)))))
 
 ;; TODO: take care about performance
+;; TODO: when type-check is :on-commit checks during the transaction should be debug-only and at the end do the real type-check
 (def (function io) check-slot-value-type (instance slot slot-value &optional (on-commit #f))
   (when *type-check-slot-values*
-    (bind ((type (if on-commit
-                     (slot-definition-type slot)
+    (bind ((canonical-type (canonical-type-of slot))
+           (type (if on-commit
+                     canonical-type
                      (always-checked-type-of slot)))
-           (normalized-type (normalized-type-of slot))
-           (check-type (if (set-type-p normalized-type)
-                           (set-type-class-for normalized-type)
+           (check-type (if (set-type-p* canonical-type)
+                           (set-type-class-for canonical-type)
                            type)))
       (unless (typep slot-value check-type)
         (cerror "Ignore type error" 'slot-type-error :instance instance :slot slot :datum slot-value :expected-type type)))))
@@ -162,52 +165,72 @@
 ;;;;;;;;;;;;;;;;;;
 ;;; Canonical type
 
-(defun canonical-type-for (type)
+(def function canonical-type-for (type)
   (iter (for simplified-type :initially type :then (simplify-boolean-form (canonical-type-for* (->dnf simplified-type))))
         (for previous-type :previous simplified-type)
         (until (equal simplified-type previous-type))
         (finally (return simplified-type))))
 
-(defvar *canonical-types* nil
-  "A list of type names to be treated as canonical types when a type is converted into canonical form.")
+(def (special-variable :documentation "A list of type names to be treated as canonical types when a type is converted into canonical form.")
+    *canonical-types*
+    '(nil
+      unbound
+      null
+      boolean
+      integer
+      float
+      float-32
+      float-64
+      double
+      number
+      text
+      duration
+      string
+      timestamp
+      date
+      time
+      unsigned-byte-vector
+      member
+      symbol*
+      symbol
+      form
+      serialized
+      set
+      disjunct-set
+      ordered-set
+      t))
 
-(defun find-class* (class-or-name)
+(def function find-class* (class-or-name)
   (if (typep class-or-name 'standard-class)
       class-or-name
       (find-class class-or-name)))
 
-(defun canonical-type-p (type)
+(def function canonical-type-p (type)
   (member (first (ensure-list type)) *canonical-types*))
 
-(defun class-type-p (type)
+(def function class-type-p (type)
   (and (symbolp type)
        (find-class type nil)))
 
-(defun disjunct-type-p (type-1 type-2)
+(def function disjunct-type-p (type-1 type-2)
   (equal '(#t #t)
          (multiple-value-list
           (subtypep `(and ,type-1 ,type-2) nil))))
 
-(defun disjunct-type-p* (type-1 type-2)
+(def function disjunct-type-p* (type-1 type-2)
   (equal '(#t #t)
          (multiple-value-list
           (subtypep (canonical-type-for `(and ,type-1 ,type-2)) nil))))
 
-(defun canonical-type-for* (type)
+(def function canonical-type-for* (type)
   (pattern-case type
-    ;; universal type
-    (t t)
-    ;; empty type
-    (nil nil)
-    ;; some primitive types
-    (boolean 'boolean)
-    (double 'double)
-    (keyword 'keyword)
-    ;; known to be canonical
     ((?is ?type canonical-type-p)
      type)
     ;; simple class
     ((?is ?type class-type-p)
+     type)
+    ;; set types
+    ((?is ?type set-type-p*)
      type)
     ;; (and a (not a)) -> nil
     ((?or (and (?* ?x) ?a (?* ?y) (not ?a) (?* ?z))
@@ -265,72 +288,293 @@
     (?type
      type)))
 
-(defparameter *mapped-type-precedence-list*
-  '(nil
-    unbound
-    null
-    boolean
-    integer-16
-    integer-32
-    integer-64
-    integer
-    float-32
-    float-64
-    float
-    double
-    number
-    text
-    duration
-    string
-    timestamp
-    date
-    time
-    unsigned-byte-vector
-    member
-    symbol*
-    symbol
-    form
-    serialized
-    set
-    disjunct-set
-    ordered-set
-    t)
-  "An ordered list of types which are mapped to RDBMS.")
-
 ;;;;;;;;;;;;;;;;
 ;;; Type mapping
 
-(defmacro defmapping (name sql-type reader writer)
+(def (special-variable :documentation "An ordered list of types which are mapped to RDBMS.") *mapped-type-precedence-list*
+    '(nil
+      unbound
+      null
+      boolean
+      integer-16
+      integer-32
+      integer-64
+      integer
+      float-32
+      float-64
+      float
+      double
+      number
+      text
+      duration
+      string
+      timestamp
+      date
+      time
+      unsigned-byte-vector
+      member
+      symbol*
+      symbol
+      form
+      serialized
+      set
+      disjunct-set
+      ordered-set
+      t))
+
+(defclass* mapping ()
+  ((reader
+    :type (or symbol function))
+   (writer
+    :type (or symbol function))
+   (tagged
+    :type boolean)
+   (rdbms-types
+    :type list)))
+
+(def macro defmapping (name sql-type reader writer)
+  "A mapping specifies how a type is mapped to RDBMS. It defines the transformers to convert between the rdbms values and the slot value."
   (flet ((function-designator-p (transformer)
            (and (consp transformer)
                 (eq (first transformer) 'quote)
                 (symbolp (second transformer))
                 (second transformer))))
     `(progn
-       (defmethod compute-column-type* ((type (eql ',name)) type-specification)
-         (declare (ignorable type-specification))
-         ,sql-type)
+       (defmethod compute-rdbms-types* ((mapped-type (eql ',name)) normalized-type)
+         (declare (ignorable normalized-type))
+         (ensure-list ,sql-type))
 
-       (defmethod compute-reader* ((type (eql ',name)) type-specification)
-         (declare (ignorable type-specification))
+       (defmethod compute-reader* ((mapped-type (eql ',name)) normalized-type)
+         (declare (ignorable normalized-type))
          ,(aif (function-designator-p reader)
                (if cl-perec-system:*load-as-production-p*
                    `(fdefinition ',it)
                    `',it)
                reader))
 
-       (defmethod compute-writer* ((type (eql ',name)) type-specification)
-         (declare (ignorable type-specification))
+       (defmethod compute-writer* ((mapped-type (eql ',name)) normalized-type)
+         (declare (ignorable normalized-type))
          ,(aif (function-designator-p writer)
                (if cl-perec-system:*load-as-production-p*
                    `(fdefinition ',it)
                    `',it)
                writer)))))
 
+(defgeneric compute-type-tag (mapped-type)
+  (:documentation "Returns a type tag which will be stored in the tag column when needed.")
+
+  (:method (mapped-type)
+    #t))
+
+(defun compute-rdbms-types (type)
+  (rdbms-types-of (compute-mapping type)))
+
+(defgeneric compute-rdbms-types* (mapped-type normalized-type)
+  (:method (mapped-type normalized-type)
+    (error "Cannot map type ~A to RDBMS types" mapped-type))
+
+  (:method ((mapped-type symbol) normalized-type)
+    (if (persistent-class-type-p normalized-type)
+        (append
+         (list +oid-id-sql-type+)
+         (oid-mode-ecase
+           (:class-name
+            (list +oid-class-name-sql-type+))
+           (:class-id
+            (list +oid-class-id-sql-type+))
+           (:merge)))
+        (call-next-method))))
+
+(defun compute-reader (type)
+  (reader-of (compute-mapping type)))
+
+(defgeneric compute-reader* (mapped-type normalized-type)
+  (:method (mapped-type normalized-type)
+    (error "Cannot map type ~A to a reader" mapped-type))
+
+  (:method ((mapped-type symbol) normalized-type)
+    (if (persistent-class-type-p mapped-type)
+        (if cl-perec-system:*load-as-production-p*
+            #'object-reader
+            'object-reader)
+        (call-next-method))))
+
+(defun compute-writer (type)
+  (writer-of (compute-mapping type)))
+
+(defgeneric compute-writer* (mapped-type normalized-type)
+  (:method (mapped-type normalized-type)
+    (error "Cannot map type ~A to a writer" mapped-type))
+
+  (:method ((mapped-type symbol) normalized-type)
+    (if (persistent-class-type-p mapped-type)
+        (if cl-perec-system:*load-as-production-p*
+            #'object-writer
+            'object-writer)
+        (call-next-method))))
+
+(defun compute-mapping (type)
+  (labels ((compute-or-type-mapping (type)
+             (iter (with primary-rdbms-types = nil)
+                   (with null-value-count = 0)
+                   (for subtype :in (cdr type))
+                   (for normalized-type = (normalized-type-for subtype))
+                   (for mapped-type = (or (mapped-type-for normalized-type) subtype))
+                   (for rdbms-types = (compute-rdbms-types* mapped-type normalized-type))
+                   (if (eq :null (first rdbms-types))
+                       (incf null-value-count)
+                       (if primary-rdbms-types
+                           (error "Unsupported multiple primary types using the 'or' type combinator: ~A" type)
+                           (setf primary-rdbms-types rdbms-types)))
+                   (collect (compute-type-tag subtype) :into type-tags)
+                   (collect (compute-reader* mapped-type normalized-type) :into readers)
+                   (collect (compute-writer* mapped-type normalized-type) :into writers)
+                   (finally
+                    (return
+                      (cond ((and primary-rdbms-types
+                                  (= null-value-count 1))
+                             (make-instance 'mapping
+                                            :tagged #f
+                                            :rdbms-types primary-rdbms-types
+                                            :reader (combined-reader readers)
+                                            :writer (combined-writer writers)))
+                            ((and primary-rdbms-types
+                                  (> null-value-count 1))
+                             (make-instance 'mapping
+                                            :tagged #t
+                                            :rdbms-types (list* (sql-boolean-type) primary-rdbms-types)
+                                            :reader (tagged-reader type-tags readers)
+                                            :writer (tagged-writer type-tags writers)))
+                            (t
+                             (error "Unsupported type: ~A" type))))))))
+    (bind ((normalized-type (normalized-type-for type))
+           (mapped-type (or (mapped-type-for normalized-type) type)))
+      (cond ((set-type-p type)
+             nil)
+            ((or-type-p type)
+             (compute-or-type-mapping type))
+            ((unbound-subtype-p type)
+             (compute-or-type-mapping `(or unbound ,type)))
+            ((null-subtype-p type)
+             (compute-or-type-mapping `(or null ,type)))
+            (t
+             (make-instance 'mapping
+                            :tagged #f
+                            :rdbms-types (compute-rdbms-types* mapped-type normalized-type)
+                            :reader (compute-reader* mapped-type normalized-type)
+                            :writer (compute-writer* mapped-type normalized-type)))))))
+
+(def function lisp-value->rdbms-values (type lisp-value)
+  (bind ((mapping (compute-mapping type))
+         (column-count (length (rdbms-types-of mapping)))
+         (result (make-array column-count)))
+    (values result (funcall (writer-of mapping) lisp-value result 0))))
+
+(def function rdbms-values->lisp-value (type rdbms-values)
+  (funcall (reader-of (compute-mapping type)) rdbms-values 0))
+
+;;;;;;;;
+;;; Type
+
+(def function mapped-type-for (type)
+  "Returns the smalleset supertype which is directly mapped to RDBMS based on *MAPPED-TYPE-PRECEDENCE-LIST*."
+  (if (persistent-class-type-p type)
+      type
+      (find-if #L(cond ((or (eq type !1)
+                            (and (listp type)
+                                 (eq (first type) !1)))
+                        #t)
+                       ((eq 'member !1)
+                        (and (listp type)
+                             (eq 'member (first type))))
+                       (t
+                        (subtypep type !1)))
+               *mapped-type-precedence-list*)))
+
+(def function normalized-type-for (type)
+  "Returns a type which does not include subtypes mapped to :null column values."
+  (if (or-type-p type)
+      (bind ((subtypes
+              (remove-if 'type-mapped-to-null-p
+                         (cdr type))))
+        (if (<= (length subtypes) 1)
+            (first subtypes)
+            (cons 'or subtypes)))
+      (unless (type-mapped-to-null-p type)
+        type)))
+
+(def function type-mapped-to-null-p (type)
+  (and (symbolp type)
+       (equal '(:null) (compute-rdbms-types* type type))))
+
+(def function primitive-type-p (type)
+  "Accepts types such as boolean, integer, string, double, etc. which are directly mapped to RDBMS."
+  (or (eq type t)
+      (and (not (or-type-p type))
+           (not (persistent-class-type-p type))
+           (not (set-type-p* type))
+           (not (unbound-subtype-p type))
+           (not (null-subtype-p type)))))
+
+(def function primitive-type-p* (type)
+  "Same as primitive-type-p but also accepts values such as (or unbound integer), (or null string), (or unbound null boolean), etc."
+  (primitive-type-p (normalized-type-for type)))
+
+(def function persistent-class-type-p (type)
+  "Returns true for persistent class types and false otherwise."
+  (and (symbolp type)
+       (find-persistent-class type)))
+
+(def function persistent-class-type-p* (type)
+  "Same as persistent-class-type-p but also accepts values such as (or unbound persistent-object), (or null persistent-object), (or unbound null persistent-object) etc."
+  (persistent-class-type-p (persistent-class-type-for type)))
+
+(def function persistent-class-type-for (type)
+  (unless (eq type t)
+    (canonical-type-for `(and persistent-object ,type))))
+
+(def function or-type-p (type)
+  "Returns true for type using the compound type specifier 'or'."
+  (and (consp type)
+       (eq 'or (first type))))
+
+(def function set-type-p (type)
+  (and (consp type)
+       (eq (first type) 'set)))
+
+(def function disjunct-set-type-p (type)
+  (and (consp type)
+       (eq (first type) 'disjunct-set)))
+
+(def function ordered-set-type-p (type)
+  (and (consp type)
+       (eq (first type) 'ordered-set)))
+
+(def function set-type-p* (type)
+  "Returns true for all kind of persistent set types."
+  (and (consp type)
+       (member (first type) '(set disjunct-set ordered-set))))
+
+(def function set-type-class-for (type)
+  (second type))
+
+(def function unbound-subtype-p (type)
+  (and (not (eq 'member type))
+       (subtypep 'unbound type)))
+
+(def function null-subtype-p (type)
+  (and (not (eq 'member type))
+       (not (subtypep 'boolean type))
+       (not (subtypep 'symbol type))
+       (subtypep 'null type)))
+
+(def function tagged-type-p (type)
+  (tagged-p (compute-mapping type)))
+
 ;;;;;;;;;;;;;;;
 ;;; Type parser
 
-(defun parse-type (type-specifier)
+(def function parse-type (type-specifier)
   (etypecase type-specifier
     (symbol (or (find-type type-specifier :otherwise nil)
                 (find-persistent-class type-specifier)))
@@ -343,15 +587,15 @@
 ;;; Type unparser
 
 ;; TODO: unparse it into a list
-(defun unparse-type (type)
+(def function unparse-type (type)
   (declare (ignore type))
   )
 
 ;;;;;;;;;;;;;;;;;;;;
 ;;; Destructure type
 
-(defun destructure-type (type)
-  "Returns (values normalized-type null-subtype-p unbound-subtype-p) corresponding to the given type."
+(def function destructure-type (type)
+  "Returns (values canonical-type null-subtype-p unbound-subtype-p) corresponding to the given type."
   (bind ((normalized-type (normalized-type-for type))
          (mapped-type (mapped-type-for normalized-type))
          (unbound-subtype-p (unbound-subtype-p type))
@@ -362,14 +606,14 @@
 ;;;;;;;;;;;;;;;;
 ;;; Type matcher
 
-(defvar *matches-type-cut-function*)
+(def special-variable *matches-type-cut-function*)
 
-(defun default-matches-type-cut (instance slot type)
+(def function default-matches-type-cut (instance slot type)
   (declare (ignore instance slot))
   (or (persistent-object-p type)
-      (set-type-p type)))
+      (set-type-p* type)))
 
-(defun matches-type (value type &key (cut-function #'default-matches-type-cut) (signal-type-violations #f))
+(def function matches-type (value type &key (cut-function #'default-matches-type-cut) (signal-type-violations #f))
   (bind ((*matches-type-cut-function* cut-function))
     (flet ((body ()
              (aprog1 (matches-type* value type)
@@ -403,4 +647,3 @@
 
   (:method (value (type list))
            (typep value type)))
-

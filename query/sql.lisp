@@ -433,7 +433,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   (:method ((variable query-variable) (slot persistent-effective-slot-definition))
            (bind ((slot-type (slot-definition-type slot)))
              (cond
-               ((complex-type-p slot-type)
+               ((tagged-type-p slot-type)
                 (sql-tag-column-reference-for slot variable))
                ((unbound-subtype-p slot-type)
                 (sql-is-not-null (sql-column-reference-for slot variable)))
@@ -446,9 +446,11 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   (:method ((variable query-variable) (slot persistent-effective-slot-definition))
            (bind ((slot-type (slot-definition-type slot)))
              (cond
-               ((complex-type-p slot-type)
+               ((tagged-type-p slot-type)
                 (sql-and
-                 (sql-is-not-null (sql-tag-column-reference-for slot variable))
+                 ;; TODO: this is #t for now
+                 ;;(sql-is-not-null (sql-tag-column-reference-for slot variable))
+                 (sql-tag-column-reference-for slot variable)
                  (sql-is-null (sql-column-reference-for slot variable))))
                ((null-subtype-p slot-type)
                 (sql-is-null (sql-column-reference-for slot variable)))

@@ -65,7 +65,7 @@
             (for instance-slot = (if (eq instance-class class)
                                      slot
                                      (find-slot instance-class (slot-definition-name slot))))
-            (for value = (restore-slot-value instance-slot row index))
+            (for value = (restore-slot-value instance instance-slot row index))
             (setf (underlying-slot-boundp-or-value-using-class instance-class instance instance-slot) value)
             ;; TODO: maybe this shoud be a prefetch option?
             (propagate-cache-changes instance-class instance instance-slot value)))
@@ -104,16 +104,20 @@
 
 (def function compute-type-info (type)
   (when (and (not (eq type +unknown-type+)) (not (contains-syntax-p type)))
-    (bind ((set-type-p (and (consp type) (eq (first type) 'set)))
-           (element-type (if set-type-p (second type) type))
-           ((values writer wrapper-1 wrapper-2 column-count) (compute-writer nil element-type))
-           (normalized-type (normalized-type-for element-type))
-           (mapped-type (mapped-type-for normalized-type))
+    (bind ((element-type
+            (if (set-type-p* type)
+                (bind ((set-element (set-type-class-for type)))
+                  (if (typep set-element 'standard-class)
+                      (class-name set-element)
+                      set-element))
+                type))
            (unbound-subtype-p (unbound-subtype-p type))
-           (null-subtype-p (and (null-subtype-p type) (not (null-subtype-p mapped-type))))
-           (column-type (unless (persistent-class-type-p normalized-type)
-                          (compute-column-type* mapped-type normalized-type))))
-      (declare (ignore wrapper-1 wrapper-2))
+           (null-subtype-p (null-subtype-p type))
+           (writer (compute-writer element-type))
+           (rdbms-types (compute-rdbms-types element-type))
+           (column-count (length rdbms-types))
+           (column-type (unless (persistent-class-type-p element-type)
+                          (last1 rdbms-types))))
       (make-type-info
        :writer writer
        :column-count column-count

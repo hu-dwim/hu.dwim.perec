@@ -281,8 +281,8 @@
            #:without-caching-slot-values
 
            ;; laziness
-           #:with-lazy-collections
-           #:without-lazy-collections
+           #:with-lazy-slot-value-collections
+           #:without-lazy-slot-value-collections
 
            ;; type check
            #:with-type-checking-slot-values

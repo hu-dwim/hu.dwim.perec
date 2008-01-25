@@ -3,21 +3,8 @@
 ;;;;;;;;;;;;;
 ;;; Constants
 
-(defparameter *lazy-collections* #f
-  "True means slot-value-using-class will by default return lazy collections.")
-
-(eval-always
-  (unless (fboundp 'make-unbound-slot-marker)
-    (defstruct unbound-slot-marker
-      "This structure is used for the unbound slot value marker. The type for that marker must be a subtype of t and cannot be a subtype of any other type.")))
-
-(define-constant +unbound-slot-marker+ (make-unbound-slot-marker)
-  :test equalp
-  :documentation "This value is used to signal unbound slot value returned from database.")
-
-(defmethod make-load-form ((instance unbound-slot-marker) &optional environment)
-  (declare (ignore environment))
-  '+unbound-slot-marker+)
+(def (special-variable :documentation "True means slot-value-using-class will by default return lazy collections.")
+    *lazy-slot-value-collections* #f)
 
 ;;;;;;;;;;;
 ;;; Utility
@@ -43,9 +30,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS slot restorers
 
-(def (function io) restore-slot-value (slot rdbms-values index)
+(def (function io) restore-slot-value (instance slot rdbms-values index)
   "Provides convenient access to the arguments in the debugger."
-  (funcall (the function (reader-of slot)) rdbms-values index))
+  (prog1-bind slot-value (funcall (the function (reader-of slot)) rdbms-values index)
+    (when (eq +type-error-marker+ slot-value)
+      (error 'slot-type-error :instance instance :slot slot :expected-type (specified-type-of slot) :datum rdbms-values))))
 
 (def (function o) restore-slot-set (instance slot)
   "Restores the non lazy list without local side effects from the database."
@@ -53,7 +42,7 @@
        (select-records (oid-columns-of (table-of slot))
                        (list (name-of (table-of slot)))
                        (id-column-matcher-where-clause instance (id-column-of slot))
-                       (let ((type (slot-definition-type slot)))
+                       (let ((type (canonical-type-of slot)))
                          (if (ordered-set-type-p type)
                              ;; TODO: use reflection instead of third
                              (list (sql-identifier :name (rdbms-name-for (third type)))))))))
@@ -83,20 +72,20 @@
                                          (sql-identifier :name (id-column-of slot))))))
             (declare (type vector records))
             (unless (zerop (length records))
-              (restore-slot-value slot (elt-0 records) 0))))
+              (restore-slot-value instance slot (elt-0 records) 0))))
          ((and (typep slot 'persistent-association-end-effective-slot-definition)
                (eq (association-kind-of (association-of slot)) :1-n)
                (eq (cardinality-kind-of slot) :n))
-          (if *lazy-collections*
+          (if *lazy-slot-value-collections*
               (make-instance 'persistent-1-n-association-end-set-container :instance instance :slot slot)
               (restore-1-n-association-end-set instance slot)))
          ((and (typep slot 'persistent-association-end-effective-slot-definition)
                (eq (association-kind-of (association-of slot)) :m-n))
-          (if *lazy-collections*
+          (if *lazy-slot-value-collections*
               (make-instance 'persistent-m-n-association-end-set-container :instance instance :slot slot)
               (restore-m-n-association-end-set instance slot)))
-         ((set-type-p (normalized-type-of slot))
-          (if *lazy-collections*
+         ((set-type-p* (canonical-type-of slot))
+          (if *lazy-slot-value-collections*
               (make-instance 'persistent-slot-set-container :instance instance :slot slot)
               (restore-slot-set instance slot)))
          (t
@@ -105,7 +94,7 @@
                    (select-records (columns-of slot)
                                    (list (name-of (table-of slot)))
                                    (id-column-matcher-where-clause instance)))))
-            (restore-slot-value slot record 0))))
+            (restore-slot-value instance slot record 0))))
    slot))
 
 (def (function o) restore-prefetched-slots (instance &optional (allow-missing #f))
@@ -131,7 +120,7 @@
         (values
          (iter (for (the fixnum i) :first 0 :then (the fixnum (+ i (length (columns-of slot)))))
                (for slot :in slots)
-               (collect (restore-slot-value slot record i)))
+               (collect (restore-slot-value instance slot record i)))
          slots)))))
 
 ;; TODO: use this to eliminate generating SQL AST garbage upon slot access
@@ -190,9 +179,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS slot storers
 
-(def (function io) store-slot-value (slot slot-value rdbms-values index)
+(def (function io) store-slot-value (instance slot slot-value rdbms-values index)
   "Provides convenient access to the arguments in the debugger."
-  (funcall (the function (writer-of slot)) slot-value rdbms-values index))
+  (prog1-bind primary-rdbms-value (funcall (the function (writer-of slot)) slot-value rdbms-values index)
+    (when (eq +type-error-marker+ primary-rdbms-value)
+      (error 'slot-type-error :instance instance :slot slot :expected-type (specified-type-of slot) :datum slot-value))))
 
 (def (function o) delete-slot-set (instance slot)
   (update-records (name-of (table-of slot))
@@ -269,13 +260,13 @@
 	 (when (or value
                    (persistent-p instance))
            (store-m-n-association-end-set instance slot value)))
-	((set-type-p (normalized-type-of slot))
+	((set-type-p* (canonical-type-of slot))
          (store-slot-set instance slot value))
 	(t
          (check-slot-value-type instance slot value)
          (when-bind columns (columns-of slot)
            (bind ((rdbms-values (make-array (length (the list columns)))))
-             (store-slot-value slot value rdbms-values 0)
+             (store-slot-value instance slot value rdbms-values 0)
              (update-records (name-of (table-of slot))
                              columns
                              rdbms-values
@@ -298,7 +289,7 @@
               (for slot-value :in slot-values)
               (for index :initially 0 :then (the fixnum (+ index (length (columns-of slot)))))
               (check-slot-value-type instance slot slot-value)
-              (store-slot-value slot slot-value rdbms-values index))
+              (store-slot-value instance slot slot-value rdbms-values index))
         (if (persistent-p instance)
             (update-records (name-of table) columns rdbms-values (id-column-matcher-where-clause instance))
             (insert-record (name-of table) (append oid-columns columns) (concatenate 'vector oid-values rdbms-values)))))

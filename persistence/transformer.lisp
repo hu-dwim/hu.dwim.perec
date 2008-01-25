@@ -6,124 +6,104 @@
 
 (in-package :cl-perec)
 
+;;;;;;;;;;;;;;;;;
+;;;; Transformers
+;;;;
+;;;; A transformer is a function. There are reader and writer transformers. The slot value is the value
+;;;; that will be returned and might be passed in to slot-value, slot-value-using-class and their friends.
+;;;; The rdbms values is a sequence sent or received from the RDBMS backend at once.
+;;;;
+;;;; A reader transformer returns the slot value by reading the sequence of rdbms values starting from the given index.
+;;;; It may read one or multiple elements from the sequence, may parse or interpret the received data.
+;;;; If the reader is unable to determine the slot value it must return +type-error-marker+.
+;;;;
+;;;; A writer transformer writes the rdbms values corresponding to a slot value into a sequence starting at the given index.
+;;;; It may write one or multiple elements into the sequence. If the writer is unable to determine the rdbms values it must
+;;;; return +type-error-marker+.
+
 ;;;;;;;;;;;
 ;;; Unbound
 
-(def (function io) is-vector-of-constant (vector value index length)
-  (declare (type fixnum index length)
-           (type symbol value)
-           (type simple-vector vector))
-  (iter (for i :from index :below (the fixnum (+ index length)))
-        (declare (type fixnum i))
-        (always (eql (elt vector i) value))))
+(def function unbound-reader (rdbms-values index)
+  (if (eq :null (elt rdbms-values index))
+      +unbound-slot-marker+
+      +type-error-marker+))
 
-(defmacro def-transformer-wrapper (name &body forms)
-  `(def (function o) ,name (slot type function column-number)
-    (declare (ignorable slot type column-number)
-             #-debug(type function function)
-             (type fixnum column-number))
-    ,@forms))
-
-(def-transformer-wrapper unbound-reader
-  (lambda (rdbms-values index)
-    (if (is-vector-of-constant rdbms-values :null index column-number)
-        +unbound-slot-marker+
-        (funcall function rdbms-values index))))
-
-(def-transformer-wrapper non-unbound-reader
-  (lambda (rdbms-values index)
-    (prog1-bind slot-value (funcall function rdbms-values index)
-      (when (unbound-slot-marker-p slot-value)
-        (if slot
-            (error 'unbound-slot :instance nil :name (slot-definition-name slot))
-            (error 'type-error :datum slot-value :expected-type type))))))
-
-(def-transformer-wrapper unbound-writer
-  (bind ((unbound-rdbms-value (make-array column-number :initial-element :null)))
-    (lambda (slot-value rdbms-values index)
-      (declare (type simple-vector rdbms-values))
-      (if (unbound-slot-marker-p slot-value)
-          (replace rdbms-values unbound-rdbms-value :start1 index)
-          (funcall function slot-value rdbms-values index)))))
-
-(def-transformer-wrapper non-unbound-writer
-  (lambda (slot-value rdbms-values index)
-    (if (unbound-slot-marker-p slot-value)
-        (if slot
-            (error 'unbound-slot :instance nil :name (slot-definition-name slot))
-            (error 'type-error :datum slot-value :expected-type type))
-        (funcall function slot-value rdbms-values index))))
+(def function unbound-writer (slot-value rdbms-values index)
+  (if (unbound-slot-marker-p slot-value)
+      (setf (elt rdbms-values index) :null)
+      +type-error-marker+))
 
 ;;;;;;;;
 ;;; Null
 
-(def-transformer-wrapper null-reader
+(def function null-reader (rdbms-values index)
+  (if (eq :null (elt rdbms-values index))
+      nil
+      +type-error-marker+))
+
+(def function null-writer (slot-value rdbms-values index)
+  (if (null slot-value)
+      (setf (elt rdbms-values index) :null)
+      +type-error-marker+))
+
+;;;;;;;
+;;; Nil
+
+(def function nil-reader (rdbms-values index)
+  (declare (ignore rdbms-values index))
+  +type-error-marker+)
+
+(def function nil-writer (slot-value rdbms-values index)
+  (declare (ignore slot-value rdbms-values index))
+  +type-error-marker+)
+
+;;;;;;;;;;;;
+;;; Combined
+
+(def function combined-reader (readers)
   (lambda (rdbms-values index)
-    (if (is-vector-of-constant rdbms-values :null index column-number)
-        nil
-        (funcall function rdbms-values index))))
+    (loop
+       for reader :in readers
+       do (bind ((slot-value (funcall reader rdbms-values index)))
+            (unless (eq slot-value +type-error-marker+)
+              (return slot-value)))
+       finally (return +type-error-marker+))))
 
-(def-transformer-wrapper non-null-reader
-  (lambda (rdbms-values index)
-    (prog1-bind slot-value (funcall function rdbms-values index)
-      (unless slot-value
-        (if slot
-            (error 'slot-type-error :slot slot :datum slot-value :expected-type type)
-            (error 'type-error :datum slot-value :expected-type type))))))
-
-(def-transformer-wrapper null-writer
-  (bind ((nil-rdbms-values (make-array column-number :initial-element :null)))
-    (lambda (slot-value rdbms-values index)
-      (declare (type simple-vector rdbms-values))
-      (if slot-value
-          (funcall function slot-value rdbms-values index)
-          (replace rdbms-values nil-rdbms-values :start1 index)))))
-
-(def-transformer-wrapper non-null-writer
+(def function combined-writer (writers)
   (lambda (slot-value rdbms-values index)
-    (if slot-value
-        (funcall function slot-value rdbms-values index)
-        (if slot
-            (error 'slot-type-error :slot slot :datum slot-value :expected-type type)
-            (error 'type-error :datum slot-value :expected-type type)))))
+    (loop
+       for writer :in writers
+       do (bind ((primary-rdbms-value (funcall writer slot-value rdbms-values index)))
+            (unless (eq primary-rdbms-value +type-error-marker+)
+              (return primary-rdbms-value)))
+       finally (return +type-error-marker+))))
 
-;;;;;;;;;;;;;;;;;;;
-;;; Unbound or null
+;;;;;;;;;;
+;;; Tagged
 
-(def-transformer-wrapper unbound-or-null-reader
-  (bind ((rdbms-column-values (make-array column-number :initial-element :null))
-         (unbound-rdbms-values (aprog1 (copy-seq rdbms-column-values)
-                                 (setf (elt it 0) #f)))
-         (nil-rdbms-values (aprog1 (copy-seq rdbms-column-values)
-                             (setf (elt it 0) #t))))
-    (lambda (rdbms-values index)
-      (flet ((equal-vector (vector-1 vector-2 index length)
-               (iter (for i-1 :from 0)
-                     (for i-2 :from index)
-                     (repeat length)
-                     (unless (eq (elt vector-1 i-1) (elt vector-2 i-2))
-                       (return-from equal-vector #f)))
-               #t))
-        (cond ((equal-vector unbound-rdbms-values rdbms-values index column-number)
-               +unbound-slot-marker+)
-              ((equal-vector nil-rdbms-values rdbms-values index column-number)
-               nil)
-              (t (funcall function rdbms-values (1+ index))))))))
+(def function tagged-reader (type-tags readers)
+  (lambda (rdbms-values index)
+    (loop
+       with rdbms-type-tag = (elt rdbms-values index)
+       for type-tag :in type-tags
+       for reader :in readers
+       when (eq type-tag rdbms-type-tag)
+       do (bind ((slot-value (funcall reader rdbms-values (1+ index))))
+            (unless (eq slot-value +type-error-marker+)
+              (return slot-value)))
+       finally (return +type-error-marker+))))
 
-(def-transformer-wrapper unbound-or-null-writer
-  (bind ((rdbms-column-values (make-array column-number :initial-element :null))
-         (unbound-rdbms-values (aprog1 (copy-seq rdbms-column-values)
-                                 (setf (elt it 0) #f)))
-         (nil-rdbms-values (aprog1 (copy-seq rdbms-column-values)
-                             (setf (elt it 0) #t))))
-    (lambda (slot-value rdbms-values index)
-      (cond ((unbound-slot-marker-p slot-value)
-             (replace rdbms-values unbound-rdbms-values :start1 index))
-            ((null slot-value)
-             (replace rdbms-values nil-rdbms-values :start1 index))
-            (t
-             (setf (elt rdbms-values index) #t)
-             (funcall function slot-value rdbms-values (1+ index)))))))
+(def function tagged-writer (type-tags writers)
+  (lambda (slot-value rdbms-values index)
+    (loop
+       for type-tag :in type-tags
+       for writer :in writers
+       do (bind ((primary-rdbms-value (funcall writer slot-value rdbms-values (1+ index))))
+            (unless (eq +type-error-marker+ primary-rdbms-value)
+              (setf (elt rdbms-values index) type-tag)
+              (return primary-rdbms-value)))
+       finally (return +type-error-marker+))))
 
 ;;;;;;;;;;;;;;
 ;;; Serialized
@@ -135,9 +115,6 @@
       #'read-persistent-object-oid
       (cl-serializer::default-deserializer-mapper code context)))
 
-(defun byte-vector->object-reader (rdbms-values index)
-  (deserialize (elt rdbms-values index) :deserializer-mapper #'deserializer-mapper))
-
 (def (function o) serializer-mapper (object context)
   (bind (((values code has-identity writer-function)
           (cl-serializer::default-serializer-mapper object context)))
@@ -145,10 +122,6 @@
              (typep object 'persistent-object))
         (values +persistent-object-oid-code+ #t #'write-persistent-object-oid)
         (values code has-identity writer-function))))
-
-(defun object->byte-vector-writer (slot-value rdbms-values index)
-  (setf (elt rdbms-values index)
-        (serialize slot-value :buffer-size 10240 :serializer-mapper #'serializer-mapper)))
 
 (def serializer::serializer-deserializer persistent-object-oid +persistent-object-oid-code+ persistent-object
   (let ((oid (oid-of serializer::object)))
@@ -160,130 +133,133 @@
                   :skip-existence-check #t)
    serializer::context))
 
+(def function byte-vector->object-reader (rdbms-values index)
+  (deserialize (elt rdbms-values index) :deserializer-mapper #'deserializer-mapper))
+
+(def function object->byte-vector-writer (slot-value rdbms-values index)
+  (setf (elt rdbms-values index)
+        (serialize slot-value :buffer-size 10240 :serializer-mapper #'serializer-mapper)))
+
 ;;;;;;;;;;;;
 ;;; Identity
 
-(defun identity-reader (type)
-  (lambda (rdbms-values index)
-    (aprog1 (elt rdbms-values index)
-      (assert (typep it type)))))
+(def function identity-reader (rdbms-values index)
+  (elt rdbms-values index))
 
-(defun identity-writer (type) 
-  (lambda (slot-value rdbms-values index)
-    (assert (typep slot-value type))
-    (setf (elt rdbms-values index) slot-value)))
+(def function identity-writer (slot-value rdbms-values index) 
+  (setf (elt rdbms-values index) slot-value))
 
 ;;;;;;;;;;
 ;;; Number
 
-(defun object->number-reader (rdbms-values index)
-  (bind ((value (elt rdbms-values index)))
-    (if (typep value 'number)
-        value
-        (parse-number value))))
+(def function object->number-reader (rdbms-values index)
+  (bind ((rdbms-value (elt rdbms-values index)))
+    (if (typep rdbms-value 'number)
+        rdbms-value
+        (parse-number rdbms-value))))
 
 ;;;;;;;;;;;
 ;;; Integer
 
-(defun object->integer-reader (rdbms-values index)
-  (bind ((value (elt rdbms-values index)))
-    (if (typep value 'number)
-        value
-        (parse-integer value))))
+(def function object->integer-reader (rdbms-values index)
+  (bind ((rdbms-value (elt rdbms-values index)))
+    (if (typep rdbms-value 'integer)
+        rdbms-value
+        (parse-integer rdbms-value))))
 
 ;;;;;;;;;;
 ;;; Symbol
 
-(defun string->symbol-reader (rdbms-values index)
+(def function string->symbol-reader (rdbms-values index)
   (symbol-from-canonical-name (elt rdbms-values index)))
 
-(defun symbol->string-writer (slot-value rdbms-values index)
+(def function symbol->string-writer (slot-value rdbms-values index)
   (setf (elt rdbms-values index) (canonical-symbol-name slot-value)))
 
 ;;;;;;;;
 ;;; List
 
-(defun string->list-reader (rdbms-values index)
+(def function string->list-reader (rdbms-values index)
   (read-from-string (elt rdbms-values index)))
 
-(defun list->string-writer (slot-value rdbms-values index)
+(def function list->string-writer (slot-value rdbms-values index)
   (setf (elt rdbms-values index) (write-to-string slot-value)))
 
 ;;;;;;;;;;;
 ;;; Boolean
 
-(defun char->boolean-reader (rdbms-values index)
-  (bind ((value (elt rdbms-values index)))
-    (cond ((eq #\t value) #t)
-          ((eq #\f value) #f)
-          (t (error 'type-error :datum value :expected-type 'boolean)))))
+(def function char->boolean-reader (rdbms-values index)
+  (bind ((rdbms-value (elt rdbms-values index)))
+    (cond ((eq #\t rdbms-value) #t)
+          ((eq #\f rdbms-value) #f)
+          (t +type-error-marker+))))
 
-(defun boolean->char-writer (slot-value rdbms-values index)
+(def function boolean->char-writer (slot-value rdbms-values index)
   (setf (elt rdbms-values index)
         (if slot-value
             #\t
             #\f)))
 
-(defun integer->boolean-reader (rdbms-values index)
-  (bind ((value (elt rdbms-values index)))
-    (cond ((= 0 value) #t)
-          ((= 1 value) #f)
-          (t (error 'type-error :datum value :expected-type 'boolean)))))
+(def function integer->boolean-reader (rdbms-values index)
+  (bind ((rdbms-value (elt rdbms-values index)))
+    (cond ((= 0 rdbms-value) #t)
+          ((= 1 rdbms-value) #f)
+          (t +type-error-marker+))))
 
-(defun boolean->integer-writer (slot-value rdbms-values index)
+(def function boolean->integer-writer (slot-value rdbms-values index)
   (setf (elt rdbms-values index)
         (if slot-value
             1
             0)))
 
-(defun string->boolean-reader (rdbms-values index)
-  (bind ((value (elt rdbms-values index)))
-    (cond ((equal "t" value) #t)
-          ((equal "f" value) #f)
-          (t (error 'type-error :datum value :expected-type 'boolean)))))
+(def function string->boolean-reader (rdbms-values index)
+  (bind ((rdbms-value (elt rdbms-values index)))
+    (cond ((equal "t" rdbms-value) #t)
+          ((equal "f" rdbms-value) #f)
+          (t +type-error-marker+))))
 
-(defun boolean->string-writer (slot-value rdbms-values index)
+(def function boolean->string-writer (slot-value rdbms-values index)
   (setf (elt rdbms-values index)
         (if slot-value
             "TRUE"
             "FALSE")))
 
-(defun object->boolean-reader (rdbms-values index)
-  (bind ((value (elt rdbms-values index)))
-    (cond ((eq #t value) #t)
-          ((eq #f value) #f)
-          ((eq #\t value) #t)
-          ((eq #\f value) #f)
-          ((and (typep value 'integer)
-                (= 0 value)) #f)
-          ((and (typep value 'integer)
-                (= 1 value)) #t)
-          ((equal "t" value) #t)
-          ((equal "f" value) #f)
-          ((equal "TRUE" value) #t)
-          ((equal "FALSE" value) #f)
-          (t (error 'type-error :datum value :expected-type 'boolean)))))
+(def function object->boolean-reader (rdbms-values index)
+  (bind ((rdbms-value (elt rdbms-values index)))
+    (cond ((eq #t rdbms-value) #t)
+          ((eq #f rdbms-value) #f)
+          ((eq #\t rdbms-value) #t)
+          ((eq #\f rdbms-value) #f)
+          ((and (typep rdbms-value 'integer)
+                (= 0 rdbms-value)) #f)
+          ((and (typep rdbms-value 'integer)
+                (= 1 rdbms-value)) #t)
+          ((equal "t" rdbms-value) #t)
+          ((equal "f" rdbms-value) #f)
+          ((equal "TRUE" rdbms-value) #t)
+          ((equal "FALSE" rdbms-value) #f)
+          (t +type-error-marker+))))
 
 ;;;;;;;;;;
 ;;; Member
 
-(defun slot-definition-type-member-elements (type)
+(def function type-member-elements (type)
   (cdr (if (eq 'member (first type))
            type
            (find 'member type
                  :key #L(when (listp !1)
                           (first !1))))))
 
-(defun integer->member-reader (type)
-  (bind ((member-elements (slot-definition-type-member-elements type)))
+(def function integer->member-reader (type)
+  (bind ((member-elements (type-member-elements type)))
     (lambda (rdbms-values index)
-      (bind ((value (elt rdbms-values index)))
-        (aif (nth value member-elements)
+      (bind ((rdbms-value (elt rdbms-values index)))
+        (aif (nth rdbms-value member-elements)
              it
-             (error 'type-error :datum value :expected-type type))))))
+             +type-error-marker+)))))
 
-(defun member->integer-writer (type)
-  (bind ((member-elements (slot-definition-type-member-elements type)))
+(def function member->integer-writer (type)
+  (bind ((member-elements (type-member-elements type)))
     (lambda (slot-value rdbms-values index)
       (block found
         (loop for i from 0
@@ -292,16 +268,16 @@
               do (progn
                    (setf (elt rdbms-values index) i)
                    (return-from found)))
-        (error 'type-error :datum slot-value :expected-type type)))))
+        +type-error-marker+))))
 
-(defun string->member-reader (type)
-  (bind ((member-elements (slot-definition-type-member-elements type)))
+(def function string->member-reader (type)
+  (bind ((member-elements (type-member-elements type)))
     (lambda (rdbms-values index)
       (aprog1 (string->symbol-reader rdbms-values index)
         (assert (member it member-elements))))))
 
-(defun member->string-writer (type)
-  (bind ((member-elements (slot-definition-type-member-elements type)))
+(def function member->string-writer (type)
+  (bind ((member-elements (type-member-elements type)))
     (lambda (slot-value rdbms-values index)
       (assert (member slot-value member-elements))
       (setf (elt rdbms-values index) (symbol->string-writer slot-value rdbms-values index)))))
@@ -309,54 +285,53 @@
 ;;;;;;;;;;;;;;;;;
 ;;; Date and time
 
-;; TODO: let the local-time go down to rdbms
-
 (def (function io) local-time-to-utc-zone (local-time)
   (if (eq (timezone-of local-time) +utc-zone+)
       local-time
       (local-time-adjust local-time +utc-zone+ (make-local-time))))
 
-(defun string->local-time-reader (rdbms-values index)
+(def function string->local-time-reader (rdbms-values index)
+  ;; NOTE: assumes that the database server is configured to return UTC timezone
   (bind ((*default-timezone* +utc-zone+))
     (parse-timestring (elt rdbms-values index) :date-time-separator #\Space)))
 
-(defun integer->local-time-reader (rdbms-values index)
+(def function integer->local-time-reader (rdbms-values index)
   ;; NOTE: assumes that the database server is configured to return UTC timezone
   (local-time :universal (elt rdbms-values index) :timezone +utc-zone+))
 
-(defun date->string-writer (slot-value rdbms-values index)
-  (assert (local-time::timezone= (timezone-of slot-value) +utc-zone+))
-  (setf (elt rdbms-values index) (format-timestring slot-value :omit-time-part-p #t)))
+(def function date->string-writer (slot-value rdbms-values index)
+  (setf (elt rdbms-values index)
+        (format-timestring (local-time-to-utc-zone slot-value) :omit-time-part-p #t)))
 
-(defun time->string-writer (slot-value rdbms-values index)
-  (assert (local-time::timezone= (timezone-of slot-value) +utc-zone+))
-  (setf (elt rdbms-values index) (format-timestring slot-value :omit-date-part-p #t :omit-timezone-part-p #t)))
+(def function time->string-writer (slot-value rdbms-values index)
+  (setf (elt rdbms-values index)
+        (format-timestring (local-time-to-utc-zone slot-value) :omit-date-part-p #t :omit-timezone-part-p #t)))
 
-(defun timestamp->string-writer (slot-value rdbms-values index)
-  (setf slot-value (local-time-to-utc-zone slot-value))
-  (setf (elt rdbms-values index) (format-timestring slot-value :date-time-separator #\Space :use-zulu-p #f)))
+(def function timestamp->string-writer (slot-value rdbms-values index)
+  (setf (elt rdbms-values index)
+        (format-timestring (local-time-to-utc-zone slot-value) :date-time-separator #\Space :use-zulu-p #f)))
 
-(defun local-time->integer-writer (slot-value rdbms-values index)
-  (setf slot-value (local-time-to-utc-zone slot-value))
-  (setf (elt rdbms-values index) (universal-time slot-value)))
+(def function local-time->integer-writer (slot-value rdbms-values index)
+  (setf (elt rdbms-values index)
+        (universal-time (local-time-to-utc-zone slot-value))))
 
 ;;;;;;;;;;;;;;
 ;;; IP address
 
-(defun unsigned-byte-array->ip-address-reader (rdbms-values index)
+(def function unsigned-byte-array->ip-address-reader (rdbms-values index)
   (bind ((bytes (elt rdbms-values index)))
     (cond ((= (length bytes) 4)
            bytes)
           ((= (length bytes) 16)
            (loop with result = (make-array 8 :element-type '(unsigned-byte 16) :adjustable #f :fill-pointer 0)
-                 for idx :from 0 :below 16 :by 2
-                 do (vector-push (+ (aref bytes idx)
-                                    (ash (aref bytes (1+ idx)) 8))
-                                 result)
-                 finally (return result)))
-          (t (error "Illegal data in database for unsigned-byte-array->ip-address-reader: ~S" bytes)))))
+              for idx :from 0 :below 16 :by 2
+              do (vector-push (+ (aref bytes idx)
+                                 (ash (aref bytes (1+ idx)) 8))
+                              result)
+              finally (return result)))
+          (t +type-error-marker+))))
 
-(defun ip-address->unsigned-byte-array-writer (slot-value rdbms-values index)
+(def function ip-address->unsigned-byte-array-writer (slot-value rdbms-values index)
   (assert (and (typep slot-value 'vector)
                (or (and (= (length slot-value) 4)
                         (subtypep (array-element-type slot-value) '(unsigned-byte 8)))
@@ -368,7 +343,7 @@
           ((= (length slot-value) 8)
            (setf result (make-array 16 :adjustable #f :fill-pointer 0))
            (loop for part :across slot-value do
-                 (vector-push (ldb (byte 8 8) part) result)
-                 (vector-push (ldb (byte 8 0) part) result)))
-          (t (error "Illegal input for ip-address->unsigned-byte-array-writer: ~S" slot-value)))
+                (vector-push (ldb (byte 8 8) part) result)
+                (vector-push (ldb (byte 8 0) part) result)))
+          (t +type-error-marker+))
     (setf (elt rdbms-values index) result)))

@@ -249,7 +249,7 @@
              (when (and slot (query-variable-p variable))
                (cond
                  ((eq type +unknown-type+) (sql-map-failed))
-                 ((complex-type-p type) `(sql-not ,(sql-tag-column-reference-for slot variable)))
+                 ((tagged-type-p type) `(sql-not ,(sql-tag-column-reference-for slot variable)))
                  ((unbound-subtype-p type) `(sql-is-null ,(sql-column-reference-for slot variable)))
                  (t nil)))))
 

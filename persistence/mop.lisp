@@ -93,7 +93,7 @@
             (if (subtypep effective-slot-class 'persistent-effective-slot-definition)
                 (apply #'make-instance effective-slot-class :direct-slots direct-slot-definitions initargs)
                 (apply #'make-instance effective-slot-class initargs))
-          (bind ((type (slot-definition-type effective-slot-definition))
+          (bind ((type (canonical-type-of effective-slot-definition))
                  (normalized-type (normalized-type-for type))
                  (mapped-type (mapped-type-for normalized-type))
                  (unbound-subtype-p (unbound-subtype-p type))
@@ -101,7 +101,7 @@
                                       (null-subtype-p type)))
                  (initfunction (slot-definition-initfunction effective-slot-definition)))
             (when (and (or null-subtype-p
-                           (set-type-p type))
+                           (set-type-p* type))
                        (not unbound-subtype-p)
                        (not initfunction))
               (setf (slot-definition-initfunction effective-slot-definition)
@@ -158,7 +158,7 @@
   (mapc #L(invalidate-computed-slot !1 'persistent-direct-sub-classes)
         (persistent-direct-super-classes-of class))
   (mapc #L(ensure-slot-reader* class !1)
-        (collect-if #L(set-type-p (normalized-type-of !1))
+        (collect-if #L(set-type-p* (canonical-type-of !1))
                     (persistent-effective-slots-of class))))
 
 (defmethod compute-slots :after ((class persistent-class))
@@ -225,8 +225,8 @@
     (setf (find-persistent-class name) class)
     (invalidate-computed-slot class 'standard-direct-slots)
     ;; update type specific class dependencies
-    (mapc #L(bind ((type (normalized-type-for (slot-definition-type !1))))
-              (when (set-type-p type)
+    (mapc #L(bind ((type (canonical-type-of !1)))
+              (when (set-type-p* type)
                 (bind ((associated-class (find-class (set-type-class-for type))))
                   (pushnew class (depends-on-of associated-class))
                   (pushnew associated-class (depends-on-me-of class)))))
@@ -246,7 +246,7 @@
          (reader-gf (ensure-generic-function reader :lambda-list '(instance))))
     (ensure-method reader-gf
                    `(lambda (instance)
-                     (with-lazy-collections
+                     (with-lazy-slot-value-collections
                        (slot-value-using-class ,class instance ,slot)))
                    :specializers (list class))))
 

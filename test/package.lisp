@@ -43,13 +43,15 @@
                                 less-or-equal-p greater-or-equal-p
                                 validity-start validity-end t-value unbound-slot-t
                                 find-slot length=1 collect-if concatenate-symbol
-                                null-inclusive-type-p unbound-subtype-p set-type-p
+                                unbound-subtype-p null-subtype-p set-type-p set-type-p*
                                 invalidate-all-cached-slots persistent
                                 clear-compiled-query-cache reset-compile-query-counter
                                 ensure-exported primary-table-slot-p data-table-slot-p
                                 primary-table-of primary-tables-of data-tables-of
-                                prefetch-p cache-p compute-writer compute-reader
+                                prefetch-p cache-p compute-mapping reader-of writer-of
+                                compute-rdbms-types compute-reader compute-writer
                                 table-of columns-of reader-name-of writer-name-of
+                                lisp-value->rdbms-values rdbms-values->lisp-value
                                 depends-on-of depends-on-me-of
                                 collect-single-slot-values-having-validity collect-values-having-validity
                                 extract-values-having-validity

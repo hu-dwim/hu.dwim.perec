@@ -55,8 +55,8 @@
   nil)
 
 (defmapping nil nil
-  #L(error 'type-error :datum (first !1) :expected-type nil)
-  #L(error 'type-error :datum !1 :expected-type nil))
+  'nil-reader
+  'nil-writer)
 
 ;;;;;;;;;;
 ;;; Member
@@ -67,8 +67,8 @@
   `(member ,@members))
 
 (defmapping member (sql-integer-type :bit-size 16)
-  (integer->member-reader type-specification)
-  (member->integer-writer type-specification))
+  (integer->member-reader normalized-type)
+  (member->integer-writer normalized-type))
 
 (defmacro def-member-type (name &body members)
   `(defptype ,name ()
@@ -80,6 +80,19 @@
 ;;; unbound -> NULL
 ;;; t -> type-error
 
+(eval-always
+  (unless (fboundp 'make-unbound-slot-marker)
+    (defstruct unbound-slot-marker
+      "This structure is used for the unbound slot value marker. The type for that marker must be a subtype of t and cannot be a subtype of any other type.")))
+
+(define-constant +unbound-slot-marker+ (make-unbound-slot-marker)
+  :test equalp
+  :documentation "This value is used to signal unbound slot value returned from database.")
+
+(defmethod make-load-form ((instance unbound-slot-marker) &optional environment)
+  (declare (ignore environment))
+  '+unbound-slot-marker+)
+
 (defptype eql (value)
   `(eql ,value))
 
@@ -87,9 +100,12 @@
 (defptype unbound ()
   `(eql ,+unbound-slot-marker+))
 
-(defmapping unbound (sql-boolean-type)
-  (unbound-reader #L(error 'type-error :datum (first !1) :expected-type type))
-  (unbound-writer #L(error 'type-error :datum !1 :expected-type type)))
+(defmapping unbound :null
+  'unbound-reader
+  'unbound-writer)
+
+(defmethod compute-type-tag ((type (eql 'unbound)))
+  #f)
 
 ;;;;;;;;
 ;;; Null
@@ -100,9 +116,12 @@
 (defptype null ()
   'null)
 
-(defmapping null (sql-boolean-type)
-  (null-reader #L(error 'type-error :datum (first !1) :expected-type type))
-  (null-writer #L(error 'type-error :datum !1 :expected-type type)))
+(defmapping null :null
+  'null-reader
+  'null-writer)
+
+(defmethod compute-type-tag ((type (eql 'null)))
+  #t)
 
 ;;;;;
 ;;; t
@@ -135,8 +154,8 @@
         (not null)
         (satisfies maximum-serialized-size-p)))
 
-(defmapping serialized (if (consp type-specification)
-                           (sql-binary-large-object-type :size (byte-size-of (parse-type type-specification)))
+(defmapping serialized (if (consp normalized-type)
+                           (sql-binary-large-object-type :size (byte-size-of (parse-type normalized-type)))
                            (sql-binary-large-object-type))
   'byte-vector->object-reader
   'object->byte-vector-writer)
@@ -166,7 +185,7 @@
 
 (defmapping integer (sql-integer-type)
   'object->integer-reader
-  (identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;;;;;
 ;;; Integer-16
@@ -178,7 +197,7 @@
 
 (defmapping integer-16 (sql-integer-type :bit-size 16)
   'object->integer-reader
-  (identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;;;;;
 ;;; Integer-32
@@ -190,7 +209,7 @@
 
 (defmapping integer-32 (sql-integer-type :bit-size 32)
   'object->integer-reader
-  (identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;;;;;
 ;;; Integer-64
@@ -202,7 +221,7 @@
 
 (defmapping integer-64 (sql-integer-type :bit-size 64)
   'object->integer-reader
-  (identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;
 ;;; Float
@@ -212,9 +231,9 @@
 (defptype float (&optional minimum-value maximum-value)
   `(or integer (float ,minimum-value ,maximum-value)))
 
-(defmapping float (sql-float-type :bite-size 64)
+(defmapping float (sql-float-type :bit-size 64)
   'object->number-reader
-  (identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;;;
 ;;; Float-32
@@ -227,7 +246,7 @@
 
 (defmapping float-32 (sql-float-type :bit-size 32)
   'object->number-reader
-  (identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;;;
 ;;; Float-64
@@ -240,7 +259,7 @@
 
 (defmapping float-64 (sql-float-type :bit-size 64)
   'object->number-reader
-  (identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;
 ;;; Double
@@ -250,9 +269,9 @@
 (defptype double ()
   'double-float)
 
-(defmapping double-float (sql-float-type :bit-size 64)
+(defmapping double (sql-float-type :bit-size 64)
   'object->number-reader
-  (identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;
 ;;; Number
@@ -264,7 +283,7 @@
 
 (defmapping number (sql-numeric-type)
   'object->number-reader
-  (identity-writer type))
+  'identity-writer)
 
 ;;;;;;;;;;
 ;;; String
@@ -275,11 +294,11 @@
   (declare (ignore acceptable-characters))
   `(string ,length))
 
-(defmapping string (if (consp type-specification)
-                       (sql-character-type :size (length-of (parse-type type-specification)))
+(defmapping string (if (consp normalized-type)
+                       (sql-character-type :size (length-of (parse-type normalized-type)))
                        (sql-character-large-object-type))
-  (identity-reader type)
-  (identity-writer type))
+  'identity-reader
+  'identity-writer)
 
 ;;;;;;;;
 ;;; Text
@@ -296,11 +315,11 @@
   '(and string
         (satisfies maximum-length-p)))
 
-(defmapping text (if (consp type-specification)
-                     (sql-character-varying-type :size (maximum-length-of (parse-type type-specification)))
+(defmapping text (if (consp normalized-type)
+                     (sql-character-varying-type :size (maximum-length-of (parse-type normalized-type)))
                      (sql-character-large-object-type))
-  (identity-reader type)
-  (identity-writer type))
+  'identity-reader
+  'identity-writer)
 
 ;;;;;;;;;;
 ;;; Symbol
@@ -324,8 +343,8 @@
   '(and symbol
         (satisfies maximum-symbol-name-length-p)))
 
-(defmapping symbol* (if (consp type-specification)
-                        (sql-character-varying-type :size (second (find 'symbol* type-specification
+(defmapping symbol* (if (consp normalized-type)
+                        (sql-character-varying-type :size (second (find 'symbol* normalized-type
                                                                         :key #L(when (listp !1) (first !1)))))
                         (sql-character-large-object-type))
   'string->symbol-reader
@@ -346,7 +365,7 @@
         (satisfies date-p)))
 
 (defmapping date (sql-date-type)
-  (identity-reader type)
+  'identity-reader
   'date->string-writer)
 
 ;;;;;;;;
@@ -364,7 +383,7 @@
         (satisfies time-p)))
 
 (defmapping time (sql-time-type)
-  (identity-reader type)
+  'identity-reader
   'time->string-writer)
 
 ;;;;;;;;;;;;;
@@ -378,7 +397,7 @@
         (satisfies time-p)))
 
 (defmapping timestamp (sql-timestamp-type :with-timezone #t)
-  (identity-reader type)
+  'identity-reader
   'timestamp->string-writer)
 
 ;;;;;;;;;;;;
@@ -396,8 +415,8 @@
         (satisfies duration-p)))
 
 (defmapping duration (sql-character-varying-type :size 32)
-  (identity-reader type)
-  (identity-writer type))
+  'identity-reader
+  'identity-writer)
 
 ;;;;;;;;
 ;;; List
@@ -454,14 +473,14 @@
                                  (list maximum-size))))
 
 ;; TODO assert for the size constraints in the reader/writer
-(defmapping unsigned-byte-vector (if (consp type-specification)
-                                     (sql-binary-large-object-type :size (bind ((parsed-type (parse-type type-specification)))
+(defmapping unsigned-byte-vector (if (consp normalized-type)
+                                     (sql-binary-large-object-type :size (bind ((parsed-type (parse-type normalized-type)))
                                                                            (when (eql (maximum-size-of parsed-type)
                                                                                       (minimum-size-of parsed-type))
                                                                              (maximum-size-of parsed-type))))
                                      (sql-binary-large-object-type))
-  (identity-reader type)
-  (identity-writer type))
+  'identity-reader
+  'identity-writer)
 
 ;;;;;;;;;;;;;;
 ;;; IP address

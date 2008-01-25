@@ -312,7 +312,7 @@
                                                                (or (eql type +unknown-type+)
                                                                    (contains-syntax-p type)
                                                                    (persistent-class-p type)
-                                                                   (set-type-p type)))))
+                                                                   (set-type-p* type)))))
                                                       collects))
                      ((values sql-exprs lisp-exprs) (to-sql collects)))
                 (if (or lisp-exprs persistent-object-query-p) ;; TODO refine condition
@@ -601,10 +601,8 @@
        (+ start-index (length names))))))
 
 (defcfun (compute-column-reader :memoize-test-fn equalp :computed-in compute-as) (type)
-  (bind (((values normalized-type null-subtype-p unbound-subtype-p) (destructure-type type))
-         (mapped-type (mapped-type-for normalized-type))
-         (reader (compute-reader* mapped-type normalized-type)))
-    (if (or null-subtype-p unbound-subtype-p)
+  (bind ((reader (compute-reader type)))
+    (if (or (null-subtype-p type) (unbound-subtype-p type))
         (lambda (row index)
           (bind ((value (elt row index)))
             (if (eq value :null)
