@@ -322,6 +322,7 @@
       ordered-set
       t))
 
+;; TODO: a mapping should provide which columns may have NULL values
 (defclass* mapping ()
   ((reader
     :type (or symbol function))
