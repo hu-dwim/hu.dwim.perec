@@ -171,11 +171,12 @@
 
 (defgeneric persistent-class-default-superclass (class)
   (:method ((class persistent-class))
-    (find-class 'persistent-object)))
+    (find-class 'persistent-object nil)))
 
 (defun ensure-persistent-class-default-superclass (class name direct-superclasses)
   (bind ((default-superclass (persistent-class-default-superclass class)))
-    (if (eq (class-name default-superclass) name)
+    (if (or (null default-superclass)
+            (eq (class-name default-superclass) name))
         direct-superclasses
         (if (or (member default-superclass direct-superclasses)
                 (find-if (lambda (direct-superclass)

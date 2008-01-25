@@ -562,6 +562,7 @@
   (and (not (eq 'member type))
        (subtypep 'unbound type)))
 
+;; NOTE: boolean and symbol should not be treated as a subtype of null here
 (def function null-subtype-p (type)
   (and (not (eq 'member type))
        (not (subtypep 'boolean type))

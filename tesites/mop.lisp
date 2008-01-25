@@ -63,4 +63,4 @@
               (integrated-slot-name-of instance))))
 
 (defmethod persistent-class-default-superclass ((class persistent-class-t))
-  (find-class 't-object))
+  (find-class 't-object nil))

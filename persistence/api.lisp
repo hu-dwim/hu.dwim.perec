@@ -42,10 +42,10 @@
                      association-end)))
          (add-initfunction (association-end)
            `(list ,@(mapcar #L`',!1 association-end)
-             ,@(when (hasf association-end :initform)
-                     `(:initfunction
-                       (lambda ()
-                         ,(getf association-end :initform)))))))
+                  ,@(when (hasf association-end :initform)
+                          `(:initfunction
+                            (lambda ()
+                              ,(getf association-end :initform)))))))
     (bind ((options (cdr association-ends))
            (metaclass (or (second (find :metaclass options :key #'first))
                           'persistent-association))
@@ -67,44 +67,46 @@
            (association-name (concatenate-symbol primary-class "~" primary-slot "~"
                                                  secondary-class "~" secondary-slot)))
       `(progn
-        (eval-when (:compile-toplevel)
-          (flet ((ensure-reader-function (name)
-                   (when name
-                     (ensure-generic-function name :lambda-list '(instance))))
-                 (ensure-writer-function (name)
-                   (when name
-                     (ensure-generic-function name :lambda-list '(new-value instance)))))
-            (ensure-reader-function ',primary-reader)
-            (ensure-reader-function ',lazy-primary-reader)
-            (ensure-writer-function ',primary-writer)
-            (ensure-reader-function ',secondary-reader)
-            (ensure-reader-function ',lazy-secondary-reader)
-            (ensure-writer-function ',secondary-writer)))
-        (eval-when (:load-toplevel :execute)
-          (flet ((ensure-persistent-class (name)
-                   (bind ((class (find-class name)))
-                     (ensure-class name
-                                   :metaclass (class-of class)
-                                   ;; TODO: what about killing other class options?
-                                   :abstract (list (abstract-p class))
-                                   :direct-superclasses (class-direct-superclasses class)
-                                   :direct-slots (mapcar
-                                                  #L(list :instance !1)
-                                                  (remove-if #L(typep !1 'persistent-association-end-direct-slot-definition)
-                                                             (class-direct-slots class)))))))
-            (prog1
-                (aif (find-association ',association-name)
-                     (reinitialize-instance it :association-end-definitions ,final-association-ends)
-                     (setf (find-association ',association-name)
-                           (make-instance ',metaclass
-                                          :name ',association-name
-                                          :association-end-definitions ,final-association-ends)))
-              (ensure-persistent-class ',primary-class)
-              (ensure-persistent-class ',secondary-class))))
-        ,(when export-accessors-names-p
-               `(export '(,primary-reader ,lazy-primary-reader ,secondary-reader ,lazy-secondary-reader)
-                 ,*package*))
-        ',association-name))))
+         (eval-when (:compile-toplevel)
+           ,(when (or primary-reader lazy-primary-reader secondary-reader lazy-secondary-reader)
+                  `(flet ((ensure-reader-function (name)
+                            (when name
+                              (ensure-generic-function name :lambda-list '(instance)))))
+                     (ensure-reader-function ',primary-reader)
+                     (ensure-reader-function ',lazy-primary-reader)
+                     (ensure-reader-function ',secondary-reader)
+                     (ensure-reader-function ',lazy-secondary-reader)))
+           ,(when (or primary-writer secondary-writer)
+                  `(flet ((ensure-writer-function (name)
+                            (when name
+                              (ensure-generic-function name :lambda-list '(new-value instance)))))
+                     (ensure-writer-function ',primary-writer)
+                     (ensure-writer-function ',secondary-writer))))
+         (eval-when (:load-toplevel :execute)
+           (flet ((ensure-persistent-class (name)
+                    (bind ((class (find-class name)))
+                      (ensure-class name
+                                    :metaclass (class-of class)
+                                    ;; TODO: what about killing other class options?
+                                    :abstract (list (abstract-p class))
+                                    :direct-superclasses (class-direct-superclasses class)
+                                    :direct-slots (mapcar
+                                                   #L(list :instance !1)
+                                                   (remove-if #L(typep !1 'persistent-association-end-direct-slot-definition)
+                                                              (class-direct-slots class)))))))
+             (prog1
+                 (aif (find-association ',association-name)
+                      (reinitialize-instance it :association-end-definitions ,final-association-ends)
+                      (setf (find-association ',association-name)
+                            (make-instance ',metaclass
+                                           :name ',association-name
+                                           :association-end-definitions ,final-association-ends)))
+               (ensure-persistent-class ',primary-class)
+               (ensure-persistent-class ',secondary-class))))
+         ,(when export-accessors-names-p
+                `(export '(,primary-reader ,lazy-primary-reader ,secondary-reader ,lazy-secondary-reader)
+                         ,*package*))
+         ',association-name))))
 
 (defmacro defassociation* (&body association-ends)
   `(defassociation

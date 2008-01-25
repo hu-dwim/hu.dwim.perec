@@ -44,7 +44,11 @@
   (bind ((t-class-name name)
          (h-class-name (t-class-name->h-class-name t-class-name))
          (processed-options (remove-if #L(member (first !1) '(:metaclass :slot-definition-transformer)) options))
-         (h-superclasses (append (when (find-if #L(find :temporal !1) slots)
+         (h-superclasses (append (mapcar 't-class-name->h-class-name
+                                         (collect-if #L(awhen (find-class !1 nil)
+                                                         (typep it 'persistent-class-t))
+                                                     superclasses))
+                                 (when (find-if #L(find :temporal !1) slots)
                                    (list 'temporal-object))
                                  (when (find-if #L(find :time-dependent !1) slots)
                                    (list 'time-dependent-object))

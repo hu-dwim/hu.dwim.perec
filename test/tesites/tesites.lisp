@@ -5,40 +5,19 @@
 
 (defsuite* (test/tesites/t :in test/tesites))
 
-(defpclass* t-test (t-object)
+(defpclass* t-test ()
   ((population :type integer-32 :time-dependent #t :temporal #t))
   (:metaclass persistent-class-t))
 
-(defpclass* t-test-h (time-dependent-object temporal-object)
-  ((population :type (or unbound integer-32))))
-
-(defassociation*
-  ((:class t-test-h :slot t-object :type t-test)
-   (:class t-test :slot h-objects :type (set t-test-h))))
-
 (defsuite* (test/tesites/temporal-time-dependent :in test/tesites))
 
-(defpclass* t-a-test (t-object)
+(defpclass* t-a-test ()
   ((a-value :type integer-32 :time-dependent #t))
   (:metaclass persistent-class-t))
-
-(defpclass* t-a-test-h (time-dependent-object)
-  ((a-value :type (or unbound integer-32))))
-
-(defassociation*
-  ((:class t-a-test-h :slot t-object :type t-a-test)
-   (:class t-a-test :slot h-objects :type (set t-a-test-h))))
 
 (defpclass* t-b-test (t-a-test)
   ((b-value :type integer-32 :temporal #t :time-dependent #t))
   (:metaclass persistent-class-t))
-
-(defpclass* t-b-test-h (t-a-test-h temporal-object)
-  ((b-value :type (or unbound integer-32))))
-
-(defassociation*
-  ((:class t-b-test-h :slot t-object :type t-b-test)
-   (:class t-b-test :slot h-objects :type (set t-b-test-h))))
 
 (deftest test/tesites/t/t-not-specified ()
   (with-transaction
