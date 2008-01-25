@@ -25,14 +25,14 @@
            (if (time-dependent-p t-slot)
                (collect-values-having-validity
                 records
-                (lambda (record) (restore-slot-value (h-slot-of t-slot) record 2))
+                (lambda (record) (restore-slot-value nil (h-slot-of t-slot) record 2))
                 (lambda (record) (elt record 0))
                 (lambda (record) (elt record 1))
                 #'no-value-function
                 *validity-start* *validity-end*)
                (if (zerop (length records))
                    (no-value-function)
-                   (restore-slot-value (h-slot-of t-slot) (elt-0 records) 0)))))))
+                   (restore-slot-value nil (h-slot-of t-slot) (elt-0 records) 0)))))))
 
 (defun store-slot-t (t-class t-instance t-slot value)
 
@@ -198,7 +198,7 @@
           (incf index)
           (setf (aref rdbms-values index) (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
           (incf index)
-          (store-slot-value (action-slot-of t-slot) action rdbms-values index)
+          (store-slot-value nil (action-slot-of t-slot) action rdbms-values index)
           (insert-record table-name
                          (append +oid-column-names+ parent-oid-columns child-oid-columns
                                  (list t-value-column validity-start-column validity-end-column action-column))
@@ -254,7 +254,7 @@
         (setf t-value-column-name (rdbms::name-of t-value-column)
               t-literal (sql-literal :value *t* :type (rdbms::type-of t-value-column)))))
 
-    (store-slot-value value-slot value rdbms-values 0)
+    (store-slot-value nil value-slot value rdbms-values 0)
     (setf where-clause
           (apply 'sql-and
                  (id-column-matcher-where-clause t-instance (rdbms::name-of parent-id-column))
@@ -306,8 +306,8 @@
          count)
     (assert (eq validity-table (table-of validity-end-column)))
     
-    (store-slot-value (validity-start-slot-of t-class) validity-start rdbms-values 0)
-    (store-slot-value (validity-end-slot-of t-class) validity-end rdbms-values 1)
+    (store-slot-value nil (validity-start-slot-of t-class) validity-start rdbms-values 0)
+    (store-slot-value nil (validity-end-slot-of t-class) validity-end rdbms-values 1)
     (setf count
           (update-records validity-table
                           (list validity-start-column validity-end-column)
@@ -340,7 +340,8 @@
      ;; columns
      (append (make-oid-columns) (list validity-start-column validity-end-column) value-columns)
      ;; tables
-     (list (reduce #L(sql-joined-table :kind :inner :left !1 :right !2 :using +oid-column-names+) tables))
+     (list (reduce #L(sql-joined-table :kind :inner :left !1 :right !2 :using +oid-column-names+)
+                   (mapcar #L(sql-identifier :name !1) tables)))
      ;; where
      (apply 'sql-and
             (id-column-matcher-where-clause t-instance parent-id-column)
@@ -387,7 +388,8 @@
     (select-records
      (append validity-columns value-columns)
      ;;
-     (list (reduce #L(sql-joined-table :kind :inner :left !1 :right !2 :using +oid-column-names+) tables))
+     (list (reduce #L(sql-joined-table :kind :inner :left !1 :right !2 :using +oid-column-names+)
+                   (mapcar #L(sql-identifier :name !1) tables)))
      ;; where
      (sql-and (id-column-matcher-where-clause t-instance parent-id-column)
               ;; TODO: hack this out with reader
@@ -443,7 +445,7 @@
     (iter (with index = +oid-column-count+)
           (for slot in slots)
           (for value in slot-values)
-          (store-slot-value slot value rdbms-values index)
+          (store-slot-value nil slot value rdbms-values index)
           (incf index (length (columns-of slot))))
     (insert-record (name-of table)
                    columns
