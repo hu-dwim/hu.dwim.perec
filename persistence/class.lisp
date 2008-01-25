@@ -116,8 +116,8 @@
    (specified-type
     (compute-as t)
     :type (or symbol cons)
-    :initarg :type
-    :documentation "The slot type as it was specified in the defclass form.")
+    :initarg nil
+    :documentation "The slot type as it was specified.")
    (canonical-type
     (compute-as (canonical-type-for (specified-type-of -self-)))
     :type (or symbol cons)
@@ -137,7 +137,9 @@
   (:documentation "Base class for both persistent direct and effective slot definitions."))
 
 (defcclass* persistent-direct-slot-definition (persistent-slot-definition standard-direct-slot-definition)
-  ()
+  ((specified-type
+    :initarg :type
+    :documentation "The slot type as it was originally specified in the defclass form."))
   (:metaclass identity-preserving-class)
   (:documentation "Class for persistent direct slot definitions."))
 
