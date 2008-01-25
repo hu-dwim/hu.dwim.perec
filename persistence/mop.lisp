@@ -169,18 +169,22 @@
 ;;;;;;;;;;;
 ;;; Utility
 
-(defun ensure-persistent-object-class (name direct-superclasses)
-  (if (eq 'persistent-object name)
-      direct-superclasses
-      (let ((persistent-object (find-class 'persistent-object))
-            (persistent-class (find-class 'persistent-class)))
-        (if (find-if (lambda (direct-superclass)
-                       (member persistent-class
-                               (compute-class-precedence-list
-                                (class-of direct-superclass))))
-                     direct-superclasses)
+(defgeneric persistent-class-default-superclass (class)
+  (:method ((class persistent-class))
+    (find-class 'persistent-object)))
+
+(defun ensure-persistent-class-default-superclass (class name direct-superclasses)
+  (bind ((default-superclass (persistent-class-default-superclass class)))
+    (if (eq (class-name default-superclass) name)
+        direct-superclasses
+        (if (or (member default-superclass direct-superclasses)
+                (find-if (lambda (direct-superclass)
+                           (member (class-of class)
+                                   (compute-class-precedence-list
+                                    (class-of direct-superclass))))
+                         direct-superclasses))
             direct-superclasses
-            (append direct-superclasses (list persistent-object))))))
+            (append direct-superclasses (list default-superclass))))))
 
 (defun process-direct-slot-definitions (direct-slots)
   (loop for direct-slot :in direct-slots
@@ -219,7 +223,7 @@
              class
              :direct-slots (append (process-direct-slot-definitions direct-slots)
                                    (association-direct-slot-definitions class))
-             :direct-superclasses (ensure-persistent-object-class name direct-superclasses)
+             :direct-superclasses (ensure-persistent-class-default-superclass class name direct-superclasses)
              :abstract (first (getf args :abstract))
              (remove-keywords args :direct-slots :direct-superclasses :abstract))
     (setf (find-persistent-class name) class)

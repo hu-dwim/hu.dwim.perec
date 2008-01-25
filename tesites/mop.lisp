@@ -61,3 +61,6 @@
   (assert (or (temporal-p instance)
               (time-dependent-p instance)
               (integrated-slot-name-of instance))))
+
+(defmethod persistent-class-default-superclass ((class persistent-class-t))
+  (find-class 't-object))
