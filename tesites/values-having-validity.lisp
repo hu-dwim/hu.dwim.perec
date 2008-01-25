@@ -87,7 +87,7 @@
                       (funcall no-value-function validity-start validity-end)
                       validity-start validity-end))))
           (%collect-values-having-validity 0 requested-validity-start requested-validity-end)
-          (if (= 1 (length values))
+          (if (= 1 (length values)) ;; TODO add a special to control this
               (aref values 0)
               (progn
                 (sort indices #'local-time< :key (lambda (index) (aref validity-starts index)))
@@ -207,40 +207,40 @@
 
 ;; TODO: this failes when multiple records are present with the same t but overlapping validity ranges
 ;; (ordering for t does not affect the order of records) THIS MUST BE FORBIDDEN
-(defun collect-single-slot-values-having-validity-from-records (instance slot records t-slot value-index)
+(defun collect-single-slot-values-having-validity-from-records (instance slot records h-slot value-index)
   (collect-single-slot-values-having-validity
    instance slot records
    (lambda (record)
-     (restore-slot-value t-slot record value-index))
+     (restore-slot-value h-slot record value-index))
    (lambda (record)
      (elt record 0))
    (lambda (record)
      (elt record 1))))
 
-(defun collect-single-slot-values-having-validity-from-instances (instance slot t-instances t-slot)
+(defun collect-single-slot-values-having-validity-from-instances (instance slot h-instances h-slot)
   (collect-single-slot-values-having-validity
-   instance slot t-instances
-   (lambda (t-instance)
-     (underlying-slot-boundp-or-value-using-class (class-of t-instance) t-instance t-slot))
-   (lambda (t-instance)
-     (validity-start-of t-instance))
-   (lambda (t-instance)
-     (validity-end-of t-instance))))
+   instance slot h-instances
+   (lambda (h-instance)
+     (underlying-slot-boundp-or-value-using-class (class-of h-instance) h-instance h-slot))
+   (lambda (h-instance)
+     (validity-start-of h-instance))
+   (lambda (h-instance)
+     (validity-end-of h-instance))))
 
-(defun collect-multiple-slot-values-having-validity-from-records (instance slots records t-slots)
+(defun collect-multiple-slot-values-having-validity-from-records (instance slots records h-slots)
   (iter (for slot :in slots)
-        (for t-slot :in t-slots)
-        (for value-index :initially 2 :then (+ value-index (length (columns-of t-slot))))
-        (collect (collect-single-slot-values-having-validity-from-records instance slot records t-slot value-index))))
+        (for h-slot :in h-slots)
+        (for value-index :initially 2 :then (+ value-index (length (columns-of h-slot))))
+        (collect (collect-single-slot-values-having-validity-from-records instance slot records h-slot value-index))))
 
-(defun collect-multiple-slot-values-having-validity-from-instances (instance slots t-instances t-slots)
+(defun collect-multiple-slot-values-having-validity-from-instances (instance slots h-instances h-slots)
   (iter (for slot :in slots)
-        (for t-slot :in t-slots)
-        (collect (collect-single-slot-values-having-validity-from-instances instance slot t-instances t-slot))))
+        (for h-slot :in h-slots)
+        (collect (collect-single-slot-values-having-validity-from-instances instance slot h-instances h-slot))))
 
 (defun collect-single-slot-values-having-validity (instance slot value-holders value-function validity-start-function validity-end-function)
   (collect-values-having-validity
    value-holders value-function validity-start-function validity-end-function
-   (lambda ()
-     (slot-unbound-t :instance instance :slot slot))
+   (lambda (validity-start validity-end)
+     (slot-unbound-t instance slot :validity-start validity-start :validity-end validity-end))
    *validity-start* *validity-end*))
