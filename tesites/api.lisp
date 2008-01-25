@@ -9,10 +9,12 @@
 ;;;;;;;;;;;;;
 ;;; Constants
 
-(def (constant e :test 'local-time=) +beginning-of-time+ (parse-timestring "1000-01-01TZ")
+;; TODO: KLUDGE: local-time does not support non leap-years divisible by 100 (not even speaking of 400), storing/restoring dates before this loses precision
+(def (constant e :test 'local-time=) +beginning-of-time+ (parse-timestring "1900-03-01TZ")
   "All timestamps for temporal and time dependent slots are equal or greater than the beginning of time. Basically there should be no timestamp before the beginning of time.")
 
-(def (constant e :test 'local-time=) +end-of-time+ (parse-timestring "3000-01-01TZ")
+;; TODO: KLUDGE: local-time does not support non leap-years divisible by 100 (not even speaking of 400), storing/restoring dates after this loses precision
+(def (constant e :test 'local-time=) +end-of-time+ (parse-timestring "2100-02-28TZ")
   "All timestamps for temporal and time dependent slots are equal or less than the end of time. Basically there should be no timestamp after the end of time.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
