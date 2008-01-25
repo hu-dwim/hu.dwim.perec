@@ -118,9 +118,9 @@
              (:file "mop" :depends-on ("class" "association"))
              (:file "transaction")
              (:file "values-having-validity" :depends-on ("api"))
-             (:file "store" :depends-on ("values-having-validity"))
-             (:file "type" :depends-on ("store"))
-             (:file "slot-value" :depends-on ("store"))
+             (:file "store" :depends-on ("values-having-validity" "class"))
+             (:file "type")
+             (:file "slot-value" :depends-on ("store" "association"))
              (:file "persistent")
              (:file "transformer")))
    (:module "query"
