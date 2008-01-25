@@ -122,7 +122,8 @@
              (:file "type")
              (:file "slot-value" :depends-on ("store" "association"))
              (:file "persistent")
-             (:file "transformer")))
+             (:file "transformer")
+             (:file "object")))
    (:module "query"
             :depends-on ("util" "persistence")
             :components

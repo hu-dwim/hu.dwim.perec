@@ -275,6 +275,13 @@
            #:validity-end-of
            #:+beginning-of-time+
            #:+end-of-time+
+           #:t-object
+           #:h-object
+           #:temporal-object
+           #:time-dependent-object
+           #:t-object-of
+           #:h-objects
+           #:h-objects-of
 
            ;; turning cache on and off
            #:with-caching-slot-values

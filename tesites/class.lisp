@@ -33,7 +33,7 @@
     (compute-as (first (columns-of (validity-end-slot-of -self-))))
     :type column)
    (parent-slot
-    (compute-as (find-slot (h-class-of -self-) (class-name -self-)))
+    (compute-as (find-slot (h-class-of -self-) 't-object))
     :type column)
    (parent-id-column
     (compute-as (id-column-of (parent-slot-of -self-)))
@@ -89,3 +89,7 @@
 (defun h-class-name->t-class-name (t-class-name)
   (bind ((name (symbol-name t-class-name)))
     (intern (subseq name 0 (- (length name) 2)) (symbol-package t-class-name))))
+
+(defmethod export-to-rdbms ((class persistent-class-t))
+  (call-next-method)
+  (export-to-rdbms (h-class-of class)))

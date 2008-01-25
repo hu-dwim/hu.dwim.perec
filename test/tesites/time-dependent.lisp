@@ -5,18 +5,16 @@
 
 (defsuite* (test/tesites/time-dependent :in test/tesites))
 
-(defpclass* time-dependent-test ()
+(defpclass* time-dependent-test (t-object)
   ((population :type integer-32 :time-dependent #t))
   (:metaclass persistent-class-t))
 
-(defpclass* time-dependent-test-h ()
-  ((validity-start :type timestamp)
-   (validity-end :type timestamp)
-   (population :type (or unbound integer-32))))
+(defpclass* time-dependent-test-h (time-dependent-object)
+  ((population :type (or unbound integer-32))))
 
 (defassociation*
-  ((:class time-dependent-test-h :slot time-dependent-test :type time-dependent-test)
-   (:class time-dependent-test :slot time-dependent-test-hs :type (set time-dependent-test-h))))
+  ((:class time-dependent-test-h :slot t-object :type time-dependent-test)
+   (:class time-dependent-test :slot h-objects :type (set time-dependent-test-h))))
 
 (deftest test/tesites/time-dependent/validity-not-specified ()
   (with-transaction

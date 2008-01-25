@@ -5,17 +5,16 @@
 
 (defsuite* (test/tesites/temporal :in test/tesites))
 
-(defpclass* temporal-test ()
+(defpclass* temporal-test (t-object)
   ((population :type integer-32 :temporal #t))
   (:metaclass persistent-class-t))
 
-(defpclass* temporal-test-h ()
-  ((t-value :type timestamp)
-   (population :type (or unbound integer-32))))
+(defpclass* temporal-test-h (temporal-object)
+  ((population :type (or unbound integer-32))))
 
 (defassociation*
-  ((:class temporal-test-h :slot temporal-test :type temporal-test)
-   (:class temporal-test :slot temporal-hs :type (set temporal-test-h))))
+  ((:class temporal-test-h :slot t-object :type temporal-test)
+   (:class temporal-test :slot h-objects :type (set temporal-test-h))))
 
 (deftest test/tesites/temporal/t-not-specified ()
   (with-transaction

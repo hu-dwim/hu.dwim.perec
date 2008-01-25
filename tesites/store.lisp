@@ -233,6 +233,8 @@
          where-clause
          count)
 
+    
+
     (pushnew (name-of (table-of value-slot)) tables)
     (pushnew (name-of (table-of (parent-slot-of t-class))) tables)
 
