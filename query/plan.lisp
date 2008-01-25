@@ -601,13 +601,14 @@
        (+ start-index (length names))))))
 
 (defcfun (compute-column-reader :memoize-test-fn equalp :computed-in compute-as) (type)
-  (bind ((reader (compute-reader type)))
-    (if (or (null-subtype-p type) (unbound-subtype-p type))
+  (bind ((mapping (compute-mapping type))
+         (reader (reader-of mapping)))
+    (if (tagged-p mapping)
         (lambda (row index)
-          (bind ((value (elt row index)))
-            (if (eq value :null)
-                nil
-                (funcall reader row index))))
+          (bind ((rdbms-values (make-array 2)))
+            (setf (aref rdbms-values 0) t
+                  (aref rdbms-values 1) (elt row index))
+            (funcall reader rdbms-values 0)))
         reader)))
 
 (defun query-variable-binder (query)
