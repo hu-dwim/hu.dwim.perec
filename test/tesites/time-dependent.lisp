@@ -46,7 +46,7 @@
         (bind ((instance (make-instance 'time-dependent-test)))
           (setf (population-of instance) 1000)
           (is (= (update-counter-of (command-counter-of *transaction*)) 1))
-          (is (= (insert-counter-of (command-counter-of *transaction*)) (+ 2 3)))
+          (is (= (insert-counter-of (command-counter-of *transaction*)) (+ 1 3)))
           instance)
       (let ((update-counter (update-counter-of (command-counter-of *transaction*)))
             (insert-counter (insert-counter-of (command-counter-of *transaction*))))
