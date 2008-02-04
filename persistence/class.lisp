@@ -390,12 +390,12 @@
                   ((persistent-class-type-p* type)
                    (append
                     (when (tagged-p mapping)
-                      (list (make-tag-column name)))
+                      (list (make-tag-column mapping name)))
                     (make-columns-for-reference-slot class-name name)))
                   ((primitive-type-p* type)
                    (append
                     (when (tagged-p mapping)
-                      (list (make-tag-column name)))
+                      (list (make-tag-column mapping name)))
                     (list
                      (make-instance 'column
                                     :name (rdbms-name-for name :column)
@@ -518,12 +518,16 @@
                             :type +oid-class-id-sql-type+)))
       (:merge)))))
 
-(def function make-tag-column (name)
-  (make-instance 'column
-                 :name (rdbms-name-for (concatenate-symbol name "-tag") :column)
-                 :type (sql-boolean-type)
-                 :constraints (list (sql-not-null-constraint))
-                 :default-value #f))
+(def function make-tag-column (mapping name)
+  (bind ((nullable (first (nullable-types-of mapping))))
+    (make-instance 'column
+                   :name (rdbms-name-for (concatenate-symbol name "-tag") :column)
+                   :type (sql-boolean-type)
+                   :constraints (unless nullable
+                                  (list (sql-not-null-constraint)))
+                   :default-value (if nullable
+                                      :null
+                                      #f))))
 
 (def function tag-column-of (slot)
   (find-if (lambda (column)

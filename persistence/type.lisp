@@ -11,6 +11,8 @@
 
 (def constant +type-error-marker+ '+type-error-marker+)
 
+(def constant +ignore-in-rdbms-equalitiy-marker+ '+ignore-in-rdbms-equalitiy-marker+)
+
 (def special-variable *persistent-types* (make-hash-table))
 
 (def class* persistent-type ()
@@ -322,16 +324,28 @@
       ordered-set
       t))
 
-;; TODO: a mapping should provide which columns may have NULL values
 (defclass* mapping ()
-  ((reader
-    :type (or symbol function))
+  ((specified-type
+    :type (or symbol list)
+    :documentation "The original mapped lisp type.")
+   (reader
+    :type (or symbol function)
+    :documentation "A function which is used to transform a sequence of RDBMS values to a lisp value.")
    (writer
-    :type (or symbol function))
+    :type (or symbol function)
+    :documentation "A function which is used to transform a lisp value to a sequence of RDBMS values.")
+   (unit-types
+    :type list
+    :documentation "The list of mapped unit types (having exactly one value) which are subtypes of the specified type.")
    (tagged
-    :type boolean)
+    :type boolean
+    :documentation "Tagged means different subtypes are differentiated by an extra tag column. In this case the first RDBMS-TYPES corresponds to the tag column.")
    (rdbms-types
-    :type list)))
+    :type list
+    :documentation "A list of RDBMS types used to store lisp values")
+   (nullable-types
+    :type list))
+  (:documentation "Describes hte mapping of a lisp type to RDBMS."))
 
 (def macro defmapping (name sql-type reader writer)
   "A mapping specifies how a type is mapped to RDBMS. It defines the transformers to convert between the rdbms values and the slot value."
@@ -367,7 +381,7 @@
   (:method (mapped-type)
     #t))
 
-(defun compute-rdbms-types (type)
+(def function compute-rdbms-types (type)
   (rdbms-types-of (compute-mapping type)))
 
 (defgeneric compute-rdbms-types* (mapped-type normalized-type)
@@ -386,7 +400,7 @@
            (:merge)))
         (call-next-method))))
 
-(defun compute-reader (type)
+(def function compute-reader (type)
   (reader-of (compute-mapping type)))
 
 (defgeneric compute-reader* (mapped-type normalized-type)
@@ -400,7 +414,7 @@
             'object-reader)
         (call-next-method))))
 
-(defun compute-writer (type)
+(def function compute-writer (type)
   (writer-of (compute-mapping type)))
 
 (defgeneric compute-writer* (mapped-type normalized-type)
@@ -414,61 +428,68 @@
             'object-writer)
         (call-next-method))))
 
-(defun compute-mapping (type)
-  (labels ((compute-or-type-mapping (type)
-             (iter (with primary-rdbms-types = nil)
-                   (with null-value-count = 0)
-                   (for subtype :in (cdr type))
-                   (for normalized-type = (normalized-type-for subtype))
-                   (for mapped-type = (or (mapped-type-for normalized-type) subtype))
-                   (for rdbms-types = (compute-rdbms-types* mapped-type normalized-type))
-                   (if (eq :null (first rdbms-types))
-                       (incf null-value-count)
-                       (if primary-rdbms-types
-                           (error "Unsupported multiple primary types using the 'or' type combinator: ~A" type)
-                           (setf primary-rdbms-types rdbms-types)))
-                   (collect (compute-type-tag subtype) :into type-tags)
-                   (collect (compute-reader* mapped-type normalized-type) :into readers)
-                   (collect (compute-writer* mapped-type normalized-type) :into writers)
+(def function compute-mapping (type)
+  (unless (set-type-p type)
+    (bind ((normalized-type (normalized-type-for type))
+           (mapped-type (mapped-type-for normalized-type))
+           (unit-types (if (eq mapped-type 'member)
+                           (unit-subtypes-for type)
+                           (remove-if #L (and (not (eq !1 'unbound))
+                                              (member !1 (unit-subtypes-for mapped-type)))
+                                      (unit-subtypes-for type))))
+           (rdbms-types (compute-rdbms-types* mapped-type normalized-type))
+           (type-tag (compute-type-tag mapped-type))
+           (reader (compute-reader* mapped-type normalized-type))
+           (writer (compute-writer* mapped-type normalized-type)))
+      (flet ((make-mapping (&rest args)
+               (apply 'make-instance 'mapping
+                      :specified-type type
+                      :unit-types unit-types
+                      args)))
+        (case (length unit-types)
+          (0 (make-mapping
+              :tagged #f
+              :rdbms-types (compute-rdbms-types* mapped-type normalized-type)
+              :nullable-types (list #f)
+              :reader reader
+              :writer writer))
+          (1 (bind ((unit-type (first unit-types)))
+               (make-mapping
+                :tagged #f
+                :rdbms-types rdbms-types
+                :nullable-types (list #t)
+                :reader (combined-reader (list (compute-reader* unit-type unit-type) reader))
+                :writer (combined-writer (list (compute-writer* unit-type unit-type) writer)))))
+          (t (iter (for unit-type :in unit-types)
+                   (collect (compute-type-tag unit-type) :into type-tags)
+                   (collect (compute-reader* unit-type unit-type) :into readers)
+                   (collect (compute-writer* unit-type unit-type) :into writers)
                    (finally
                     (return
-                      (cond ((and primary-rdbms-types
-                                  (= null-value-count 1))
-                             (make-instance 'mapping
-                                            :tagged #f
-                                            :rdbms-types primary-rdbms-types
-                                            :reader (combined-reader readers)
-                                            :writer (combined-writer writers)))
-                            ((and primary-rdbms-types
-                                  (> null-value-count 1))
-                             (make-instance 'mapping
-                                            :tagged #t
-                                            :rdbms-types (list* (sql-boolean-type) primary-rdbms-types)
-                                            :reader (tagged-reader type-tags readers)
-                                            :writer (tagged-writer type-tags writers)))
-                            (t
-                             (error "Unsupported type: ~A" type))))))))
-    (bind ((normalized-type (normalized-type-for type))
-           (mapped-type (or (mapped-type-for normalized-type) type)))
-      (cond ((set-type-p type)
-             nil)
-            ((or-type-p type)
-             (compute-or-type-mapping type))
-            ((unbound-subtype-p type)
-             (compute-or-type-mapping `(or unbound ,type)))
-            ((null-subtype-p type)
-             (compute-or-type-mapping `(or null ,type)))
-            (t
-             (make-instance 'mapping
-                            :tagged #f
-                            :rdbms-types (compute-rdbms-types* mapped-type normalized-type)
-                            :reader (compute-reader* mapped-type normalized-type)
-                            :writer (compute-writer* mapped-type normalized-type)))))))
+                      (make-mapping
+                       :tagged #t
+                       :rdbms-types (list* (sql-boolean-type) rdbms-types)
+                       :nullable-types (list (not (null (member :null type-tags))) #t)
+                       :reader (tagged-reader (append type-tags (list type-tag)) (append readers (list reader)))
+                       :writer (tagged-writer (append type-tags (list type-tag)) (append writers (list writer)))))))))))))
+
+(def function ignore-in-rdbms-equalitiy-marker-p (value)
+  (eq +ignore-in-rdbms-equalitiy-marker+ value))
+
+(def function lisp-value->rdbms-equality-values (type lisp-value)
+  (bind ((mapping (compute-mapping type))
+         (result (make-array (length (rdbms-types-of mapping)))))
+    (funcall (writer-of mapping) lisp-value result 0)
+    (when (tagged-p mapping)
+      (dolist (unit-type (unit-types-of mapping))
+        (when (typep lisp-value unit-type)
+          (iter (for index :from 1 :below (length result))
+                (setf (aref result index) +ignore-in-rdbms-equalitiy-marker+)))))
+    result))
 
 (def function lisp-value->rdbms-values (type lisp-value)
   (bind ((mapping (compute-mapping type))
-         (column-count (length (rdbms-types-of mapping)))
-         (result (make-array column-count)))
+         (result (make-array (length (rdbms-types-of mapping)))))
     (values result (funcall (writer-of mapping) lisp-value result 0))))
 
 (def function rdbms-values->lisp-value (type rdbms-values)
@@ -493,7 +514,7 @@
                *mapped-type-precedence-list*)))
 
 (def function normalized-type-for (type)
-  "Returns a type which does not include subtypes mapped to :null column values."
+  "Returns a type which does not include unit types which are mapped to :null column values."
   (if (or-type-p type)
       (bind ((subtypes
               (remove-if 'type-mapped-to-null-p
@@ -503,6 +524,20 @@
             (cons 'or subtypes)))
       (unless (type-mapped-to-null-p type)
         type)))
+
+(def function unit-type-p (type)
+  (eq :null (first (compute-rdbms-types* type type))))
+
+(def function unit-subtypes-for (type)
+  (append
+   ;; special case for null (because of boolean and symbol)
+   (when (null-subtype-p type)
+     '(null))
+   (collect-if (lambda (subtype)
+                 (and (not (member subtype '(null member set disjunct-set ordered-set)))
+                      (unit-type-p subtype)
+                      (subtypep subtype type)))
+               *mapped-type-precedence-list*)))
 
 (def function type-mapped-to-null-p (type)
   (and (symbolp type)
