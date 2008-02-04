@@ -563,12 +563,13 @@
   (and (not (eq 'member type))
        (subtypep 'unbound type)))
 
-;; NOTE: boolean and symbol should not be treated as a subtype of null here
 (def function null-subtype-p (type)
+  ;; NOTE: null should not be treated as boolean and symbol subtype here
+  ;; might return (values #f #f) but will always return (values #t #t) when required so this does not matter
   (and (not (eq 'member type))
-       (not (subtypep 'boolean type))
-       (not (subtypep 'symbol type))
-       (subtypep 'null type)))
+       (or (subtypep '(satisfies null)
+                     (subst '(satisfies null) 'null (canonical-type-for type)))
+           (set-type-p type))))
 
 (def function tagged-type-p (type)
   (tagged-p (compute-mapping type)))
