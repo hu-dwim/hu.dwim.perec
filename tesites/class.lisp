@@ -91,10 +91,11 @@
 
 (defmethod expand-defpclass-form :around ((metaclass null) defclass-macro name superclasses slots options)
   (bind ((specified-metaclass (second (find :metaclass options :key #'first)))
+         (processed-slots (mapcar 'ensure-list slots))
          (processed-options
           (if (and (not specified-metaclass)
-                   (or (find :temporal slots :test #'member)
-                       (find :time-dependent slots :test #'member)))
+                   (or (find :temporal processed-slots :test #'member)
+                       (find :time-dependent processed-slots :test #'member)))
               (append options '((:metaclass persistent-class-t)))
               options)))
     (call-next-method metaclass defclass-macro name superclasses slots processed-options)))

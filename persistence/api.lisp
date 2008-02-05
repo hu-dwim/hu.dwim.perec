@@ -41,7 +41,7 @@
                                       (append options `((:metaclass ,metaclass))))))))
 
 (defmacro defassociation (&body association-ends)
-  (expand-defassociation-form nil association-ends (cdr association-ends)))
+  (expand-defassociation-form nil (car association-ends) (cdr association-ends)))
 
 (defmacro defassociation* (&body association-ends)
   (expand-defassociation-form nil
@@ -50,7 +50,7 @@
                                                   `(:accessor ,(default-accessor-name-transformer (getf !1 :slot) nil)))
                                                 (unless (getf !1 :initarg)
                                                   `(:initarg ,(default-initarg-name-transformer (getf !1 :slot) nil))))
-                                      (first association-ends))
+                                      (car association-ends))
                               (cdr association-ends)))
 
 ;;;;;;;;;
