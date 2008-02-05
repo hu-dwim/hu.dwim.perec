@@ -11,7 +11,7 @@
 
 (def constant +type-error-marker+ '+type-error-marker+)
 
-(def constant +ignore-in-rdbms-equalitiy-marker+ '+ignore-in-rdbms-equalitiy-marker+)
+(def constant +ignore-in-rdbms-equality-marker+ '+ignore-in-rdbms-equality-marker+)
 
 (def special-variable *persistent-types* (make-hash-table))
 
@@ -473,8 +473,8 @@
                        :reader (tagged-reader (append type-tags (list type-tag)) (append readers (list reader)))
                        :writer (tagged-writer (append type-tags (list type-tag)) (append writers (list writer)))))))))))))
 
-(def function ignore-in-rdbms-equalitiy-marker-p (value)
-  (eq +ignore-in-rdbms-equalitiy-marker+ value))
+(def function ignore-in-rdbms-equality-marker-p (value)
+  (eq +ignore-in-rdbms-equality-marker+ value))
 
 (def function lisp-value->rdbms-equality-values (type lisp-value)
   (bind ((mapping (compute-mapping type))
@@ -484,7 +484,7 @@
       (dolist (unit-type (unit-types-of mapping))
         (when (typep lisp-value unit-type)
           (iter (for index :from 1 :below (length result))
-                (setf (aref result index) +ignore-in-rdbms-equalitiy-marker+)))))
+                (setf (aref result index) +ignore-in-rdbms-equality-marker+)))))
     result))
 
 (def function lisp-value->rdbms-values (type lisp-value)
