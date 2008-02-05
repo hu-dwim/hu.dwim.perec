@@ -322,6 +322,7 @@
                  (t (collect (sql-= (sql-column-reference-for column qualifier)
                                     (sql-literal :value rdbms-value
                                                  :type (rdbms::type-of column)))))))))
+
 ;;;----------------------------------------------------------------------------
 ;;; Functions mapped to SQL in queries
 ;;;

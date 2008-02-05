@@ -111,6 +111,7 @@
           (select-records (append (list validity-start-column validity-end-column)
                                   child-oid-columns)
                           (list table-name)
+                          :where
                           (sql-and (id-column-matcher-where-clause t-instance parent-id-column)
                                    (sql-<= (sql-identifier :name (rdbms::name-of t-value-column))
                                            (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))
@@ -118,6 +119,7 @@
                                            (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
                                    (sql-<= (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f))
                                            (sql-identifier :name (rdbms::name-of validity-end-column))))
+                          :order-by
                           (list (sql-sort-spec :sort-key (sql-identifier :name (rdbms::name-of t-value-column)) :ordering :descending)))))
     (collect-single-slot-values-having-validity-from-records t-instance t-slot records (child-slot-of t-slot) 2)))
 
@@ -135,6 +137,7 @@
      (select-records (append child-oid-columns
                              (list validity-start-column validity-end-column action-column))
                      (list table-name)
+                     :where
                      (sql-and (id-column-matcher-where-clause t-instance parent-id-column)
                               (sql-<= (sql-identifier :name (rdbms::name-of t-value-column))
                                       (sql-literal :value *t* :type (sql-timestamp-type :with-timezone #f)))
@@ -142,6 +145,7 @@
                                       (sql-literal :value *validity-end* :type (sql-timestamp-type :with-timezone #f)))
                               (sql-<= (sql-literal :value *validity-start* :type (sql-timestamp-type :with-timezone #f))
                                       (sql-identifier :name (rdbms::name-of validity-end-column))))
+                     :order-by
                      (list (sql-sort-spec :sort-key (sql-identifier :name (rdbms::name-of t-value-column)) :ordering :descending)))
      *validity-start*
      *validity-end*)))
@@ -342,7 +346,7 @@
      ;; tables
      (list (reduce #L(sql-joined-table :kind :inner :left !1 :right !2 :using +oid-column-names+)
                    (mapcar #L(sql-identifier :name !1) tables)))
-     ;; where
+     :where
      (apply 'sql-and
             (id-column-matcher-where-clause t-instance parent-id-column)
             (sql-not (unused-check-for value-slot))
@@ -389,7 +393,7 @@
      ;;
      (list (reduce #L(sql-joined-table :kind :inner :left !1 :right !2 :using +oid-column-names+)
                    (mapcar #L(sql-identifier :name !1) tables)))
-     ;; where
+     :where
      (sql-and (id-column-matcher-where-clause t-instance parent-id-column)
               (sql-not (unused-check-for value-slot))
               (apply #'sql-and
@@ -404,7 +408,7 @@
                         (list
                          (sql-<= (sql-identifier :name (rdbms::name-of t-value-column))
                                  t-value-literal))))))
-     ;; order-by
+     :order-by
      (when (temporal-p t-slot)
        (list (sql-sort-spec :sort-key (sql-identifier :name (rdbms::name-of t-value-column))
                             :ordering :descending))))))

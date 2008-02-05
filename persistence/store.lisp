@@ -41,11 +41,11 @@
   (map 'list #L(object-reader !1 0)
        (select-records (oid-columns-of (table-of slot))
                        (list (name-of (table-of slot)))
-                       (id-column-matcher-where-clause instance (id-column-of slot))
-                       (let ((type (canonical-type-of slot)))
-                         (if (ordered-set-type-p type)
-                             ;; TODO: use reflection instead of third
-                             (list (sql-identifier :name (rdbms-name-for (third type)))))))))
+                       :where (id-column-matcher-where-clause instance (id-column-of slot))
+                       :order-by (let ((type (canonical-type-of slot)))
+                                   (if (ordered-set-type-p type)
+                                       ;; TODO: use reflection instead of third
+                                       (list (sql-identifier :name (rdbms-name-for (third type)))))))))
 
 (def (function o) restore-1-n-association-end-set (instance slot)
   "Restores the non lazy list association end value without local side effects from the database."
@@ -57,7 +57,7 @@
     (map 'list #L(object-reader !1 0)
          (select-records (columns-of slot)
                          (list (name-of (table-of slot)))
-                         (id-column-matcher-where-clause instance (id-column-of other-slot))))))
+                         :where (id-column-matcher-where-clause instance (id-column-of other-slot))))))
 
 (def (function o) restore-slot (instance slot)
   "Restores a single slot without local side effects from the database."
@@ -68,8 +68,8 @@
           (bind ((records
                   (select-records +oid-column-names+
                                   (list (name-of (table-of slot)))
-                                  (sql-= (sql-literal :type +oid-id-sql-type+ :value (id-of instance))
-                                         (sql-identifier :name (id-column-of slot))))))
+                                  :where (sql-= (sql-literal :type +oid-id-sql-type+ :value (id-of instance))
+                                                (sql-identifier :name (id-column-of slot))))))
             (declare (type vector records))
             (unless (zerop (length records))
               (restore-slot-value instance slot (elt-0 records) 0))))
@@ -93,7 +93,7 @@
                   (elt-0
                    (select-records (columns-of slot)
                                    (list (name-of (table-of slot)))
-                                   (id-column-matcher-where-clause instance)))))
+                                   :where (id-column-matcher-where-clause instance)))))
             (restore-slot-value instance slot record 0))))
    slot))
 
@@ -109,7 +109,7 @@
                                               (columns-of slot)))
                                     slots)
                             table-aliases
-                            where-clause))
+                            :where where-clause))
            (record (unless (and allow-missing
                                 (zerop (length records)))
                      (assert (= 1 (length records)) nil "The persistent instance ~A is missing from the database" instance)

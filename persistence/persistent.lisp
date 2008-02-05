@@ -14,7 +14,7 @@
   (and (oid-of instance)
        (not (null (select-records '(1)
                                   (list (name-of (primary-table-of (class-of instance))))
-                                  (id-column-matcher-where-clause instance))))))
+                                  :where (id-column-matcher-where-clause instance))))))
 
 (defun debug-persistent-p (instance)
   "Same as persistent-p except it never prefetches slot values. Use for debug purposes."
