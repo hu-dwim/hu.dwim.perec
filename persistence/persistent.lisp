@@ -65,8 +65,8 @@
            (debug-only (assert (debug-persistent-p instance)))
            (setf (cached-instance-of (oid-of instance)) instance)))
 
-(define-condition instance-not-found-error (error)
-  ((oid :accessor oid-of :initarg :oid))
+(def condition* instance-not-found-error (error)
+  ((oid nil))
   (:report (lambda (c stream)
              (format stream "Instance not found for oid ~A" (oid-of c)))))
 

@@ -21,63 +21,62 @@
    nil
    :type (or null symbol)))
 
-(defconstant +oid-mode+ :merge
-  "Specifies the mode oids are stored in the database. 
+(def constant +oid-mode+ :merge
+  "Specifies the mode oids are stored in the database.
      :class-name - _ID and _CLASS_NAME columns where id stores instance id
      :class-id   - _ID and _CLASS_ID columns where id stores instance id
      :merge      - _ID column where id stores instance id and class id merged into one integer where class id are the lower bits")
 
-(defmacro oid-mode-ecase (&body cases)
+(def macro oid-mode-ecase (&body cases)
   `(locally (declare #+sbcl(sb-ext:muffle-conditions sb-ext:compiler-note))
     (ecase +oid-mode+
       ,@cases)))
 
-(defconstant +oid-instance-id-bit-size+ (if (eq :merge +oid-mode+)
+(def constant +oid-instance-id-bit-size+ (if (eq :merge +oid-mode+)
                                             48
                                             64)
   "Size of the life time unique identifier instance id in bits.")
 
-(defconstant +oid-maximum-instance-id+ (1- (expt 2 +oid-instance-id-bit-size+))
+(def constant +oid-maximum-instance-id+ (1- (expt 2 +oid-instance-id-bit-size+))
   "Maximum instance id available.")
 
-(defconstant +oid-class-id-bit-size+ 16
+(def constant +oid-class-id-bit-size+ 16
   "Size of the life time unique identifier class id in bits.")
 
-(defconstant +oid-maximum-class-id+ (expt 2 +oid-class-id-bit-size+)
+(def constant +oid-maximum-class-id+ (expt 2 +oid-class-id-bit-size+)
   "Maximum class id available.")
 
-(defconstant +oid-class-name-character-size+ 128
+(def constant +oid-class-name-character-size+ 128
   "Maximum length of class names.")
 
-(defconstant +oid-id-bit-size+ 64
+(def constant +oid-id-bit-size+ 64
   "Size of the id in bits.")
 
-(defconstant +oid-instance-id-sequence-name+ '_instance_id
+(def constant +oid-instance-id-sequence-name+ '_instance_id
   "The name of the instance id sequence in the relational database used to generate life time unique identifiers for all persistent instances.")
 
-(defconstant +oid-id-column-name+ '_id
+(def constant +oid-id-column-name+ '_id
   "The RDBMS table column name for the oid's id slot.")
 
-(defconstant +oid-class-id-column-name+ '_class_id
+(def constant +oid-class-id-column-name+ '_class_id
   "The RDBMS table column name for the oid's class id slot.")
 
-(defconstant +oid-class-name-column-name+ '_class_name
+(def constant +oid-class-name-column-name+ '_class_name
   "The RDBMS table column name for the oid's class name slot.")
 
-(define-constant +oid-column-names+ (oid-mode-ecase
-                                      (:class-name (list +oid-id-column-name+ +oid-class-name-column-name+))
-                                      (:class-id (list +oid-id-column-name+ +oid-class-id-column-name+))
-                                      (:merge (list +oid-id-column-name+)))
-  :test equal
-  :documentation "All RDBMS table column names for an oid. The order of columns does matter.")
+(def (constant :test 'equal) +oid-column-names+ (oid-mode-ecase
+                                                  (:class-name (list +oid-id-column-name+ +oid-class-name-column-name+))
+                                                  (:class-id (list +oid-id-column-name+ +oid-class-id-column-name+))
+                                                  (:merge (list +oid-id-column-name+)))
+  "All RDBMS table column names for an oid. The order of columns does matter.")
 
-(defconstant +oid-column-count+ (length +oid-column-names+)
+(def constant +oid-column-count+ (length +oid-column-names+)
   "The number of oid columns")
 
-(defparameter *oid-instance-id-sequence-exists* #f
+(def special-variable *oid-instance-id-sequence-exists* #f
   "Tells if the instance id sequence exists in the relational database or not. This flag is initially false but will be set to true as soon as the sequence is created or first time seen in the database when a persistent instance is restored or stored.")
 
-(defparameter *oid-class-id->class-name-map* (make-hash-table)
+(def special-variable *oid-class-id->class-name-map* (make-hash-table)
   "This map is used to cache class names by class ids. It gets filled when ensure-class is called for the first time and kept up to date.")
 
 (def (function o) class-id->class-name (class-id)
