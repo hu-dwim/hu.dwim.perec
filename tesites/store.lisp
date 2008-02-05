@@ -356,7 +356,6 @@
               (list (sql-= (sql-identifier :name (rdbms::name-of t-value-column))
                            (sql-literal :value *t* :type (rdbms::type-of t-value-column)))))))))
 
-;; TODO: add row limit = 1 if not time-dependent
 (defun select-h-records (t-class t-instance t-slot)
   (bind ((value-slot (h-slot-of t-slot))
          (value-columns (columns-of value-slot))
@@ -411,7 +410,10 @@
      :order-by
      (when (temporal-p t-slot)
        (list (sql-sort-spec :sort-key (sql-identifier :name (rdbms::name-of t-value-column))
-                            :ordering :descending))))))
+                            :ordering :descending)))
+     :limit
+     (unless (time-dependent-p t-slot)
+       1))))
 
 (defun insert-h-records (t-class t-instance t-slot value &optional validity-start validity-end)
   (bind ((h-class (h-class-of t-class))
