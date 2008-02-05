@@ -345,8 +345,7 @@
      ;; where
      (apply 'sql-and
             (id-column-matcher-where-clause t-instance parent-id-column)
-            ;; TODO: hack this out with reader
-            (sql-is-not-null (sql-identifier :name (rdbms::name-of (first value-columns))))
+            (sql-not (unused-check-for value-slot))
             (sql-< (sql-identifier :name (rdbms::name-of validity-start-column)) validity-end-literal)
             (sql-< validity-start-literal (sql-identifier :name (rdbms::name-of validity-end-column)))
             (when t-value-column
@@ -392,8 +391,7 @@
                    (mapcar #L(sql-identifier :name !1) tables)))
      ;; where
      (sql-and (id-column-matcher-where-clause t-instance parent-id-column)
-              ;; TODO: hack this out with reader
-              (sql-is-not-null (sql-identifier :name (rdbms::name-of (first value-columns))))
+              (sql-not (unused-check-for value-slot))
               (apply #'sql-and
                      (append
                       (when (time-dependent-p t-slot)
@@ -460,4 +458,10 @@
            (delete-records (name-of table)
                            (sql-= (sql-literal :type +oid-id-sql-type+ :value (oid-id oid))
                                   +oid-id-column-name+))))))
+
+(defun unused-check-for (h-slot)
+  (check-for-rdbms-values
+   (lisp-value->rdbms-equality-values (slot-definition-type h-slot) +h-unused-slot-marker+)
+   (columns-of h-slot)
+   nil))
 

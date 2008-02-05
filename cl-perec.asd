@@ -109,7 +109,7 @@
              (:file "copy" :depends-on ("object"))
              (:file "export" :depends-on ("object"))))
    (:module "tesites"
-            :depends-on ("persistence")
+            :depends-on ("persistence" "query")
             :components
             ((:file "common")
              (:file "api" :depends-on ("common"))

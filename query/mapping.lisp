@@ -239,22 +239,28 @@
 
 (defgeneric unbound-check-for (syntax)
   (:method (syntax)
-           nil)
+    nil)
 
   (:method ((access slot-access))
-           (bind ((type (persistent-type-of access))
-                  (slot (slot-of access))
-                  (variable (arg-of access)))
-             (debug-only (assert (not (contains-syntax-p type))))
-             (when (and slot (query-variable-p variable))
-               (cond
-                 ((eq type +unknown-type+) (sql-map-failed))
-                 ((tagged-type-p type) `(sql-not ,(sql-tag-column-reference-for slot variable)))
-                 ((unbound-subtype-p type) `(sql-is-null ,(sql-column-reference-for slot variable)))
-                 (t nil)))))
+    (bind ((type (persistent-type-of access))
+           (slot (slot-of access))
+           (variable (arg-of access)))
+      (debug-only (assert (not (contains-syntax-p type))))
+      (cond
+        ((or (null slot)
+             (not (query-variable-p variable))
+             (eq type +unknown-type+))
+         (sql-map-failed))
+        ((unbound-subtype-p type)
+         (check-for-rdbms-values
+          (lisp-value->rdbms-equality-values type +unbound-slot-marker+)
+          (columns-of slot)
+          variable))
+        (t
+         nil))))
 
   (:method ((access association-end-access))
-           nil))
+    nil))
 
 (def function emit-sql-literal (syntax)
   (bind ((type (persistent-type-of syntax))
@@ -271,27 +277,51 @@
 ;; TODO needs review
 (defgeneric null-check-for (syntax)
   (:method (syntax)
-           nil)
+    nil)
 
   (:method ((variable lexical-variable))
-           (bind ((type (persistent-type-of variable)))
-             (if (maybe-null-subtype-p type)
-                 `(sql-is-null ,(syntax-to-sql variable))
-                 nil)))
+    (bind ((type (persistent-type-of variable)))
+      (debug-only (assert (not (contains-syntax-p type))))
+      (cond
+        ((eq type +unknown-type+)
+         (sql-map-failed))
+        ((maybe-null-subtype-p type)
+         `(sql-is-null ,(syntax-to-sql variable))) ; FIXME
+        (t
+         nil))))
 
   (:method ((access slot-access))
-           (bind ((type (persistent-type-of access))
-                  (slot (slot-of access))
-                  (variable (arg-of access)))
-             (debug-only (assert (not (contains-syntax-p type))))
-             (if (and slot (query-variable-p variable) (maybe-null-subtype-p type))
-                 `(sql-is-null ,(sql-column-reference-for slot variable))
-                 nil)))
+    (bind ((type (persistent-type-of access))
+           (slot (slot-of access))
+           (variable (arg-of access)))
+      (debug-only (assert (not (contains-syntax-p type))))
+      (cond
+        ((or (eq type +unknown-type+)
+             (null slot)
+             (not (query-variable-p variable)))
+         (sql-map-failed))
+        ((maybe-null-subtype-p type)
+         (check-for-rdbms-values
+          (lisp-value->rdbms-equality-values type nil)
+          (columns-of slot)
+          variable))
+        (t
+         nil))))
 
   (:method ((access association-end-access))
-           nil))
+    nil))
 
-
+(defun check-for-rdbms-values (rdbms-values columns qualifier)
+  (assert (= (length rdbms-values) (length columns)))
+  (apply 'sql-and
+         (iter (for rdbms-value in-vector rdbms-values)
+               (for column in columns)
+               (case rdbms-value
+                 (#.+ignore-in-rdbms-equality-marker+ nil)
+                 (:null (collect (sql-is-null (sql-column-reference-for column qualifier))))
+                 (t (collect (sql-= (sql-column-reference-for column qualifier)
+                                    (sql-literal :value rdbms-value
+                                                 :type (rdbms::type-of column)))))))))
 ;;;----------------------------------------------------------------------------
 ;;; Functions mapped to SQL in queries
 ;;;
