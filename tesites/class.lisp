@@ -6,6 +6,9 @@
 
 (in-package :cl-perec)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Persistent class t and slot meta objects
+
 (defcclass* persistent-class-t (persistent-class)
   ((persistent-effective-slot-ts
     (compute-as (collect-if #L(typep !1 'persistent-effective-slot-definition-t) (standard-effective-slots-of -self-)))
@@ -39,38 +42,6 @@
     (compute-as (id-column-of (parent-slot-of -self-)))
     :type column))
   (:documentation "A temporal slot value is cached in the underlying slot. A time dependent slot value is cached as a values-having-validity object."))
-
-(defmethod expand-defpclass-form ((metaclass persistent-class-t) defclass-macro name superclasses slots options)
-  (bind ((t-class-name name)
-         (h-class-name (t-class-name->h-class-name t-class-name))
-         (processed-options (remove-if #L(member (first !1) '(:metaclass :slot-definition-transformer)) options))
-         (h-superclasses (append (mapcar 't-class-name->h-class-name
-                                         (collect-if #L(awhen (find-class !1 nil)
-                                                         (typep it 'persistent-class-t))
-                                                     superclasses))
-                                 (when (find-if #L(find :temporal !1) slots)
-                                   (list 'temporal-object))
-                                 (when (find-if #L(find :time-dependent !1) slots)
-                                   (list 'time-dependent-object))
-                                 (list 'h-object))))
-    `(progn
-       ,(call-next-method)
-       (,defclass-macro ,h-class-name ,h-superclasses
-         ,(mapcar (lambda (slot-definition)
-                    (bind ((slot-name (car slot-definition))
-                           (slot-options (cdr slot-definition)))
-                      (list* slot-name
-                             (aprog1 (remf-keywords slot-options :time-dependent :temporal :integrates)
-                               (setf (getf it :type) `(or h-unused ,(getf it :type)))))))
-                  (collect-if #L(or (member :time-dependent !1)
-                                    (member :temporal !1))
-                              slots))
-         (:metaclass ,(h-class-name->t-class-name (class-name (class-of metaclass))))
-         ,@processed-options)
-       (defassociation
-         ((:class ,h-class-name :slot t-object :type ,t-class-name)
-          (:class ,t-class-name :slot h-objects :type (set ,h-class-name))))
-       (find-class ',name))))
 
 (defcclass* persistent-slot-definition-t (standard-slot-definition)
   ((persistent
@@ -114,6 +85,54 @@
 (eval-always
   ;; TODO: kill association?
   (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent :integrated-slot-name :association)))
+
+;;;;;;;;;;;;;
+;;; defpclass
+
+(defmethod expand-defpclass-form :around ((metaclass null) defclass-macro name superclasses slots options)
+  (bind ((specified-metaclass (second (find :metaclass options :key #'first)))
+         (processed-options
+          (if (and (not specified-metaclass)
+                   (or (find :temporal slots :test #'member)
+                       (find :time-dependent slots :test #'member)))
+              (append options '((:metaclass persistent-class-t)))
+              options)))
+    (call-next-method metaclass defclass-macro name superclasses slots processed-options)))
+
+(defmethod expand-defpclass-form ((metaclass persistent-class-t) defclass-macro name superclasses slots options)
+  (bind ((t-class-name name)
+         (h-class-name (t-class-name->h-class-name t-class-name))
+         (processed-options (remove-if #L(member (first !1) '(:metaclass :slot-definition-transformer)) options))
+         (h-superclasses (append (mapcar 't-class-name->h-class-name
+                                         (collect-if #L(awhen (find-class !1 nil)
+                                                         (typep it 'persistent-class-t))
+                                                     superclasses))
+                                 (when (find-if #L(find :temporal !1) slots)
+                                   (list 'temporal-object))
+                                 (when (find-if #L(find :time-dependent !1) slots)
+                                   (list 'time-dependent-object))
+                                 (list 'h-object))))
+    `(progn
+       ,(call-next-method)
+       (,defclass-macro ,h-class-name ,h-superclasses
+         ,(mapcar (lambda (slot-definition)
+                    (bind ((slot-name (car slot-definition))
+                           (slot-options (cdr slot-definition)))
+                      (list* slot-name
+                             (aprog1 (remf-keywords slot-options :time-dependent :temporal :integrates)
+                               (setf (getf it :type) `(or h-unused ,(getf it :type)))))))
+                  (collect-if #L(or (member :time-dependent !1)
+                                    (member :temporal !1))
+                              slots))
+         (:metaclass ,(h-class-name->t-class-name (class-name (class-of metaclass))))
+         ,@processed-options)
+       (defassociation
+         ((:class ,h-class-name :slot t-object :type ,t-class-name)
+          (:class ,t-class-name :slot h-objects :type (set ,h-class-name))))
+       (find-class ',name))))
+
+;;;;;;;;;;;
+;;; Utility
 
 (def function t-class-name->h-class-name (t-class-name)
   (concatenate-symbol t-class-name "-h"))

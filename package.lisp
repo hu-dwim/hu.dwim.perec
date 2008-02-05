@@ -261,6 +261,7 @@
 
            ;; temporal and time-dependent
            #:persistent-class-t
+           #:persistent-association-t
            #:with-t
            #:with-default-t
            #:with-validity

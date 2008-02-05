@@ -89,9 +89,6 @@
     :documentation "The list of persistent classes which must look at this class when computing RDBMS meta data."))
   (:documentation "Persistent class is a class meta instance for classes. Standard defclass forms may be used to define persistent classes. A persistent class will have persistent slots unless marked with :persistent #f. A persistent slot should have type specification to be efficient both in storage and speed. The special type unbound must be used to mark slots which might be unbound."))
 
-(defmethod expand-defpclass-form ((metaclass persistent-class) defclass-macro name superclasses slots options)
-  `(,defclass-macro ,name ,superclasses ,slots ,@options))
-
 (defclass identity-preserving-class (computed-class)
   ()
   (:documentation "This class serves a very special purpose, namely being able to return the very same instance in make-instance for slot definition meta instances."))
@@ -244,6 +241,12 @@
 
 (def print-object persistent-slot-definition
   (princ (slot-definition-name self)))
+
+;;;;;;;;;;;;;
+;;; defpclass
+
+(defmethod expand-defpclass-form ((metaclass persistent-class) defclass-macro name superclasses slots options)
+  `(,defclass-macro ,name ,superclasses ,slots ,@options))
 
 ;;;;;;;;;;
 ;;; Export

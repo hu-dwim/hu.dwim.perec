@@ -6,6 +6,9 @@
 
 (in-package :cl-perec)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Persistent association t and slot meta objects
+
 (defcclass* persistent-association-t (persistent-association)
   ())
 
@@ -50,3 +53,29 @@
    (action-slot
     (compute-as (find-slot (h-class-of -self-) 'action))
     :type persistent-effective-slot-definition)))
+
+;;;;;;;;;;;;;;;;;;
+;;; defassociation
+
+(defmethod expand-defassociation-form :around ((metaclass null) association-ends options)
+  (bind ((specified-metaclass (second (find :metaclass options :key #'first)))
+         (processed-options
+          (if (and (not specified-metaclass)
+                   (or (find :temporal options :key #'first)
+                       (find :time-dependent options :key #'first)))
+              (append options '((:metaclass persistent-association-t)))
+              options)))
+    (call-next-method metaclass association-ends processed-options)))
+
+(defmethod expand-defassociation-form ((metaclass persistent-association-t) association-ends options)
+  (with-decoded-association-ends association-ends
+    `(progn
+       ,(call-next-method)
+       (defpclass* ,association-name (temporal-object time-dependent-object h-object???)
+         ())
+       (defassociation*
+         ((:class ,association-name :slot ,(concatenate-symbol "t-" secondary-slot *package*) :type ,primary-class)
+          (:class ,primary-class :slot ,(concatenate-symbol "h-" primary-slot *package*) :type (set ,association-name))))
+       (defassociation*
+         ((:class ,association-name :slot ,(concatenate-symbol "t-" primary-slot *package*) :type ,secondary-class)
+          (:class ,secondary-class :slot ,(concatenate-symbol "h-" secondary-slot *package*) :type (set ,association-name)))))))

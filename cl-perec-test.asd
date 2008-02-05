@@ -72,7 +72,8 @@
                        (:file "values-having-validity")
                        (:file "temporal")
                        (:file "time-dependent")
-                       (:file "tesites")))
+                       (:file "tesites")
+                       (:file "1-n-association")))
              (:module "query"
                       :depends-on ("suite")
                       :components

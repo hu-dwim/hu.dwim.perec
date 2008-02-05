@@ -17,7 +17,7 @@
                              defclass-macro name superclasses slots
                              (if specified-metaclass
                                  options
-                                 (list* `(:metaclass ,metaclass) options))))))
+                                 (append options `((:metaclass ,metaclass))))))))
 
 (defmacro defpclass (name superclasses slots &rest options)
   "Defines a persistent class. Slots may have an additional :persistent slot option which is true by default. For standard options see defclass."
@@ -30,93 +30,28 @@
 ;;;;;;;;;;;;;;;;;;
 ;;; defassociation
 
+(defgeneric expand-defassociation-form (metaclass association-ends options)
+  (:method ((metaclass null) association-ends options)
+    (bind ((specified-metaclass (second (find :metaclass options :key #'first)))
+           (metaclass (or specified-metaclass 'persistent-association)))
+      (expand-defassociation-form (class-prototype (find-class metaclass))
+                                  association-ends
+                                  (if specified-metaclass
+                                      options
+                                      (append options `((:metaclass ,metaclass))))))))
+
 (defmacro defassociation (&body association-ends)
-  (flet ((process-association-end (association-end)
-           (bind ((initarg (getf association-end :initarg))
-                  (accessor (getf association-end :accessor))
-                  (reader (or (getf association-end :reader) accessor))
-                  (writer (or (getf association-end :writer) (when accessor `(setf ,accessor)))))
-             (append (when reader `(:readers (,reader)))
-                     (when writer `(:writers (,writer)))
-                     (when initarg `(:initargs (,initarg)))
-                     association-end)))
-         (add-initfunction (association-end)
-           `(list ,@(mapcar #L`',!1 association-end)
-                  ,@(when (hasf association-end :initform)
-                          `(:initfunction
-                            (lambda ()
-                              ,(getf association-end :initform)))))))
-    (bind ((options (cdr association-ends))
-           (metaclass (or (second (find :metaclass options :key #'first))
-                          'persistent-association))
-           (export-accessors-names-p (second (find :export-accessor-names-p options :key #'first)))
-           (processed-association-ends (mapcar #'process-association-end (first association-ends)))
-           (final-association-ends (cons 'list (mapcar #'add-initfunction processed-association-ends)))
-           (primary-association-end (first processed-association-ends))
-           (primary-class (getf primary-association-end :class))
-           (primary-slot (getf primary-association-end :slot))
-           (primary-reader (first (getf primary-association-end :readers)))
-           (lazy-primary-reader (when primary-reader (concatenate-symbol primary-reader "*")))
-           (primary-writer (first (getf primary-association-end :writers)))
-           (secondary-association-end (second processed-association-ends))
-           (secondary-class (getf secondary-association-end :class))
-           (secondary-slot (getf secondary-association-end :slot))
-           (secondary-reader (first (getf secondary-association-end :readers)))
-           (lazy-secondary-reader (when secondary-reader (concatenate-symbol secondary-reader "*")))
-           (secondary-writer (first (getf secondary-association-end :writers)))
-           (association-name (concatenate-symbol primary-class "~" primary-slot "~"
-                                                 secondary-class "~" secondary-slot)))
-      `(progn
-         (eval-when (:compile-toplevel)
-           ,(when (or primary-reader lazy-primary-reader secondary-reader lazy-secondary-reader)
-                  `(flet ((ensure-reader-function (name)
-                            (when name
-                              (ensure-generic-function name :lambda-list '(instance)))))
-                     (ensure-reader-function ',primary-reader)
-                     (ensure-reader-function ',lazy-primary-reader)
-                     (ensure-reader-function ',secondary-reader)
-                     (ensure-reader-function ',lazy-secondary-reader)))
-           ,(when (or primary-writer secondary-writer)
-                  `(flet ((ensure-writer-function (name)
-                            (when name
-                              (ensure-generic-function name :lambda-list '(new-value instance)))))
-                     (ensure-writer-function ',primary-writer)
-                     (ensure-writer-function ',secondary-writer))))
-         (eval-when (:load-toplevel :execute)
-           (flet ((ensure-persistent-class (name)
-                    (bind ((class (find-class name)))
-                      (ensure-class name
-                                    :metaclass (class-of class)
-                                    ;; TODO: what about killing other class options?
-                                    :abstract (list (abstract-p class))
-                                    :direct-superclasses (class-direct-superclasses class)
-                                    :direct-slots (mapcar
-                                                   #L(list :instance !1)
-                                                   (remove-if #L(typep !1 'persistent-association-end-direct-slot-definition)
-                                                              (class-direct-slots class)))))))
-             (prog1
-                 (aif (find-association ',association-name)
-                      (reinitialize-instance it :association-end-definitions ,final-association-ends)
-                      (setf (find-association ',association-name)
-                            (make-instance ',metaclass
-                                           :name ',association-name
-                                           :association-end-definitions ,final-association-ends)))
-               (ensure-persistent-class ',primary-class)
-               (ensure-persistent-class ',secondary-class))))
-         ,(when export-accessors-names-p
-                `(export '(,primary-reader ,lazy-primary-reader ,secondary-reader ,lazy-secondary-reader)
-                         ,*package*))
-         ',association-name))))
+  (expand-defassociation-form nil association-ends (cdr association-ends)))
 
 (defmacro defassociation* (&body association-ends)
-  `(defassociation
-    ,(mapcar #L(append !1
-                       (unless (getf !1 :accessor)
-                         `(:accessor ,(default-accessor-name-transformer (getf !1 :slot) nil)))
-                       (unless (getf !1 :initarg)
-                         `(:initarg ,(default-initarg-name-transformer (getf !1 :slot) nil))))
-             (first association-ends))
-    ,@(cdr association-ends)))
+  (expand-defassociation-form nil
+                              (mapcar #L(append !1
+                                                (unless (getf !1 :accessor)
+                                                  `(:accessor ,(default-accessor-name-transformer (getf !1 :slot) nil)))
+                                                (unless (getf !1 :initarg)
+                                                  `(:initarg ,(default-initarg-name-transformer (getf !1 :slot) nil))))
+                                      (first association-ends))
+                              (cdr association-ends)))
 
 ;;;;;;;;;
 ;;; types

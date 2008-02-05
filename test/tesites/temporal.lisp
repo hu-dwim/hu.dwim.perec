@@ -6,8 +6,7 @@
 (defsuite* (test/tesites/temporal :in test/tesites))
 
 (defpclass* temporal-test ()
-  ((population :type integer-32 :temporal #t))
-  (:metaclass persistent-class-t))
+  ((population :type integer-32 :temporal #t)))
 
 (deftest test/tesites/temporal/t-not-specified ()
   (with-transaction

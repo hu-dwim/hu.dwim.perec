@@ -6,8 +6,7 @@
 (defsuite* (test/tesites/time-dependent :in test/tesites))
 
 (defpclass* time-dependent-test ()
-  ((population :type integer-32 :time-dependent #t))
-  (:metaclass persistent-class-t))
+  ((population :type integer-32 :time-dependent #t)))
 
 (deftest test/tesites/time-dependent/validity-not-specified ()
   (with-transaction

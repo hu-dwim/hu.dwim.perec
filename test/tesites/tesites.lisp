@@ -6,18 +6,15 @@
 (defsuite* (test/tesites/t :in test/tesites))
 
 (defpclass* t-test ()
-  ((population :type integer-32 :time-dependent #t :temporal #t))
-  (:metaclass persistent-class-t))
+  ((population :type integer-32 :time-dependent #t :temporal #t)))
 
 (defsuite* (test/tesites/temporal-time-dependent :in test/tesites))
 
 (defpclass* t-a-test ()
-  ((a-value :type integer-32 :time-dependent #t))
-  (:metaclass persistent-class-t))
+  ((a-value :type integer-32 :time-dependent #t)))
 
 (defpclass* t-b-test (t-a-test)
-  ((b-value :type integer-32 :temporal #t :time-dependent #t))
-  (:metaclass persistent-class-t))
+  ((b-value :type integer-32 :temporal #t :time-dependent #t)))
 
 (deftest test/tesites/t/t-not-specified ()
   (with-transaction
