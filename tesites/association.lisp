@@ -69,13 +69,18 @@
 
 (defmethod expand-defassociation-form ((metaclass persistent-association-t) association-ends options)
   (with-decoded-association-ends association-ends
-    `(progn
-       ,(call-next-method)
-       (defpclass* ,association-name (temporal-object time-dependent-object h-object???)
-         ())
-       (defassociation*
-         ((:class ,association-name :slot ,(concatenate-symbol "t-" secondary-slot *package*) :type ,primary-class)
-          (:class ,primary-class :slot ,(concatenate-symbol "h-" primary-slot *package*) :type (set ,association-name))))
-       (defassociation*
-         ((:class ,association-name :slot ,(concatenate-symbol "t-" primary-slot *package*) :type ,secondary-class)
-          (:class ,secondary-class :slot ,(concatenate-symbol "h-" secondary-slot *package*) :type (set ,association-name)))))))
+    (bind ((superclasses
+            (append (when (find :temporal options :key #'first)
+                      (list 'temporal-object))
+                    (when (find :time-dependent options :key #'first)
+                      (list 'time-dependent-object)))))
+      `(progn
+         ,(call-next-method)
+         (defpclass* ,association-name ,superclasses
+           ())
+         (defassociation*
+           ((:class ,association-name :slot ,(concatenate-symbol "t-" secondary-slot *package*) :type ,primary-class)
+            (:class ,primary-class :slot ,(concatenate-symbol "h-" primary-slot *package*) :type (set ,association-name))))
+         (defassociation*
+           ((:class ,association-name :slot ,(concatenate-symbol "t-" primary-slot *package*) :type ,secondary-class)
+            (:class ,secondary-class :slot ,(concatenate-symbol "h-" secondary-slot *package*) :type (set ,association-name))))))))

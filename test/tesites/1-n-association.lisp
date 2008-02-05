@@ -20,5 +20,5 @@
 (defassociation*
   ((:class tesites-child-test :slot parent :type (or null tesites-parent-test))
    (:class tesites-parent-test :slot children :type (set tesites-child-test)))
-  (:time-depenent #t)
+  (:time-dependent #t)
   (:temporal #t))
