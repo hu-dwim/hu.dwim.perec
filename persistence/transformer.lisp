@@ -288,7 +288,7 @@
 (def (function io) local-time-to-utc-zone (local-time)
   (if (eq (timezone-of local-time) +utc-zone+)
       local-time
-      (local-time-adjust local-time +utc-zone+ (make-local-time))))
+      (adjust-local-time local-time (set :timezone +utc-zone+))))
 
 (def function string->local-time-reader (rdbms-values index)
   ;; NOTE: assumes that the database server is configured to return UTC timezone

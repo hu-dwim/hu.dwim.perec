@@ -53,8 +53,8 @@
                    (closer-mop:standard-instance-access instance (closer-mop:slot-definition-location slot))))))))
 
 (define-copy-method (copy-self copy-into-transaction-cache) ((instance local-time))
-  ;; TODO: copy instance
-  instance)
+  ;; TODO: shouldn't we treat non-transient local-time instances as immutable instead?
+  (local-time::clone-local-time instance))
 
 (define-copy-method (copy-inner-class copy-into-transaction-cache) progn
   ((instance local-time) (copy local-time) hash-table))
