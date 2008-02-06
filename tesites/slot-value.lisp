@@ -159,8 +159,8 @@
   (bind ((persistent (persistent-p instance)))
     (assert-instance-access instance persistent)
     (if (eq :1 (cardinality-kind-of (child-slot-of slot)))
-        (select-1-1-association-t-record instance slot)
-        (select-1-n-association-t-records instance slot))))
+        (select-1-1-association-t-record class instance slot)
+        (select-1-n-association-t-records class instance slot))))
 
 (defmethod (setf slot-value-using-class) (new-value
                                           (class persistent-class-t)
