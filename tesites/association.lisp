@@ -12,17 +12,16 @@
 (defcclass* persistent-association-t (persistent-association)
   ())
 
-(defcclass* persistent-association-end-slot-definition-t (persistent-slot-definition-t)
-  ;; TODO: kill association?!
-  ((association)))
+(defcclass* persistent-association-end-slot-definition-t (persistent-slot-definition-t persistent-association-end-slot-definition)
+  ())
 
 (defcclass* persistent-association-end-direct-slot-definition-t
-    (persistent-association-end-slot-definition-t persistent-direct-slot-definition-t)
+    (persistent-association-end-slot-definition-t persistent-direct-slot-definition-t persistent-association-end-direct-slot-definition)
   ()
   (:metaclass identity-preserving-class))
 
 (defcclass* persistent-association-end-effective-slot-definition-t
-    (persistent-association-end-slot-definition-t persistent-effective-slot-definition-t)
+    (persistent-association-end-slot-definition-t persistent-effective-slot-definition-t persistent-association-end-effective-slot-definition)
   ((h-class
     (compute-as (h-class-of (slot-definition-class -self-))) ;; TODO: hack
     :type persistent-class)

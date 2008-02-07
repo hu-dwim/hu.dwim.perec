@@ -77,7 +77,7 @@
            `',name
            `(deftype ,name ,args ,@body)))))
 
-(def (function io) find-type (type &key (otherwise :error))
+(def (function o) find-type (type &key (otherwise :error))
   (or (gethash (first (ensure-list type)) *persistent-types*)
       (case otherwise
         (:error (error "Unknown type specifier ~S" type))
@@ -85,7 +85,7 @@
                nil)
         (t otherwise))))
 
-(def (function io) (setf find-type) (new-value type)
+(def (function o) (setf find-type) (new-value type)
   (setf (gethash (first (ensure-list type)) *persistent-types*) new-value))
 
 (def function type-class-name-for (type)

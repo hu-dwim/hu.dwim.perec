@@ -75,8 +75,7 @@
     :type boolean
     :documentation "True iff this end is the secondary association end of its association.")))
 
-(defcclass* persistent-association-end-direct-slot-definition
-    (persistent-association-end-slot-definition persistent-direct-slot-definition)
+(defcclass* persistent-association-end-direct-slot-definition (persistent-association-end-slot-definition persistent-direct-slot-definition)
   ((min-cardinality
     (compute-as (bind ((type (canonical-type-of -self-)))
                   (if (and (not (null-subtype-p type))
@@ -94,8 +93,7 @@
     :type persistent-association-end-direct-slot-definition))
   (:metaclass identity-preserving-class))
 
-(defcclass* persistent-association-end-effective-slot-definition
-    (persistent-association-end-slot-definition persistent-effective-slot-definition)
+(defcclass* persistent-association-end-effective-slot-definition (persistent-association-end-slot-definition persistent-effective-slot-definition)
   ((min-cardinality
     (compute-as (apply #'max (mapcar #'min-cardinality-of (direct-slots-of -self-)))))
    (max-cardinality

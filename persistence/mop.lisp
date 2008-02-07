@@ -108,11 +108,11 @@
                     (constantly nil))))))
       (call-next-method)))
 
-(defun compute-standard-effective-slot-definition-initargs (class direct-slot-definitions)
+(def function compute-standard-effective-slot-definition-initargs (class direct-slot-definitions)
   #+sbcl(sb-pcl::compute-effective-slot-definition-initargs class direct-slot-definitions)
   #-sbcl(not-yet-implemented))
 
-(defun compute-persistent-effective-slot-definition-initargs (class direct-slot-definitions)
+(def function compute-persistent-effective-slot-definition-initargs (class direct-slot-definitions)
   (iter (for slot-option-name in (delete-duplicates
                                   (collect-if #L(not (eq (symbol-package !1) (find-package :common-lisp)))
                                               (mapcan #L(mapcar #'slot-definition-name
@@ -133,22 +133,23 @@
             direct-slot-definition
             slot-option-name
             direct-slot-definitions)
-           nil)
+    nil)
 
   (:method ((class persistent-class)
             (direct-slot persistent-direct-slot-definition)
             slot-option-name
             direct-slot-definitions)
-           (when (member slot-option-name '(cache prefetch index unique type-check))
-             (some #L(slot-initarg-and-value !1 slot-option-name) direct-slot-definitions)))
+    (if (member slot-option-name '(cache prefetch index unique type-check))
+        (some #L(slot-initarg-and-value !1 slot-option-name) direct-slot-definitions)
+        (call-next-method)))
 
   (:method ((class persistent-class)
             (direct-slot persistent-association-end-direct-slot-definition)
             slot-option-name
             direct-slot-definitions)
-           (if (member slot-option-name '(association))
-               (some #L(slot-initarg-and-value !1 slot-option-name) direct-slot-definitions)
-               (call-next-method))))
+    (if (member slot-option-name '(association))
+        (some #L(slot-initarg-and-value !1 slot-option-name) direct-slot-definitions)
+        (call-next-method))))
 
 (defmethod finalize-inheritance :after ((class persistent-class))
   (invalidate-inheritance class)
@@ -161,7 +162,7 @@
   (invalidate-computed-slot class 'standard-direct-slots)
   (invalidate-computed-slot class 'standard-effective-slots))
 
-(defun invalidate-inheritance (class)
+(def function invalidate-inheritance (class)
   (invalidate-computed-slot class 'persistent-direct-super-classes)
   (invalidate-computed-slot class 'persistent-direct-sub-classes)
   (mapc #L(invalidate-computed-slot !1 'persistent-direct-super-classes)
@@ -176,7 +177,7 @@
   (:method ((class persistent-class))
     (find-class 'persistent-object nil)))
 
-(defun ensure-persistent-class-default-superclass (class name direct-superclasses)
+(def function ensure-persistent-class-default-superclass (class name direct-superclasses)
   (bind ((default-superclass (persistent-class-default-superclass class)))
     (if (or (null default-superclass)
             (eq (class-name default-superclass) name))
@@ -190,18 +191,18 @@
             direct-superclasses
             (append direct-superclasses (list default-superclass))))))
 
-(defun process-direct-slot-definitions (direct-slots)
+(def function process-direct-slot-definitions (direct-slots)
   (loop for direct-slot :in direct-slots
-        collect (if (or (getf direct-slot :instance)
-                        (getf direct-slot :persistent))
-                    direct-slot
-                    (if (hasf direct-slot :persistent)
-                        ;; remove :persistent nil
-                        (remove-keywords direct-slot :persistent)
-                        ;; add default :persistent t
-                        (append direct-slot '(:persistent t))))))
+     collect (if (or (getf direct-slot :instance)
+                     (getf direct-slot :persistent))
+                 direct-slot
+                 (if (hasf direct-slot :persistent)
+                     ;; remove :persistent nil
+                     (remove-keywords direct-slot :persistent)
+                     ;; add default :persistent t
+                     (append direct-slot '(:persistent t))))))
 
-(defun association-direct-slot-definitions (class)
+(def function association-direct-slot-definitions (class)
   (when (slot-boundp class 'depends-on)
     (let ((depends-on-associations
            (collect-if #L(typep !1 'persistent-association)
@@ -219,7 +220,7 @@
 
 ;; this is not the real shared-initialize because portable programs are not allowed to override that
 ;; so we are somewhat emulating it by calling this function from both initialize-instance and reinitialize-instance
-(defun shared-ininitialize-around-persistent-class (class call-next-method &rest args
+(def function shared-ininitialize-around-persistent-class (class call-next-method &rest args
                                                     &key name direct-slots direct-superclasses &allow-other-keys)
   ;; call initialize-instance or reinitialize-instance next method
   (prog1
@@ -251,7 +252,7 @@
           (collect-if #L (typep !1 'persistent-association-end-direct-slot-definition)
                       (class-direct-slots class)))))
 
-(defun ensure-slot-reader* (class slot)
+(def function ensure-slot-reader* (class slot)
   (when-bind reader-name (reader-name-of slot)
     (bind ((reader (concatenate-symbol reader-name "*"))
            (reader-gf (ensure-generic-function reader :lambda-list '(instance))))
@@ -261,13 +262,13 @@
                           (slot-value-using-class ,class instance ,slot)))
                      :specializers (list class)))))
 
-(defun slot-initarg-and-value (instance slot-name)
+(def function slot-initarg-and-value (instance slot-name)
   (when (slot-boundp instance slot-name)
     (list (first (slot-definition-initargs (find-slot (class-of instance) slot-name)))
           (slot-value instance slot-name))))
 
-(defun reader-name-of (effective-slot)
+(def function reader-name-of (effective-slot)
   (first (some #'slot-definition-readers (direct-slots-of effective-slot))))
 
-(defun writer-name-of (effective-slot)
+(def function writer-name-of (effective-slot)
   (first (some #'slot-definition-writers (direct-slots-of effective-slot))))

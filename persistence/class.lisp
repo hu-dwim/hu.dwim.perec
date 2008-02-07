@@ -89,7 +89,7 @@
     :type (list persistent-effective-slot-definition)
     :documentation "The list of effective slots which will be loaded from and stored to the database at once when loading an instance of this class. Moreover when a persistent instance is revived its prefetched slots will be loaded.")
    (non-prefetched-slots
-    (compute-as (remove-if #'prefetch-p (persistent-effective-slots-of -self-)))
+    (compute-as (set-difference (persistent-effective-slots-of -self-) (prefetched-slots-of -self-)))
     :type (list effective-slot)
     :documentation "The list of effective slots which will be loaded and stored lazily and separately from other slots.")
    (depends-on

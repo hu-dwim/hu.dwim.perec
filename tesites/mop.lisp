@@ -28,33 +28,24 @@
          (call-next-method))))
 
 (defmethod effective-slot-definition-class ((class persistent-class-t)
-                                            &key instance association time-dependent temporal &allow-other-keys)
+                                            &key instance persistent association time-dependent temporal &allow-other-keys)
   (cond (instance
          (class-of instance))
         ((and association
               (or time-dependent temporal))
          (find-class 'persistent-association-end-effective-slot-definition-t))
-        ((or time-dependent temporal)
+        ((and persistent
+              (or time-dependent temporal))
          (find-class 'persistent-effective-slot-definition-t))
         (t
          (call-next-method))))
 
-(defmethod compute-effective-slot-definition ((class persistent-class-t)
-                                              slot-name
-                                              direct-slot-definitions)
-  (if (some (lambda (slot)
-              (typep slot 'persistent-direct-slot-definition-t))
-            direct-slot-definitions)
-      (bind ((standard-initargs (compute-standard-effective-slot-definition-initargs class direct-slot-definitions))
-             (slot-initargs (mappend (lambda (slot-option-name)
-                                       (some #L(when ;; TODO: fragile guard check for association option
-                                                   (find-slot (class-of !1) slot-option-name)
-                                                 (slot-initarg-and-value !1 slot-option-name))
-                                             direct-slot-definitions))
-                                     '(temporal time-dependent association)))
-             (initargs (append slot-initargs standard-initargs))
-             (effective-slot-class (apply #'effective-slot-definition-class class :persistent #t initargs)))
-        (apply #'make-instance effective-slot-class initargs))
+(defmethod compute-persistent-effective-slot-definition-option ((class persistent-class-t)
+                                                                (direct-slot persistent-direct-slot-definition-t)
+                                                                slot-option-name
+                                                                direct-slot-definitions)
+  (if (member slot-option-name '(temporal time-dependent))
+      (some #L(slot-initarg-and-value !1 slot-option-name) direct-slot-definitions)
       (call-next-method)))
 
 (defmethod initialize-instance :after ((instance persistent-effective-slot-definition-t) &key &allow-other-keys)

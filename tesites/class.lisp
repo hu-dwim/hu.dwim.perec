@@ -19,19 +19,23 @@
     :documentation "A list of slots that support the underlying-slot-value protocol.")
    (h-class
     (compute-as (find-class (t-class-name->h-class-name (class-name -self-))))
-    :type persistent-class)
+    :type persistent-class
+    :documentation "The history class generated for this t class.")
    (t-value-slot
-    (compute-as (find-slot (h-class-of -self-) 't-value)))
+    (compute-as (find-slot (h-class-of -self-) 't-value))
+    :type persistent-effective-slot-definition)
    (t-value-column
     (compute-as (first (columns-of (t-value-slot-of -self-))))
     :type column)
    (validity-start-slot
-    (compute-as (find-slot (h-class-of -self-) 'validity-start)))
+    (compute-as (find-slot (h-class-of -self-) 'validity-start))
+    :type persistent-effective-slot-definition)
    (validity-start-column
     (compute-as (first (columns-of (validity-start-slot-of -self-))))
     :type column)
    (validity-end-slot
-    (compute-as (find-slot (h-class-of -self-) 'validity-end)))
+    (compute-as (find-slot (h-class-of -self-) 'validity-end))
+    :type persistent-effective-slot-definition)
    (validity-end-column
     (compute-as (first (columns-of (validity-end-slot-of -self-))))
     :type column)
@@ -40,46 +44,32 @@
     :type column)
    (parent-id-column
     (compute-as (id-column-of (parent-slot-of -self-)))
-    :type column))
+    :type column)
+   (prefetched-slots
+    (compute-as (collect-if #L(and (not (typep !1 'persistent-effective-slot-definition-t))
+                                   (prefetch-p !1))
+                            (persistent-effective-slots-of -self-)))))
   (:documentation "A temporal slot value is cached in the underlying slot. A time dependent slot value is cached as a values-having-validity object."))
 
-(defcclass* persistent-slot-definition-t (standard-slot-definition)
-  ((persistent
-    ;; TODO: remove this slot and fix mop
-    )
-   (prefetch
-    :type boolean
-    :computed-in compute-as
-    :documentation "Prefetched slots are loaded from and stored into the database at once. A prefetched slot must be in a table which can be accessed using a where clause matching to the id of the instance thus it must be in a data table. The default prefetched slot semantics can be overriden on a per direct slot basis.")
-   (cache
-    :type boolean
-    :computed-in compute-as
-    :documentation "All prefetched slots are cached slots but the opposite may not be true. When a cached slot is loaded it's value will be stored in the CLOS instance for fast subsequent read operations. Also whenever a cached slot is set the value will be remembered. The default cached slot semantics can be overriden on a per direct slot basis.")
-   (time-dependent
+(defcclass* persistent-slot-definition-t (persistent-slot-definition)
+  ((time-dependent
     #f
     :type boolean)
    (temporal
     #f
     :type boolean)))
 
-(defcclass* persistent-direct-slot-definition-t (persistent-slot-definition-t standard-direct-slot-definition)
+(defcclass* persistent-direct-slot-definition-t (persistent-slot-definition-t persistent-direct-slot-definition)
   ()
   (:metaclass identity-preserving-class))
 
-(defcclass* persistent-effective-slot-definition-t (persistent-slot-definition-t standard-effective-slot-definition)
+(defcclass* persistent-effective-slot-definition-t (persistent-slot-definition-t persistent-effective-slot-definition)
   ((h-slot
     (compute-as (find-slot (h-class-of (slot-definition-class -self-)) (slot-definition-name -self-)))
-    :type persistent-effective-slot-definition)
-   (prefetch
-    (compute-as (prefetch-p (h-slot-of -self-)))
-    :documentation "The cached option is inherited from the corresponding h slot.")
-   (cache
-    (compute-as (cache-p (h-slot-of -self-)))
-    :documentation "The cached option is inherited from the corresponding h slot.")))
+    :type persistent-effective-slot-definition)))
 
 (eval-always
-  ;; TODO: kill association?
-  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent :association)))
+  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent)))
 
 ;;;;;;;;;;;;;
 ;;; defpclass

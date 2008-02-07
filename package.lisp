@@ -262,6 +262,12 @@
            ;; temporal and time-dependent
            #:persistent-class-t
            #:persistent-association-t
+           #:persistent-slot-definition-t
+           #:persistent-direct-slot-definition-t
+           #:persistent-effective-slot-definition-t
+           #:persistent-association-end-slot-definition-t
+           #:persistent-association-end-direct-slot-definition-t
+           #:persistent-association-end-effective-slot-definition-t
            #:with-t
            #:with-default-t
            #:with-validity
