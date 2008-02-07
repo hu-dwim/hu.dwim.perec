@@ -12,11 +12,11 @@
 (defsuite* (test/tesites/temporal :in test/tesites))
 
 (defpclass* temporal-test ()
-  ((population :type integer-32 :temporal #t)))
+  ((population :type (or unbound integer-32) :temporal #t)))
 
 (deftest test/tesites/temporal/t-not-specified ()
   (with-transaction
-    (signals unbound-variable (population-of (make-instance 'temporal-test)))))
+    (signals unbound-variable (make-instance 'temporal-test))))
 
 (deftest test/tesites/temporal/unbound/1 ()
   (with-transaction

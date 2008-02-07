@@ -11,9 +11,9 @@
 
 (in-package :cl-perec)
 
-(defun restore-slot-t (t-class t-instance t-slot)
+(defmethod restore-slot ((t-class persistent-class-t) (t-instance t-object) (t-slot persistent-effective-slot-definition-t))
   (flet ((no-value-function (&optional validity-start validity-end)
-           (bind ((slot-type (slot-definition-type t-slot)))
+           (bind ((slot-type (canonical-type-of t-slot)))
              (cond
               ((null-subtype-p slot-type) nil)
               ((unbound-subtype-p slot-type) +unbound-slot-marker+)
@@ -34,7 +34,8 @@
                    (no-value-function)
                    (restore-slot-value nil (h-slot-of t-slot) (elt-0 records) 0)))))))
 
-(defun store-slot-t (t-class t-instance t-slot value)
+(defmethod store-slot ((t-class persistent-class-t) (t-instance t-object) (t-slot persistent-effective-slot-definition-t) value)
+  (check-slot-value-type t-instance t-slot value)
 
   ;; this lock ensures that
   ;; the insert/update operations on the h-table are serialized properly.
@@ -66,25 +67,23 @@
                 (for oid = (rdbms-values->oid* record 0))
                 (for validity-start2 = (elt record +oid-column-count+))
                 (for validity-end2 = (elt record (+ 1 +oid-column-count+)))
-                (for value2 = (restore-slot-value h-slot record (+ 2 +oid-column-count+)))
-                (for h-instance = (make-revived-instance
-                                   (find-class (oid-class-name oid))
-                                   :oid oid
-                                   :persistent #t))
+                (for value2 = (restore-slot-value nil h-slot record (+ 2 +oid-column-count+))) ;; TODO: nil
+                (for h-class = (find-class (oid-class-name oid)))
+                (for h-instance = (make-revived-instance h-class :oid oid :persistent #t))
                 ;; TODO optimize the case when value = value2
                 (cond
                   ((and (local-time< validity-start2 validity-start)
                         (local-time<= validity-end2 validity-end))
                    ;; update
-                   (store-slot h-instance (validity-end-slot-of t-class) validity-start))
+                   (store-slot h-class h-instance (validity-end-slot-of t-class) validity-start))
                   ((and (local-time<= validity-start validity-start2)
                         (local-time< validity-end validity-end2))
                    ;; update
-                   (store-slot h-instance (validity-start-slot-of t-class) validity-end))
+                   (store-slot h-class h-instance (validity-start-slot-of t-class) validity-end))
                   ((and (local-time< validity-start2 validity-start)
                         (local-time< validity-end validity-end2))
                    ;; update + insert
-                   (store-slot h-instance (validity-end-slot-of t-class) validity-start)
+                   (store-slot h-class h-instance (validity-end-slot-of t-class) validity-start)
                    (insert-h-records t-class t-instance t-slot value2 validity-end validity-end2))
                   (t
                    ;; delete
@@ -441,7 +440,7 @@
 
 (defun unused-check-for (h-slot)
   (check-for-rdbms-values
-   (lisp-value->rdbms-equality-values (slot-definition-type h-slot) +h-unused-slot-marker+)
+   (lisp-value->rdbms-equality-values (canonical-type-of h-slot) +h-unused-slot-marker+)
    (column-names-of h-slot)
    (column-types-of h-slot)
    nil))

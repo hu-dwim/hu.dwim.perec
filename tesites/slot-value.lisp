@@ -107,7 +107,7 @@
               (if (unbound-slot-marker-p cached-value)
                   (slot-unbound-t instance slot)
                   (return-from slot-value-using-class cached-value)))))
-      (restore-slot-t class instance slot))))
+      (restore-slot class instance slot))))
 
 (defmethod (setf slot-value-using-class) (new-value
                                           (class persistent-class-t)
@@ -117,7 +117,7 @@
   (bind ((persistent (persistent-p instance)))
     (assert-instance-access instance persistent)
     (if persistent
-        (store-slot-t class instance slot new-value)
+        (store-slot class instance slot new-value)
         (assert (not (underlying-slot-boundp-using-class class instance slot))))
     (when (or (not persistent)
               (and *cache-slot-values*

@@ -12,7 +12,7 @@
 (defsuite* (test/tesites/time-dependent :in test/tesites))
 
 (defpclass* time-dependent-test ()
-  ((population :type integer-32 :time-dependent #t)))
+  ((population :type (or unbound integer-32) :time-dependent #t)))
 
 (deftest test/tesites/time-dependent/validity-not-specified ()
   (with-transaction

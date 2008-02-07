@@ -160,7 +160,7 @@
            (not (slot-boundp-using-class class instance slot)))
       ;; prefetch if possible otherwise simple existence check
       (if (prefetched-slots-of class)
-          (bind (((values restored-slot-values restored-slots) (restore-prefetched-slots instance #t)))
+          (bind (((values restored-slot-values restored-slots) (restore-prefetched-slots class instance #t)))
             ;; the persistent flag must be stored prior to caching any slot value
             (prog1 (setf (slot-value-using-class class instance slot) (not (null restored-slots)))
               ;; cache prefetched slots
@@ -189,7 +189,7 @@
         (if (and *cache-slot-values*
                  (prefetch-p slot))
             ;; restore all prefetched slot values at once
-            (bind (((values restored-slot-values restored-slots) (restore-prefetched-slots instance))
+            (bind (((values restored-slot-values restored-slots) (restore-prefetched-slots class instance))
                    (slot-value))
               (iter (for restored-slot-value in restored-slot-values)
                     (for restored-slot in restored-slots)
@@ -200,7 +200,7 @@
                             restored-slot-value)))
               (funcall return-with slot-value))
             ;; only restore the requested slot from the database
-            (bind (((values restored-slot-value restored-slot) (restore-slot instance slot)))
+            (bind (((values restored-slot-value restored-slot) (restore-slot class instance slot)))
               (when (and *cache-slot-values*
                          (cache-p restored-slot))
                 (setf (underlying-slot-boundp-or-value-using-class class instance restored-slot) restored-slot-value))
@@ -219,7 +219,7 @@
                      slot-value-cached
                      *skip-storing-equal-slot-values*
                      (slot-value-equal-p cached-value new-value))
-          (store-slot instance slot new-value)
+          (store-slot class instance slot new-value)
           (update-instance-cache-for-modified-instance instance))))
     (propagate-cache-changes class instance slot new-value)
     (when (or (not persistent)

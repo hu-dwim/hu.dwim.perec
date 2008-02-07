@@ -14,6 +14,9 @@
    (validity-starts :type (vector timestamp))
    (validity-ends :type (vector timestamp))))
 
+(defun values-having-validity-p (instance)
+  (typep instance 'values-having-validity))
+
 (defun make-single-values-having-validity (value validity-start validity-end)
   (flet ((make-single-element-vector (element)
            (aprog1 (make-array 1)
