@@ -7,16 +7,16 @@
   (:abstract #t))
 
 (defpclass* super-1-test ()
-  ((attr1 :type integer)))
+  ())
 
 (defpclass* super-2-test ()
-  ((attr1 :type integer)))
+  ())
 
 (defpclass* sub-1-test (super-1-test super-2-test)
-  ((attr2 :type integer)))
+  ())
 
 (defpclass* sub-2-test (super-1-test super-2-test)
-  ((attr2 :type integer)))
+  ())
 
 (defixture create-type-test-data
   (with-transaction
@@ -24,8 +24,8 @@
     (purge-instances 'super-2-test)
     (purge-instances 'sub-1-test)
     (purge-instances 'sub-2-test)
-    (make-instance 'sub-1-test :attr1 1 :attr2 1)
-    (make-instance 'sub-2-test :attr1 2 :attr2 2)))
+    (make-instance 'sub-1-test)
+    (make-instance 'sub-2-test)))
 
 (defmacro type-test (&body body)
   `(progn
@@ -33,7 +33,7 @@
     (finishes
       (run-queries
         ,@body))))
-        
+
 (deftest test/query/table-ref/none ()
   (type-test
     (select (o)

@@ -443,42 +443,45 @@
 
 (defgeneric compute-columns (slot)
   (:method ((slot persistent-effective-slot-definition))
-    (or (some #'columns-of (persistent-effective-super-slot-precedence-list-of slot))
-        (bind ((class (slot-definition-class slot))
-               (name (slot-definition-name slot))
-               (class-name (class-name class))
-               (type (canonical-type-of slot))
-               (mapping (mapping-of slot))
-               (rdbms-types (column-types-of slot)))
-          (when type
-            (cond ((set-type-p* type)
-                   (make-columns-for-reference-slot class-name (strcat name "-for-" class-name)))
-                  ((persistent-class-type-p* type)
-                   (append
-                    (when (tagged-p mapping)
-                      (list (make-tag-column mapping name)))
-                    (make-columns-for-reference-slot class-name name)))
-                  ((primitive-type-p* type)
-                   (append
-                    (when (tagged-p mapping)
-                      (list (make-tag-column mapping name)))
-                    (list
-                     (make-instance 'column
-                                    :name (rdbms-name-for name :column)
-                                    :type (if (tagged-p mapping)
-                                              (second rdbms-types)
-                                              (first rdbms-types))
-                                    ;; TODO: add null constraint if type-check is :always (and (not (subytpep 'null type))
-                                    ;;                                                         (not (subytpep 'unbound type)))
-                                    :constraints (if (unique-p slot)
-                                                     (list (sql-unique-constraint)))
-                                    :index (if (and (index-p slot)
-                                                    (not (unique-p slot)))
-                                               (sql-index :name
-                                                          (rdbms-name-for (concatenate-symbol name "-on-" class-name "-idx")
-                                                                          :index)))))))
-                  (t
-                   (error "Unknown type ~A in slot ~A" type slot))))))))
+    (bind ((precedence-list (persistent-effective-super-slot-precedence-list-of slot)))
+      ;; TODO: multiple inheritance with slot storage location merging is not yet supported
+      (assert (<= (length (delete nil (delete-duplicates (mapcar 'columns-of precedence-list)))) 1) nil "There must be at most one storage location for ~A" slot)
+      (or (some #'columns-of precedence-list)
+          (bind ((class (slot-definition-class slot))
+                 (name (slot-definition-name slot))
+                 (class-name (class-name class))
+                 (type (canonical-type-of slot))
+                 (mapping (mapping-of slot))
+                 (rdbms-types (column-types-of slot)))
+            (when type
+              (cond ((set-type-p* type)
+                     (make-columns-for-reference-slot class-name (strcat name "-for-" class-name)))
+                    ((persistent-class-type-p* type)
+                     (append
+                      (when (tagged-p mapping)
+                        (list (make-tag-column mapping name)))
+                      (make-columns-for-reference-slot class-name name)))
+                    ((primitive-type-p* type)
+                     (append
+                      (when (tagged-p mapping)
+                        (list (make-tag-column mapping name)))
+                      (list
+                       (make-instance 'column
+                                      :name (rdbms-name-for name :column)
+                                      :type (if (tagged-p mapping)
+                                                (second rdbms-types)
+                                                (first rdbms-types))
+                                      ;; TODO: add null constraint if type-check is :always (and (not (subytpep 'null type))
+                                      ;;                                                         (not (subytpep 'unbound type)))
+                                      :constraints (if (unique-p slot)
+                                                       (list (sql-unique-constraint)))
+                                      :index (if (and (index-p slot)
+                                                      (not (unique-p slot)))
+                                                 (sql-index :name
+                                                            (rdbms-name-for (concatenate-symbol name "-on-" class-name "-idx")
+                                                                            :index)))))))
+                    (t
+                     (error "Unknown type ~A in slot ~A" type slot)))))))))
 
 ;;;;;;;;;;;
 ;;; Utility
