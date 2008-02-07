@@ -114,8 +114,9 @@
        (,defclass-macro ,h-class-name ,h-superclasses
          ,(mapcar (lambda (slot-definition)
                     (bind ((slot-name (car slot-definition))
-                           (slot-options (cdr slot-definition)))
+                           (slot-options (cdr slot-definition))) ;; TODO remove initform from slot-options
                       (list* slot-name
+                             +h-unused-slot-marker+
                              (aprog1 (remf-keywords slot-options :time-dependent :temporal)
                                (setf (getf it :type) `(or h-unused ,(getf it :type)))))))
                   (collect-if #L(or (member :time-dependent !1)
