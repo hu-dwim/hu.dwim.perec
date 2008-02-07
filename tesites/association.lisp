@@ -68,13 +68,23 @@
 
 (defmethod expand-defassociation-form ((metaclass persistent-association-t) association-ends options)
   (with-decoded-association-ends association-ends
-    (bind ((superclasses
-            (append (when (find :temporal options :key #'first)
+    (bind ((temporal-p (find :temporal options :key #'first))
+           (time-dependent-p (find :time-dependent options :key #'first))
+           (superclasses
+            (append (when temporal-p
                       (list 'temporal-object))
-                    (when (find :time-dependent options :key #'first)
-                      (list 'time-dependent-object)))))
+                    (when time-dependent-p
+                      (list 'time-dependent-object))))
+           (processed-options (remove-if #L(member (first !1) '(:temporal :time-dependent)) options))
+           (processed-association-ends
+            (mapcar #L(append (when temporal-p
+                                (list :temporal #t))
+                              (when time-dependent-p
+                                (list :time-dependent #t))
+                              !1)
+                    association-ends)))
       `(progn
-         ,(call-next-method)
+         ,(call-next-method metaclass processed-association-ends processed-options)
          (defpclass* ,association-name ,superclasses
            ())
          (defassociation*

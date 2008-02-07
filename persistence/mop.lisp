@@ -49,39 +49,41 @@
   (mapc #L(pushnew association (depends-on-of !1))
         (associated-classes-of association)))
 
-(defmethod validate-superclass ((class standard-class)
-                                (superclass persistent-class))
+(defmethod validate-superclass ((class standard-class) (superclass persistent-class))
   t)
 
-(defmethod validate-superclass ((class persistent-class)
-                                (superclass standard-class))
+(defmethod validate-superclass ((class persistent-class) (superclass standard-class))
   t)
 
 (defmethod direct-slot-definition-class ((class persistent-class)
-                                         &key instance persistent association &allow-other-keys)
+                                         &rest args &key instance persistent association &allow-other-keys)
   (cond (instance
          (class-of instance))
         (association
-         (find-class 'persistent-association-end-direct-slot-definition))
+         (apply #'direct-slot-definition-class association args))
         (persistent
          (find-class 'persistent-direct-slot-definition))
         (t
          (call-next-method))))
 
+(defmethod direct-slot-definition-class ((class persistent-association) &key &allow-other-keys)
+  (find-class 'persistent-association-end-direct-slot-definition))
+
 (defmethod effective-slot-definition-class ((class persistent-class)
-                                            &key instance persistent association &allow-other-keys)
+                                            &rest args &key instance persistent association &allow-other-keys)
   (cond (instance
          (class-of instance))
         (association
-         (find-class 'persistent-association-end-effective-slot-definition))
+         (apply #'effective-slot-definition-class association args))
         (persistent
          (find-class 'persistent-effective-slot-definition))
         (t
          (call-next-method))))
 
-(defmethod compute-effective-slot-definition ((class persistent-class)
-                                              slot-name
-                                              direct-slot-definitions)
+(defmethod effective-slot-definition-class ((class persistent-association) &key &allow-other-keys)
+  (find-class 'persistent-association-end-effective-slot-definition))
+
+(defmethod compute-effective-slot-definition ((class persistent-class) slot-name direct-slot-definitions)
   (if (some (lambda (slot)
               (typep slot 'persistent-direct-slot-definition))
             direct-slot-definitions)
