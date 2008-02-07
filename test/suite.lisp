@@ -8,7 +8,7 @@
 
 (defun drop-all-test-tables ()
   (with-transaction
-    (mapc #L(drop-table !1)
+    (mapc #L(drop-table !1 :cascade #t)
           (collect-if #L(and (starts-with !1 "_")
                              (search "test" !1))
                       (list-tables)))))

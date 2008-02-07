@@ -106,6 +106,12 @@
                   (other-effective-association-end-for class -self-)))
     :type persistent-association-end-direct-slot-definition)))
 
+(defcclass* association-primary-table (table)
+  ((persistent-association
+    :type persistent-association
+    :documentation "The persistent association for which this table is the primary table."))
+  (:documentation "This is a special table related to a persistent association."))
+
 ;;;;;;;;;;;;;;;;;;
 ;;; defassociation
 
@@ -199,6 +205,10 @@
   (awhen (primary-table-of association)
     (ensure-exported it)))
 
+(defmethod export-to-rdbms :after ((table association-primary-table))
+  (unless (find-if #L(search "pkey" (rdbms::name-of !1)) (list-table-indices (name-of table)))
+    (add-primary-key-constraint (name-of table) (columns-of table))))
+
 ;;;;;;;;;;;
 ;;; Compute
 
@@ -218,6 +228,7 @@
   (when (eq (association-kind-of association) :m-n)
     (make-instance 'association-primary-table
                    :name (rdbms-name-for (name-of association) :table)
+                   :persistent-association association
                    :columns (compute-as
                               (mappend #'columns-of
                                        (mapcar #'effective-association-end-for (association-ends-of association)))))))
@@ -265,10 +276,6 @@
       (:m-n #f))))
 
 (defgeneric compute-association-end-query (association-end))
-
-(defcclass* association-primary-table (table)
-  ()
-  (:documentation "This is a special table related to a persistent association."))
 
 ;;;;;;;;;;;
 ;;; Utility

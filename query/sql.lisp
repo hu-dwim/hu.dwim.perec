@@ -15,25 +15,13 @@
 
 (defun sql-select-oids-for-class (class-name)
   "Generates a select for the oids of instances of the class named CLASS-NAME."
-  (bind ((class (find-class class-name))
-         (tables (rest (primary-tables-of class))))
+  (bind ((class (find-class class-name)))
     (ensure-class-and-subclasses-exported class)
-    (sql-select-oids-from-tables tables 'sql-union))) ; TODO: APPEND/UNION
+    (sql-select-oids-from-table (primary-relation-of class))))
 
-(defun sql-select-oids-from-tables (tables set-operation)
-  "Generates a select for the union or intersection of oids from TABLES."
-  (declare (type (member sql-union sql-intersect) set-operation))
-  (case (length tables)
-    (0 nil)
-    (1 (sql-select-oids-from-table (first tables)))
-    (otherwise (apply set-operation (mapcar 'sql-select-oids-from-table tables)))))
-
-(defgeneric sql-select-oids-from-table (table)
-  (:documentation "Generates a select for the oids in TABLE.")
-  (:method ((table table))
-           (sql-select :columns +oid-column-names+ :tables (list (name-of table))))
-  (:method ((table sql-table-alias))
-           (sql-select :columns +oid-column-names+ :tables (list table))))
+(defun sql-select-oids-from-table (thing)
+  "Generates a select for the oids in THING."
+  (sql-select :columns +oid-column-names+ :tables (list (sql-table-reference-for thing nil))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Deletes
@@ -125,43 +113,50 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
              (delete nil (mapcar 'sql-table-reference-for variables variables)))))
 
 (defgeneric sql-table-reference-for (element alias)
+  (:method ((table sql-table-alias) (alias null))
+    table)
+  
   (:method ((table table) (alias symbol))
-           (ensure-exported table)
-           (sql-table-alias :name (name-of table) :alias alias))
+    (ensure-exported table)
+    (sql-table-alias :name (name-of table) :alias alias))
+
+  (:method ((view view) (alias symbol))
+    (ensure-exported view)
+    (sql-table-alias :name (name-of view) :alias alias))
 
   (:method ((subquery sql-subquery) (alias symbol))
-           (sql-derived-table :subquery subquery :alias (or alias (gensym "pg")))) ; Postgresql requires alias
+    (sql-derived-table :subquery subquery :alias (or alias (gensym "pg")))) ; Postgresql requires alias
 
   (:method ((class persistent-class) (alias symbol))
-           (sql-table-reference-for-type class alias))
+    (sql-table-reference-for-type class alias))
 
   (:method ((class-name symbol) (alias symbol))
-           (aif (find-class class-name)
-                (sql-table-reference-for it alias)
-                (error "No persistent class named '~A~%" class-name)))
+    (aif (find-class class-name)
+         (sql-table-reference-for it alias)
+         (error "No persistent class named '~A~%" class-name)))
 
   (:method ((variable query-variable) (alias symbol))
-           (assert (not (eq (persistent-type-of variable) +unknown-type+)))
-           (sql-table-reference-for-type
-            `(join ,(persistent-type-of variable) ,@(joined-types-of variable))
-            alias))
+    (assert (not (eq (persistent-type-of variable) +unknown-type+)))
+    (sql-table-reference-for-type
+     `(join ,(persistent-type-of variable) ,@(joined-types-of variable))
+     alias))
 
   (:method ((association persistent-association) (alias symbol))
-           (assert (eq (association-kind-of association) :m-n))
-           (ensure-exported association)
-           (sql-table-reference-for (primary-table-of association) alias))
+    (assert (eq (association-kind-of association) :m-n))
+    (ensure-exported association)
+    (sql-table-reference-for (primary-table-of association) alias))
 
   (:method ((syntax syntax-object) (alias symbol))
-           (make-function-call :fn 'sql-table-reference-for :args (list syntax alias)))
+    (make-function-call :fn 'sql-table-reference-for :args (list syntax alias)))
 
   (:method (element (variable query-variable))
-           (sql-table-reference-for element (sql-alias-for variable)))
+    (sql-table-reference-for element (sql-alias-for variable)))
 
   (:method (element (class persistent-class))
-           (sql-table-reference-for element (sql-alias-for class)))
+    (sql-table-reference-for element (sql-alias-for class)))
 
   (:method (element (syntax syntax-object))
-           (make-function-call :fn 'sql-table-reference-for :args (list element syntax))))
+    (make-function-call :fn 'sql-table-reference-for :args (list element syntax))))
 
 (def function sql-table-reference-for-type (type &optional alias)
   (sql-table-reference-for-type* (simplify-persistent-class-type type) alias))
@@ -170,12 +165,8 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   
   (:method ((class persistent-class) &optional alias)
            (ensure-class-and-subclasses-exported class)
-           (bind ((tables (rest (primary-tables-of class)))) ; TODO handle UNION/APPEND
-             (case (length tables)
-               (0 nil)
-               (1 (sql-table-reference-for (first tables) alias))
-               (t (sql-table-reference-for
-                   (sql-subquery :query (sql-select-oids-from-tables tables 'sql-union)) alias)))))
+           (when-bind relation (primary-relation-of class)
+             (sql-table-reference-for relation alias)))
 
   (:method ((type-name symbol) &optional alias)
            (bind ((class (find-class type-name #f)))
@@ -259,8 +250,8 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (sql-column-reference-for (id-column-of association-end) qualifier))
 
   (:method ((slot persistent-slot-definition) qualifier)
-           (assert (columns-of slot))
-           (sql-column-reference-for (last1 (columns-of slot)) qualifier))
+           (assert (column-names-of slot))
+           (sql-column-reference-for (last1 (column-names-of slot)) qualifier))
 
   (:method (element qualifier)
            (sql-column-reference-for element (sql-alias-for qualifier))))
@@ -276,7 +267,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (map 'list #L(sql-column-reference-for !1 qualifier) column-names))
 
   (:method ((slot persistent-slot-definition) qualifier)
-           (sql-column-references-for (columns-of slot) qualifier)))
+           (sql-column-references-for (column-names-of slot) qualifier)))
 
 (defun sql-oid-column-references-for (qualifier)
   (sql-column-references-for +oid-column-names+ qualifier))

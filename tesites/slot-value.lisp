@@ -6,6 +6,9 @@
 
 (in-package :cl-perec)
 
+;;;;;;;;;;;;;;;;;;;
+;;; Error signaling
+
 (defcondition* unbound-slot-t (unbound-slot)
   ((t-value :type timestamp)
    (validity-start :type timestamp)
@@ -43,6 +46,9 @@
             (list :validity-end (or validity-end
                                     *validity-end*))))))
 
+;;;;;;;;;;;;;;
+;;; Integrated
+
 (defun integrated-time-dependent-slot-value (instance slot-name)
   (bind ((slot-values (slot-value instance slot-name)))
     (if (typep slot-values 'values-having-validity)
@@ -54,61 +60,73 @@
   (setf (slot-value instance slot-name)
         (/ new-value (local-time- *validity-end* *validity-start*))))
 
+
+;;;;;;;;;;;;
+;;; Averaged
+
+(defun averaged-time-dependent-slot-value (instance slot-name)
+  (bind ((slot-values (slot-value instance slot-name)))
+    (if (typep slot-values 'values-having-validity)
+        (iter (for (value validity-start validity-end index) :in-values-having-validity slot-values)
+              (summing (* value (local-time- validity-end validity-start)) :into sum)
+              (finally
+               (return (/ sum (local-time- *validity-end* *validity-start*)))))
+        slot-values)))
+
+(defun (setf averaged-time-dependent-slot-value) (new-value instance slot-name)
+  (setf (slot-value instance slot-name) new-value))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Slot value and friends
+
 (defmethod slot-value-using-class ((class persistent-class-t)
                                    (instance persistent-object)
                                    (slot persistent-effective-slot-definition-t))
   (assert-instance-slot-correspondence)
-  (bind ((persistent (persistent-p instance))
-         (integrated-slot-name (integrated-slot-name-of slot)))
+  (bind ((persistent (persistent-p instance)))
     (assert-instance-access instance persistent)
-    (if integrated-slot-name
-        (integrated-time-dependent-slot-value instance integrated-slot-name)
-        (bind (((values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
-          (when (or (not persistent)
-                    (and *cache-slot-values*
-                         slot-value-cached))
-            (if (time-dependent-p slot)
-                (progn
-                  *validity-start* *validity-end*
-                  (when (temporal-p slot)
-                    *t*)
-                  (if (unbound-slot-marker-p cached-value)
-                      (slot-unbound-t instance slot)
-                      (bind (((values value covers-validity-range-p)
-                              (extract-values-having-validity cached-value *validity-start* *validity-end*)))
-                           (if covers-validity-range-p
-                               (return-from slot-value-using-class value)
-                               (unless persistent
-                                 (slot-unbound-t instance slot))))))
-                (progn
-                  *t*
-                  (if (unbound-slot-marker-p cached-value)
-                      (slot-unbound-t instance slot)
-                      (return-from slot-value-using-class cached-value)))))
-          (restore-slot-t class instance slot)))))
+    (bind (((values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
+      (when (or (not persistent)
+                (and *cache-slot-values*
+                     slot-value-cached))
+        (if (time-dependent-p slot)
+            (progn
+              *validity-start* *validity-end*
+              (when (temporal-p slot)
+                *t*)
+              (if (unbound-slot-marker-p cached-value)
+                  (slot-unbound-t instance slot)
+                  (bind (((values value covers-validity-range-p)
+                          (extract-values-having-validity cached-value *validity-start* *validity-end*)))
+                    (if covers-validity-range-p
+                        (return-from slot-value-using-class value)
+                        (unless persistent
+                          (slot-unbound-t instance slot))))))
+            (progn
+              *t*
+              (if (unbound-slot-marker-p cached-value)
+                  (slot-unbound-t instance slot)
+                  (return-from slot-value-using-class cached-value)))))
+      (restore-slot-t class instance slot))))
 
 (defmethod (setf slot-value-using-class) (new-value
                                           (class persistent-class-t)
                                           (instance persistent-object)
                                           (slot persistent-effective-slot-definition-t))
   (assert-instance-slot-correspondence)
-  (bind ((persistent (persistent-p instance))
-         (integrated-slot-name (integrated-slot-name-of slot)))
+  (bind ((persistent (persistent-p instance)))
     (assert-instance-access instance persistent)
-    (if integrated-slot-name
-        (setf (integrated-time-dependent-slot-value instance integrated-slot-name) new-value)
-        (progn
-          (if persistent
-              (store-slot-t class instance slot new-value)
-              (assert (not (underlying-slot-boundp-using-class class instance slot))))
-          (when (or (not persistent)
-                    (and *cache-slot-values*
-                         (cache-p slot)))
-            (setf (underlying-slot-value-using-class class instance slot)
-                  (if (time-dependent-p slot)
-                      (make-single-values-having-validity new-value *validity-start* *validity-end*)
-                      new-value)))
-          new-value))))
+    (if persistent
+        (store-slot-t class instance slot new-value)
+        (assert (not (underlying-slot-boundp-using-class class instance slot))))
+    (when (or (not persistent)
+              (and *cache-slot-values*
+                   (cache-p slot)))
+      (setf (underlying-slot-value-using-class class instance slot)
+            (if (time-dependent-p slot)
+                (make-single-values-having-validity new-value *validity-start* *validity-end*)
+                new-value)))
+    new-value))
 
 (defmethod slot-boundp-using-class ((class persistent-class-t)
                                     (instance persistent-object)

@@ -267,10 +267,12 @@
          (when-bind columns (columns-of slot)
            (bind ((rdbms-values (make-array (length (the list columns)))))
              (store-slot-value instance slot value rdbms-values 0)
-             (update-records (name-of (table-of slot))
-                             columns
-                             rdbms-values
-                             (id-column-matcher-where-clause instance)))))))
+             (bind ((count
+                     (update-records (name-of (table-of slot))
+                                     columns
+                                     rdbms-values
+                                     (id-column-matcher-where-clause instance))))
+               (assert (= 1 count))))))))
 
 (def (function o) store-prefetched-slots (instance)
   "Stores all prefetched slots without local side effects into the database. Executes one insert statement for each table."

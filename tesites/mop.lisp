@@ -15,26 +15,26 @@
   t)
 
 (defmethod direct-slot-definition-class ((class persistent-class-t)
-                                         &key instance persistent association time-dependent temporal integrated-slot-name &allow-other-keys)
+                                         &key instance persistent association time-dependent temporal &allow-other-keys)
   (cond (instance
          (class-of instance))
         ((and association
               (or time-dependent temporal))
          (find-class 'persistent-association-end-direct-slot-definition-t))
         ((and persistent
-              (or time-dependent temporal integrated-slot-name))
+              (or time-dependent temporal))
          (find-class 'persistent-direct-slot-definition-t))
         (t
          (call-next-method))))
 
 (defmethod effective-slot-definition-class ((class persistent-class-t)
-                                            &key instance association time-dependent temporal integrated-slot-name &allow-other-keys)
+                                            &key instance association time-dependent temporal &allow-other-keys)
   (cond (instance
          (class-of instance))
         ((and association
               (or time-dependent temporal))
          (find-class 'persistent-association-end-effective-slot-definition-t))
-        ((or time-dependent temporal integrated-slot-name)
+        ((or time-dependent temporal)
          (find-class 'persistent-effective-slot-definition-t))
         (t
          (call-next-method))))
@@ -51,7 +51,7 @@
                                                    (find-slot (class-of !1) slot-option-name)
                                                  (slot-initarg-and-value !1 slot-option-name))
                                              direct-slot-definitions))
-                                     '(temporal time-dependent integrated-slot-name association)))
+                                     '(temporal time-dependent association)))
              (initargs (append slot-initargs standard-initargs))
              (effective-slot-class (apply #'effective-slot-definition-class class :persistent #t initargs)))
         (apply #'make-instance effective-slot-class initargs))
@@ -59,8 +59,7 @@
 
 (defmethod initialize-instance :after ((instance persistent-effective-slot-definition-t) &key &allow-other-keys)
   (assert (or (temporal-p instance)
-              (time-dependent-p instance)
-              (integrated-slot-name-of instance))))
+              (time-dependent-p instance))))
 
 (defmethod persistent-class-default-superclass ((class persistent-class-t))
   (find-class 't-object nil))

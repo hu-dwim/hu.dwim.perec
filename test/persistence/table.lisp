@@ -51,32 +51,32 @@
     ;; checks for a1
     (is (null (primary-table-of a1)))
     (is (null (data-tables-of a1)))
-    (is (equal (list 'append (primary-table-of c1) (primary-table-of b1))
+    (is (equal (list :append (primary-table-of c1) (primary-table-of b1))
                (primary-tables-of a1)))
 
     ;; checks for b1
     (is (not (null (primary-table-of b1))))
     (is (equal (list (primary-table-of b1))
                (data-tables-of b1)))
-    (is (equal (list 'append (primary-table-of b1))
+    (is (equal (list :append (primary-table-of b1))
                (primary-tables-of b1)))
  
     ;; checks for a2
     (is (null (primary-table-of a2)))
     (is (null (data-tables-of a2)))
-    (is (equal (list 'union (primary-table-of c2) (primary-table-of b2))
+    (is (equal (list :union (primary-table-of c2) (primary-table-of b2))
                (primary-tables-of a2)))
 
     ;; checks for b2
     (is (not (null (primary-table-of b2))))
     (is (equal (list (primary-table-of b2))
                (data-tables-of b2)))
-    (is (equal (list 'append (primary-table-of b2))
+    (is (equal (list :append (primary-table-of b2))
                (primary-tables-of b2)))
 
     ;; checks for d2
     (is (not (null (primary-table-of d2))))
     (is (equal (list (primary-table-of d2) (primary-table-of b2) (primary-table-of c2))
                (data-tables-of d2)))
-    (is (equal (list 'append (primary-table-of d2))
+    (is (equal (list :append (primary-table-of d2))
                (primary-tables-of d2)))))

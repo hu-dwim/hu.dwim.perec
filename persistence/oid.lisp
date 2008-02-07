@@ -37,7 +37,7 @@
                                             64)
   "Size of the life time unique identifier instance id in bits.")
 
-(def constant +oid-maximum-instance-id+ (1- (expt 2 +oid-instance-id-bit-size+))
+(def (constant :test '=) +oid-maximum-instance-id+ (1- (expt 2 +oid-instance-id-bit-size+))
   "Maximum instance id available.")
 
 (def constant +oid-class-id-bit-size+ 16

@@ -283,6 +283,8 @@
            #:t-object-of
            #:h-objects
            #:h-objects-of
+           #:integrated-time-dependent-slot-value
+           #:averaged-time-dependent-slot-value
 
            ;; turning cache on and off
            #:with-caching-slot-values

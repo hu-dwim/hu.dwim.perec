@@ -254,7 +254,8 @@
         ((unbound-subtype-p type)
          (check-for-rdbms-values
           (lisp-value->rdbms-equality-values type +unbound-slot-marker+)
-          (columns-of slot)
+          (column-names-of slot)
+          (column-types-of slot)
           variable))
         (t
          nil))))
@@ -303,7 +304,8 @@
         ((maybe-null-subtype-p type)
          (check-for-rdbms-values
           (lisp-value->rdbms-equality-values type nil)
-          (columns-of slot)
+          (column-names-of slot)
+          (column-types-of slot)
           variable))
         (t
          nil))))
@@ -311,17 +313,18 @@
   (:method ((access association-end-access))
     nil))
 
-(defun check-for-rdbms-values (rdbms-values columns qualifier)
-  (assert (= (length rdbms-values) (length columns)))
+(defun check-for-rdbms-values (rdbms-values column-names column-types qualifier)
+  (assert (= (length rdbms-values) (length column-names)))
   (apply 'sql-and
          (iter (for rdbms-value in-vector rdbms-values)
-               (for column in columns)
+               (for column-name in column-names)
+               (for column-type in column-types)
                (case rdbms-value
                  (#.+ignore-in-rdbms-equality-marker+ nil)
-                 (:null (collect (sql-is-null (sql-column-reference-for column qualifier))))
-                 (t (collect (sql-= (sql-column-reference-for column qualifier)
+                 (:null (collect (sql-is-null (sql-column-reference-for column-name qualifier))))
+                 (t (collect (sql-= (sql-column-reference-for column-name qualifier)
                                     (sql-literal :value rdbms-value
-                                                 :type (rdbms::type-of column)))))))))
+                                                 :type column-type))))))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Functions mapped to SQL in queries

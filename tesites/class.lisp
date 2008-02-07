@@ -60,18 +60,13 @@
     :type boolean)
    (temporal
     #f
-    :type boolean)
-   (integrated-slot-name
-    nil
-    :type symbol)))
+    :type boolean)))
 
-(defcclass* persistent-direct-slot-definition-t
-    (persistent-slot-definition-t standard-direct-slot-definition)
+(defcclass* persistent-direct-slot-definition-t (persistent-slot-definition-t standard-direct-slot-definition)
   ()
   (:metaclass identity-preserving-class))
 
-(defcclass* persistent-effective-slot-definition-t
-    (persistent-slot-definition-t standard-effective-slot-definition)
+(defcclass* persistent-effective-slot-definition-t (persistent-slot-definition-t standard-effective-slot-definition)
   ((h-slot
     (compute-as (find-slot (h-class-of (slot-definition-class -self-)) (slot-definition-name -self-)))
     :type persistent-effective-slot-definition)
@@ -84,7 +79,7 @@
 
 (eval-always
   ;; TODO: kill association?
-  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent :integrated-slot-name :association)))
+  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:temporal :time-dependent :association)))
 
 ;;;;;;;;;;;;;
 ;;; defpclass
@@ -121,7 +116,7 @@
                     (bind ((slot-name (car slot-definition))
                            (slot-options (cdr slot-definition)))
                       (list* slot-name
-                             (aprog1 (remf-keywords slot-options :time-dependent :temporal :integrates)
+                             (aprog1 (remf-keywords slot-options :time-dependent :temporal)
                                (setf (getf it :type) `(or h-unused ,(getf it :type)))))))
                   (collect-if #L(or (member :time-dependent !1)
                                     (member :temporal !1))

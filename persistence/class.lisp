@@ -9,6 +9,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Persistent class and slot meta objects
 
+;; TODO: FIXME: maybe change those computed slots into a simple defun which are not required for instance level persistence operations (makes debugging harder?!)
 ;; TODO: add oid-columns for persistent-class
 ;; TODO: support flattenning abstract superclass slot columns into subclasses, so that abstract superclasses will not have tables
 ;; TODO: support flattenning subclasses into superclass and dispatch on type
@@ -19,6 +20,10 @@
     (compute-as #f)
     :type boolean
     :documentation "An abstract persistent class cannot be instantiated but still can be used in associations and may have slots. Calling make-instance on an abstract persistent class will signal an error. On the other hand abstract classes might not have a primary table and thus handling the instances may require simpler or less SQL statements.")
+   (separate-primary-table
+    (compute-as (not (abstract-p -self-)))
+    :type boolean
+    :documentation "True if the slots of the abstract class must be stored in the non-abstract subclasses of it. This also means that the class will not have a primary table but a view instead.")
    (standard-direct-slots
     (compute-as (class-direct-slots -self-))
     :type (list standard-effective-slot-definition)
@@ -67,6 +72,14 @@
     (compute-as (compute-primary-tables -self-))
     :type (list class-primary-table)
     :documentation "The smallest set of tables which hold all instances of this class by having exactly one record per instance. This list may contain functional nodes such as union, append according to the required SQL operation. For classes which have a primary table this list contains only that table while for other classes the list will contain some of the primary tables of the sub persistent classes.")
+   (primary-view
+    (compute-as (compute-primary-view -self-))
+    :type view
+    :documentation "When a class does not have a primary table then it is required to have a primary view which can be used to select data as if it were a primary table.")
+   (primary-relation
+    (compute-as (or (primary-table-of -self-) (primary-view-of -self-)))
+    :type (or table view)
+    :documentation "The primary relation from which instances of this class can be selected or nil.")
    (data-tables
     (compute-as (compute-data-tables -self-))
     :type (list table)
@@ -134,7 +147,11 @@
   (:documentation "Base class for both persistent direct and effective slot definitions."))
 
 (defcclass* persistent-direct-slot-definition (persistent-slot-definition standard-direct-slot-definition)
-  ((specified-type
+  ((store-in-primary-table
+    (compute-as #f)
+    :type boolean
+    :documentation "Specifies that the slot must be stored in the owner class'es primary table and should not be stored in multiple subclasses' primary tables.")
+   (specified-type
     :initarg :type
     :documentation "The slot type as it was originally specified in the defclass form."))
   (:metaclass identity-preserving-class)
@@ -149,9 +166,13 @@
     :type persistent-class
     :documentation "The persistent class which owns the primary table where this slot will be stored.")
    (table
-       (compute-as (compute-table -self-))
-     :type table
-     :documentation "The RDBMS table which will be queried or updated to get and set the data of this slot.")
+    (compute-as (compute-table -self-))
+    :type table
+    :documentation "The RDBMS table which will be queried or updated to get and set the data of this slot.")
+   (column-names
+    (compute-as (compute-column-names -self-))
+    :type list
+    :documentation "The list of RDBMS column names to which this slot will be mapped.")
    (columns
     (compute-as (compute-columns -self-))
     :type (list sql-column)
@@ -167,6 +188,10 @@
     (compute-as (compute-slot-mapping -self-))
     :type mapping
     :documentation "The RDBMS mapping")
+   (column-types
+    (compute-as (awhen (mapping-of -self-) (rdbms-types-of it)))
+    :type list
+    :documentation "List of RDBMS types to which this slot is mapped.")
    (reader
     (compute-as (compute-slot-reader -self-))
     :type (or null function)
@@ -207,10 +232,13 @@
   (:documentation "Class for persistent effective slot definitions."))
 
 (eval-always
-  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:persistent :prefetch :cache :index :unique :type-check)))
+  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:persistent :store-in-primary-table :prefetch :cache :index :unique :type-check)))
 
 (defcclass* class-primary-table (table)
-  ((oid-columns
+  ((persistent-class
+    :type persistent-class
+    :documentation "The persistent class for which this table is the primary table.")
+   (oid-columns
     (compute-as (oid-mode-ecase
                   (:class-name (list (id-column-of -self-) (class-name-column-of -self-)))
                   (:class-id (list (id-column-of -self-) (class-id-column-of -self-)))
@@ -264,6 +292,9 @@
         (collect-if #L(typep !1 'persistent-association)
                     (depends-on-of class)))
   (awhen (primary-table-of class)
+    (ensure-exported it))
+  (awhen (primary-view-of class)
+    (mapc #'ensure-exported (cdr (primary-tables-of class)))
     (ensure-exported it)))
 
 ;;;;;;;;;;;;
@@ -322,6 +353,7 @@
         (or current-table
             (make-instance 'class-primary-table
                            :name (rdbms-name-for (class-name class) :table)
+                           :persistent-class class
                            :columns (compute-as
                                       (append
                                        (make-oid-columns)
@@ -340,8 +372,34 @@
         (when primary-class-sub-classes
           (if (eq (length (reduce #'union primary-class-sub-classes))
                   (length (reduce #'append primary-class-sub-classes)))
-              (cons 'append primary-tables)
-              (cons 'union primary-tables)))))))
+              (cons :append primary-tables)
+              (cons :union primary-tables)))))))
+
+(defgeneric compute-primary-view (class)
+  (:method ((class persistent-class))
+    (unless (primary-table-of class)
+      (when-bind primary-tables (primary-tables-of class)
+        (bind ((columns (append +oid-column-names+
+                                (mappend (lambda (slot)
+                                           (columns-of
+                                            (find-slot (persistent-class-of (first (cdr primary-tables)))
+                                                       (slot-definition-name slot))))
+                                         ;; TODO: even more complicated
+                                         (collect-if (lambda (slot)
+                                                       (bind ((canonical-type (canonical-type-of slot)))
+                                                         (or (primitive-type-p* canonical-type)
+                                                             (persistent-class-type-p canonical-type))))
+                                                     (persistent-direct-slots-of class))))))
+          (make-instance 'view
+                         :name (rdbms-name-for (class-name class) :view)
+                         :columns columns
+                         :query (sql-set-operation-expression :set-operation :union :all (eq :append (first primary-tables))
+                                                              :subqueries
+                                                              (mapcar (lambda (table)
+                                                                        (sql-subquery :query
+                                                                                      (sql-select :columns columns
+                                                                                                  :tables (list (name-of table)))))
+                                                                      (cdr primary-tables)))))))))
 
 (defgeneric compute-data-tables (class)
   (:method ((class persistent-class))
@@ -365,12 +423,13 @@
 (defgeneric compute-primary-class (slot)
   (:method ((slot persistent-effective-slot-definition))
     (or (some #'primary-class-of (persistent-effective-super-slot-precedence-list-of slot))
-        (awhen (canonical-type-of slot)
-          (cond ((set-type-p* it)
-                 (find-class (set-type-class-for it)))
-                ((or (primitive-type-p* it)
-                     (persistent-class-type-p* it))
-                 (slot-definition-class slot))
+        (bind ((class (slot-definition-class slot))
+               (canonical-type (canonical-type-of slot)))
+          (cond ((set-type-p* canonical-type)
+                 (find-class (set-type-class-for canonical-type)))
+                ((or (primitive-type-p* canonical-type)
+                     (persistent-class-type-p* canonical-type))
+                 class)
                 (t
                  (error "Unknown type ~A in slot ~A" (specified-type-of slot) slot)))))))
 
@@ -378,15 +437,19 @@
   (:method ((slot persistent-effective-slot-definition))
     (primary-table-of (primary-class-of slot))))
 
+(defgeneric compute-column-names (slot)
+  (:method ((slot persistent-effective-slot-definition))
+    (mapcar 'rdbms::name-of (columns-of slot))))
+
 (defgeneric compute-columns (slot)
   (:method ((slot persistent-effective-slot-definition))
     (or (some #'columns-of (persistent-effective-super-slot-precedence-list-of slot))
-        (bind ((name (slot-definition-name slot))
-               (class (slot-definition-class slot))
+        (bind ((class (slot-definition-class slot))
+               (name (slot-definition-name slot))
                (class-name (class-name class))
                (type (canonical-type-of slot))
                (mapping (mapping-of slot))
-               (rdbms-types (when mapping (rdbms-types-of mapping))))
+               (rdbms-types (column-types-of slot)))
           (when type
             (cond ((set-type-p* type)
                    (make-columns-for-reference-slot class-name (strcat name "-for-" class-name)))
@@ -522,10 +585,11 @@
       (:merge)))))
 
 (def function make-tag-column (mapping name)
-  (bind ((nullable (first (nullable-types-of mapping))))
+  (bind ((type (first (rdbms-types-of mapping)))
+         (nullable (first (nullable-types-of mapping))))
     (make-instance 'column
                    :name (rdbms-name-for (concatenate-symbol name "-tag") :column)
-                   :type (sql-boolean-type)
+                   :type type
                    :constraints (unless nullable
                                   (list (sql-not-null-constraint)))
                    :default-value (if nullable

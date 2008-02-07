@@ -326,12 +326,12 @@ with the result of the naively compiled query.")
         (mapcar #L(partial-eval !1 query) (asserts-of query))))
 
 (defun check-slot-access (access)
-  ""
   (when (slot-of access)
     (bind ((slot (slot-of access))
            (object (arg-of access))
            (persistent-class (base-type-for (persistent-type-of object))))
       (unless (eq persistent-class +unknown-type+)
+        ;; FIXME: review primary-tables-of here
         (bind ((table (first (rest (primary-tables-of persistent-class)))))
           (assert (eq (table-of slot) table)))))))
 

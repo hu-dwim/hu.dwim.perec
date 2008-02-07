@@ -151,12 +151,7 @@
                (call-next-method))))
 
 (defmethod finalize-inheritance :after ((class persistent-class))
-  (invalidate-computed-slot class 'persistent-direct-super-classes)
-  (invalidate-computed-slot class 'persistent-direct-sub-classes)
-  (mapc #L(invalidate-computed-slot !1 'persistent-direct-super-classes)
-        (persistent-direct-sub-classes-of class))
-  (mapc #L(invalidate-computed-slot !1 'persistent-direct-sub-classes)
-        (persistent-direct-super-classes-of class))
+  (invalidate-inheritance class)
   (mapc #L(ensure-slot-reader* class !1)
         (collect-if #L(set-type-p* (canonical-type-of !1))
                     (persistent-effective-slots-of class))))
@@ -165,6 +160,14 @@
   "Invalidates the cached slot values whenever the effective slots are recomputed, so that all dependent computed state will be invalidated and recomputed when requested."
   (invalidate-computed-slot class 'standard-direct-slots)
   (invalidate-computed-slot class 'standard-effective-slots))
+
+(defun invalidate-inheritance (class)
+  (invalidate-computed-slot class 'persistent-direct-super-classes)
+  (invalidate-computed-slot class 'persistent-direct-sub-classes)
+  (mapc #L(invalidate-computed-slot !1 'persistent-direct-super-classes)
+        (persistent-direct-sub-classes-of class))
+  (mapc #L(invalidate-computed-slot !1 'persistent-direct-sub-classes)
+        (persistent-direct-super-classes-of class)))
 
 ;;;;;;;;;;;
 ;;; Utility
@@ -228,7 +231,9 @@
              :abstract (first (getf args :abstract))
              (remove-keywords args :direct-slots :direct-superclasses :abstract))
     (setf (find-persistent-class name) class)
+    (invalidate-inheritance class)
     (invalidate-computed-slot class 'standard-direct-slots)
+    (invalidate-computed-slot class 'standard-effective-slots)
     ;; update type specific class dependencies
     (mapc #L(bind ((type (canonical-type-of !1)))
               (when (set-type-p* type)

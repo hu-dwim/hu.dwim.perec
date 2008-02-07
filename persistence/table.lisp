@@ -14,6 +14,17 @@
     :documentation "The list of RDBMS columns of this table. This list uses the sql column type of cl-rdbms."))
   (:documentation "An RDBMS table with some related RDBMS definitions. The actual table will be created in the database when export-to-rdbms is called on it."))
 
+(defcclass* view (exportable)
+  ((name
+    :type symbol
+    :documentation "The name of the RDBMS view.")
+   (columns
+    :type list
+    :documentation "The column names of the view.")
+   (query
+    :type sql-query-expression
+    :documentation "The SQL create view statement.")))
+
 (defcclass* column (sql-column)
   ((index
     (compute-as nil)
@@ -55,3 +66,5 @@
             (update-index (rdbms::name-of it) (name-of table) (list !1)))
         (columns-of table)))
 
+(defmethod export-to-rdbms ((view view))
+  (update-view (name-of view) (columns-of view) (query-of view)))

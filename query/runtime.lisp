@@ -72,7 +72,7 @@
     instance))
 
 (defun column-count-of (slot)
-  (length (columns-of slot)))
+  (length (column-names-of slot)))
 
 (defun invalidate-persistent-flag-of-cached-instances (class)
   "Sets the persistent slot to unbound for instances of class in the transaction cache."

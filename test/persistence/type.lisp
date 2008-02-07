@@ -192,6 +192,8 @@
 
 (def-type-test timestamp/1 timestamp (parse-timestring "2006-06-06T06:06:06Z"))
 (def-type-test timestamp/2 timestamp (parse-timestring "2006-06-06T06:06:06.123456Z"))
+(def-type-test timestamp/3 timestamp (parse-timestring "1000-01-01T01:01:01Z"))
+(def-type-test timestamp/4 timestamp (parse-timestring "3000-03-03T03:03:03Z"))
 
 (def-type-test duration/1 duration "06:06:06")
 (def-type-test duration/2 duration "1-01-01 06:06:06")

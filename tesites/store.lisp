@@ -212,6 +212,7 @@
 ;;; RDBMS access
 ;;;
 
+;; TODO: use lock-slot
 (defun lock-t-record (t-instance t-slot)
   (declare (ignore t-instance t-slot))
   #+nil
@@ -468,6 +469,7 @@
 (defun unused-check-for (h-slot)
   (check-for-rdbms-values
    (lisp-value->rdbms-equality-values (slot-definition-type h-slot) +h-unused-slot-marker+)
-   (columns-of h-slot)
+   (column-names-of h-slot)
+   (column-types-of h-slot)
    nil))
 
