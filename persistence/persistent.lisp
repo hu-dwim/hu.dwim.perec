@@ -196,8 +196,8 @@
 
   (:method ((class persistent-class) &key (wait #t))
     (with-waiting-for-rdbms-lock wait
-      (execute (sql-select :columns (sql-all-columns)
-                           :tables (list (name-of (primary-view-of class)))
+      (execute (sql-select :columns (list (sql-all-columns))
+                           :tables (list (name-of (primary-relation-of class)))
                            :for :update
                            :wait wait)))))
 
@@ -209,6 +209,9 @@
 
 (defgeneric lock-slot (instance slot &key wait)
   (:documentation "Lock a slot for an instance in the current transaction. If wait is false and the slot cannot be locked then an error will be thrown.")
+
+  (:method ((instance persistent-object) (slot symbol) &key (wait t))
+    (lock-slot instance (find-slot (class-of instance) slot) :wait wait))
 
   (:method ((instance persistent-object) (slot persistent-effective-slot-definition) &key (wait t))
     (lock-columns instance (columns-of slot) wait)))

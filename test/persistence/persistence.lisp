@@ -58,6 +58,19 @@
       (slot-makunbound instance 'persistent)
       (is (persistent-p instance)))))
 
+(deftest test/persistence/lock-class/1 ()
+  (with-transaction
+    (is (lock-class (find-class 'persistence-test) :wait #t)))
+  (with-transaction
+    (is (lock-class (find-class 'persistence-test) :wait #f))))
+
+(deftest test/persistence/lock-class/2 ()
+  (with-transaction
+    (lock-class (find-class 'persistence-test) :wait #t)
+    (is (not
+         (with-transaction
+           (lock-class (find-class 'persistence-test) :wait #f))))))
+
 (deftest test/persistence/lock-instance/1 ()
   (with-one-and-two-transactions
       (make-instance 'persistence-test :name "the one")
@@ -77,6 +90,26 @@
            (with-transaction
              (with-reloaded-instance instance
                (lock-instance instance :wait #f))))))))
+
+(deftest test/persistence/lock-slot/1 ()
+  (with-one-and-two-transactions
+      (make-instance 'persistence-test :name "the one")
+    (is (lock-slot -instance- 'name :wait #t)))
+  (with-one-and-two-transactions
+      (make-instance 'persistence-test :name "the one")
+    (is (lock-slot -instance- 'name :wait #f))))
+
+(deftest test/persistence/lock-slot/2 ()
+  (let ((instance
+         (with-transaction
+           (make-instance 'persistence-test :name "the one"))))
+    (with-transaction
+      (with-reloaded-instance instance
+        (lock-slot instance 'name :wait #t))
+      (is (not
+           (with-transaction
+             (with-reloaded-instance instance
+               (lock-slot instance 'name :wait #f))))))))
 
 (defpclass* initform-1-test ()
   ((name "Hello" :type (text 20))))
