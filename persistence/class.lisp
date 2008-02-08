@@ -600,10 +600,8 @@
                                       0))))
 
 (def function tag-column-of (slot)
-  (find-if (lambda (column)
-             (and (ends-with (string-downcase (symbol-name (cl-rdbms::name-of column))) "tag")
-                  (typep (cl-rdbms::type-of column) 'sql-boolean-type)))
-           (columns-of slot)))
+  (when (tagged-p (mapping-of slot))
+    (first (columns-of slot))))
 
 (defmethod matches-type* (value (type symbol))
   (and (typep value type)

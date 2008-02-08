@@ -422,15 +422,15 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defgeneric sql-slot-boundp (variable slot)
 
   (:method ((variable query-variable) (slot persistent-effective-slot-definition))
-           (bind ((slot-type (slot-definition-type slot)))
-             (cond
-               ((tagged-type-p slot-type)
-                (sql-tag-column-reference-for slot variable))
-               ((unbound-subtype-p slot-type)
-                (sql-is-not-null (sql-column-reference-for slot variable)))
-               (t ;; TODO: should be handled by partial eval
-                (sql-true-literal)))))
-  )
+    (bind ((slot-type (slot-definition-type slot)))
+      (cond
+        ((tagged-type-p slot-type)
+         (sql-<> (sql-tag-column-reference-for slot variable)
+                 (sql-literal :value 1)))
+        ((unbound-subtype-p slot-type)
+         (sql-is-not-null (sql-column-reference-for slot variable)))
+        (t ;; TODO: should be handled by partial eval
+         (sql-true-literal))))))
 
 (defgeneric sql-slot-is-null (variable slot)
 
@@ -615,8 +615,18 @@ value is equal, when they represent the NIL lisp value)."
 (defun sql-null-literal ()
   (sql-literal :value :null))
 
+(defun sql-false-literal-p (sql)
+  (and (typep sql 'sql-literal)
+       (eq (rdbms::value-of sql) #f)
+       (typep (rdbms::type-of sql) 'rdbms::sql-boolean-type)))
+
 (defun sql-false-literal ()
   (sql-literal :value #f :type (make-instance 'cl-rdbms::sql-boolean-type)))
+
+(defun sql-true-literal-p (sql)
+  (and (typep sql 'sql-literal)
+       (eq (rdbms::value-of sql) #t)
+       (typep (rdbms::type-of sql) 'rdbms::sql-boolean-type)))
 
 (defun sql-true-literal ()
   (sql-literal :value #t :type (make-instance 'cl-rdbms::sql-boolean-type)))

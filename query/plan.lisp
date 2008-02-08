@@ -604,10 +604,12 @@
   (bind ((mapping (compute-mapping type))
          (reader (reader-of mapping)))
     (if (tagged-p mapping)
-        (lambda (row index)
-          (bind ((rdbms-values (make-array 2)))
-            (setf (aref rdbms-values 0) t
-                  (aref rdbms-values 1) (elt row index))
+        (lambda (row index) ; KLUDGE
+          (bind ((rdbms-values (make-array 2))
+                 (value (elt row index))
+                 (tag (if (eq value :null) 2 0)))
+            (setf (aref rdbms-values 0) tag
+                  (aref rdbms-values 1) value)
             (funcall reader rdbms-values 0)))
         reader)))
 
