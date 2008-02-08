@@ -54,8 +54,8 @@
         (for ,(second variables) = (aref ,validity-starts ,index))
         (for ,(third variables) = (aref ,validity-ends ,index))))))
 
-;;;;;;;;;;;;;;
-;;; Functional
+;;;;;;;;;;;;;;;;;;;;;;;
+;;; For primitive types
 
 (def function collect-values-having-validity (value-holders value-function validity-start-function validity-end-function no-value-function requested-validity-start requested-validity-end)
   "From a list of ordered (by t) tuples each containing a value, a validity start and a validity end returns the corresponding values-having-validity for the requested range. May return a simple value instead of a values-having-validity."
@@ -137,8 +137,8 @@
                   #t))
         (values nil #f))))
 
-;;;;;;;;;;;
-;;; Utility
+;;;;;;;;;;;;;;;;;
+;;; For set types
 
 (def constant +t-delete+ 0
   "Constant used to mark RDBMS records for association slots.")
@@ -146,39 +146,31 @@
 (def constant +t-insert+ 1
   "Constant used to mark RDBMS records for association slots.")
 
-(def function collect-children-having-validity (child-slot records validity-start validity-end)
-  ;; records are tuples ordered by t ascending: (child-oid validity-start validity-end action)
+(def function collect-children-having-validity (value-holders value-function validity-start-function validity-end-function action-function requested-validity-start requested-validity-end)
+  ;; value-holders are tuples ordered by t ascending: (child-oid validity-start validity-end action)
   ;; TODO: multiple column oid
-  (labels ((child-of (record)
-             (restore-slot-value child-slot record 0))
-           (validity-start-of (record)
-             (aref record 1))
-           (validity-end-of (record)
-             (aref record 2))
-           (action-of (record)
-             (aref record 3))
-           (collect-children-having-validity (records validity-start validity-end)
-             (bind (set)
-               (iter (for record :in-sequence records)
-                     (when (and (local-time<= validity-end (validity-end-of record))
-                                (local-time<= (validity-start-of record) validity-start))
-                       (ecase (action-of record)
+  (labels ((%collect-children-having-validity (value-holders validity-start validity-end)
+             (bind ((set nil))
+               (iter (for value :in-sequence value-holders)
+                     (when (and (local-time<= validity-end (funcall validity-end-function value))
+                                (local-time<= (funcall validity-start-function value) validity-start))
+                       (ecase (funcall action-function value)
                          (#.+t-insert+
-                          (pushnew (child-of record) set))
+                          (pushnew (funcall value-function value) set))
                          (#.+t-delete+
-                          (deletef (child-of record) set)))))
+                          (deletef (funcall value-function value) set)))))
                set)))
-    (bind (validities)
+    (bind ((validities nil))
       (flet ((push-validity (validity)
                (pushnew validity validities :test #'local-time=)))
-        (push-validity validity-start)
-        (push-validity validity-end)
-        (iter (for record :in-sequence records)
-              (push-validity (validity-start-of record))
-              (push-validity (validity-end-of record))))
+        (push-validity requested-validity-start)
+        (push-validity requested-validity-end)
+        (iter (for value :in-sequence value-holders)
+              (push-validity (funcall validity-start-function value))
+              (push-validity (funcall validity-end-function value))))
       (setf validities (sort validities #'local-time<))
       (if (= 2 (length validities))
-          (collect-children-having-validity records (first validities) (second validities))
+          (%collect-children-having-validity value-holders (first validities) (second validities))
           (bind ((size (1- (length validities)))
                  (values (make-array size :fill-pointer 0))
                  (validity-starts (make-array size :fill-pointer 0))
@@ -191,7 +183,7 @@
                   (for index :from -1)
                   (if previous-validity
                       (progn
-                        (setf value (collect-children-having-validity records previous-validity modified-validity))
+                        (setf value (%collect-children-having-validity value-holders previous-validity modified-validity))
                         (if (equal value previous-value)
                             (decf index)
                             (progn
@@ -208,6 +200,10 @@
                                :validity-starts validity-starts
                                :validity-ends validity-ends)))))))
 
+;;;;;;;;;;;
+;;; Utility
+
+;; TODO: review this
 ;; TODO: this failes when multiple records are present with the same t but overlapping validity ranges
 ;; (ordering for t does not affect the order of records) THIS MUST BE FORBIDDEN
 (def function collect-single-slot-values-having-validity-from-records (instance slot records h-slot value-index)

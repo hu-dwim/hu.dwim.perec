@@ -53,7 +53,7 @@
                                 table-of columns-of reader-name-of writer-name-of
                                 lisp-value->rdbms-values rdbms-values->lisp-value
                                 depends-on-of depends-on-me-of
-                                collect-single-slot-values-having-validity collect-values-having-validity
+                                prc::collect-children-having-validity collect-values-having-validity
                                 extract-values-having-validity
                                 compile-query)"))
           :cl-perec-test))

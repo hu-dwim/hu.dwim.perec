@@ -31,6 +31,7 @@
           (parse-timestring "2007-01-01TZ") (parse-timestring "2007-01-02TZ")))))
 
 (deftest test/tesites/values-having-validty/collect/multiple-value ()
+  ;; TODO: check result
   (collect-values-having-validity
    `((1000 ,(parse-timestring "2007-01-10TZ") ,(parse-timestring "2007-01-20TZ"))
      (2000 ,(parse-timestring "2007-01-01TZ") ,(parse-timestring "2007-01-15TZ"))
@@ -59,3 +60,51 @@
           (1 (is (= value 2000))
              (is (local-time= validity-start (parse-timestring "2007-01-01TZ")))
              (is (local-time= validity-end (parse-timestring "2007-07-07TZ")))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Children having validity
+
+(defsuite* (test/tesites/children-having-validty :in test/tesites))
+
+(deftest test/tesites/children-having-validty/collect/single-value ()
+  (is (equal '(1000)
+             (collect-children-having-validity
+              `((1000 ,(parse-timestring "2007-01-01TZ") ,(parse-timestring "2008-01-01TZ") 1))
+              (lambda (e)
+                (elt e 0))
+              (lambda (e)
+                (elt e 1))
+              (lambda (e)
+                (elt e 2))
+              (lambda (e)
+                (elt e 3))
+              (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ")))))
+
+(deftest test/tesites/children-having-validty/collect/no-value ()
+  (is (null (collect-children-having-validity
+             ()
+             (lambda (e)
+               (elt e 0))
+             (lambda (e)
+               (elt e 1))
+             (lambda (e)
+               (elt e 2))
+             (lambda (e)
+               (elt e 3))
+             (parse-timestring "2006-01-01TZ") (parse-timestring "2008-01-01TZ")))))
+
+(deftest test/tesites/children-having-validty/collect/multiple-value ()
+  ;; TODO: check result
+  (collect-children-having-validity
+   `((1000 ,(parse-timestring "2007-01-10TZ") ,(parse-timestring "2007-01-20TZ") 1)
+     (2000 ,(parse-timestring "2007-01-01TZ") ,(parse-timestring "2007-01-15TZ") 1)
+     (3000 ,(parse-timestring "2007-01-05TZ") ,(parse-timestring "2007-01-30TZ") 1))
+   (lambda (e)
+     (elt e 0))
+   (lambda (e)
+     (elt e 1))
+   (lambda (e)
+     (elt e 2))
+   (lambda (e)
+     (elt e 3))
+   (parse-timestring "2006-01-01TZ") (parse-timestring "2008-01-01TZ")))
