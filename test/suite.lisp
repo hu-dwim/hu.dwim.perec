@@ -6,6 +6,7 @@
 
 (in-package :cl-perec-test)
 
+;; TODO: drop all persistent class tables: e.g. h-object does not end with "test"
 (defun drop-all-test-tables ()
   (with-transaction
     (mapc #L(drop-table !1 :cascade #t)

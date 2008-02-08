@@ -294,7 +294,7 @@
   (awhen (primary-table-of class)
     (ensure-exported it))
   (awhen (primary-view-of class)
-    (mapc #'ensure-exported (cdr (primary-tables-of class)))
+    (mapc #'ensure-exported (mapcar #'persistent-class-of (cdr (primary-tables-of class))))
     (ensure-exported it)))
 
 ;;;;;;;;;;;;

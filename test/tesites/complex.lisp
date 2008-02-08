@@ -79,7 +79,7 @@
                                               (local-time= persistent-validity-start test-validity-start)
                                               (local-time= persistent-validity-end test-validity-end)))))
                       (eql persistent-value test-value))
-                  "Persistent value: ~A and test value: ~A~%in the slot ~A of ~A~%with t ~A and with validity range ~A -> ~A"
+                  "The persistent value: ~A and test value: ~A are different~%in the slot ~A of ~A~%with t ~A and with validity range ~A -> ~A"
                   persistent-value test-value slot-name instance *t* *validity-start* *validity-end*))))
 
 (defun random-universal-time ()
