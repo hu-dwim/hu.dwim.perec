@@ -108,7 +108,11 @@
                       (list* slot-name
                              +h-unused-slot-marker+
                              (aprog1 (remf-keywords slot-options :time-dependent :temporal)
-                               (setf (getf it :type) `(or h-unused ,(getf it :type)))))))
+                               (setf (getf it :type)
+                                     (bind ((type (getf it :type)))
+                                       (if (or-type-p type)
+                                           `(or h-unused ,@(cdr type))
+                                           `(or h-unused ,type))))))))
                   (collect-if #L(or (member :time-dependent !1)
                                     (member :temporal !1))
                               slots))

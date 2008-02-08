@@ -516,18 +516,19 @@
 
 (def function normalized-type-for (type)
   "Returns a type which does not include unit types which are mapped to :null column values."
-  (if (or-type-p type)
-      (bind ((subtypes
-              (remove-if 'type-mapped-to-null-p
-                         (cdr type))))
-        (if (<= (length subtypes) 1)
-            (first subtypes)
-            (cons 'or subtypes)))
-      (unless (type-mapped-to-null-p type)
-        type)))
+  (bind ((type (canonical-type-for type)))
+    (if (or-type-p type)
+        (bind ((subtypes
+                (remove-if 'unit-type-p (cdr type))))
+          (if (<= (length subtypes) 1)
+              (first subtypes)
+              (cons 'or subtypes)))
+        (unless (unit-type-p type)
+          type))))
 
 (def function unit-type-p (type)
-  (eq :null (first (compute-rdbms-types* type type))))
+  (and (symbolp type)
+       (eq :null (first (compute-rdbms-types* type type)))))
 
 (def function unit-subtypes-for (type)
   (append
@@ -539,10 +540,6 @@
                       (unit-type-p subtype)
                       (subtypep subtype type)))
                *mapped-type-precedence-list*)))
-
-(def function type-mapped-to-null-p (type)
-  (and (symbolp type)
-       (equal '(:null) (compute-rdbms-types* type type))))
 
 (def function primitive-type-p (type)
   "Accepts types such as boolean, integer, string, double, etc. which are directly mapped to RDBMS."
