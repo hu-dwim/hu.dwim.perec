@@ -37,7 +37,7 @@
   'h-unused-writer)
 
 (defmethod compute-type-tag ((type (eql 'h-unused)))
-  :null)
+  3)
 
 (eval-always
   (unless (member 'h-unused *mapped-type-precedence-list*)

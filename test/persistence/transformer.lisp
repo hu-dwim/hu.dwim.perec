@@ -81,17 +81,17 @@
 (deftest test/persistence/transformer/or-unbound-null-integer/unbound ()
   (is-equal-using-transformers '(or unbound null integer)
                                +unbound-slot-marker+
-                               (vector #f :null)))
+                               (vector 1 :null)))
 
 (deftest test/persistence/transformer/or-unbound-null-integer/null ()
   (is-equal-using-transformers '(or unbound null integer)
                                nil
-                               (vector #t :null)))
+                               (vector 2 :null)))
 
 (deftest test/persistence/transformer/or-unbound-null-integer/integer ()
   (is-equal-using-transformers '(or unbound null integer)
                                +transformer-integer-test-value+
-                               (vector #t +transformer-integer-test-value+)))
+                               (vector 0 +transformer-integer-test-value+)))
 
 ;;;;;;;;;;
 ;;; String
@@ -124,17 +124,17 @@
 (deftest test/persistence/transformer/or-unbound-null-string/unbound ()
   (is-equal-using-transformers '(or unbound null string)
                                +unbound-slot-marker+
-                               (vector #f :null)))
+                               (vector 1 :null)))
 
 (deftest test/persistence/transformer/or-unbound-null-string/null ()
   (is-equal-using-transformers '(or unbound null string)
                                nil
-                               (vector #t :null)))
+                               (vector 2 :null)))
 
 (deftest test/persistence/transformer/or-unbound-null-string/string ()
   (is-equal-using-transformers '(or unbound null string)
                                +transformer-string-test-value+
-                               (vector #t +transformer-string-test-value+)))
+                               (vector 0 +transformer-string-test-value+)))
 
 ;;;;;;;;;;;
 ;;; Symbol

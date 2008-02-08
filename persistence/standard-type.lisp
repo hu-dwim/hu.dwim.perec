@@ -105,7 +105,7 @@
   'unbound-writer)
 
 (defmethod compute-type-tag ((type (eql 'unbound)))
-  #f)
+  1)
 
 ;;;;;;;;
 ;;; Null
@@ -122,7 +122,7 @@
   'null-writer)
 
 (defmethod compute-type-tag ((type (eql 'null)))
-  #t)
+  2)
 
 ;;;;;
 ;;; t
@@ -185,6 +185,18 @@
   `(integer ,minimum-value ,maximum-value))
 
 (defmapping integer (sql-integer-type)
+  'object->integer-reader
+  'identity-writer)
+
+;;;;;;;;;;;;;
+;;; Integer-8
+;;;
+;;; non integer -> (type-error)
+
+(defptype integer-8 ()
+  `(integer ,(- (expt 2 7)) ,(1- (expt 2 7))))
+
+(defmapping integer-8 (sql-integer-type :bit-size 8)
   'object->integer-reader
   'identity-writer)
 

@@ -109,6 +109,7 @@
            #:unbound
            #:null
            #:boolean
+           #:integer-8
            #:integer-16
            #:integer-32
            #:integer-64

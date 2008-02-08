@@ -597,7 +597,7 @@
                                   (list (sql-not-null-constraint)))
                    :default-value (if nullable
                                       :null
-                                      #f))))
+                                      0))))
 
 (def function tag-column-of (slot)
   (find-if (lambda (column)

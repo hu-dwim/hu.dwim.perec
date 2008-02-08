@@ -298,6 +298,7 @@
       unbound
       null
       boolean
+      integer-8
       integer-16
       integer-32
       integer-64
@@ -379,7 +380,7 @@
   (:documentation "Returns a type tag which will be stored in the tag column when needed.")
 
   (:method (mapped-type)
-    #t))
+    0))
 
 (def function compute-rdbms-types (type)
   (rdbms-types-of (compute-mapping type)))
@@ -468,8 +469,8 @@
                     (return
                       (make-mapping
                        :tagged #t
-                       :rdbms-types (list* (sql-boolean-type) rdbms-types)
-                       :nullable-types (list (not (null (member :null type-tags))) #t)
+                       :rdbms-types (list* (sql-integer-type :bit-size 8) rdbms-types)
+                       :nullable-types (list #f #t)
                        :reader (tagged-reader (append type-tags (list type-tag)) (append readers (list reader)))
                        :writer (tagged-writer (append type-tags (list type-tag)) (append writers (list writer)))))))))))))
 
@@ -482,8 +483,7 @@
     (funcall (writer-of mapping) lisp-value result 0)
     (when (tagged-p mapping)
       (dolist (unit-type (unit-types-of mapping))
-        (when (and (not (eq unit-type 'null))
-                   (typep lisp-value unit-type))
+        (when (typep lisp-value unit-type)
           (iter (for index :from 1 :below (length result))
                 (setf (aref result index) +ignore-in-rdbms-equality-marker+)))))
     result))
