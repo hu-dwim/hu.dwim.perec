@@ -119,6 +119,12 @@
           (:class ,t-class-name :slot h-objects :type (set ,h-class-name))))
        (find-class ',name))))
 
+;;;;;;;;;;;;
+;;; Computed
+
+(defmethod compute-columns ((slot persistent-effective-slot-definition-t))
+  nil)
+
 ;;;;;;;;;;;
 ;;; Utility
 

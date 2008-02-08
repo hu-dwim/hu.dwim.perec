@@ -107,7 +107,12 @@
               (if (unbound-slot-marker-p cached-value)
                   (slot-unbound-t instance slot)
                   (return-from slot-value-using-class cached-value)))))
-      (restore-slot class instance slot))))
+      (bind ((value (restore-slot class instance slot)))
+        (setf (underlying-slot-value-using-class class instance slot)
+              (if (values-having-validity-p value)
+                  value
+                  (make-single-values-having-validity value *validity-start* *validity-end*)))
+        value))))
 
 (defmethod (setf slot-value-using-class) (new-value
                                           (class persistent-class-t)

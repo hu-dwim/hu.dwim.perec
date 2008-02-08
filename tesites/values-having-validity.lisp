@@ -14,10 +14,10 @@
    (validity-starts :type (vector timestamp))
    (validity-ends :type (vector timestamp))))
 
-(defun values-having-validity-p (instance)
+(def (function e) values-having-validity-p (instance)
   (typep instance 'values-having-validity))
 
-(defun make-single-values-having-validity (value validity-start validity-end)
+(def function make-single-values-having-validity (value validity-start validity-end)
   (flet ((make-single-element-vector (element)
            (aprog1 (make-array 1)
              (setf (aref it 0) element))))
@@ -26,7 +26,7 @@
                    :validity-starts (make-single-element-vector validity-start)
                    :validity-ends (make-single-element-vector validity-end))))
 
-(defun single-values-having-validity-p (values-having-validity)
+(def function single-values-having-validity-p (values-having-validity)
   (= 1 (length (values-of values-having-validity))))
 
 (defprint-object (instance values-having-validity)
@@ -57,7 +57,7 @@
 ;;;;;;;;;;;;;;
 ;;; Functional
 
-(defun collect-values-having-validity (value-holders value-function validity-start-function validity-end-function no-value-function requested-validity-start requested-validity-end)
+(def function collect-values-having-validity (value-holders value-function validity-start-function validity-end-function no-value-function requested-validity-start requested-validity-end)
   "From a list of ordered (by t) tuples each containing a value, a validity start and a validity end returns the corresponding values-having-validity for the requested range. May return a simple value instead of a values-having-validity."
   (if (zerop (length value-holders))
       (funcall no-value-function requested-validity-start requested-validity-end)
@@ -102,7 +102,7 @@
                                :validity-starts validity-starts
                                :validity-ends validity-ends)))))))
 
-(defun extract-values-having-validity (values-having-validity requested-validity-start requested-validity-end)
+(def function extract-values-having-validity (values-having-validity requested-validity-start requested-validity-end)
   "Extracts the requested range if possible, secondary value indicates success. May return a simple value instead of a values-having-validity."
   (bind ((validity-starts (validity-starts-of values-having-validity))
          (validity-ends (validity-ends-of values-having-validity))
@@ -146,7 +146,7 @@
 (def constant +t-insert+ 1
   "Constant used to mark RDBMS records for association slots.")
 
-(defun collect-children-having-validity (child-slot records validity-start validity-end)
+(def function collect-children-having-validity (child-slot records validity-start validity-end)
   ;; records are tuples ordered by t ascending: (child-oid validity-start validity-end action)
   ;; TODO: multiple column oid
   (labels ((child-of (record)
@@ -210,7 +210,7 @@
 
 ;; TODO: this failes when multiple records are present with the same t but overlapping validity ranges
 ;; (ordering for t does not affect the order of records) THIS MUST BE FORBIDDEN
-(defun collect-single-slot-values-having-validity-from-records (instance slot records h-slot value-index)
+(def function collect-single-slot-values-having-validity-from-records (instance slot records h-slot value-index)
   (collect-single-slot-values-having-validity
    instance slot records
    (lambda (record)
@@ -220,7 +220,7 @@
    (lambda (record)
      (elt record 1))))
 
-(defun collect-single-slot-values-having-validity-from-instances (instance slot h-instances h-slot)
+(def function collect-single-slot-values-having-validity-from-instances (instance slot h-instances h-slot)
   (collect-single-slot-values-having-validity
    instance slot h-instances
    (lambda (h-instance)
@@ -230,18 +230,18 @@
    (lambda (h-instance)
      (validity-end-of h-instance))))
 
-(defun collect-multiple-slot-values-having-validity-from-records (instance slots records h-slots)
+(def function collect-multiple-slot-values-having-validity-from-records (instance slots records h-slots)
   (iter (for slot :in slots)
         (for h-slot :in h-slots)
         (for value-index :initially 2 :then (+ value-index (length (columns-of h-slot))))
         (collect (collect-single-slot-values-having-validity-from-records instance slot records h-slot value-index))))
 
-(defun collect-multiple-slot-values-having-validity-from-instances (instance slots h-instances h-slots)
+(def function collect-multiple-slot-values-having-validity-from-instances (instance slots h-instances h-slots)
   (iter (for slot :in slots)
         (for h-slot :in h-slots)
         (collect (collect-single-slot-values-having-validity-from-instances instance slot h-instances h-slot))))
 
-(defun collect-single-slot-values-having-validity (instance slot value-holders value-function validity-start-function validity-end-function)
+(def function collect-single-slot-values-having-validity (instance slot value-holders value-function validity-start-function validity-end-function)
   (collect-values-having-validity
    value-holders value-function validity-start-function validity-end-function
    (lambda (validity-start validity-end)

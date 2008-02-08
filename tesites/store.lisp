@@ -15,27 +15,29 @@
   (flet ((no-value-function (&optional validity-start validity-end)
            (bind ((slot-type (canonical-type-of t-slot)))
              (cond
-              ((null-subtype-p slot-type) nil)
-              ((unbound-subtype-p slot-type) +unbound-slot-marker+)
-              (t (error "No history record for ~S~:[~*~; before ~S~]~:[~2*~; with validity between ~S and ~S~]."
-                        t-instance (temporal-p t-slot) (when (temporal-p t-slot) *t*)
-                        (time-dependent-p t-slot) validity-start validity-end))))))
+               ((null-subtype-p slot-type) nil)
+               ((unbound-subtype-p slot-type) +unbound-slot-marker+)
+               (t (error "No history record for ~S~:[~*~; before ~S~]~:[~2*~; with validity between ~S and ~S~]."
+                         t-instance (temporal-p t-slot) (when (temporal-p t-slot) *t*)
+                         (time-dependent-p t-slot) validity-start validity-end))))))
     (bind ((records (select-slot-values t-class t-instance t-slot)))
-     (setf (underlying-slot-value-using-class t-class t-instance t-slot)
-           (if (time-dependent-p t-slot)
-               (collect-values-having-validity
-                records
-                (lambda (record) (restore-slot-value nil (h-slot-of t-slot) record 2))
-                (lambda (record) (elt record 0))
-                (lambda (record) (elt record 1))
-                #'no-value-function
-                *validity-start* *validity-end*)
-               (if (zerop (length records))
-                   (no-value-function)
-                   (restore-slot-value nil (h-slot-of t-slot) (elt-0 records) 0)))))))
+      (if (time-dependent-p t-slot)
+          (collect-values-having-validity
+           records
+           (lambda (record) (restore-slot-value nil (h-slot-of t-slot) record 2))
+           (lambda (record) (elt record 0))
+           (lambda (record) (elt record 1))
+           #'no-value-function
+           *validity-start* *validity-end*)
+          (if (zerop (length records))
+              (no-value-function)
+              (restore-slot-value nil (h-slot-of t-slot) (elt-0 records) 0))))))
 
 (defmethod store-slot ((t-class persistent-class-t) (t-instance t-object) (t-slot persistent-effective-slot-definition-t) value)
-  (check-slot-value-type t-instance t-slot value)
+  (if (values-having-validity-p value)
+      (iter (for (v start end) :in-values-having-validity value)
+            (check-slot-value-type t-instance t-slot v))
+      (check-slot-value-type t-instance t-slot value))
 
   ;; this lock ensures that
   ;; the insert/update operations on the h-table are serialized properly.
