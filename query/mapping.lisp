@@ -253,7 +253,7 @@
          (sql-map-failed))
         ((unbound-subtype-p type)
          (check-for-rdbms-values
-          (lisp-value->rdbms-equality-values type +unbound-slot-marker+)
+          (lisp-value->rdbms-equality-values (canonical-type-for type) +unbound-slot-marker+)
           (column-names-of slot)
           (column-types-of slot)
           variable))
@@ -280,6 +280,15 @@
   (:method (syntax)
     nil)
 
+  (:method ((literal literal-value))
+    (bind ((type (persistent-type-of literal)))
+      (when (eq type +unknown-type+)
+        (sql-map-failed))
+      (bind ((type (canonical-type-for type))
+             (rdbms-values (lisp-value->rdbms-values type (value-of literal))))
+        (when (eq (aref rdbms-values (1- (length rdbms-values))) :null)
+          (sql-true-literal)))))
+
   (:method ((variable lexical-variable))
     (bind ((type (persistent-type-of variable)))
       (debug-only (assert (not (contains-syntax-p type))))
@@ -296,22 +305,79 @@
            (slot (slot-of access))
            (variable (arg-of access)))
       (debug-only (assert (not (contains-syntax-p type))))
-      (cond
-        ((or (eq type +unknown-type+)
-             (null slot)
-             (not (query-variable-p variable)))
-         (sql-map-failed))
-        ((maybe-null-subtype-p type)
-         (check-for-rdbms-values
-          (lisp-value->rdbms-equality-values type nil)
-          (column-names-of slot)
-          (column-types-of slot)
-          variable))
-        (t
-         nil))))
+      (when (or (eq type +unknown-type+)
+                (null slot)
+                (not (query-variable-p variable)))
+        (sql-map-failed))
+      
+      (bind ((mapping (compute-mapping (canonical-type-for type)))
+             (unit-types (remove 'unbound (unit-types-of mapping))))
+        (when unit-types
+          `(sql-is-null ,(syntax-to-sql access))))))
 
   (:method ((access association-end-access))
     nil))
+
+(defgeneric null-tag-for (syntax)
+  (:method (syntax)
+    nil)
+
+  (:method ((literal literal-value))
+    (bind ((type (persistent-type-of literal)))
+      (when (eq type +unknown-type+)
+        (sql-map-failed))
+      (bind ((type (canonical-type-for type))
+             (mapping (compute-mapping type))
+             (rdbms-values (lisp-value->rdbms-values type (value-of literal)))
+             (unit-types (remove 'unbound (unit-types-of mapping))))
+        (cond
+          ((tagged-p mapping)
+           (aref rdbms-values 0))
+          (unit-types
+           (assert (length=1 unit-types))
+           (sql-literal :value (compute-type-tag (first unit-types))))
+          (t
+           nil)))))
+
+  (:method ((variable lexical-variable))
+    (bind ((type (persistent-type-of variable)))
+      (debug-only (assert (not (contains-syntax-p type))))
+      (when (eq type +unknown-type+)
+        (sql-map-failed))
+      
+      (bind ((mapping (compute-mapping (canonical-type-for type)))
+             (unit-types (remove 'unbound (unit-types-of mapping))))
+        (when unit-types
+          (sql-literal :value (compute-type-tag (first unit-types))))))) ; KLUDGE
+
+  (:method ((access slot-access))
+    (bind ((type (persistent-type-of access))
+           (slot (slot-of access))
+           (variable (arg-of access)))
+      (debug-only (assert (not (contains-syntax-p type))))
+
+      (when (or (eq type +unknown-type+)
+                (null slot)
+                (not (query-variable-p variable)))
+        (sql-map-failed))
+      
+      (bind ((mapping (compute-mapping (canonical-type-for type))))
+        (cond
+          ((tagged-p mapping)
+           (sql-column-reference-for (tag-column-of slot) variable))
+          ((maybe-null-subtype-p type)
+           (check-for-rdbms-values
+            (lisp-value->rdbms-equality-values type nil)
+            (column-names-of slot)
+            (column-types-of slot)
+            variable))
+          (t
+           nil)))))
+
+  (:method ((access association-end-access))
+    nil)
+  
+  (:documentation "Returns an sql expression for the tag of a :null value."))
 
 (defun check-for-rdbms-values (rdbms-values column-names column-types qualifier)
   (assert (= (length rdbms-values) (length column-names)))
@@ -396,6 +462,19 @@
 ;;;
 ;;; Comparison 
 ;;;
+
+;; eq unbound x     = NULL
+;; eq x unbound     = NULL
+;; eq unused unused = TRUE
+;; eq nil nil       = TRUE
+;; eq x y           = x = y AND x IS NOT NULL AND y is NOT NULL
+;; otherwise        = FALSE
+
+;; CASE WHEN (x.tag=1 OR y.tag=1)      THEN NULL
+;;      WHEN (x IS NULL OR y IS NULL) THEN x.tag=y.tag
+;;      ELSE x = y
+;; END
+
 (def (query-function :lisp-args #t) eq (first second)
   "documentation"
   (declare (persistent-type (forall (a) (function (a a) boolean))))
@@ -404,7 +483,9 @@
              :unbound-check-1 (unbound-check-for first)
              :unbound-check-2 (unbound-check-for second)
              :null-check-1 (null-check-for first)
-             :null-check-2 (null-check-for second)))
+             :null-check-2 (null-check-for second)
+             :null-tag-1 (null-tag-for first)
+             :null-tag-2 (null-tag-for second)))
 
 (def (query-function :lisp-args #t) eql (first second)
   "documentation"
@@ -414,7 +495,9 @@
              :unbound-check-1 (unbound-check-for first)
              :unbound-check-2 (unbound-check-for second)
              :null-check-1 (null-check-for first)
-             :null-check-2 (null-check-for second)))
+             :null-check-2 (null-check-for second)
+             :null-tag-1 (null-tag-for first)
+             :null-tag-2 (null-tag-for second)))
 
 (def (query-function :lisp-args #t) equal (first second)
   "documentation"
@@ -424,7 +507,9 @@
              :unbound-check-1 (unbound-check-for first)
              :unbound-check-2 (unbound-check-for second)
              :null-check-1 (null-check-for first)
-             :null-check-2 (null-check-for second)))
+             :null-check-2 (null-check-for second)
+             :null-tag-1 (null-tag-for first)
+             :null-tag-2 (null-tag-for second)))
 
 ;; (define-sql-operator 'string= 'sql-string=) ; sql-string= tricky to implement because string=
                                                ; accepts chars and symbols too, use equal instead

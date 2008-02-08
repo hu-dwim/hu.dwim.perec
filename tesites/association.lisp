@@ -10,7 +10,9 @@
 ;;; Persistent association t and slot meta objects
 
 (defcclass* persistent-association-t (persistent-association)
-  ())
+  ((h-class
+    (compute-as (find-class (name-of -self-)))
+    :type persistent-class)))
 
 (defcclass* persistent-association-end-slot-definition-t (persistent-slot-definition-t persistent-association-end-slot-definition)
   ())
@@ -23,35 +25,42 @@
 (defcclass* persistent-association-end-effective-slot-definition-t
     (persistent-association-end-slot-definition-t persistent-effective-slot-definition-t persistent-association-end-effective-slot-definition)
   ((h-class
-    (compute-as (h-class-of (slot-definition-class -self-))) ;; TODO: hack
+    (compute-as (h-class-of (association-of -self-)))
     :type persistent-class)
    (table
     (compute-as (primary-table-of (h-class-of -self-)))
     :type table)
+   (t-value-slot
+    (compute-as (find-slot (h-class-of -self-) 't-value)))
    (t-value-column
-    (compute-as (first (columns-of (find-slot (h-class-of -self-) 't-value))))
+    (compute-as (first (columns-of (t-value-slot-of -self-))))
     :type column)
+   (validity-start-slot
+    (compute-as (find-slot (h-class-of -self-) 'validity-start)))
    (validity-start-column
-    (compute-as (first (columns-of (find-slot (h-class-of -self-) 'validity-start))))
+    (compute-as (first (columns-of (validity-start-slot-of -self-))))
     :type column)
+   (validity-end-slot
+    (compute-as (find-slot (h-class-of -self-) 'validity-end)))
    (validity-end-column
-    (compute-as (first (columns-of (find-slot (h-class-of -self-) 'validity-end))))
+    (compute-as (first (columns-of (validity-end-slot-of -self-))))
     :type column)
-   (action-column
-    (compute-as (first (columns-of (find-slot (h-class-of -self-) 'action))))
-    :type column)
-   (parent-oid-columns
-    (compute-as (columns-of (find-slot (h-class-of -self-) (class-name (slot-definition-class -self-)))))
-    :type list)
-   (child-oid-columns
-    (compute-as (columns-of (child-slot-of -self-)))
-    :type list)
-   (child-slot
-    (compute-as (find-slot (h-class-of -self-) (slot-definition-name -self-)))
-    :type list)
    (action-slot
-    (compute-as (find-slot (h-class-of -self-) 'action))
-    :type persistent-effective-slot-definition)))
+    (compute-as (find-slot (h-class-of -self-) 'action)))
+   (action-column
+    (compute-as (first (columns-of (action-slot-of -self-))))
+    :type column)
+   (h-slot
+    (compute-as (find-slot (slot-definition-class -self-) (h-slot-name-of -self-))))
+   (h-oid-columns
+    (compute-as (columns-of (h-slot-of -self-)))
+    :type list)
+   (other-end-h-slot
+    (compute-as (h-slot-of (other-association-end-of -self-)))
+    :type list)
+   (other-end-h-oid-columns
+    (compute-as (h-oid-columns-of (other-association-end-of -self-)))
+    :type list)))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; defassociation

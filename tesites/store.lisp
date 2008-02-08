@@ -48,12 +48,16 @@
           (iter (for (v start end) :in-values-having-validity value) ;; TODO probably suboptimal
                 (store-slot-t* t-class t-instance t-slot v start end))
           (store-slot-t* t-class t-instance t-slot value *validity-start* *validity-end*))
-      (store-slot-t* t-class t-instance t-slot value)))
+      (store-slot-t* t-class t-instance t-slot value +beginning-of-time+ +end-of-time+)))
 
 ;;; TODO: do not insert the default value (nil or unbound) into the h-table
 ;;; TODO: check-slot-value-type (unboundness)
-(defun store-slot-t* (t-class t-instance t-slot value &optional validity-start validity-end)
+(defun store-slot-t* (t-class t-instance t-slot value validity-start validity-end)
+  (assert (or (not (time-dependent-p t-slot))
+              (and validity-start validity-end)))
+  
   (bind ((h-slot (h-slot-of t-slot))
+         (h-slot-name (slot-definition-name h-slot))
          (update-count))
 
     ;; first try to update the h-record with the same t/validity
@@ -63,33 +67,34 @@
     (when (zerop update-count)
       ;; ensure invariant: validity ranges are not overlapping for any given t
       (when (time-dependent-p t-slot)
-        (bind ((overlapping-records (select-current-slot-values-with-overlapping-validity
-                                     t-class t-instance t-slot validity-start validity-end)))
-          (iter (for record in-sequence overlapping-records)
-                (for oid = (rdbms-values->oid* record 0))
-                (for validity-start2 = (elt record +oid-column-count+))
-                (for validity-end2 = (elt record (+ 1 +oid-column-count+)))
-                (for value2 = (restore-slot-value nil h-slot record (+ 2 +oid-column-count+))) ;; TODO: nil
-                (for h-class = (find-class (oid-class-name oid)))
-                (for h-instance = (make-revived-instance h-class :oid oid :persistent #t))
+        (bind ((overlapping-instances (select-current-h-instances-with-overlapping-validity
+                                       t-class t-instance t-slot validity-start validity-end)))
+          (iter (for h-instance in-sequence overlapping-instances)
+                (for validity-start2 = (validity-start-of h-instance))
+                (for validity-end2 = (validity-end-of h-instance))
+                (for value2 = (if (slot-boundp h-instance h-slot-name)
+                                  (slot-value h-instance h-slot-name)
+                                  +unbound-slot-marker+))
+                (for h-class = (class-of h-instance))
+                
                 ;; TODO optimize the case when value = value2
                 (cond
                   ((and (local-time< validity-start2 validity-start)
                         (local-time<= validity-end2 validity-end))
                    ;; update
-                   (store-slot h-class h-instance (validity-end-slot-of t-class) validity-start))
+                   (store-slot h-class h-instance (validity-end-slot-of t-class) validity-start)) ;; FIXME others used
                   ((and (local-time<= validity-start validity-start2)
                         (local-time< validity-end validity-end2))
                    ;; update
-                   (store-slot h-class h-instance (validity-start-slot-of t-class) validity-end))
+                   (store-slot h-class h-instance (validity-start-slot-of t-class) validity-end)) ;; FIXME others used
                   ((and (local-time< validity-start2 validity-start)
                         (local-time< validity-end validity-end2))
                    ;; update + insert
-                   (store-slot h-class h-instance (validity-end-slot-of t-class) validity-start)
-                   (insert-h-records t-class t-instance t-slot value2 validity-end validity-end2))
+                   (store-slot h-class h-instance (validity-end-slot-of t-class) validity-start) ;; FIXME others used
+                   (insert-h-records t-class t-instance t-slot value2 validity-end validity-end2)) ;; FIXME t-value, copy other slots
                   (t
                    ;; delete
-                   (purge-instance h-instance))))))
+                   (purge-instance h-instance)))))) ;; FIXME other used slots
 
       ;; insert value with t and validity
       ;; the default value of the slot inserted only if temporal-p and has previous overlapping value
@@ -230,7 +235,8 @@
 
 ;;; TODO ensure-exported
 (defun update-h-record-value (t-class t-instance t-slot value &optional validity-start validity-end)
-  (bind ((value-slot (h-slot-of t-slot))
+  (bind ((h-class (h-class-of t-class))
+         (value-slot (h-slot-of t-slot))
          (value-columns (columns-of value-slot))
          (parent-id-column (parent-id-column-of t-class))
          (rdbms-values (make-array (length value-columns)))
@@ -249,7 +255,7 @@
     (pushnew (name-of (table-of value-slot)) tables)
     (pushnew (name-of (table-of (parent-slot-of t-class))) tables)
 
-    (when (time-dependent-p t-slot)
+    (when (subtypep h-class 'time-dependent-object)
       (bind ((validity-start-column (validity-start-column-of t-class))
              (validity-end-column (validity-end-column-of t-class)))
         (pushnew (name-of (table-of (validity-start-slot-of t-class))) tables)
@@ -259,7 +265,7 @@
               validity-start-literal (sql-literal :value validity-start :type (rdbms::type-of validity-start-column))
               validity-end-literal (sql-literal :value validity-end :type (rdbms::type-of validity-end-column)))))
     
-    (when (temporal-p t-slot)
+    (when (subtypep h-class 'temporal-object)
       (bind ((t-value-column (t-value-column-of t-class)))
         (pushnew (name-of (table-of (t-value-slot-of t-class))) tables)
         (setf t-value-column-name (rdbms::name-of t-value-column)
@@ -306,39 +312,28 @@
     (assert (<= count 1) nil "TODO")
     count))
 
-(defun select-current-slot-values-with-overlapping-validity (t-class t-instance t-slot validity-start validity-end)
+(defun select-current-h-instances-with-overlapping-validity (t-class t-instance t-slot validity-start validity-end)
   "Return h-records (oid, validity-start, validity-end, value) of T-INSTANCE overlapping with [validity-start,validity-end)."
-  (bind ((value-slot (h-slot-of t-slot))
-         (value-columns (columns-of value-slot))
-         (parent-id-column (parent-id-column-of t-class))
-         (validity-start-column (validity-start-column-of t-class))
-         (validity-end-column (validity-end-column-of t-class))
-         (t-value-column (when (temporal-p t-slot) (t-value-column-of t-class)))
-         (validity-start-literal (sql-literal :value validity-start :type (rdbms::type-of validity-start-column)))
-         (validity-end-literal (sql-literal :value validity-end :type (rdbms::type-of validity-end-column)))
-         tables)
-
-    (pushnew (name-of (table-of value-slot)) tables)
-    (pushnew (name-of (table-of (parent-slot-of t-class))) tables)
-    (pushnew (name-of (table-of (validity-start-slot-of t-class))) tables)
-    (when t-value-column
-      (pushnew (name-of (table-of (t-value-slot-of t-class))) tables))
-
-    (select-records
-     ;; columns
-     (append (make-oid-columns) (list validity-start-column validity-end-column) value-columns)
-     ;; tables
-     (list (reduce #L(sql-joined-table :kind :inner :left !1 :right !2 :using +oid-column-names+)
-                   (mapcar #L(sql-identifier :name !1) tables)))
-     :where
-     (apply 'sql-and
-            (id-column-matcher-where-clause t-instance parent-id-column)
-            (sql-not (unused-check-for value-slot))
-            (sql-< (sql-identifier :name (rdbms::name-of validity-start-column)) validity-end-literal)
-            (sql-< validity-start-literal (sql-identifier :name (rdbms::name-of validity-end-column)))
-            (when t-value-column
-              (list (sql-= (sql-identifier :name (rdbms::name-of t-value-column))
-                           (sql-literal :value *t* :type (rdbms::type-of t-value-column)))))))))
+  (assert (subtypep (h-class-of t-class) 'time-dependent-object))
+  
+  ;; TODO performance: compile only one query using h-class and h-slot as lexical variables
+  (bind ((h-class-name (class-name (h-class-of t-class)))
+         (h-slot (h-slot-of t-slot))
+         (h-slot-name (slot-definition-name h-slot))
+         (h-slot-reader-name (reader-name-of h-slot))
+         (query (make-query `(select (h-instance)
+                               (from (h-instance ,h-class-name))
+                               (where (and
+                                       (eq (t-object-of h-instance) ,t-instance)
+                                       ;;(not (sql-text ,(format-sql-to-string (unused-check-for h-slot))))
+                                       (or
+                                        (not (slot-boundp h-instance ',h-slot-name))
+                                        (not (eq (,h-slot-reader-name h-instance) ,+h-unused-slot-marker+)))
+                                       (local-time< (validity-start-of h-instance) ,validity-end)
+                                       (local-time< ,validity-start (validity-end-of h-instance))
+                                       ,@(when (temporal-p t-slot)
+                                               `((local-time= (t-value-of h-instance) *t*)))))))))
+    (execute-query query)))
 
 (defun select-slot-values (t-class t-instance t-slot)
   "Returns the values of the slot (with validity if time-dependent) in descending t order (if temporal). When temporal, but not time-dependent then at most recent selected."
@@ -400,45 +395,18 @@
      (unless (time-dependent-p t-slot)
        1))))
 
-(defun insert-h-records (t-class t-instance t-slot value &optional validity-start validity-end)
-  (bind ((h-class (h-class-of t-class))
-         (oid (make-class-oid (class-name h-class)))
-         (slots-ht (make-hash-table)) ;; slots grouped by table
-         (slot-values-ht (make-hash-table))) ;; slot values grouped by table
-    
-    (flet ((add-value (slot slot-value)
-             (bind ((table (table-of slot)))
-               (push slot (gethash table slots-ht))
-               (push slot-value (gethash table slot-values-ht)))))
-
-      (dolist (table (data-tables-of (h-class-of t-class)))
-        (setf (gethash table slots-ht) nil
-              (gethash table slot-values-ht) nil))
-
-      (add-value (h-slot-of t-slot) value)
-      (add-value (parent-slot-of t-class) t-instance)
-      (when (time-dependent-p t-slot)
-        (add-value (validity-start-slot-of t-class) validity-start)
-        (add-value (validity-end-slot-of t-class) validity-end))
-      (when (temporal-p t-slot)
-        (add-value (t-value-slot-of t-class) *t*))
-      
-      (iter (for (table slots) :in-hashtable slots-ht)
-            (for slot-values = (gethash table slot-values-ht))
-            (insert-record-with-values table oid slots slot-values)))))
-
-(defun insert-record-with-values (table new-oid slots slot-values)
-  (bind ((columns (apply #'append (make-oid-columns) (mapcar #'columns-of slots)))
-         (rdbms-values (make-array (length columns))))
-    (oid->rdbms-values* new-oid rdbms-values 0)
-    (iter (with index = +oid-column-count+)
-          (for slot in slots)
-          (for value in slot-values)
-          (store-slot-value nil slot value rdbms-values index)
-          (incf index (length (columns-of slot))))
-    (insert-record (name-of table)
-                   columns
-                   rdbms-values)))
+(defun insert-h-records (t-class t-instance t-slot value validity-start validity-end)
+  (bind ((h-class (h-class-of t-class)))
+    (apply 'make-instance
+           h-class
+           :t-object t-instance
+           (first (slot-definition-initargs t-slot)) value
+           (append
+            (when (subtypep h-class 'temporal-object)
+              (list :t-value *t*))
+            (when (subtypep h-class 'time-dependent-object)
+              (list :validity-start validity-start
+                    :validity-end validity-end))))))
 
 (defun unused-check-for (h-slot)
   (check-for-rdbms-values

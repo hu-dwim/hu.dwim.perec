@@ -9,7 +9,7 @@
   ((name :type string)))
    
 (defpclass table-t2-test (table-t1-test)
-  (name))
+  ((name)))
 
 (deftest test/persistence/table/inheritance ()
   (is (not (null (find '_name (columns-of (primary-table-of (find-class 'table-t1-test))) :key #'rdbms::name-of))))

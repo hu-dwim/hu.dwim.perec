@@ -96,11 +96,8 @@
 ;;;
 
 (defstruct (type-info (:conc-name ti-))
-  writer
-  column-count
   column-type
-  unbound-subtype-p
-  null-subtype-p)
+  mapping)
 
 (def function compute-type-info (type)
   (when (and (not (eq type +unknown-type+)) (not (contains-syntax-p type)))
@@ -110,20 +107,13 @@
                   (if (typep set-element 'standard-class)
                       (class-name set-element)
                       set-element))
-                type))
-           (unbound-subtype-p (unbound-subtype-p type))
-           (null-subtype-p (null-subtype-p type))
-           (writer (compute-writer element-type))
-           (rdbms-types (compute-rdbms-types element-type))
-           (column-count (length rdbms-types))
+                (canonical-type-for type)))
+           (mapping (compute-mapping element-type))
            (column-type (unless (persistent-class-type-p element-type)
-                          (last1 rdbms-types))))
+                          (last1 (rdbms-types-of mapping)))))
       (make-type-info
-       :writer writer
-       :column-count column-count
        :column-type column-type
-       :unbound-subtype-p unbound-subtype-p
-       :null-subtype-p null-subtype-p))))
+       :mapping mapping))))
 
 ;;;
 ;;; Conversion between lisp and sql values
@@ -202,7 +192,7 @@
 (defun value->sql-value (value type-info)
   (declare (type type-info type-info))
   (assert type-info)
-  (assert (<= 1 (ti-column-count type-info) 2))
+  (assert (<= 1 (length (rdbms-types-of (ti-mapping type-info))) 2))
 
   ;; KLUDGE: oddly enough, the current writer for boolean -> sql-boolean-type mapping
   ;; creates "TRUE" or "FALSE". (should be #t or #f)
@@ -211,15 +201,15 @@
   
   (bind ((sql-values (make-array 2)))
     (declare (dynamic-extent sql-values))
-    (funcall (ti-writer type-info) value sql-values 0)
-    (ecase (ti-column-count type-info)
+    (funcall (writer-of (ti-mapping type-info)) value sql-values 0)
+    (ecase (length (rdbms-types-of (ti-mapping type-info)))
       (1 (elt sql-values 0))
       (2 (cond
            ((persistent-object-p value) ; only id column used
             (elt sql-values 0))
-           ((and (ti-null-subtype-p type-info) (ti-unbound-subtype-p type-info))
-            (assert (elt sql-values 0)) ; check if BOUND
-            (elt sql-values 1))         ; omit BOUND column
+           ((tagged-p (ti-mapping type-info))
+            (assert (not (= (elt sql-values 0) (compute-type-tag 'unbound)))) ; check if BOUND
+            (elt sql-values 1))         ; omit TAG column
            (t
             (error "unsupported multi-column type: ~A" (ti-column-type type-info))))))))
 

@@ -422,7 +422,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defgeneric sql-slot-boundp (variable slot)
 
   (:method ((variable query-variable) (slot persistent-effective-slot-definition))
-    (bind ((slot-type (slot-definition-type slot)))
+    (bind ((slot-type (canonical-type-for (slot-definition-type slot))))
       (cond
         ((tagged-type-p slot-type)
          (sql-<> (sql-tag-column-reference-for slot variable)
@@ -470,7 +470,8 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
                      (iter (for second in rest-args)
                            (in outer (collect (funcall binary-operator first second)))))))))
 
-(defun sql-equal (sql-expr-1 sql-expr-2 &key unbound-check-1 unbound-check-2 null-check-1 null-check-2)
+(defun sql-equal (sql-expr-1 sql-expr-2 &key unbound-check-1 unbound-check-2 null-check-1 null-check-2
+                  null-tag-1 null-tag-2)
   "Generates an equality test for the two sql expression and the corresponding boundness checks.
 If one of the values is unbound, the test yields NULL, otherwise it yields true or false (two NULL
 value is equal, when they represent the NIL lisp value)."
@@ -493,9 +494,9 @@ value is equal, when they represent the NIL lisp value)."
          (wrap-with-null-check (eq-check)
            (cond
              ((and null-check-1 null-check-2)
-              `(sql-or
-                (sql-and ,null-check-1 ,null-check-2)
-                (sql-and (sql-not ,null-check-1) (sql-not ,null-check-2) ,eq-check)))
+              `(sql-if (sql-or ,null-check-1 ,null-check-2)
+                       (sql-= ,null-tag-1 ,null-tag-2)
+                       ,eq-check))
              (null-check-1
               `(sql-and (sql-not ,null-check-1) ,eq-check))
              (null-check-2

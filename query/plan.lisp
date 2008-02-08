@@ -601,7 +601,7 @@
        (+ start-index (length names))))))
 
 (defcfun (compute-column-reader :memoize-test-fn equalp :computed-in compute-as) (type)
-  (bind ((mapping (compute-mapping type))
+  (bind ((mapping (compute-mapping (canonical-type-for type)))
          (reader (reader-of mapping)))
     (if (tagged-p mapping)
         (lambda (row index) ; KLUDGE

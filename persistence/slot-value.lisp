@@ -242,6 +242,7 @@
                                           (instance persistent-object)
                                           (slot persistent-effective-slot-definition))
   "Writes the new slot value to the database and the cache."
+  #+nil
   (debug-only
     (assert (not (or (not-cached-slot-marker-p new-value)
                      (unbound-slot-marker-p new-value)))))
