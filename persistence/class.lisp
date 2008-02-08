@@ -9,7 +9,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Persistent class and slot meta objects
 
-;; TODO: FIXME: maybe change those computed slots into a simple defun which are not required for instance level persistence operations (makes debugging harder?!)
+;; TODO: FIXME: maybe change those computed slots into simple defuns which are not required for instance level persistence operations (makes debugging harder?!)
 ;; TODO: add oid-columns for persistent-class
 ;; TODO: support flattenning abstract superclass slot columns into subclasses, so that abstract superclasses will not have tables
 ;; TODO: support flattenning subclasses into superclass and dispatch on type
@@ -384,7 +384,6 @@
                                            (columns-of
                                             (find-slot (persistent-class-of (first (cdr primary-tables)))
                                                        (slot-definition-name slot))))
-                                         ;; TODO: even more complicated
                                          (collect-if (lambda (slot)
                                                        (bind ((canonical-type (canonical-type-of slot)))
                                                          (or (primitive-type-p* canonical-type)

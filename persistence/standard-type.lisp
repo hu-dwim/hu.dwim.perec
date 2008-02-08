@@ -113,7 +113,6 @@
 ;;; nil -> NULL
 ;;; t -> (type-error)
 
-;; TODO: rename this to none? or unspecified? or na? FUCK cl's type system
 (defptype null ()
   'null)
 

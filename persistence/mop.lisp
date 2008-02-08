@@ -24,7 +24,7 @@
        it
        (call-next-method)))
 
-;; TODO: KLUDGE: allows to have standard slots within a persistent-class and prevents defassociation to kill these slots 
+;; NOTE: allows to have standard slots within a persistent-class and prevents defassociation to kill these slots 
 (defmethod make-instance :around ((class (eql (find-class 'standard-direct-slot-definition))) &key instance &allow-other-keys)
   (aif instance
        it
