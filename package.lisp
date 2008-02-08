@@ -170,7 +170,9 @@
            #:make-persistent-using-class
            #:make-transient
            #:make-transient-using-class
+           #:lock-class
            #:lock-instance
+           #:lock-slot
            #:oid-of
            #:persistent-p
            #:created-p

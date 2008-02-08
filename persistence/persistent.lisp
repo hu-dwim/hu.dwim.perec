@@ -164,36 +164,54 @@
 ;;;;;;;;
 ;;; Lock
 
+(defmacro with-waiting-for-rdbms-lock (wait &body forms)
+  (with-unique-names (body)
+    `(block with-waiting-for-rdbms-lock
+       (flet ((,body ()
+                ,@forms))
+         (if ,wait
+             (,body)
+             (handler-case
+                 (,body)
+               (unable-to-obtain-lock-error ()
+                 (return-from with-waiting-for-rdbms-lock #f))))))))
+
+(defun lock-columns (instance columns wait)
+  (with-waiting-for-rdbms-lock wait
+    (bind ((class (class-of instance))
+           (tables (data-tables-of class))
+           ((values table-aliases where-clause)
+            (table-aliases-and-where-clause-for-instance (id-of instance) tables))
+           (records
+            (execute (sql-select :columns columns
+                                 :tables table-aliases
+                                 :where where-clause
+                                 :for :update
+                                 :wait wait))))
+      (assert (= 1 (length records)))
+      #t)))
+
+(defgeneric lock-class (class &key wait)
+  (:documentation "Lock all instances in the current transaction. If wait is false and the class cannot be locked then an error will be thrown.")
+
+  (:method ((class persistent-class) &key (wait #t))
+    (with-waiting-for-rdbms-lock wait
+      (execute (sql-select :columns (sql-all-columns)
+                           :tables (list (name-of (primary-view-of class)))
+                           :for :update
+                           :wait wait)))))
+
 (defgeneric lock-instance (instance &key wait)
   (:documentation "Lock instance in the current transaction. If wait is false and the instance cannot be locked then an error will be thrown.")
 
   (:method ((instance persistent-object) &key (wait #t))
-    (flet ((body ()
-             (bind ((class (class-of instance))
-                    (tables (data-tables-of class))
-                    ((values table-aliases where-clause)
-                     (table-aliases-and-where-clause-for-instance (id-of instance) tables))
-                    (records
-                     (execute (sql-select :columns (list (sql-column-alias :table (name-of (first tables))
-                                                                           :column +oid-id-column-name+))
-                                          :tables table-aliases
-                                          :where where-clause
-                                          :for :update
-                                          :wait wait))))
-               (assert (= 1 (length records))))
-             #t))
-      (declare (dynamic-extent #'body))
-      (if wait
-          (body)
-          (handler-case
-              (body)
-            (unable-to-obtain-lock-error ()
-              (return-from lock-instance #f)))))))
+    (lock-columns instance (list (sql-all-columns)) wait)))
 
 (defgeneric lock-slot (instance slot &key wait)
+  (:documentation "Lock a slot for an instance in the current transaction. If wait is false and the slot cannot be locked then an error will be thrown.")
+
   (:method ((instance persistent-object) (slot persistent-effective-slot-definition) &key (wait t))
-    ;; TODO: select for update on the slot columns only
-    (lock-instance instance :wait wait)))
+    (lock-columns instance (columns-of slot) wait)))
 
 ;;;;;;;;;
 ;;; Count
