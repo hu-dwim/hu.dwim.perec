@@ -73,7 +73,10 @@
                        (:file "temporal")
                        (:file "time-dependent")
                        (:file "tesites")
-                       (:file "1-n-association")))
+                       (:file "1-1-association")
+                       (:file "1-n-association")
+                       (:file "m-n-association")
+                       (:file "complex")))
              (:module "query"
                       :depends-on ("suite")
                       :components

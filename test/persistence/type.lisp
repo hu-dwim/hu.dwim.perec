@@ -132,6 +132,12 @@
 (def-type-test boolean/1 boolean #t)
 (def-type-test boolean/2 boolean #f)
 
+(def-type-test integer-8/1 integer-8 0)
+(def-type-test integer-8/2 integer-8 +1)
+(def-type-test integer-8/3 integer-8 -1)
+(def-type-test integer-8/4 integer-8 (1- (expt 2 7)))
+(def-type-test integer-8/5 integer-8 (- (expt 2 7)))
+
 (def-type-test integer-16/1 integer-16 0)
 (def-type-test integer-16/2 integer-16 +1)
 (def-type-test integer-16/3 integer-16 -1)

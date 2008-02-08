@@ -96,7 +96,7 @@
      (with-validity-range validity-start validity-end
        ,@forms)))
 
-(defun do-random-operation (instances &optional (count 1))
+(defun do-random-operations (instances &optional (count 1))
   (with-random-t
     (with-random-validity-range
       (iter (repeat count)
@@ -109,21 +109,21 @@
               (setf (slot-value instance slot-name) value)
               (setf (slot-value* instance slot-name) value))))))
 
-(deftest (test/tesites/complex :in test/tesites) (&optional (count 1))
+(deftest (test/tesites/complex :in test/tesites) (&key (instance-count 1) (operation-count 1) (repeat-count 1) (test-count 1))
   (bind ((*history-entries* nil)
          (instances
           (with-transaction
             (with-default-t
-              (generate-instances)))))
+              (generate-instances instance-count)))))
     (format t "~%Starting operations...")
-    (iter (repeat count)
+    (iter (repeat repeat-count)
           (with-transaction
-            (do-random-operation instances))
+            (do-random-operations instances operation-count))
           (finally
            (with-transaction
              (with-default-t
                (compare-history instances)))
-           (iter (repeat count)
+           (iter (repeat test-count)
                  (with-transaction
                    (with-random-t
                      (with-random-validity-range
