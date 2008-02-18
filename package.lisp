@@ -280,6 +280,11 @@
            #:*validity-start*
            #:*validity-end*
            #:values-having-validity
+           #:values-having-validity-p
+           #:make-single-values-having-validity
+           #:single-values-having-validity-p
+           #:elt-values-having-validity
+           #:values-having-validity=
            #:t-value-of
            #:validity-start-of
            #:validity-end-of
