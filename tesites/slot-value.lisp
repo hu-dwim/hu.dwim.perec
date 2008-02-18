@@ -83,43 +83,52 @@
                                    (instance persistent-object)
                                    (slot persistent-effective-slot-definition-t))
   (assert-instance-slot-correspondence)
-  (bind ((persistent (persistent-p instance)))
-    (assert-instance-access instance persistent)
-    (bind (((values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
-      (when (or (not persistent)
-                (and *cache-slot-values*
-                     slot-value-cached))
-        (if (time-dependent-p slot)
-            (progn
-              *validity-start* *validity-end*
-              (when (temporal-p slot)
-                *t*)
-              (if (unbound-slot-marker-p cached-value)
-                  (slot-unbound-t instance slot)
-                  (bind (((values value covers-validity-range-p)
-                          (extract-values-having-validity cached-value *validity-start* *validity-end*)))
-                    (if covers-validity-range-p
-                        (return-from slot-value-using-class value)
-                        (unless persistent
-                          (slot-unbound-t instance slot))))))
-            (progn
-              *t*
-              (if (unbound-slot-marker-p cached-value)
-                  (slot-unbound-t instance slot)
-                  (return-from slot-value-using-class cached-value)))))
-      (bind ((value (restore-slot class instance slot)))
-        (setf (underlying-slot-value-using-class class instance slot)
-              (if (values-having-validity-p value)
-                  value
-                  (make-single-values-having-validity value *validity-start* *validity-end*)))
-        value))))
+  (flet ((return-value (value)
+           (return-from slot-value-using-class
+             (if (single-values-having-validity-p value)
+                 (elt-0 (values-of value))
+                 value))))
+    (bind ((persistent (persistent-p instance)))
+      (assert-instance-access instance persistent)
+      (bind (((values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
+        (when (or (not persistent)
+                  (and *cache-slot-values*
+                       slot-value-cached))
+          (if (time-dependent-p slot)
+              (progn
+                *validity-start* *validity-end*
+                (when (temporal-p slot)
+                  *t*)
+                (if (unbound-slot-marker-p cached-value)
+                    (slot-unbound-t instance slot)
+                    (bind (((values value covers-validity-range-p)
+                            (extract-values-having-validity cached-value *validity-start* *validity-end*)))
+                      (if covers-validity-range-p
+                          (return-value value)
+                          (unless persistent
+                            (slot-unbound-t instance slot))))))
+              (progn
+                *t*
+                (if (unbound-slot-marker-p cached-value)
+                    (slot-unbound-t instance slot)
+                    (return-value cached-value)))))
+        (bind ((value (restore-slot class instance slot)))
+          (setf (underlying-slot-value-using-class class instance slot)
+                (if (values-having-validity-p value)
+                    value
+                    (make-single-values-having-validity value *validity-start* *validity-end*)))
+          (return-value value))))))
 
 (defmethod (setf slot-value-using-class) (new-value
                                           (class persistent-class-t)
                                           (instance persistent-object)
                                           (slot persistent-effective-slot-definition-t))
   (assert-instance-slot-correspondence)
-  (bind ((persistent (persistent-p instance)))
+  (bind ((persistent (persistent-p instance))
+         (new-value (if (and (time-dependent-p slot)
+                             (not (values-having-validity-p new-value)))
+                        (make-single-values-having-validity new-value *validity-start* *validity-end*)
+                        new-value)))
     (assert-instance-access instance persistent)
     (if persistent
         (store-slot class instance slot new-value)
@@ -127,11 +136,8 @@
     (when (or (not persistent)
               (and *cache-slot-values*
                    (cache-p slot)))
-      (setf (underlying-slot-value-using-class class instance slot)
-            (if (time-dependent-p slot)
-                (make-single-values-having-validity new-value *validity-start* *validity-end*)
-                new-value)))
-    new-value))
+      (setf (underlying-slot-value-using-class class instance slot) new-value)))
+  new-value)
 
 (defmethod slot-boundp-using-class ((class persistent-class-t)
                                     (instance persistent-object)

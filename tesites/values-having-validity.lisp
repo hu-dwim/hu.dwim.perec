@@ -17,7 +17,24 @@
 (def (function e) values-having-validity-p (instance)
   (typep instance 'values-having-validity))
 
-(def function make-single-values-having-validity (value validity-start validity-end)
+(def (function e) elt-values-having-validity (instance index)
+  (values (elt (values-of instance) index)
+          (elt (validity-starts-of instance) index)
+          (elt (validity-ends-of instance) index)))
+
+(def (function e) values-having-validity= (values-1 values-2)
+  (and (length (values-of values-1))
+       (length (values-of values-2))
+       (iter (for index :from 0 :below (length (values-of values-1)))
+             (bind (((values v-1 s-1 e-1)
+                     (elt-values-having-validity values-1 index))
+                    ((values v-2 s-2 e-2)
+                     (elt-values-having-validity values-2 index)))
+               (always (equal v-1 v-2))
+               (always (local-time= s-1 s-2))
+               (always (local-time= e-1 e-2))))))
+
+(def (function e) make-single-values-having-validity (value validity-start validity-end)
   (flet ((make-single-element-vector (element)
            (aprog1 (make-array 1)
              (setf (aref it 0) element))))
@@ -26,8 +43,15 @@
                    :validity-starts (make-single-element-vector validity-start)
                    :validity-ends (make-single-element-vector validity-end))))
 
-(def function single-values-having-validity-p (values-having-validity)
-  (= 1 (length (values-of values-having-validity))))
+(def (function e) single-values-having-validity-p (instance)
+  (and (values-having-validity-p instance)
+       (= 1 (length (values-of instance)))))
+
+(def (function e) make-values-having-validity (values validity-starts validity-ends)
+  (make-instance 'values-having-validity
+                 :values (coerce values 'simple-vector)
+                 :validity-starts (coerce validity-starts 'simple-vector)
+                 :validity-ends (coerce validity-ends 'simple-vector)))
 
 (defprint-object (instance values-having-validity)
   (write-char #\{)
@@ -58,9 +82,9 @@
 ;;; For primitive types
 
 (def function collect-values-having-validity (value-holders value-function validity-start-function validity-end-function no-value-function requested-validity-start requested-validity-end)
-  "From a list of ordered (by t) tuples each containing a value, a validity start and a validity end returns the corresponding values-having-validity for the requested range. May return a simple value instead of a values-having-validity."
+  "From a list of ordered (by t) tuples each containing a value, a validity start and a validity end returns the corresponding values-having-validity for the requested range."
   (if (zerop (length value-holders))
-      (funcall no-value-function requested-validity-start requested-validity-end)
+      (make-single-values-having-validity (funcall no-value-function requested-validity-start requested-validity-end) requested-validity-start requested-validity-end)
       (bind ((values (make-array 4 :adjustable #t :fill-pointer 0))
              (validity-starts (make-array 4 :adjustable #t :fill-pointer 0))
              (validity-ends (make-array 4 :adjustable #t :fill-pointer 0))
@@ -90,20 +114,17 @@
                       (funcall no-value-function validity-start validity-end)
                       validity-start validity-end))))
           (%collect-values-having-validity 0 requested-validity-start requested-validity-end)
-          (if (= 1 (length values)) ;; TODO add a special to control this
-              (aref values 0)
-              (progn
-                (sort indices #'local-time< :key (lambda (index) (aref validity-starts index)))
-                (permute values indices)
-                (permute validity-starts indices)
-                (permute validity-ends indices)
-                (make-instance 'values-having-validity
-                               :values values
-                               :validity-starts validity-starts
-                               :validity-ends validity-ends)))))))
+          (sort indices #'local-time< :key (lambda (index) (aref validity-starts index)))
+          (permute values indices)
+          (permute validity-starts indices)
+          (permute validity-ends indices)
+          (make-instance 'values-having-validity
+                         :values values
+                         :validity-starts validity-starts
+                         :validity-ends validity-ends)))))
 
 (def function extract-values-having-validity (values-having-validity requested-validity-start requested-validity-end)
-  "Extracts the requested range if possible, secondary value indicates success. May return a simple value instead of a values-having-validity."
+  "Extracts the requested range if possible, secondary value indicates success."
   (bind ((validity-starts (validity-starts-of values-having-validity))
          (validity-ends (validity-ends-of values-having-validity))
          (first-validity-start (aref validity-starts 0))
@@ -131,10 +152,7 @@
                       (when (local-time<= validity-start requested-validity-start validity-end)
                         (push-value-with-validity value requested-validity-start validity-end)
                         (setf in-requested-validity-range #t)))))
-          (values (if (= 1 (length values))
-                      (aref values 0)
-                      result)
-                  #t))
+          (values result #t))
         (values nil #f))))
 
 ;;;;;;;;;;;;;;;;;
@@ -170,7 +188,7 @@
               (push-validity (funcall validity-end-function value))))
       (setf validities (sort validities #'local-time<))
       (if (= 2 (length validities))
-          (%collect-children-having-validity value-holders (first validities) (second validities))
+          (make-single-values-having-validity (%collect-children-having-validity value-holders (first validities) (second validities)) (first validities) (second validities))
           (bind ((size (1- (length validities)))
                  (values (make-array size :fill-pointer 0))
                  (validity-starts (make-array size :fill-pointer 0))
@@ -193,12 +211,10 @@
                               (setf previous-value value)
                               (setf previous-validity validity))))
                       (setf previous-validity validity)))
-            (if (= 1 (length values))
-                (aref values 0)
-                (make-instance 'values-having-validity
-                               :values values
-                               :validity-starts validity-starts
-                               :validity-ends validity-ends)))))))
+            (make-instance 'values-having-validity
+                           :values values
+                           :validity-starts validity-starts
+                           :validity-ends validity-ends))))))
 
 ;;;;;;;;;;;
 ;;; Utility
