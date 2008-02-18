@@ -30,6 +30,7 @@
 
 (deftest test/tesites/temporal/table ()
   (with-temporal-test-classes
+    (ensure-finalized (find-class *temporal-class-name*))
     (is (null (columns-of (find-slot *temporal-class-name* 'population))))))
 
 (deftest test/tesites/temporal/t-not-specified ()

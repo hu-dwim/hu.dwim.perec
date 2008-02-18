@@ -30,6 +30,7 @@
 
 (deftest test/tesites/time-dependent/table ()
   (with-time-dependent-test-classes
+    (ensure-finalized (find-class *time-dependent-class-name*))
     (is (null (columns-of (find-slot *time-dependent-class-name* 'population))))))
 
 (deftest test/tesites/time-dependent/initial-value/unbound/1 ()
