@@ -50,34 +50,39 @@
              (and (local-time< (he-validity-start entry) *validity-end*)
                   (local-time< *validity-start* (he-validity-end entry)))))
       (when history-entries
-        (cond ((and (not temporal-p)
-                    (not time-dependent-p))
-               (aif (first (sort-entries-by-step history-entries))
-                    (he-value it)
-                    default-value))
-              ((and temporal-p
-                    time-dependent-p)
-               (prc::collect-values-having-validity
-                (sort-entries-by-t
-                 (collect-if (lambda (entry)
-                               (and (local-time<= *t* (he-t-value entry))
-                                    (validity-range-overlap-p entry)))
-                             history-entries))
-                #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*))
-              (temporal-p
-               (aif (find-if #L(local-time< (he-t-value !1) *t*)
-                             (sort-entries-by-t history-entries))
-                    (he-value it)
-                    default-value))
-              (time-dependent-p
-               (prc::collect-values-having-validity
-                (sort-entries-by-step
-                 (collect-if (lambda (entry)
-                               (validity-range-overlap-p entry))
-                             history-entries))
-                #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*)))))))
+        (bind ((value
+                (cond ((and (not temporal-p)
+                            (not time-dependent-p))
+                       (aif (first (sort-entries-by-step history-entries))
+                            (he-value it)
+                            default-value))
+                      ((and temporal-p
+                            time-dependent-p)
+                       (prc::collect-values-having-validity
+                        (sort-entries-by-t
+                         (collect-if (lambda (entry)
+                                       (and (local-time<= *t* (he-t-value entry))
+                                            (validity-range-overlap-p entry)))
+                                     history-entries))
+                        #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*))
+                      (temporal-p
+                       (aif (find-if #L(local-time< (he-t-value !1) *t*)
+                                     (sort-entries-by-t history-entries))
+                            (he-value it)
+                            default-value))
+                      (time-dependent-p
+                       (prc::collect-values-having-validity
+                        (sort-entries-by-step
+                         (collect-if (lambda (entry)
+                                       (validity-range-overlap-p entry))
+                                     history-entries))
+                        #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*)))))
+          (if (single-values-having-validity-p value)
+              (elt-0 (prc::values-of value))
+              value))))))
 
 (defun (setf slot-value*) (new-value instance slot-name)
+  (assert (not (values-having-validity-p new-value)))
   (push (make-history-entry :instance instance
                             :slot-name slot-name
                             :t-value *t*
@@ -126,20 +131,20 @@
      (with-validity-range validity-start validity-end
        ,@forms)))
 
-(defun do-random-operations (instances &key (count 1) (slot-name nil))
+(defun do-random-operations (instances &key (count 1)  (slot-names nil))
   (with-random-t
     (with-random-validity-range
       (iter (repeat count)
             (bind ((instance (revive-instance (elt instances (random (length instances)))))
-                   (slot-names (complext-test-slot-names instance))
-                   (slot-name (or slot-name (elt slot-names (random (length slot-names)))))
+                   (slot-names (or slot-names (complext-test-slot-names instance)))
+                   (slot-name (elt slot-names (random (length slot-names))))
                    (value (random 100)))
               (format t "~%Setting ~A in ~A~% with t ~A and with validity range ~A -> ~A~%to ~A"
                       slot-name instance *t* *validity-start* *validity-end* value)
               (setf (slot-value instance slot-name) value)
               (setf (slot-value* instance slot-name) value))))))
 
-(deftest (test/tesites/complex :in test/tesites) (&key (instance-count 1) (operation-count 1) (repeat-count 1) (test-count 1) (slot-name nil))
+(deftest (test/tesites/complex :in test/tesites) (&key (instance-count 1) (operation-count 1) (repeat-count 1) (test-count 1) (slot-name nil) (slot-names nil))
   (bind ((*history-entries* nil)
          (instances
           (with-transaction
@@ -148,7 +153,11 @@
     (format t "~%Starting operations with ~A number of history entries..." (length *history-entries*))
     (iter (repeat repeat-count)
           (with-transaction
-            (do-random-operations instances :count operation-count :slot-name slot-name))
+            (do-random-operations instances
+              :count operation-count
+              :slot-names (if slot-name
+                              (list slot-name)
+                              slot-names)))
           (finally
            (with-transaction
              (with-default-t
