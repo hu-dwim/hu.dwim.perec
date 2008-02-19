@@ -197,10 +197,13 @@ Be careful when using in different situations, because it modifies *readtable*."
     (make-slot-access :accessor (first form)
                       :args (list (parse-query-form (second form) variables))))
    ((and (symbolp (first form)) (macro-function (first form)))
-    (make-macro-call :macro (first form)
-                     :args (if (parse-args-p (first form))
-                               (mapcar #L(parse-query-form !1 variables) (rest form))
-                               (mapcar #L(make-unparsed-form :form !1) (rest form)))))
+    (if (expand-macro-call-p (first form))
+        (parse-query-form (macroexpand-1 form)
+                          variables)
+        (make-macro-call :macro (first form)
+                         :args (if (parse-args-p (first form))
+                                   (mapcar #L(parse-query-form !1 variables) (rest form))
+                                   (mapcar #L(make-unparsed-form :form !1) (rest form))))))
    ((and (symbolp (first form)) (special-operator-p (first form)))
     (make-special-form :operator (first form)
                        :operands (mapcar #L(make-unparsed-form :form !1) (rest form))))
@@ -248,6 +251,9 @@ Be careful when using in different situations, because it modifies *readtable*."
 (defun parse-args-p (macro-name)
   (or (member macro-name '(and or))
       (member macro-name rdbms::*sql-constructor-names*))) ; TODO missing export
+
+(defun expand-macro-call-p (macro-name)
+  (member macro-name rdbms::*sql-constructor-names*))
 
 ;;;;
 ;;;; Substitute
