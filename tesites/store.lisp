@@ -54,17 +54,20 @@
   (assert (or (not (time-dependent-p t-slot))
               (and validity-start validity-end)))
 
-  ;; TODO do not store the default value of the slot in a transient instance
-  ;; restore-slot interprets missing h-records as the default value
-  #+nil
-  (when (and (not (persistent-p t-instance)) (default-value-p value  (slot-definition-type t-slot)))
-    (return-from store-slot-t*))
   
   (bind ((h-slot (h-slot-of t-slot))
          (h-slot-name (slot-definition-name h-slot))
          (t-value (when (boundp '*t*) *t*))
          (t-value-slot (t-value-slot-of t-class))
+         (t-slot-default-value (default-value-for-type (slot-definition-type t-slot)))
          (update-count))
+
+    ;; do not store the default value of the slot in a transient instance
+    ;; restore-slot interprets missing h-records as the default value
+    (when (and (not (persistent-p t-instance))
+               (eq value t-slot-default-value)
+               (not (temporal-p t-slot)))
+      (return-from store-slot-t*))
 
     ;; first try to update the h-record with the same t/validity
     ;; if it is successful we are done
@@ -126,12 +129,18 @@
       ;; insert value with t and validity
       ;; the default value of the slot inserted only if temporal-p and has previous overlapping value
       ;; TODO do not store h-instance for the default value except if it is temporal and has previous value
-      (insert-h-records t-class t-instance t-slot value t-value validity-start validity-end))
+      (when (or (not (eq value t-slot-default-value))
+                (and (temporal-p t-slot)
+                     #t))               ; TODO
+        (insert-h-records t-class t-instance t-slot value t-value validity-start validity-end)))
 
     
     (when (typep value 'persistent-object)
       (invalidate-all-cached-slots value)) ;; FIXME why?
     ;; TODO: if t-instance is cached either invalidate it or set the value on it
+
+    ;;(debug-only (assert-no-overlapping-validities ))
+    
     value))
 
 ;;;;;;;;;;;;;;;;

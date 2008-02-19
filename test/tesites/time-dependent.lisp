@@ -99,7 +99,7 @@
       (with-one-and-two-transactions
           (bind ((instance (make-instance *time-dependent-class-name*)))
             (setf (population-of instance) 1000)
-            (is (= (update-counter-of (command-counter-of *transaction*)) 2))
+            (is (= (update-counter-of (command-counter-of *transaction*)) 1))
             (is (= (insert-counter-of (command-counter-of *transaction*)) (+ 1 3)))
             instance)
         (let ((update-counter (update-counter-of (command-counter-of *transaction*)))

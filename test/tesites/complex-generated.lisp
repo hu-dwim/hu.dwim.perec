@@ -38,7 +38,7 @@ with 104 history entries: "
                (WITH-T "2008-02-19T15:26:52.274905Z"
                  (WITH-VALIDITY-RANGE "1000-01-01T00:00:00Z" "3000-01-01T00:00:00Z"
                    (BIND
-                       ((PERSISTENT-VALUE (SLOT-VALUE INSTANCE 'TIME-DEPENDENT-SLOT))
-                        (TEST-VALUE (SLOT-VALUE* INSTANCE 'TIME-DEPENDENT-SLOT)))
+                       ((PERSISTENT-VALUE (print (SLOT-VALUE INSTANCE 'TIME-DEPENDENT-SLOT)))
+                        (TEST-VALUE (print (SLOT-VALUE* INSTANCE 'TIME-DEPENDENT-SLOT))))
                      (ASSERT-PERSISTENT-AND-TEST-VALUES INSTANCE 'TIME-DEPENDENT-SLOT PERSISTENT-VALUE
                                                         TEST-VALUE))))))))
