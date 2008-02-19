@@ -29,7 +29,7 @@
   ()
   (:metaclass persistent-class-t))
 
-(defvar *history-entry-counter* 0)
+(defvar *history-entry-counter*)
 
 (defvar *history-entries*)
 
@@ -108,6 +108,10 @@
                             :value new-value)
         *history-entries*))
 
+(defun (setf slot-value-and-slot-value*) (new-value instance slot-name)
+  (setf (slot-value instance slot-name) new-value)
+  (setf (slot-value* instance slot-name) new-value))
+
 (defun generate-instances (class-name count)
   (iter (repeat count)
         (for instance = (make-instance class-name))
@@ -116,6 +120,21 @@
               (setf (slot-value* instance slot-name) persistent-value))
         (collect instance)))
 
+(defun compare-persistent-and-test-values (persistent-value test-value)
+  (or (and (values-having-validity-p persistent-value)
+           (values-having-validity-p test-value)
+           (iter (for (persistent-value persistent-validity-start persistent-validity-end) :in-values-having-validity persistent-value)
+                 (for (test-value test-validity-start test-validity-end) :in-values-having-validity test-value)
+                 (always (and (eql persistent-value test-value)
+                              (local-time= persistent-validity-start test-validity-start)
+                              (local-time= persistent-validity-end test-validity-end)))))
+      (eql persistent-value test-value)))
+
+(defun assert-persistent-and-test-values (instance slot-name persistent-value test-value)
+  (is (compare-persistent-and-test-values persistent-value test-value)
+      "The persistent value: ~A and test value: ~A are different~%in the slot ~A of ~A~%with t ~A and with validity range ~A -> ~A~%with ~A history entries: ~A"
+      persistent-value test-value slot-name instance *t* *validity-start* *validity-end* (length *history-entries*) *history-entries*))
+
 (defun compare-history (instances)
   (iter (for instance :in instances)
         (for class = (class-of instance))
@@ -123,16 +142,7 @@
         (iter (for slot-name :in (complext-test-slot-names instance))
               (for persistent-value = (slot-value instance slot-name))
               (for test-value = (slot-value* instance slot-name))
-              (is (or (and (values-having-validity-p persistent-value)
-                           (values-having-validity-p test-value)
-                           (iter (for (persistent-value persistent-validity-start persistent-validity-end) :in-values-having-validity persistent-value)
-                                 (for (test-value test-validity-start test-validity-end) :in-values-having-validity test-value)
-                                 (always (and (eql persistent-value test-value)
-                                              (local-time= persistent-validity-start test-validity-start)
-                                              (local-time= persistent-validity-end test-validity-end)))))
-                      (eql persistent-value test-value))
-                  "The persistent value: ~A and test value: ~A are different~%in the slot ~A of ~A~%with t ~A and with validity range ~A -> ~A~%with ~A history entries: ~A"
-                  persistent-value test-value slot-name instance *t* *validity-start* *validity-end* (length *history-entries*) *history-entries*))))
+              (assert-persistent-and-test-values instance slot-name persistent-value test-value))))
 
 (defun random-universal-time ()
   (random 1000000000))
@@ -158,29 +168,74 @@
                    (value (random 100)))
               (format t "~%Setting ~A in ~A~% with t ~A and with validity range ~A -> ~A~%to ~A"
                       slot-name instance *t* *validity-start* *validity-end* value)
-              (setf (slot-value instance slot-name) value)
-              (setf (slot-value* instance slot-name) value))))))
+              (setf (slot-value-and-slot-value* instance slot-name) value))))))
 
 (deftest (test/tesites/complex :in test/tesites) (&key (class-name 'tesites-complex-test) (instance-count 1) (operation-count 1) (repeat-count 1) (test-count 1) (slot-name nil) (slot-names nil))
   (bind ((*history-entries* nil)
+         (*history-entry-counter* 0)
+         (error nil)
          (instances
           (with-transaction
             (with-default-t
               (generate-instances class-name instance-count)))))
     (format t "~%Starting operations with ~A number of history entries..." (length *history-entries*))
-    (iter (repeat repeat-count)
-          (with-transaction
-            (do-random-operations instances
-              :count operation-count
-              :slot-names (if slot-name
-                              (list slot-name)
-                              slot-names)))
-          (finally
-           (with-transaction
-             (with-default-t
-               (compare-history instances)))
-           (iter (repeat test-count)
-                 (with-transaction
-                   (with-random-t
-                     (with-random-validity-range
-                       (compare-history instances)))))))))
+    (restart-bind
+        ((print-test
+          (lambda ()
+            (bind ((*print-level* nil)
+                   (*print-length* nil)
+                   (*print-lines* nil)
+                   (failure-descriptions (stefil::failure-descriptions-of stefil::*global-context*))
+                   (failure-description (aref failure-descriptions (1- (length failure-descriptions))))
+                   (format-arguments (stefil::format-arguments-of failure-description))
+                   (slot-name (elt format-arguments 2))
+                   (instance (elt format-arguments 3)))
+              (format t "~%~S"
+                      `(deftest test/tesites/complex/generated ()
+                         ,(format nil "~A" error)
+                         (bind ((*history-entries* nil)
+                                (*history-entry-counter* 0)
+                                (instance
+                                 (with-transaction
+                                   (with-default-t
+                                     (make-instance ',(class-name (class-of instance)))))))
+                           (with-transaction
+                             (with-revived-instance instance
+                               ,@(iter (for entry :in (reverse *history-entries*))
+                                       (collect `(with-t ,(format-timestring (he-t-value entry) :timezone +utc-zone+)
+                                                   (with-validity-range
+                                                       ,(format-timestring (he-validity-start entry) :timezone +utc-zone+)
+                                                       ,(format-timestring (he-validity-end entry) :timezone +utc-zone+)
+                                                     (setf (slot-value-and-slot-value* instance ',(he-slot-name entry)) ,(he-value entry))))))))
+                           (with-transaction
+                             (with-revived-instance instance
+                               (with-t ,(format-timestring *t* :timezone +utc-zone+)
+                                 (with-validity-range
+                                     ,(format-timestring *validity-start* :timezone +utc-zone+)
+                                     ,(format-timestring *validity-end* :timezone +utc-zone+)
+                                   (bind ((persistent-value (slot-value instance ',slot-name))
+                                          (test-value (slot-value* instance ',slot-name)))
+                                     (assert-persistent-and-test-values instance ',slot-name persistent-value test-value))))))))))
+            (return-from test/tesites/complex))
+           :report-function (lambda (stream)
+                              (format stream "Print a specific test case for this error and skip this complex test"))))
+      (handler-bind
+          ((serious-condition
+            (lambda (e)
+              (setf error e))))
+        (iter (repeat repeat-count)
+              (with-transaction
+                (do-random-operations instances
+                  :count operation-count
+                  :slot-names (if slot-name
+                                  (list slot-name)
+                                  slot-names)))
+              (finally
+               (with-transaction
+                 (with-default-t
+                   (compare-history instances)))
+               (iter (repeat test-count)
+                     (with-transaction
+                       (with-random-t
+                         (with-random-validity-range
+                           (compare-history instances)))))))))))
