@@ -158,7 +158,7 @@
      (with-validity-range validity-start validity-end
        ,@forms)))
 
-(defun do-random-operations (instances &key (count 1)  (slot-names nil))
+(defun do-random-operations (instances &key (count 1) (slot-names nil))
   (with-random-t
     (with-random-validity-range
       (iter (repeat count)
@@ -231,10 +231,21 @@
                                   (list slot-name)
                                   slot-names)))
               (finally
+               ;; default x default
                (with-transaction
                  (with-default-t
                    (compare-history instances)))
                (iter (repeat test-count)
+                     ;; default x random
+                     (with-transaction
+                       (with-default-t
+                         (with-random-validity-range
+                           (compare-history instances))))
+                     ;; random x default
+                     (with-transaction
+                       (with-random-t
+                         (compare-history instances)))
+                     ;; random x random
                      (with-transaction
                        (with-random-t
                          (with-random-validity-range
