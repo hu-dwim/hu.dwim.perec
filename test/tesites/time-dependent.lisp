@@ -65,9 +65,17 @@
       (with-validity-range "2007-01-01" "2008-01-01"
         (is (null (population-of instance))))
       (with-validity-range "2006-01-01" "2008-01-01"
-        (is (null (population-of instance))))
+        (is (values-having-validity=
+             (make-values-having-validity (list 1000 nil)
+                                          (list (parse-timestring "2006-01-01TZ") (parse-timestring "2007-01-01TZ"))
+                                          (list (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ")))
+             (population-of instance))))
       (with-validity-range "2007-01-01" "2009-01-01"
-        (is (null (population-of instance)))))))
+        (is (values-having-validity=
+             (make-values-having-validity (list nil 2000)
+                                          (list (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ"))
+                                          (list (parse-timestring "2008-01-01TZ") (parse-timestring "2009-01-01TZ")))
+             (population-of instance)))))))
 
 (deftest test/tesites/time-dependent/initial-value/integer/1 ()
   (with-time-dependent-test-classes
@@ -126,7 +134,7 @@
         instance)
     (with-validity "2007"
       (setf (population-of -instance-) 2007))
-    (with-validity-range "2006" "2007"
+    (with-validity-range "2006" "2008"
       (iter (for index :from 0)
             (for (value validity-start validity-end) :in-values-having-validity (population-of -instance-))
             (ecase index
@@ -173,4 +181,4 @@
         (with-revived-instance instance
           (is (= 0 (slot-of instance)))
           (is (= 1000 (slot-1-of instance)))
-          (is (= 2000 (slot-2-of instance))))))))
+          (is (is (null (slot-2-of instance)))))))))

@@ -65,7 +65,7 @@
          `(load-time-value (parse-timestring ,(first-moment-for-partial-timestamp start)))
          start)
     ,(if (stringp end)
-         `(load-time-value (parse-timestring ,(last-moment-for-partial-timestamp end)))
+         `(load-time-value (parse-timestring ,(first-moment-for-partial-timestamp end)))
          end)
     (lambda ()
       ,@forms)))
