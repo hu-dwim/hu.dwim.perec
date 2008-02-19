@@ -238,6 +238,8 @@
   (find-slot-by-owner-type owner (effective-slots-for-slot-name slot-name)))
 
 (defgeneric unbound-check-for (syntax)
+  (:documentation "Returns an SQL expression that checks if the value of SYNTAX is unbound.")
+  
   (:method (syntax)
     nil)
 
@@ -277,6 +279,8 @@
 
 ;; TODO needs review
 (defgeneric null-check-for (syntax)
+  (:documentation "Returns an SQL expression that checks if the value of SYNTAX is a unit type value (except unbound) .")
+  
   (:method (syntax)
     nil)
 
@@ -319,8 +323,10 @@
     nil))
 
 (defgeneric null-tag-for (syntax)
+  (:documentation "Returns an SQL expression that gives the tag for the value of SYNTAX.")
+  
   (:method (syntax)
-    nil)
+    (sql-literal :value 0))
 
   (:method ((literal literal-value))
     (bind ((type (persistent-type-of literal)))
@@ -332,12 +338,12 @@
              (unit-types (remove 'unbound (unit-types-of mapping))))
         (cond
           ((tagged-p mapping)
-           (aref rdbms-values 0))
-          (unit-types
-           (assert (length=1 unit-types))
+           (sql-literal :value (aref rdbms-values 0)))
+          ((eq (aref rdbms-values (1- (length rdbms-values))) :null)
+           (assert (and (length=1 unit-types) (not (eq (first unit-types) 'unbound))))
            (sql-literal :value (compute-type-tag (first unit-types))))
           (t
-           nil)))))
+           (sql-literal :value 0))))))
 
   (:method ((variable lexical-variable))
     (bind ((type (persistent-type-of variable)))
@@ -347,8 +353,9 @@
       
       (bind ((mapping (compute-mapping (canonical-type-for type)))
              (unit-types (remove 'unbound (unit-types-of mapping))))
-        (when unit-types
-          (sql-literal :value (compute-type-tag (first unit-types))))))) ; KLUDGE
+        (if unit-types
+            (sql-literal :value (compute-type-tag (first unit-types))) ; KLUDGE
+            (sql-literal :value 0)))))
 
   (:method ((access slot-access))
     (bind ((type (persistent-type-of access))
@@ -361,23 +368,20 @@
                 (not (query-variable-p variable)))
         (sql-map-failed))
       
-      (bind ((mapping (compute-mapping (canonical-type-for type))))
+      (bind ((type (canonical-type-for type))
+             (mapping (compute-mapping type))
+             (unit-types (unit-types-of mapping)))
         (cond
           ((tagged-p mapping)
            (sql-column-reference-for (tag-column-of slot) variable))
-          ((maybe-null-subtype-p type)
-           (check-for-rdbms-values
-            (lisp-value->rdbms-equality-values type nil)
-            (column-names-of slot)
-            (column-types-of slot)
-            variable))
+          (unit-types
+           (assert (length=1 unit-types))
+           (sql-literal :value (compute-type-tag (first unit-types))))
           (t
-           nil)))))
+           (sql-literal :value 0))))))
 
   (:method ((access association-end-access))
-    nil)
-  
-  (:documentation "Returns an sql expression for the tag of a :null value."))
+    (sql-literal :value 0)))
 
 (defun check-for-rdbms-values (rdbms-values column-names column-types qualifier)
   (assert (= (length rdbms-values) (length column-names)))

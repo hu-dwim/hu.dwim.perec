@@ -475,20 +475,20 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   "Generates an equality test for the two sql expression and the corresponding boundness checks.
 If one of the values is unbound, the test yields NULL, otherwise it yields true or false (two NULL
 value is equal, when they represent the NIL lisp value)."
-  (flet ((sql-is-null (sql unbound-check null-check)
+  (flet ((sql-is-null (sql unbound-check null-check null-tag-1 null-tag-2)
            (cond
              ((sql-null-literal-p sql)
-              (sql-true-literal))
+              `(sql-= ,null-tag-1 ,null-tag-2))
              ((and unbound-check null-check)
               `(sql-if ,unbound-check
                        (sql-null-literal)
-                       ,null-check))
+                       (sql-= ,null-tag-1 ,null-tag-2)))
              (unbound-check
               `(sql-if ,unbound-check
                        (sql-null-literal)
                        (sql-false-literal)))
              (null-check
-              null-check)
+              `(sql-= ,null-tag-1 ,null-tag-2))
              (t
               (sql-false-literal))))
          (wrap-with-null-check (eq-check)
@@ -521,9 +521,9 @@ value is equal, when they represent the NIL lisp value)."
               eq-check))))
     (cond
       ((sql-null-literal-p sql-expr-1)
-       (sql-is-null sql-expr-2 unbound-check-2 null-check-2))
+       (sql-is-null sql-expr-2 unbound-check-2 null-check-2 null-tag-2 null-tag-1))
       ((sql-null-literal-p sql-expr-2)
-       (sql-is-null sql-expr-1 unbound-check-1 null-check-1))
+       (sql-is-null sql-expr-1 unbound-check-1 null-check-1 null-tag-1 null-tag-2))
       (t
        (wrap-with-unbound-check
         (wrap-with-null-check
