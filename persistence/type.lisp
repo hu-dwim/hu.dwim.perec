@@ -531,15 +531,26 @@
        (eq :null (first (compute-rdbms-types* type type)))))
 
 (def function unit-subtypes-for (type)
-  (append
-   ;; special case for null (because of boolean and symbol)
-   (when (null-subtype-p type)
-     '(null))
-   (collect-if (lambda (subtype)
-                 (and (not (member subtype '(null member set disjunct-set ordered-set)))
-                      (unit-type-p subtype)
-                      (subtypep subtype type)))
-               *mapped-type-precedence-list*)))
+  (collect-if (lambda (subtype)
+                ;; special case for null (because of boolean and symbol)
+                (if (eq subtype 'null)
+                    (null-subtype-p type)
+                    (and (not (member subtype '(member set disjunct-set ordered-set)))
+                         (unit-type-p subtype)
+                         (subtypep subtype type))))
+              *mapped-type-precedence-list*))
+
+(def function default-value-for-type (type)
+  (aif (first (unit-subtypes-for type))
+       (values (bind ((expanded-type (substitute-type-arguments it nil)))
+                 (cond ((eq expanded-type 'null)
+                        nil)
+                       ((eq (first expanded-type) 'eql)
+                        (second expanded-type))
+                       (t
+                        (error "Unknown type ~A" type))))
+               #t)
+       (values nil #f)))
 
 (def function primitive-type-p (type)
   "Accepts types such as boolean, integer, string, double, etc. which are directly mapped to RDBMS."
