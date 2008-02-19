@@ -207,6 +207,10 @@
            #:iterate-items
            #:list-of
 
+           #:signal-broken-database
+           #:signal-broken-references
+           #:signal-broken-instances
+
            ;; query
            #:query
            #:copy-query

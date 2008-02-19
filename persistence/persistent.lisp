@@ -329,7 +329,8 @@
 ;;;;;;;;;;;;;;;;;;;;;
 ;;; Broken references
 
-(def function signal-broken-references ()
+(def (function e) signal-broken-references ()
+  ;; cache all instances
   ;; TODO: query compiler is loaded later
   (funcall 'execute-query
            (funcall 'make-query '(select (instance)
@@ -359,3 +360,19 @@
                         (cerror "Let's see if there's more" "Slot ~A in ~A has a broken reference to ~A"
                                 (slot-definition-name referer-slot) referer
                                 (make-instance (oid-class-name referred-oid) :persistent #f :oid referred-oid))))))))))
+
+(def (function e) signal-broken-instances ()
+  (iter (for (class-name class) :in-hashtable *persistent-classes*)
+        (awhen (primary-table-of class)
+          (for records = (select-records +oid-column-names+ (list (name-of it))))
+          (iter (for record :in-sequence records)
+                (for oid = (rdbms-values->oid record))
+                (for id = (oid-id oid))
+                (dolist (table (data-tables-of class))
+                  (when (zerop (length (select-records '(1) (list (name-of table)) :where (id-column-matcher-where-clause oid))))
+                    (cerror "Let's see if there's more" "Insance ~A is broken because no matching record can be found in ~A"
+                            (make-instance (oid-class-name oid) :persistent #f :oid oid) table)))))))
+
+(def (function e) signal-broken-database ()
+  (signal-broken-references)
+  (signal-broken-instances))

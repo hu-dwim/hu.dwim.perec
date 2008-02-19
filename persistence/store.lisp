@@ -15,10 +15,12 @@
 (def (function io) object-writer (slot-value rdbms-values index)
   (oid->rdbms-values* (oid-of slot-value) rdbms-values index))
 
-(def (function io) id-column-matcher-where-clause (instance &optional (id-name +oid-id-column-name+))
+(def (function io) id-column-matcher-where-clause (instance-or-oid &optional (id-name +oid-id-column-name+))
   (sql-binary-operator :name '=
                        :left (sql-identifier :name id-name)
-                       :right (sql-literal :type +oid-id-sql-type+ :value (id-of instance))))
+                       :right (sql-literal :type +oid-id-sql-type+ :value (typecase instance-or-oid
+                                                                            (oid (oid-id instance-or-oid))
+                                                                            (t (id-of instance-or-oid))))))
 
 (def (function io) id-column-list-matcher-where-clause (values &optional (id-name +oid-id-column-name+))
   (sql-binary-operator :name 'in
