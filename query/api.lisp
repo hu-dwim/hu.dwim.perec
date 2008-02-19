@@ -65,9 +65,12 @@
                      (after (date-of message) yesterday)))))"
   (declare (ignore select-list clauses))
   (let* ((lexical-variables (remove-duplicates (arnesi::lexical-variables env))))
-    `(execute-query
-      (make-query ',select-form ',lexical-variables)
-      ,@lexical-variables)))
+    (if nil ;; TODO: check for option :compile-at-macroexpand
+        `(funcall ,(compile-query (make-query select-form lexical-variables))
+                  ,@lexical-variables)
+        `(execute-query
+          (make-query ',select-form ',lexical-variables)
+          ,@lexical-variables))))
 
 (defwalker-handler select (form parent env)
   (let* ((lexical-variables (remove-duplicates (append (arnesi::lexical-variables (cdr env))
