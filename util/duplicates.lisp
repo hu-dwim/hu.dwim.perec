@@ -296,6 +296,6 @@ equal under TEST to result of evaluating INITIAL-VALUE."
   (let ((vector-copy (make-array (length vector))))
     (declare (dynamic-extent vector-copy))
     (iter (for i :from 0 :below (length vector))
-          (setf (aref vector-copy (aref indices i))
-                (aref vector i)))
+          (setf (aref vector-copy i)
+                (aref vector (aref indices i))))
     (replace vector vector-copy)))

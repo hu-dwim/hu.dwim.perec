@@ -145,7 +145,7 @@
               (assert-persistent-and-test-values instance slot-name persistent-value test-value))))
 
 (defun random-universal-time ()
-  (random 1000000000))
+  (random 5000000000))
 
 (defmacro with-random-t (&body forms)
   `(with-t (local-time :universal (random-universal-time))
