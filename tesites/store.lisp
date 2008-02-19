@@ -50,7 +50,6 @@
           (store-slot-t* t-class t-instance t-slot value *validity-start* *validity-end*))
       (store-slot-t* t-class t-instance t-slot value +beginning-of-time+ +end-of-time+)))
 
-;;; TODO: check-slot-value-type (unboundness)
 (defun store-slot-t* (t-class t-instance t-slot value validity-start validity-end)
   (assert (or (not (time-dependent-p t-slot))
               (and validity-start validity-end)))
@@ -353,17 +352,16 @@
          (query (make-query `(select (h-instance)
                                (from (h-instance ,h-class-name))
                                (where (and
-                                       (eq (t-object-of h-instance) ,t-instance)
-                                       ;;(not (sql-text ,(format-sql-to-string (unused-check-for h-slot))))
+                                       (eq (t-object-of h-instance) t-instance)
                                        (or
                                         (not (slot-boundp h-instance ',h-slot-name))
-                                        ;; FIXME (or null h-unused integer) generates only a null check
                                         (not (eq (,h-slot-reader-name h-instance) ,+h-unused-slot-marker+)))
-                                       (local-time< (validity-start-of h-instance) ,validity-end)
-                                       (local-time< ,validity-start (validity-end-of h-instance))
+                                       (local-time< (validity-start-of h-instance) validity-end)
+                                       (local-time< validity-start (validity-end-of h-instance))
                                        ,@(when (temporal-p t-slot)
-                                               `((local-time= (t-value-of h-instance) *t*)))))))))
-    (execute-query query)))
+                                               `((local-time= (t-value-of h-instance) *t*))))))
+                            '(t-instance validity-start validity-end))))
+    (execute-query query t-instance validity-start validity-end)))
 
 (defun select-slot-values (t-class t-instance t-slot)
   "Returns the values of the slot (with validity if time-dependent) in descending t order (if temporal). When temporal, but not time-dependent then at most recent selected."
