@@ -78,7 +78,7 @@
                        (prc::collect-values-having-validity
                         (sort-entries-by-t
                          (collect-if (lambda (entry)
-                                       (and (local-time<= *t* (he-t-value entry))
+                                       (and (local-time<= (he-t-value entry) *t*)
                                             (validity-range-overlap-p entry)))
                                      history-entries))
                         #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*))
