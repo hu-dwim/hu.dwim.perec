@@ -142,5 +142,35 @@
    (slot-1 :type (or null integer-32) :time-dependent #t)
    (slot-2 :type (or null integer-32) :time-dependent #t)))
 
-(deftest test/tesites/time-dependent/?? ()
-  )
+(deftest test/tesites/time-dependent/complex/same-validity ()
+  (with-one-and-two-transactions
+      (with-validity "2007"
+        (bind ((instance
+                (make-instance 'time-dependent-complex-test :slot 0 :slot-1 1000)))
+          (setf (slot-2-of instance) 2000)
+          instance))
+    (with-validity "2007"
+      (is (= 0 (slot-of -instance-)))
+      (is (= 1000 (slot-1-of -instance-)))
+      (is (= 2000 (slot-2-of -instance-)))
+      (is (= 1 (length (h-objects-of -instance-)))))))
+
+(deftest test/tesites/time-dependent/complex/different-validity ()
+  (bind ((instance
+          (with-transaction
+            (with-validity "2007-01"
+              (make-instance 'time-dependent-complex-test :slot 0 :slot-1 1000)))))
+    (with-transaction
+      (with-validity "2007-02"
+        (with-revived-instance instance
+          (is (= 0 (slot-of instance)))
+          (is (null (slot-1-of instance)))
+          (is (null (slot-2-of instance)))
+          (setf (slot-2-of instance) 2000)
+          (is (= 2 (length (h-objects-of instance)))))))
+    (with-transaction
+      (with-validity "2007-01"
+        (with-revived-instance instance
+          (is (= 0 (slot-of instance)))
+          (is (= 1000 (slot-1-of instance)))
+          (is (= 2000 (slot-2-of instance))))))))
