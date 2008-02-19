@@ -12,6 +12,23 @@
    (time-dependent-slot :type (or null integer-32) :time-dependent #t)
    (temporal-and-time-dependent-slot :type (or null integer-32) :temporal #t :time-dependent #t)))
 
+(defpclass* tesites-complex-slot-test ()
+  ((slot :type (or null integer-32))))
+
+(defpclass* tesites-complex-temporal-slot-test ()
+  ((temporal-slot :type (or null integer-32) :temporal #t)))
+
+(defpclass* tesites-complex-time-dependent-slot-test ()
+  ((time-dependent-slot :type (or null integer-32) :time-dependent #t)))
+
+(defpclass* tesites-complex-temporal-and-time-dependent-slot-test ()
+  ((temporal-and-time-dependent-slot :type (or null integer-32) :temporal #t :time-dependent #t)))
+
+(defpclass* tesites-complex-inheritance-test
+    (tesites-complex-slot-test tesites-complex-temporal-slot-test tesites-complex-time-dependent-slot-test tesites-complex-temporal-and-time-dependent-slot-test)
+  ()
+  (:metaclass persistent-class-t))
+
 (defvar *history-entry-counter* 0)
 
 (defvar *history-entries*)
@@ -91,9 +108,9 @@
                             :value new-value)
         *history-entries*))
 
-(defun generate-instances (&optional (count 1))
+(defun generate-instances (class-name count)
   (iter (repeat count)
-        (for instance = (make-instance 'tesites-complex-test))
+        (for instance = (make-instance class-name))
         (iter (for slot-name :in (complext-test-slot-names instance))
               (for persistent-value = (slot-value instance slot-name))
               (setf (slot-value* instance slot-name) persistent-value))
@@ -144,12 +161,12 @@
               (setf (slot-value instance slot-name) value)
               (setf (slot-value* instance slot-name) value))))))
 
-(deftest (test/tesites/complex :in test/tesites) (&key (instance-count 1) (operation-count 1) (repeat-count 1) (test-count 1) (slot-name nil) (slot-names nil))
+(deftest (test/tesites/complex :in test/tesites) (&key (class-name 'tesites-complex-test) (instance-count 1) (operation-count 1) (repeat-count 1) (test-count 1) (slot-name nil) (slot-names nil))
   (bind ((*history-entries* nil)
          (instances
           (with-transaction
             (with-default-t
-              (generate-instances instance-count)))))
+              (generate-instances class-name instance-count)))))
     (format t "~%Starting operations with ~A number of history entries..." (length *history-entries*))
     (iter (repeat repeat-count)
           (with-transaction

@@ -165,8 +165,7 @@
   "Constant used to mark RDBMS records for association slots.")
 
 (def function collect-children-having-validity (value-holders value-function validity-start-function validity-end-function action-function requested-validity-start requested-validity-end)
-  ;; value-holders are tuples ordered by t ascending: (child-oid validity-start validity-end action)
-  ;; TODO: multiple column oid
+  "Collect children sets as values-having-validity, value-holders must be ordered by t ascending."
   (labels ((%collect-children-having-validity (value-holders validity-start validity-end)
              (bind ((set nil))
                (iter (for value :in-sequence value-holders)
