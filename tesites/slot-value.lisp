@@ -79,15 +79,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Slot value and friends
 
-(defmethod slot-value-using-class ((class persistent-class-t)
-                                   (instance persistent-object)
-                                   (slot persistent-effective-slot-definition-t))
+(def (function io) slot-boundp-or-value-using-class-t (class instance slot return-with)
   (assert-instance-slot-correspondence)
   (flet ((return-value (value)
-           (return-from slot-value-using-class
-             (if (single-values-having-validity-p value)
-                 (elt-0 (values-of value))
-                 value))))
+           (return-from slot-boundp-or-value-using-class-t
+             (funcall return-with
+                      (if (single-values-having-validity-p value)
+                          (elt-0 (values-of value))
+                          value)))))
     (bind ((persistent (persistent-p instance)))
       (assert-instance-access instance persistent)
       (bind (((values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
@@ -119,10 +118,7 @@
                     (make-single-values-having-validity value *validity-start* *validity-end*)))
           (return-value value))))))
 
-(defmethod (setf slot-value-using-class) (new-value
-                                          (class persistent-class-t)
-                                          (instance persistent-object)
-                                          (slot persistent-effective-slot-definition-t))
+(def (function io) (setf slot-boundp-or-value-using-class-t) (new-value class instance slot)
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance))
          (new-value (if (and (time-dependent-p slot)
@@ -139,48 +135,43 @@
       (setf (underlying-slot-value-using-class class instance slot) new-value)))
   new-value)
 
-(defmethod slot-boundp-using-class ((class persistent-class-t)
-                                    (instance persistent-object)
-                                    (slot persistent-effective-slot-definition-t))
-  ;; TODO: cache slot values and refactor
-  (when (persistent-p instance)
-    (handler-case
-        (slot-value-using-class class instance slot)
-      (unbound-slot-t (e)
-                      (declare (ignore e))
-                      (return-from slot-boundp-using-class #f)))
-    #t)
-  #+nil
-  (error "Not yet implemented"))
 
-(defmethod slot-makunbound-using-class ((class persistent-class-t)
-                                        (instance persistent-object)
-                                        (slot persistent-effective-slot-definition-t))
-  (error "Not yet implemented"))
-
-;;;;;;;;;;;;;;;;;;;;;
-;;; Association slots 
-
-;; TODO: slot value using class should not be different for association slots
-;; TODO: it should simply handle cache and database store according to the rules
 (defmethod slot-value-using-class ((class persistent-class-t)
                                    (instance persistent-object)
-                                   (slot persistent-association-end-effective-slot-definition-t))
-  (assert-instance-slot-correspondence)
-  (bind ((persistent (persistent-p instance)))
-    (assert-instance-access instance persistent)
-    (if (eq :1 (cardinality-kind-of (child-slot-of slot)))
-        (select-1-1-association-t-record class instance slot)
-        (select-1-n-association-t-records class instance slot))))
+                                   (slot persistent-effective-slot-definition-t))
+  "Reads the slot value from the database or the cache."
+  (slot-boundp-or-value-using-class-t class instance slot
+                                      (lambda (value)
+                                        (flet ((check-value (value)
+                                                 (when (unbound-slot-marker-p value)
+                                                   (slot-unbound-t instance slot))))
+                                          (if (values-having-validity-p value)
+                                              (iter (for (v s e) :in-values-having-validity value)
+                                                    (check-value v))
+                                              (check-value value))
+                                          value))))
 
 (defmethod (setf slot-value-using-class) (new-value
                                           (class persistent-class-t)
                                           (instance persistent-object)
-                                          (slot persistent-association-end-effective-slot-definition-t))
-  (assert-instance-slot-correspondence)
-  (bind ((persistent (persistent-p instance)))
-    (assert-instance-access instance persistent)
-    (if (eq :1 (cardinality-kind-of (child-slot-of slot)))
-        (insert-1-1-association-t-record instance slot new-value)
-        ;; TODO: get first and delete those
-        (insert-1-n-association-delta-t-records instance slot new-value +t-insert+))))
+                                          (slot persistent-effective-slot-definition-t))
+  "Writes the new slot value to the database and the cache."
+  (setf (slot-boundp-or-value-using-class-t class instance slot) new-value))
+
+(defmethod slot-boundp-using-class ((class persistent-class-t)
+                                    (instance persistent-object)
+                                    (slot persistent-effective-slot-definition-t))
+  "Reads boundness from the database or the cache."
+  (slot-boundp-or-value-using-class class instance slot
+                                    (lambda (value)
+                                      (if (values-having-validity-p value)
+                                          (iter (for (v s e) :in-values-having-validity value)
+                                                (always (not (unbound-slot-marker-p v))))
+                                          (not (unbound-slot-marker-p value))))))
+
+(defmethod slot-makunbound-using-class ((class persistent-class-t)
+                                        (instance persistent-object)
+                                        (slot persistent-effective-slot-definition-t))
+  "Writes boundness to the database and the cache."
+  (setf (slot-boundp-or-value-using-class-t class instance slot) +unbound-slot-marker+)
+  instance)
