@@ -66,7 +66,7 @@
     :documentation "The list of persistent effective sub classes in no particular order.")
    (primary-table
     (compute-as (compute-primary-table -self- -current-value-))
-    :type table
+    :type (or null table)
     :documentation "The table which holds the oid and the data of the direct slots of this class. If the class is abstract and does not have any persistent direct slots then it will not have a primary table. A primary table if exists contains exactly one record per instance of its persistent class.")
    (primary-tables
     (compute-as (compute-primary-tables -self-))
@@ -74,7 +74,7 @@
     :documentation "The smallest set of tables which hold all instances of this class by having exactly one record per instance. This list may contain functional nodes such as union, append according to the required SQL operation. For classes which have a primary table this list contains only that table while for other classes the list will contain some of the primary tables of the sub persistent classes.")
    (primary-view
     (compute-as (compute-primary-view -self-))
-    :type view
+    :type (or null view)
     :documentation "When a class does not have a primary table then it is required to have a primary view which can be used to select data as if it were a primary table.")
    (primary-relation
     (compute-as (or (primary-table-of -self-) (primary-view-of -self-)))
@@ -84,6 +84,14 @@
     (compute-as (compute-data-tables -self-))
     :type (list table)
     :documentation "All the tables which hold direct data of an instance of this class. This list contains the primary tables of the super persistent classes.")
+   (data-view
+    (compute-as (compute-data-view -self-))
+    :type (or null view)
+    :documentation "This is a view which joins all data tables for this class, nil if the view would be the same as the primary table.")
+   (data-relation
+    (compute-as (or (data-view-of -self-) (primary-table-of -self-)))
+    :type (or table view)
+    :documentation "Either a view or a table which can be used to query for data slots.")
    (prefetched-slots
     (compute-as (collect-if #'prefetch-p (persistent-effective-slots-of -self-)))
     :type (list persistent-effective-slot-definition)
@@ -295,6 +303,8 @@
     (ensure-exported it))
   (awhen (primary-view-of class)
     (mapc #'ensure-exported (cdr (primary-tables-of class)))
+    (ensure-exported it))
+  (awhen (data-view-of class)
     (ensure-exported it)))
 
 ;;;;;;;;;;;;
@@ -390,7 +400,7 @@
                                                              (persistent-class-type-p canonical-type))))
                                                      (persistent-direct-slots-of class))))))
           (make-instance 'view
-                         :name (rdbms-name-for (class-name class) :view)
+                         :name (rdbms-name-for (concatenate-symbol (class-name class) "-view") :view)
                          :columns columns
                          :query (sql-set-operation-expression :set-operation :union :all (eq :append (first primary-tables))
                                                               :subqueries
@@ -405,6 +415,19 @@
     (delete-if #'null
                (mapcar #'primary-table-of
                        (list* class (persistent-effective-super-classes-of class))))))
+
+(defgeneric compute-data-view (class)
+  (:method ((class persistent-class))
+    (when (> (length (data-tables-of class)) 1)
+      (make-instance 'view
+                     :name (rdbms-name-for (concatenate-symbol (class-name class) "-data") :view)
+                     :columns nil
+                     :query (sql-select :columns (list (sql-all-columns))
+                                        :tables (list (reduce #L(sql-joined-table :kind :inner
+                                                                                  :using +oid-column-names+
+                                                                                  :left !1
+                                                                                  :right !2)
+                                                              (mapcar #L(sql-identifier :name (name-of !1)) (data-tables-of class)))))))))
 
 (defgeneric compute-primary-table-slot-p (slot)
   (:method ((slot persistent-effective-slot-definition))

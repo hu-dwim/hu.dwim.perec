@@ -179,13 +179,10 @@
 (defun lock-columns (instance columns wait)
   (with-waiting-for-rdbms-lock wait
     (bind ((class (class-of instance))
-           (tables (data-tables-of class))
-           ((values table-aliases where-clause)
-            (table-aliases-and-where-clause-for-instance (id-of instance) tables))
            (records
             (execute (sql-select :columns columns
-                                 :tables table-aliases
-                                 :where where-clause
+                                 :tables (list (name-of (data-relation-of class)))
+                                 :where (id-column-matcher-where-clause instance)
                                  :for :update
                                  :wait wait))))
       (assert (= 1 (length records)))

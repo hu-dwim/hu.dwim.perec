@@ -106,16 +106,10 @@
 
   (:method ((class persistent-class) (instance persistent-object) &optional (allow-missing #f))
     (if-bind slots (prefetched-slots-of (class-of instance))
-      (bind ((tables (delete-duplicates (mapcar #'table-of slots)))
-             ((values table-aliases where-clause) (table-aliases-and-where-clause-for-instance (id-of instance) tables))
-             (records
-              (select-records (mapcan (lambda (slot)
-                                        (mapcar (lambda (column)
-                                                  (sql-column-alias :table (name-of (table-of slot)) :column column))
-                                                (columns-of slot)))
-                                      slots)
-                              table-aliases
-                              :where where-clause))
+      (bind ((records
+              (select-records (mappend #'columns-of slots)
+                              (list (name-of (data-relation-of class)))
+                              :where (id-column-matcher-where-clause instance)))
              (record (unless (and allow-missing
                                   (zerop (length records)))
                        (assert (= 1 (length records)) nil "The persistent instance ~A is missing from the database" instance)
@@ -135,35 +129,32 @@
   "Restores all prefetched slots at once without local side effects from the database. Executes a single select statement."
   (ensure-finalized class)
   (compile nil
-   `(lambda (instance &optional (allow-missing #f))
-     ,(when-bind slots (prefetched-slots-of class)
-                 `(bind ((records
-                          (execute
-                           ,(bind ((tables (delete-duplicates (mapcar #'table-of slots)))
-                                   ((values table-aliases where-clause)
-                                    (table-aliases-and-where-clause-for-instance (sql-unquote :form '(id-of instance)) tables)))
-                                  (rdbms::expand-sql-ast-into-lambda-form
-                                   (make-instance 'sql-select
-                                                  :columns (mapcan (lambda (slot)
-                                                                     (mapcar (lambda (column)
-                                                                               (sql-column-alias :table (name-of (table-of slot)) :column column))
-                                                                             (columns-of slot)))
-                                                                   slots)
-                                                  :tables table-aliases
-                                                  :where where-clause)))))
-                         (record (unless (and allow-missing
-                                              (zerop (length records)))
-                                   (debug-only (assert (= 1 (length records))))
-                                   (elt-0 records))))
-                   (declare (type vector records))
-                   (declare (type (or null vector) record))
-                   (when record
-                     (values
-                      (list
-                       ,@(iter (for i :first 0 :then (+ i (length (columns-of slot))))
-                               (for slot :in slots)
-                               (collect `(funcall ,(reader-of slot) record ,i))))
-                      ',slots)))))))
+           `(lambda (instance &optional (allow-missing #f))
+              ,(when-bind slots (prefetched-slots-of class)
+                          `(bind ((records
+                                   (execute
+                                    ,(rdbms::expand-sql-ast-into-lambda-form
+                                      (make-instance 'sql-select
+                                                     :columns (mapcan (lambda (slot)
+                                                                        (mapcar (lambda (column)
+                                                                                  (sql-column-alias :table (name-of (table-of slot)) :column column))
+                                                                                (columns-of slot)))
+                                                                      slots)
+                                                     :tables (list (name-of (data-relation-of class)))
+                                                     :where (id-column-matcher-where-clause (sql-unquote :form 'instance))))))
+                                  (record (unless (and allow-missing
+                                                       (zerop (length records)))
+                                            (debug-only (assert (= 1 (length records))))
+                                            (elt-0 records))))
+                             (declare (type vector records))
+                             (declare (type (or null vector) record))
+                             (when record
+                               (values
+                                (list
+                                 ,@(iter (for i :first 0 :then (+ i (length (columns-of slot))))
+                                         (for slot :in slots)
+                                         (collect `(funcall ,(reader-of slot) record ,i))))
+                                ',slots)))))))
 
 (def (function o) restore-all-slots (instance)
   "Restores all slots wihtout local side effects from the database."
@@ -172,16 +163,6 @@
          (non-prefetched-slots (non-prefetched-slots-of class)))
     (values (append prefetched-slot-values (mapcar #L(restore-slot class instance !1) non-prefetched-slots))
             (append prefetched-slots non-prefetched-slots))))
-
-(def (function o) table-aliases-and-where-clause-for-instance (instance-id tables)
-  (values
-   (mapcar #L(sql-table-alias :name (name-of !1) :alias (name-of !1)) tables)
-   (apply #'sql-and
-          (sql-= (sql-column-alias :table (name-of (first tables)) :column +oid-id-column-name+)
-                 (sql-literal :type +oid-id-sql-type+ :value instance-id))
-          (mapcar #L(sql-= (sql-column-alias :table (name-of (first tables)) :column +oid-id-column-name+)
-                           (sql-column-alias :table (name-of !1) :column +oid-id-column-name+))
-                  (rest tables)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; RDBMS slot storers
