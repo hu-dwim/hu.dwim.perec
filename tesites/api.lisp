@@ -30,24 +30,31 @@
 ;;;;;;;;;;;;;
 ;;; Arguments
 
+(def (function e) call-with-t (t-value thunk)
+  (assert (not (boundp '*t*)) nil "Changing the time machine parameter *t* is not allowed within a single transaction.")
+  (bind ((*t* t-value))
+    (assert (eq +utc-zone+ (timezone-of t-value)))
+    (funcall thunk)))
+
 (def (macro e) with-t (timestamp &body forms)
-  `(progn
-     (assert (not (boundp '*t*)) nil "Changing the time machine parameter *t* is not allowed within a single transaction.")
-     (bind ((*t*
-             ,(if (stringp timestamp)
-                  `(load-time-value (parse-timestring ,timestamp))
-                  timestamp)))
-       ,@forms)))
+  `(call-with-t
+    ,(if (stringp timestamp)
+         `(load-time-value (parse-timestring ,timestamp))
+         timestamp)
+    (lambda ()
+      ,@forms)))
 
 (def (macro e) with-default-t (&body forms)
   `(with-t (transaction-timestamp)
      ,@forms))
 
-(def (function e) call-with-validity-range (start end trunk)
+(def (function e) call-with-validity-range (start end thunk)
   (bind ((*validity-start* start)
          (*validity-end* end))
-    (assert (local-time<= start end))
-    (funcall trunk)))
+    (assert (and (eq +utc-zone+ (timezone-of start))
+                 (eq +utc-zone+ (timezone-of end))
+                 (local-time<= start end)))
+    (funcall thunk)))
 
 (def (macro e) with-validity (validity &body forms)
   (assert (not (stringp (first forms))) nil
