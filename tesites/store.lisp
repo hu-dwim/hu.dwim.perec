@@ -54,7 +54,6 @@
   (assert (or (not (time-dependent-p t-slot))
               (and validity-start validity-end)))
 
-  
   (bind ((h-slot (h-slot-of t-slot))
          (h-slot-name (slot-definition-name h-slot))
          (t-value (when (boundp '*t*) *t*))
@@ -70,29 +69,37 @@
       (return-from store-slot-t*))
 
     ;; first try to update the h-record with the same t/validity
-    ;; if it is successful we are done
     (setf update-count (update-h-record-value t-class t-instance t-slot value validity-start validity-end))
 
+    ;; if the update is not succeeded then insert value with t and validity except if it
+    ;; is the default value of a non-temporal slot
     (when (zerop update-count)
-      ;; ensure invariant: validity ranges are not overlapping for any given t
-      (when (time-dependent-p t-slot)
-        (bind ((overlapping-instances (select-current-h-instances-with-overlapping-validity
-                                       t-class t-instance t-slot validity-start validity-end)))
-          (flet ((all-slots-unused-p (h-instance &key except)
-                   (every #L(bind ((slot-name (slot-definition-name !1)))
-                              (or (eq slot-name except)
-                                  (and (slot-boundp h-instance slot-name)
-                                       (eq (slot-value h-instance slot-name) +h-unused-slot-marker+))))
-                          (persistent-effective-slot-ts-of t-class))))
-            (iter (for h-instance in-sequence overlapping-instances)
-                  (for validity-start2 = (validity-start-of h-instance))
-                  (for validity-end2 = (validity-end-of h-instance))
-                  (for t-value2 = (when t-value-slot (t-value-of h-instance)))
-                  (for value2 = (if (slot-boundp h-instance h-slot-name)
-                                    (slot-value h-instance h-slot-name)
-                                    +unbound-slot-marker+))
-                  (for h-class = (class-of h-instance))
-                
+      (unless (and (eq value t-slot-default-value) (not (temporal-p t-slot)))
+          (insert-h-records t-class t-instance t-slot value t-value validity-start validity-end)))
+    
+
+    ;; ensure invariant: validity ranges are not overlapping for any given t
+    (when (and (persistent-p t-instance) (time-dependent-p t-slot))
+      (bind ((overlapping-instances (select-current-h-instances-with-overlapping-validity
+                                     t-class t-instance t-slot validity-start validity-end)))
+        (flet ((all-slots-unused-p (h-instance &key except)
+                 (every #L(bind ((slot-name (slot-definition-name !1)))
+                            (or (eq slot-name except)
+                                (and (slot-boundp h-instance slot-name)
+                                     (eq (slot-value h-instance slot-name) +h-unused-slot-marker+))))
+                        (persistent-effective-slot-ts-of t-class))))
+          (iter (for h-instance in-sequence overlapping-instances)
+                (for validity-start2 = (validity-start-of h-instance))
+                (for validity-end2 = (validity-end-of h-instance))
+                (for t-value2 = (when t-value-slot (t-value-of h-instance)))
+                (for value2 = (if (slot-boundp h-instance h-slot-name)
+                                  (slot-value h-instance h-slot-name)
+                                  +unbound-slot-marker+))
+                (for h-class = (class-of h-instance))
+
+                (unless (and (local-time= validity-start validity-start2)
+                             (local-time= validity-end validity-end2)
+                             (or (null t-value2) (local-time= t-value t-value2)))
                   ;; TODO optimize the case when value = value2
                   (cond
                     ((and (local-time< validity-start2 validity-start)
@@ -126,20 +133,13 @@
                          (purge-instance h-instance)
                          (store-slot h-class h-instance h-slot +h-unused-slot-marker+))))))))
 
-      ;; insert value with t and validity
-      ;; the default value of the slot inserted only if temporal-p and has previous overlapping value
-      ;; TODO do not store h-instance for the default value except if it is temporal and has previous value
-      (when (or (not (eq value t-slot-default-value))
-                (and (temporal-p t-slot)
-                     #t))               ; TODO
-        (insert-h-records t-class t-instance t-slot value t-value validity-start validity-end)))
+      #+nil(debug-only (assert-no-overlapping-validities )))
 
     
     (when (typep value 'persistent-object)
       (invalidate-all-cached-slots value)) ;; FIXME why?
     ;; TODO: if t-instance is cached either invalidate it or set the value on it
 
-    ;;(debug-only (assert-no-overlapping-validities ))
     
     value))
 
@@ -276,7 +276,6 @@
          (value-slot (h-slot-of t-slot))
          (value-columns (columns-of value-slot))
          (parent-id-column (parent-id-column-of t-class))
-         (parent-id-column-name (rdbms::name-of parent-id-column))
          (rdbms-values (make-array (length value-columns)))
          validity-start-column-name
          validity-end-column-name
@@ -320,43 +319,7 @@
                      (sql-= (sql-identifier :name validity-end-column-name) validity-end-literal)))
                   (when t-value-column-name
                     (list
-                     (sql-= (sql-identifier :name t-value-column-name) t-literal)))
-                  (when (and validity-start-column-name validity-end-column-name
-                             (not (temporal-p t-slot)))
-                    ;; not exists overlapping range
-                    (list
-                     (sql-not
-                      (sql-exists
-                       (sql-subquery
-                         :query
-                         (sql-select
-                           :columns (list*
-                                     (sql-column-alias :column parent-id-column-name)
-                                     (sql-column-alias :column validity-start-column-name)
-                                     (sql-column-alias :column validity-end-column-name)
-                                     (mapcar #L(sql-column-alias :column !1) value-columns))
-                           ;; h-slot, parent, validity-start,validity-end
-                           :tables (list
-                                    (sql-derived-table
-                                      :subquery
-                                      (reduce #L(sql-joined-table
-                                                  :kind :inner
-                                                  :left !1
-                                                  :right !2
-                                                  :using +oid-column-names+)
-                                              (mapcar #L(sql-identifier :name !1) tables))
-                                      :alias 'i))
-                           :where (sql-and
-                                   (sql-<> (sql-column-alias :table 'o :column +oid-id-column-name+)
-                                           (sql-column-alias :table 'i :column +oid-id-column-name+))
-                                   (sql-=
-                                    (sql-column-alias :table 'o :column parent-id-column-name)
-                                    (sql-column-alias :table 'i :column parent-id-column-name))
-                                   (sql-not (unused-check-for value-slot 'i))
-                                   (sql-< (sql-column-alias :table 'i :column validity-start-column-name)
-                                          (sql-column-alias :table 'o :column validity-end-column-name))
-                                   (sql-< (sql-column-alias :table 'o :column validity-start-column-name)
-                                          (sql-column-alias :table 'i :column validity-end-column-name))))))))))))
+                     (sql-= (sql-identifier :name t-value-column-name) t-literal))))))
 
     (setf count
           (if (length=1 tables)
