@@ -417,8 +417,13 @@
 ;;;
 ;;; non string -> (type-error)
 
+(defun duration-p (duration)
+  (declare (ignore duration))
+  t)
+
 (defptype duration ()
-  'number)
+  '(and number
+        (satisfies duration-p)))
 
 (defmapping duration (sql-numeric-type)
   'identity-reader
