@@ -51,4 +51,6 @@
 
 (defsuite* (test/persistence :in test))
 
+(defsuite* (test/query :in test))
+
 (defsuite* (test/tesites :in test))

@@ -1,7 +1,5 @@
 (in-package :cl-perec-test)
 
-(defsuite* (test/query :in test))
-
 (defvar *show-query* nil)
 
 (defmacro with-sql-recording (&body body)
