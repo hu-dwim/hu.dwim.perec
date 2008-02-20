@@ -201,8 +201,8 @@
 (def-type-test timestamp/3 timestamp (parse-timestring "1000-01-01T01:01:01Z"))
 (def-type-test timestamp/4 timestamp (parse-timestring "3000-03-03T03:03:03Z"))
 
-(def-type-test duration/1 duration "06:06:06")
-(def-type-test duration/2 duration "1-01-01 06:06:06")
+(def-type-test duration/1 duration (parse-duration "06:06:06"))
+(def-type-test duration/2 duration (parse-duration "01-01T06:06:06.123456"))
 
 (def-type-test member/1 (member one two three) 'one)
 (def-type-test member/2 (member one two three) 'two)

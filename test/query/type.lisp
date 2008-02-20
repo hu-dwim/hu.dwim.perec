@@ -140,10 +140,10 @@
 (def-query-type-test time/1 time (parse-timestring "06:06:06Z"))
 
 (def-query-type-test timestamp/1 timestamp (parse-timestring "2006-06-06T06:06:06Z"))
-(def-query-type-test timestamp/2 timestamp (parse-timestring "2006-06-06T06:06:06.12345Z"))
+(def-query-type-test timestamp/2 timestamp (parse-timestring "2006-06-06T06:06:06.123456Z"))
 
-(def-query-type-test duration/1 duration "06:06:06")
-(def-query-type-test duration/2 duration "1-01-01 06:06:06")
+(def-query-type-test duration/1 duration (parse-duration "06:06:06"))
+(def-query-type-test duration/2 duration (parse-duration "01-01T06:06:06.123456"))
 
 (def-query-type-test member/1 (member one two three) 'one)
 (def-query-type-test member/2 (member one two three) 'two)

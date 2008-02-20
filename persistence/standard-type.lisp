@@ -417,16 +417,10 @@
 ;;;
 ;;; non string -> (type-error)
 
-;; TODO:
-(defun duration-p (duration)
-  (declare (ignore duration))
-  t)
-
 (defptype duration ()
-  '(and string
-        (satisfies duration-p)))
+  'number)
 
-(defmapping duration (sql-character-varying-type :size 32)
+(defmapping duration (sql-numeric-type)
   'identity-reader
   'identity-writer)
 
