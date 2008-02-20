@@ -156,7 +156,7 @@
 
 (defmacro with-random-validity-range (&body forms)
   `(bind ((start-universal (random-universal-time))
-          (validity-start (random-local-time))
+          (validity-start (local-time :universal start-universal :timezone +utc-zone+))
           (validity-end (local-time :universal (+ start-universal (random-universal-time)) :timezone +utc-zone+)))
      (with-validity-range validity-start validity-end
        ,@forms)))
