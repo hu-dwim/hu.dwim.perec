@@ -276,6 +276,7 @@
          (value-slot (h-slot-of t-slot))
          (value-columns (columns-of value-slot))
          (parent-id-column (parent-id-column-of t-class))
+         (parent-id-column-name (rdbms::name-of parent-id-column))
          (rdbms-values (make-array (length value-columns)))
          validity-start-column-name
          validity-end-column-name
@@ -319,7 +320,43 @@
                      (sql-= (sql-identifier :name validity-end-column-name) validity-end-literal)))
                   (when t-value-column-name
                     (list
-                     (sql-= (sql-identifier :name t-value-column-name) t-literal))))))
+                     (sql-= (sql-identifier :name t-value-column-name) t-literal)))
+                  (when (and validity-start-column-name validity-end-column-name
+                             (not (temporal-p t-slot)))
+                    ;; not exists overlapping range
+                    (list
+                     (sql-not
+                      (sql-exists
+                       (sql-subquery
+                         :query
+                         (sql-select
+                           :columns (list*
+                                     (sql-column-alias :column parent-id-column-name)
+                                     (sql-column-alias :column validity-start-column-name)
+                                     (sql-column-alias :column validity-end-column-name)
+                                     (mapcar #L(sql-column-alias :column !1) value-columns))
+                           ;; h-slot, parent, validity-start,validity-end
+                           :tables (list
+                                    (sql-derived-table
+                                      :subquery
+                                      (reduce #L(sql-joined-table
+                                                  :kind :inner
+                                                  :left !1
+                                                  :right !2
+                                                  :using +oid-column-names+)
+                                              (mapcar #L(sql-identifier :name !1) tables))
+                                      :alias 'i))
+                           :where (sql-and
+                                   (sql-<> (sql-column-alias :table 'o :column +oid-id-column-name+)
+                                           (sql-column-alias :table 'i :column +oid-id-column-name+))
+                                   (sql-=
+                                    (sql-column-alias :table 'o :column parent-id-column-name)
+                                    (sql-column-alias :table 'i :column parent-id-column-name))
+                                   (sql-not (unused-check-for value-slot 'i))
+                                   (sql-< (sql-column-alias :table 'i :column validity-start-column-name)
+                                          (sql-column-alias :table 'o :column validity-end-column-name))
+                                   (sql-< (sql-column-alias :table 'o :column validity-start-column-name)
+                                          (sql-column-alias :table 'i :column validity-end-column-name))))))))))))
 
     (setf count
           (if (length=1 tables)
@@ -336,15 +373,18 @@
                                         (sql-select
                                           :columns (list +oid-id-column-name+)
                                           :tables (list
-                                                   (reduce #L(sql-joined-table
-                                                               :kind :inner
-                                                               :left !1
-                                                               :right !2
-                                                               :using +oid-column-names+)
-                                                           (mapcar
-                                                            #L(sql-identifier :name !1)
-                                                            (remove (name-of (table-of value-slot))
-                                                                    tables))))
+                                                   (sql-derived-table
+                                                     :subquery
+                                                     (reduce #L(sql-joined-table
+                                                                 :kind :inner
+                                                                 :left !1
+                                                                 :right !2
+                                                                 :using +oid-column-names+)
+                                                             (mapcar
+                                                              #L(sql-identifier :name !1)
+                                                              (remove (name-of (table-of value-slot))
+                                                                      tables)))
+                                                     :alias 'o))
                                           :where where-clause))))))
     (assert (<= count 1) nil "Inconsistent database")
     count))
@@ -445,10 +485,10 @@
               (list :validity-start validity-start
                     :validity-end validity-end))))))
 
-(defun unused-check-for (h-slot)
+(defun unused-check-for (h-slot &optional qualifier)
   (check-for-rdbms-values
    (lisp-value->rdbms-equality-values (canonical-type-of h-slot) +h-unused-slot-marker+)
    (column-names-of h-slot)
    (column-types-of h-slot)
-   nil))
+   qualifier))
 
