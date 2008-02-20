@@ -147,14 +147,17 @@
 (defun random-universal-time ()
   (random 5000000000))
 
+(defun random-local-time ()
+  (local-time :universal (random-universal-time) :timezone +utc-zone+))
+
 (defmacro with-random-t (&body forms)
-  `(with-t (local-time :universal (random-universal-time))
+  `(with-t (random-local-time)
      ,@forms))
 
 (defmacro with-random-validity-range (&body forms)
   `(bind ((start-universal (random-universal-time))
-          (validity-start (local-time :universal start-universal))
-          (validity-end (local-time :universal (+ start-universal (random-universal-time)))))
+          (validity-start (random-local-time))
+          (validity-end (local-time :universal (+ start-universal (random-universal-time)) :timezone +utc-zone+)))
      (with-validity-range validity-start validity-end
        ,@forms)))
 
