@@ -48,9 +48,8 @@
              ,slots))
     ;; make
     ,(bind ((make-fn-name (concatenate-symbol "make-" name)))
-           `(defun ,make-fn-name (&rest init-args)
-             ;; TODO: make this a macro because applying make-instance is a hell slow thing to do just for some syntax
-             (apply #'make-instance ',name init-args)))
+           `(defmacro ,make-fn-name (&rest args)
+             `(make-instance ',',name ,@args)))
     ;; copy
     ,(bind ((slot-names (mapcar #L(if (consp !1) (first !1) !1) slots)))
            `(define-copy-method copy-inner-class progn ((self ,name) copy copy-htable)
