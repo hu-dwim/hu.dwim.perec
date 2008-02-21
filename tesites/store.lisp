@@ -20,7 +20,7 @@
                (t (error "No history record for ~S~:[~*~; before ~S~]~:[~2*~; with validity between ~S and ~S~]."
                          t-instance (temporal-p t-slot) (when (temporal-p t-slot) *t*)
                          (time-dependent-p t-slot) validity-start validity-end))))))
-    (bind ((records (select-slot-values t-class t-instance t-slot)))
+    (bind ((records (select-slot-values-with-validity t-class t-instance t-slot)))
       (if (time-dependent-p t-slot)
           (collect-values-having-validity
            records
@@ -41,7 +41,7 @@
 
   ;; this lock ensures that
   ;; the insert/update operations on the h-table are serialized properly.
-  (lock-t-record t-instance t-slot)
+  (lock-t-slot t-instance t-slot)
     
   (if (time-dependent-p t-slot)
       (if (typep value 'values-having-validity)
@@ -61,21 +61,21 @@
          (t-slot-default-value (default-value-for-type (slot-definition-type t-slot)))
          (update-count))
 
-    ;; do not store the default value of the slot in a transient instance
-    ;; restore-slot interprets missing h-records as the default value
+    ;; do not store the default value of the slot in a transient instance except if temporal
+    ;; restore-slot interprets missing h-instances as the default value
     (when (and (not (persistent-p t-instance))
                (eq value t-slot-default-value)
                (not (temporal-p t-slot)))
       (return-from store-slot-t*))
 
-    ;; first try to update the h-record with the same t/validity
-    (setf update-count (update-h-record-value t-class t-instance t-slot value validity-start validity-end))
+    ;; first try to update value in the h-instance having the same t and/or validity
+    (setf update-count (update-h-instance-slot-value t-class t-instance t-slot value validity-start validity-end))
 
     ;; if the update is not succeeded then insert value with t and validity except if it
     ;; is the default value of a non-temporal slot
     (when (zerop update-count)
       (unless (and (eq value t-slot-default-value) (not (temporal-p t-slot)))
-          (insert-h-records t-class t-instance t-slot value t-value validity-start validity-end)))
+          (insert-h-instance t-class t-instance t-slot value t-value validity-start validity-end)))
     
 
     ;; ensure invariant: validity ranges are not overlapping for any given t
@@ -109,7 +109,7 @@
                          (store-slot h-class h-instance (validity-end-slot-of t-class) validity-start)
                          (progn
                            (store-slot h-class h-instance h-slot +h-unused-slot-marker+)
-                           (insert-h-records t-class t-instance t-slot value2 t-value2 validity-start2 validity-start))))
+                           (insert-h-instance t-class t-instance t-slot value2 t-value2 validity-start2 validity-start))))
                     ((and (local-time<= validity-start validity-start2)
                           (local-time< validity-end validity-end2))
                      ;; update
@@ -117,7 +117,7 @@
                          (store-slot h-class h-instance (validity-start-slot-of t-class) validity-end)
                          (progn
                            (store-slot h-class h-instance h-slot +h-unused-slot-marker+)
-                           (insert-h-records t-class t-instance t-slot value2 t-value2 validity-end validity-end2))))
+                           (insert-h-instance t-class t-instance t-slot value2 t-value2 validity-end validity-end2))))
                     ((and (local-time< validity-start2 validity-start)
                           (local-time< validity-end validity-end2))
                      ;; update + insert
@@ -125,8 +125,8 @@
                          (store-slot h-class h-instance (validity-end-slot-of t-class) validity-start)
                          (progn
                            (store-slot h-class h-instance h-slot +h-unused-slot-marker+)
-                           (insert-h-records t-class t-instance t-slot value2 t-value2 validity-start2 validity-start)))
-                     (insert-h-records t-class t-instance t-slot value2 t-value2 validity-end validity-end2))
+                           (insert-h-instance t-class t-instance t-slot value2 t-value2 validity-start2 validity-start)))
+                     (insert-h-instance t-class t-instance t-slot value2 t-value2 validity-end validity-end2))
                     (t
                      ;; delete
                      (if (all-slots-unused-p h-instance :except h-slot-name)
@@ -261,7 +261,7 @@
 ;;;
 
 ;; TODO: use lock-slot
-(defun lock-t-record (t-instance t-slot)
+(defun lock-t-slot (t-instance t-slot)
   (declare (ignore t-instance t-slot))
   #+nil
   (execute (make-instance 'sql-select
@@ -271,7 +271,7 @@
                           :for :update)))
 
 ;;; TODO ensure-exported
-(defun update-h-record-value (t-class t-instance t-slot value &optional validity-start validity-end)
+(defun update-h-instance-slot-value (t-class t-instance t-slot value &optional validity-start validity-end)
   (bind ((h-class (h-class-of t-class))
          (value-slot (h-slot-of t-slot))
          (value-columns (columns-of value-slot))
@@ -353,7 +353,7 @@
     count))
 
 (defun select-current-h-instances-with-overlapping-validity (t-class t-instance t-slot validity-start validity-end)
-  "Return h-records (oid, validity-start, validity-end, value) of T-INSTANCE overlapping with [validity-start,validity-end)."
+  "Return h-instances of T-INSTANCE having value of T-SLOT and overlapping with [VALIDITY-START,VALIDITY-END)."
   (assert (subtypep (h-class-of t-class) 'time-dependent-object))
   
   ;; TODO performance: compile only one query using h-class and h-slot as lexical variables
@@ -375,8 +375,8 @@
                             '(t-instance validity-start validity-end))))
     (execute-query query t-instance validity-start validity-end)))
 
-(defun select-slot-values (t-class t-instance t-slot)
-  "Returns the values of the slot (with validity if time-dependent) in descending t order (if temporal). When temporal, but not time-dependent then at most recent selected."
+(defun select-slot-values-with-validity (t-class t-instance t-slot)
+  "Returns the values of the slot (with validity if time-dependent) in descending t order (if temporal). When temporal, but not time-dependent then only the most recent queried."
   (bind ((value-slot (h-slot-of t-slot))
          (value-columns (columns-of value-slot))
          (parent-id-column (parent-id-column-of t-class))
@@ -435,7 +435,7 @@
      (unless (time-dependent-p t-slot)
        1))))
 
-(defun insert-h-records (t-class t-instance t-slot value t-value validity-start validity-end)
+(defun insert-h-instance (t-class t-instance t-slot value t-value validity-start validity-end)
   (bind ((h-class (h-class-of t-class)))
     (apply 'make-instance
            h-class
