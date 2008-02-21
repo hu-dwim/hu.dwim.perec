@@ -92,7 +92,7 @@
              (:file "common")
              (:file "oid")
              (:file "table" :depends-on ("common" "oid"))
-             (:file "type" :depends-on ("oid"))
+             (:file "type" :depends-on ("table" "oid"))
              (:file "class" :depends-on ("table" "type" "api"))
              (:file "standard-type" :depends-on ("type" "class"))
              (:file "association" :depends-on ("class"))
