@@ -83,7 +83,7 @@
                                      history-entries))
                         #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*))
                       (temporal-p
-                       (aif (find-if #L(local-time< (he-t-value !1) *t*)
+                       (aif (find-if #L(local-time<= (he-t-value !1) *t*)
                                      (sort-entries-by-t history-entries))
                             (he-value it)
                             default-value))
@@ -144,6 +144,41 @@
               (for test-value = (slot-value* instance slot-name))
               (assert-persistent-and-test-values instance slot-name persistent-value test-value))))
 
+(defun full-compare-history (instances)
+  (bind ((t-values
+          (delete-duplicates (append (list +beginning-of-time+)
+                                     (sort (mapcar 'he-t-value *history-entries*) #'local-time<)
+                                     (list +end-of-time+))
+                             :test #'local-time=))
+         (validity-values
+          (delete-if #L(or (local-time< !1 +beginning-of-time+)
+                           (local-time< +end-of-time+ !1))
+                     (sort (mapcan #L(list (adjust-local-time !1 (offset :nsec -1000000))
+                                           !1
+                                           (adjust-local-time !1 (offset :nsec 1000000)))
+                                   (delete-duplicates (append (mapcar 'he-validity-start *history-entries*)
+                                                              (mapcar 'he-validity-end *history-entries*))
+                                                      :test #'local-time=))
+                           #'local-time<))))
+    (format t "~&T values: ~A" t-values)
+    (format t "~&Validity values: ~A~%" validity-values)
+    (iter (with count = 0)
+          (with total = (* (length t-values)
+                           (/ (* (length validity-values)
+                                 (1- (length validity-values)))
+                              2)))
+          (for t-value :in t-values)
+          (iter (for validity-start-list :on validity-values)
+                (for validity-start = (car validity-start-list))
+                (iter (for validity-end :in (cdr validity-start-list))
+                      (when (zerop (mod count 100))
+                        (format t "~&At: ~d/~d" count total))
+                      (incf count)
+                      (with-t t-value
+                        (with-validity-range validity-start validity-end
+                          (with-transaction
+                            (compare-history instances)))))))))
+
 (defun random-universal-time ()
   (random 5000000000))
 
@@ -161,6 +196,7 @@
      (with-validity-range validity-start validity-end
        ,@forms)))
 
+;; TODO: generate partially equal operations in terms of t, validity range
 (defun do-random-operations (instances &key (count 1) (slot-names nil))
   (with-random-t
     (with-random-validity-range
@@ -173,7 +209,8 @@
                       slot-name instance *t* *validity-start* *validity-end* value)
               (setf (slot-value-and-slot-value* instance slot-name) value))))))
 
-(deftest (test/tesites/complex :in test/tesites) (&key (class-name 'tesites-complex-test) (instance-count 1) (operation-count 1) (repeat-count 1) (test-count 1) (slot-name nil) (slot-names nil))
+(deftest (test/tesites/complex :in test/tesites) (&key (class-name 'tesites-complex-test) (instance-count 1) (operation-count 1) (repeat-count 1)
+                                                       (full-test t) (test-count 1) (slot-name nil) (slot-names nil))
   (bind ((*history-entries* nil)
          (*history-entry-counter* 0)
          (error nil)
@@ -234,6 +271,8 @@
                                   (list slot-name)
                                   slot-names)))
               (finally
+               (when full-test
+                 (full-compare-history instances))
                ;; default x default
                (with-transaction
                  (with-default-t

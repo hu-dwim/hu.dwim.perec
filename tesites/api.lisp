@@ -53,7 +53,7 @@
          (*validity-end* end))
     (assert (and (eq +utc-zone+ (timezone-of start))
                  (eq +utc-zone+ (timezone-of end))
-                 (local-time<= start end)))
+                 (local-time< start end)))
     (funcall thunk)))
 
 (def (macro e) with-validity (validity &body forms)

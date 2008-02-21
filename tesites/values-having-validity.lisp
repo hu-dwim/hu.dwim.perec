@@ -83,6 +83,7 @@
 
 (def function collect-values-having-validity (value-holders value-function validity-start-function validity-end-function no-value-function requested-validity-start requested-validity-end)
   "From a list of ordered (by t) tuples each containing a value, a validity start and a validity end returns the corresponding values-having-validity for the requested range."
+  (assert (not (local-time= requested-validity-start requested-validity-end)))
   (if (zerop (length value-holders))
       (make-single-values-having-validity (funcall no-value-function requested-validity-start requested-validity-end) requested-validity-start requested-validity-end)
       (bind ((values (make-array 4 :adjustable #t :fill-pointer 0))
