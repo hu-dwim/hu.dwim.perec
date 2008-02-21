@@ -24,14 +24,14 @@
       (if (time-dependent-p t-slot)
           (collect-values-having-validity
            records
-           (lambda (record) (restore-slot-value nil (h-slot-of t-slot) record 2))
+           (lambda (record) (elt record 2))
            (lambda (record) (elt record 0))
            (lambda (record) (elt record 1))
            #'no-value-function
            *validity-start* *validity-end*)
           (if (zerop (length records))
               (no-value-function)
-              (restore-slot-value nil (h-slot-of t-slot) (elt-0 records) 0))))))
+              (elt records 0))))))
 
 (defmethod store-slot ((t-class persistent-class-t) (t-instance t-object) (t-slot persistent-effective-slot-definition-t) value)
   (if (values-having-validity-p value)
@@ -336,18 +336,15 @@
                                         (sql-select
                                           :columns (list +oid-id-column-name+)
                                           :tables (list
-                                                   (sql-derived-table
-                                                     :subquery
-                                                     (reduce #L(sql-joined-table
-                                                                 :kind :inner
-                                                                 :left !1
-                                                                 :right !2
-                                                                 :using +oid-column-names+)
-                                                             (mapcar
-                                                              #L(sql-identifier :name !1)
-                                                              (remove (name-of (table-of value-slot))
-                                                                      tables)))
-                                                     :alias 'o))
+                                                   (reduce #L(sql-joined-table
+                                                               :kind :inner
+                                                               :left !1
+                                                               :right !2
+                                                               :using +oid-column-names+)
+                                                           (mapcar
+                                                            #L(sql-identifier :name !1)
+                                                            (remove (name-of (table-of value-slot))
+                                                                    tables))))
                                           :where where-clause))))))
     (assert (<= count 1) nil "Inconsistent database")
     count))
@@ -371,69 +368,46 @@
                                        (local-time< (validity-start-of h-instance) validity-end)
                                        (local-time< validity-start (validity-end-of h-instance))
                                        ,@(when (temporal-p t-slot)
-                                               `((local-time= (t-value-of h-instance) *t*))))))
-                            '(t-instance validity-start validity-end))))
-    (execute-query query t-instance validity-start validity-end)))
+                                               `((local-time= (t-value-of h-instance) t-value))))))
+                            '(t-instance validity-start validity-end t-value))))
+    (execute-query query t-instance validity-start validity-end (when (temporal-p t-slot) *t*))))
 
 (defun select-slot-values-with-validity (t-class t-instance t-slot)
   "Returns the values of the slot (with validity if time-dependent) in descending t order (if temporal). When temporal, but not time-dependent then only the most recent queried."
-  (bind ((value-slot (h-slot-of t-slot))
-         (value-columns (columns-of value-slot))
-         (parent-id-column (parent-id-column-of t-class))
-         validity-start-column
-         validity-end-column
-         validity-start-literal
-         validity-end-literal
-         t-value-column
-         t-value-literal
-         tables
-         validity-columns)
+  (bind ((h-class-name (class-name (h-class-of t-class)))
+         (h-slot (h-slot-of t-slot))
+         (h-slot-name (slot-definition-name h-slot))
+         (h-slot-reader-name (reader-name-of h-slot))
+         
+         ;; TODO performance: compile only one query using h-class and h-slot as lexical variables
+         ;; TODO add limit to the select
+         (query (make-query `(select (:flatp #f ,@(unless (time-dependent-p t-slot) `(:result-type scroll)))
+                               (,@(when (time-dependent-p t-slot)
+                                        `((validity-start-of h-instance)
+                                          (validity-end-of h-instance)))
+                                  (,h-slot-reader-name h-instance))
+                               (from (h-instance ,h-class-name))
+                               (where (and
+                                       (eq (t-object-of h-instance) t-instance)
+                                       (or
+                                        (not (slot-boundp h-instance ',h-slot-name))
+                                        (not (eq (,h-slot-reader-name h-instance) ,+h-unused-slot-marker+)))
+                                       ,@(when (time-dependent-p t-slot)
+                                               `((local-time< (validity-start-of h-instance) validity-end)
+                                                 (local-time< validity-start (validity-end-of h-instance))))
+                                       ,@(when (temporal-p t-slot)
+                                               `((local-time<= (t-value-of h-instance) t-value)))))
+                               (order-by ,@(when (temporal-p t-slot)
+                                                 `(:descending (t-value-of h-instance)))))
+                            '(t-instance validity-start validity-end t-value)))
+         (result (execute-query query t-instance *validity-start* *validity-end* (when (temporal-p t-slot) *t*))))
 
-    (pushnew (name-of (table-of value-slot)) tables)
-    (pushnew (name-of (table-of (parent-slot-of t-class))) tables)
-
-    (when (time-dependent-p t-slot)
-      (setf validity-start-column (validity-start-column-of t-class)
-            validity-end-column (validity-end-column-of t-class)
-            validity-start-literal (sql-literal :value *validity-start*
-                                                :type (rdbms::type-of validity-start-column))
-            validity-end-literal (sql-literal :value *validity-end*
-                                              :type (rdbms::type-of validity-end-column))
-            validity-columns (list validity-start-column validity-end-column))
-      (pushnew (name-of (table-of (validity-start-slot-of t-class))) tables))
-
-    (when (temporal-p t-slot)
-      (setf t-value-column (t-value-column-of t-class))
-      (setf t-value-literal (sql-literal :value *t* :type (rdbms::type-of t-value-column)))
-      (pushnew (name-of (table-of (t-value-slot-of t-class))) tables))
-    
-    (select-records
-     (append validity-columns value-columns)
-     ;;
-     (list (reduce #L(sql-joined-table :kind :inner :left !1 :right !2 :using +oid-column-names+)
-                   (mapcar #L(sql-identifier :name !1) tables)))
-     :where
-     (sql-and (id-column-matcher-where-clause t-instance parent-id-column)
-              (sql-not (unused-check-for value-slot))
-              (apply #'sql-and
-                     (append
-                      (when (time-dependent-p t-slot)
-                        (list
-                         (sql-< (sql-identifier :name (rdbms::name-of validity-start-column))
-                                validity-end-literal)
-                         (sql-< validity-start-literal
-                                (sql-identifier :name (rdbms::name-of validity-end-column)))))
-                      (when (temporal-p t-slot)
-                        (list
-                         (sql-<= (sql-identifier :name (rdbms::name-of t-value-column))
-                                 t-value-literal))))))
-     :order-by
-     (when (temporal-p t-slot)
-       (list (sql-sort-spec :sort-key (sql-identifier :name (rdbms::name-of t-value-column))
-                            :ordering :descending)))
-     :limit
-     (unless (time-dependent-p t-slot)
-       1))))
+    (if (time-dependent-p t-slot)
+        result
+        (when (> (element-count result) 0)
+          (setf (page-size result) 1)
+          (first-page! result)
+          (elt (elements result) 0)))))
 
 (defun insert-h-instance (t-class t-instance t-slot value t-value validity-start validity-end)
   (bind ((h-class (h-class-of t-class)))
