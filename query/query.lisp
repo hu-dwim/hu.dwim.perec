@@ -53,6 +53,14 @@
     nil
     :type list
     :documentation "Format: (:ascending <expr1> :descending <expr2> ...)")
+   (offset
+    nil
+    :type (or null integer)
+    :documentation "Offset of the first returned element, default is 0")
+   (limit
+    nil
+    :type (or null integer)
+    :documentation "Number of max. returned elements, default is all.")
    (sql-select-list
     nil)
    (sql-where
@@ -65,7 +73,7 @@
 (define-copy-method copy-inner-class progn ((self query) copy copy-htable)
   (with-slot-copying (copy copy-htable self)
     (copy-slots lexical-variables query-variables flatp uniquep prefetch-mode result-type
-                asserts action action-args group-by having order-by sql-select-list
+                asserts action action-args group-by having order-by offset limit sql-select-list
                 sql-where sql-order-by)))
 
 (defmethod print-object ((query query) stream)
@@ -137,13 +145,17 @@
                                      (0 nil)
                                      (1 `(having ,(first (having-of query))))
                                      (t `(having (and ,@(having-of query))))))
-                    (order-by-clause (when (order-by-of query) `(order-by ,@(order-by-of query)))))
+                    (order-by-clause (when (order-by-of query) `(order-by ,@(order-by-of query))))
+                    (offset-clause (when (offset-of query) `(offset ,(offset-of query))))
+                    (limit-clause (when (limit-of query) `(limit ,(limit-of query)))))
              `(,action ,options ,action-list
                  (from ,@variables)
                  ,@(optional where-clause)
                  ,@(optional group-by-clause)
                  ,@(optional having-clause)
-                 ,@(optional order-by-clause))))))
+                 ,@(optional order-by-clause)
+                 ,@(optional offset-clause)
+                 ,@(optional limit-clause))))))
 
 
 (defgeneric collects-of (query)
@@ -286,6 +298,14 @@
                               :clause clause
                               :detail ":ASCENDING or :DESCENDING expected as sorting directions."))))
              clause)
+           (check-offset-limit-clause (clause)
+             (when clause
+               (unless (length=1 (rest clause))
+                 (error 'malformed-query-clause-error
+                        :form form
+                        :clause clause
+                        :detail "OFFSET/LIMIT expect one integer argument.")))
+             clause)
            (make-select (options select-list clauses)
              (bind ((lexical-variables (make-lexical-variables lexical-variables))
                     (from-clause (find-clause 'from clauses #f))
@@ -293,13 +313,14 @@
                     (group-by-clause (check-group-by-clause (find-clause 'group-by clauses)))
                     (having-clause (check-having-clause (find-clause 'having clauses)))
                     (order-by-clause (check-order-by-clause (find-clause 'order-by clauses)))
+                    (offset-clause (check-offset-limit-clause (find-clause 'offset clauses)))
+                    (limit-clause (check-offset-limit-clause (find-clause 'limit clauses)))
                     (query-variables (make-query-variables (rest from-clause)))
                     (asserts (make-asserts where-clause (rest from-clause)))
-                    (extra-clauses (remove from-clause
-                                           (remove where-clause
-                                                   (remove group-by-clause
-                                                           (remove having-clause
-                                                                   (remove order-by-clause clauses)))))))
+                    (extra-clauses (set-difference clauses
+                                                   (list from-clause where-clause group-by-clause
+                                                         having-clause order-by-clause offset-clause
+                                                         limit-clause))))
                (when extra-clauses
                  (error 'unrecognized-query-clause-error
                         :form form
@@ -314,6 +335,8 @@
                       :group-by (rest group-by-clause)
                       :having (rest having-clause)
                       :order-by (rest order-by-clause)
+                      :offset (second offset-clause)
+                      :limit (second limit-clause)
                       options)))
            (make-purge (options purge-list clauses)
              (bind ((lexical-variables (make-lexical-variables lexical-variables))

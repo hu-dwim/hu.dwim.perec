@@ -224,6 +224,8 @@
            #:group-by
            #:having
            #:order-by
+           #:offset
+           #:limit
            #:select-first-matching-instance
            #:select-last-matching-instance
            #:select-instance

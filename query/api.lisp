@@ -14,15 +14,19 @@
 
   Syntax:
 
-     select [<options>] <select-list> <from clause> [<where-clause>] [<order-by-clause>]
+     select [<options>] <select-list> <from clause> [<where-clause>] [<group-by-clause> [<having-clause>]] [<order-by-clause>] [<offset-clause>] [<limit-clause>]
 
      <options>:         (&key result-type flatp uniquep)
      <select-list>:     (<expr>*)
      <from-clause>:     (<variable-spec>*)
      <variable-spec>:   <symbol> | (<symbol> <type-expr>)
      <where-clause>:    (where <bool-expr>)
+     <group-by-clause>: (group-by <expr>*)
+     <having-clause>:   (having <bool-expr>)
      <order-by-clause>: (order-by <order-spec>*)
      <order-spec>:      :ascending|:descending <expr>
+     <offset-clause>:   (offset <integer>)
+     <limit-clause>:    (limit <integer>)
 
   Semantics:
 

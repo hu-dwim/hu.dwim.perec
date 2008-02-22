@@ -189,7 +189,11 @@
   "Annotates types to the SYNTAX nodes of the query."
   (process-toplevel-typep-asserts query)
   (mapc-query #L(%infer-types !1 query) query)
-  (mapc-query #'check-types query))
+  (mapc-query #'check-types query)
+  (when (offset-of query)
+    (setf (persistent-type-of (offset-of query)) 'integer))
+  (when (limit-of query)
+    (setf (persistent-type-of (limit-of query)) 'integer)))
 
 (defun process-toplevel-typep-asserts (query)
   (setf (asserts-of query)

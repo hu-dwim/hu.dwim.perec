@@ -167,6 +167,29 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
            (values)))
 
 ;;;
+;;; Limited result-set
+;;;
+(defclass* limited-result-set (result-set-transformer)
+  ((offset :type integer)
+   (limit :type (or null integer))))
+
+(defun make-limited-result-set (result-set offset limit)
+  (make-instance 'limited-result-set :inner result-set :offset (or offset 0) :limit limit))
+
+(defmethod record-count-of ((result-set limited-result-set))
+  (bind ((count (record-count-of (inner-of result-set)))
+         (start (offset-of result-set))
+         (end (if (limit-of result-set)
+                  (min (+ start (limit-of result-set)) count)
+                  count)))
+    (if (< start end) (- end start) 0)))
+
+(defmethod records-of ((result-set limited-result-set) &optional start end)
+  (with-slots (inner offset) result-set
+    (records-of inner (+ offset start) (+ offset end))))
+
+
+;;;
 ;;; Ordered result-set
 ;;;
 ;;; TODO: lazyness
@@ -336,7 +359,8 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
     instance))
 
 (defmethod revive-result-set! ((result-set simple-result-set))
-  (setf (contents result-set) (execute (sql-query-of result-set) :result-type 'vector)))
+  (setf (contents result-set) (execute (funcall (sql-query-of result-set) nil nil)
+                                       :result-type 'vector)))
 
 ;;;
 ;;; Scrolled SQL result set
@@ -357,14 +381,14 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
 
 (defmethod revive-result-set! ((result-set scrolled-result-set))
   (with-slots (sql-count-query) result-set
-    (setf (record-count-of result-set)
-          (elt-0-0 (execute sql-count-query))))
+    (setf (record-count-of result-set) (elt-0-0 (execute sql-count-query))))
   (values))
 
 (defmethod records-of ((result-set scrolled-result-set) &optional start end)
+  #+nil
   (setf (cl-rdbms::offset-of (sql-query-of result-set)) start
         (cl-rdbms::limit-of (sql-query-of result-set)) (- end start))
-  (execute (sql-query-of result-set)
+  (execute (funcall (sql-query-of result-set) start (- end start))
            :result-type 'vector
            :start-row start
            :row-limit (- end start)))

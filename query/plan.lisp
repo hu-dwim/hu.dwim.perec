@@ -23,7 +23,9 @@
    (where nil)
    (group-by nil)
    (having nil)
-   (order-by nil))
+   (order-by nil)
+   (offset nil)
+   (limit nil))
   (:documentation "Creates a result-set from the records returned by an SQL query."))
 
 (defclass* unary-operation-node (plan-node)
@@ -49,6 +51,11 @@
   ((group-by :documentation "Grouping expressions.")
    (collected-expressions :documentation "Collected expressions, each expression depends on the grouping expressions."))
   (:documentation "Groups records and computes aggregate functions."))
+
+(defclass* limit-operation (unary-operation-node)
+  ((offset :documentation "Integer expression or NIL.")
+   (limit :documentation "Integer expression or NIL."))
+  (:documentation "Limits the range of the records by offset/limit."))
 
 (defclass* conversion-operation (unary-operation-node)
   ((result-type)
@@ -89,13 +96,15 @@
                       (generate-list-result-set nil query)
                       query)
                      (add-conversion
-                      (add-unique
-                       (add-projection
-                        (add-sorter
-                         (add-having-filter
-                          (add-grouping
-                           (add-where-filter
-                            (generate-sql-query query)
+                      (add-limit
+                       (add-unique
+                        (add-projection
+                         (add-sorter
+                          (add-having-filter
+                           (add-grouping
+                            (add-where-filter
+                             (generate-sql-query query)
+                             query)
                             query)
                            query)
                           query)
@@ -205,6 +214,16 @@
                      :query query
                      :binder (binder-of input)
                      :input input)
+      input))
+
+(defun add-limit (input query)
+  (if (or (offset-of query) (limit-of query))
+      (make-instance 'limit-operation
+                     :query query
+                     :binder (binder-of input)
+                     :input input
+                     :offset (offset-of query)
+                     :limit (limit-of query))
       input))
 
 (defun add-conversion (input query)
@@ -322,7 +341,33 @@
                             (columns-of sql-query) sql-exprs)
                       projection))))
              (t
-              projection))))
+              projection)))
+
+  (:method ((limit-op limit-operation))
+    (call-next-method)
+    (typecase (input-of limit-op)
+      (projection-operation
+       (bind ((projection (input-of limit-op)))
+         (setf (input-of limit-op) (input-of projection)
+               (binder-of limit-op) (binder-of (input-of limit-op))
+               (input-of projection) limit-op)
+         (%optimize-plan projection)))
+      (sql-query-node
+       (bind ((sql-query (input-of limit-op))
+              (lisp-offset (offset-of limit-op))
+              (lisp-limit (limit-of limit-op))
+              (sql-offset (when lisp-offset (transform-to-sql lisp-offset)))
+              (sql-limit (when lisp-limit (transform-to-sql lisp-limit))))
+         (when sql-offset
+           (setf (offset-of sql-query) sql-offset
+                 (offset-of limit-op) nil))
+         (when sql-limit
+           (setf (limit-of sql-query) sql-limit
+                 (limit-of limit-op) nil))
+         (if (or (offset-of limit-op) (limit-of limit-op))
+             limit-op
+             sql-query)))
+      (t limit-op))))
 
 (defun order-by-to-sql (order-by)
   (iter (for (dir expr) on order-by by 'cddr)
@@ -364,37 +409,49 @@
       `(make-list-result-set ',list)))
 
   (:method ((sql-query sql-query-node))
-    (with-slots (query result-type distinct columns tables where group-by having order-by)
+    (with-slots (query result-type distinct columns tables where group-by having order-by offset limit)
         sql-query
-      `(open-result-set
-        ',result-type
-        ,(partial-eval
-          `(sql-select
-             :distinct ,distinct
-             :columns (list ,@columns)
-             :tables  (list ,@tables)
-             :where ,where
-             :group-by (list ,@group-by)
-             :having ,having
-             :order-by (list ,@order-by))
-          query)
-        ,@(when (eq result-type 'scroll)
-                (list (partial-eval
-                       `(sql-select
-                          :columns (list (cl-rdbms::sql-count-*))
-                          :tables (list (sql-table-reference-for
-                                         (sql-subquery
-                                           :query
-                                           (sql-select
-                                             :distinct ,distinct
-                                             :columns (list ,@columns)
-                                             :tables (list ,@tables)
-                                             :where ,where
-                                             :group-by (list ,@group-by)
-                                             :having ,having
-                                             ))
-                                         'records)))
-                       query))))))
+      (with-unique-names (scroll-offset scroll-limit)
+       `(open-result-set
+         ',result-type
+         (lambda (,scroll-offset ,scroll-limit)
+           (declare (ignorable ,scroll-offset ,scroll-limit))
+           ,(partial-eval
+             `(sql-select
+                :distinct ,distinct
+                :columns (list ,@columns)
+                :tables  (list ,@tables)
+                :where ,where
+                :group-by (list ,@group-by)
+                :having ,having
+                :order-by (list ,@order-by)
+                :offset ,(ecase result-type
+                                (scroll (if offset
+                                            `(sql-+ ,offset (sql-literal :value ,scroll-offset))
+                                            `(sql-literal :value ,scroll-offset)))
+                                (list offset))
+                :limit ,(ecase result-type
+                               (scroll `(sql-literal :value ,scroll-limit))
+                               (list limit)))
+             query))
+         ,@(when (eq result-type 'scroll)
+                 (list (partial-eval
+                        `(sql-select
+                           :columns (list (cl-rdbms::sql-count-*))
+                           :tables (list (sql-table-reference-for
+                                          (sql-subquery
+                                            :query
+                                            (sql-select
+                                              :distinct ,distinct
+                                              :columns (list ,@columns)
+                                              :tables (list ,@tables)
+                                              :where ,where
+                                              :group-by (list ,@group-by)
+                                              :having ,having
+                                              :offset ,offset
+                                              :limit ,limit))
+                                          (gensym "pg"))))
+                        query)))))))
 
   (:method ((filter filter-operation))
     (with-slots (input condition) filter
@@ -461,6 +518,13 @@
             (lambda (,acc)
               ,(aggregate-map-fn-body-for acc collected-expressions)))))))
 
+  (:method ((limit-op limit-operation))
+    (with-slots (input offset limit) limit-op
+      `(make-limited-result-set
+        ,(%compile-plan input)
+        ,offset
+        ,limit)))
+
   (:method ((conversion conversion-operation))
     (with-slots (input result-type flatp) conversion
       (ecase result-type
@@ -490,7 +554,7 @@
                                   variables)))))))))
         ;; sql deletes
         (sql-query-node
-         (assert (length=1 variables))  ; FIXME
+         (assert (length=1 variables))  ; FIXME check earlier
          (bind ((variable (first (variables-of delete)))
                 (type (persistent-type-of variable))
                 (tables (when (persistent-class-p type) (tables-for-delete type))))
@@ -498,11 +562,8 @@
                `(execute ,(sql-delete-from-table (first tables) :where (where-of input)))
                (bind ((temp-table (rdbms-name-for 'deleted-ids :table))
                       (select-deleted-ids `(sql-select
-                                             :columns (list
-                                                       ,(sql-id-column-reference-for
-                                                         variable))
-                                             :tables  (list
-                                                       ,@(tables-of input))
+                                             :columns (list ,(sql-id-column-reference-for variable))
+                                             :tables  (list ,@(tables-of input))
                                              :where ,(where-of input)))
                       (create-table (create-temporary-table temp-table
                                                             (list
@@ -517,10 +578,8 @@
                                          :columns (list ',+oid-id-column-name+)
                                          :tables (list ',temp-table))))
                       (deletes (delete nil
-                                       (mapcar
-                                        (lambda (table)
-                                          (sql-delete-for-subselect table delete-where))
-                                        tables)))
+                                       (mapcar (lambda (table) (sql-delete-for-subselect table delete-where))
+                                               tables)))
                       (drop-table (drop-temporary-table temp-table *database*)))
                  `(execute-protected
                    ,create-table

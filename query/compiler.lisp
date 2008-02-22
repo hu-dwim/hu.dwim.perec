@@ -181,7 +181,7 @@ with the result of the naively compiled query.")
         form)))
 
 ;;;;---------------------------------------------------------------------------
-;;;; Transformations
+;;;; Transformations of the simle query compiler
 ;;;;
 (defmethod transform-query ((compiler simple-query-compiler) (query query))
   "Transforms the QUERY by pushing down the asserts to the SQL query."
@@ -203,7 +203,9 @@ with the result of the naively compiled query.")
       (setf (group-by-of query) (mapcar #'parse (group-by-of query)))
       (setf (having-of query) (mapcar #'parse (having-of query)))
       (setf (order-by-of query) (iter (for (dir expr) on (order-by-of query) by 'cddr)
-                                    (nconcing (list dir (parse expr))))))))
+                                    (nconcing (list dir (parse expr)))))
+      (setf (offset-of query) (when (offset-of query) (parse (offset-of query))))
+      (setf (limit-of query) (when (limit-of query) (parse (limit-of query)))))))
 
 (defun normalize-query (query)
     (setf (asserts-of query)
