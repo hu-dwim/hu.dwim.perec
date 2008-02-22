@@ -57,7 +57,9 @@
                      (let* ((connection-specification (rdbms::connection-specification-of rdbms::*database*))
                             (host (or (get-argument "--host" t)
                                       (getf connection-specification :host)))
-                            (port (or (parse-integer (get-argument "--port" t))
+                            (port (or (let ((port (get-argument "--port" t)))
+                                        (when port
+                                          (parse-integer port)))
                                       (getf connection-specification :port)
                                       5432))
                             (database (or (get-argument "--database" t)
