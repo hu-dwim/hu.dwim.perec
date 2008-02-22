@@ -36,7 +36,11 @@
         (warn "*COMPILED-QUERY-CACHE* is unbound, query compiler cache is disabled. See WITH-COMPILED-QUERY-CACHE and MAKE-COMPILED-QUERY-CACHE.")
         (eval (compile-query query)))))
 
-(defmethod execute-query (query &rest lexical-variable-values)
+(defmethod execute-query ((query query) &rest lexical-variable-values)
   (let ((compiled-query (get-compiled-query query)))
     (apply compiled-query lexical-variable-values)))
+
+(defmethod execute-query ((query cons) &rest lexical-variable-values)
+  (assert (null lexical-variable-values) () "Lexical vairables are not supported this way, use a nested MAKE-QUERY/EXECUTE-QUERY.")
+  (execute-query (make-query query)))
 

@@ -134,7 +134,7 @@
              (:file "runtime" :depends-on ("syntax"))
              (:file "scroll")
              (:file "result-set" :depends-on ("scroll"))
-             (:file "cache")
+             (:file "cache" :depends-on ("query"))
              (:file "query" :depends-on ("conditions" "syntax" "api"))
              (:file "type" :depends-on ("syntax" "query"))
              (:file "sql" :depends-on ("type"))
