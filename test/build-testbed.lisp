@@ -67,8 +67,8 @@
                             (password (or (get-argument "--name" t)
                                           (getf connection-specification :password))))
                        (setf (rdbms::connection-specification-of rdbms::*database*)
-                             `(:host ,host :port ,port :database ,database :user-name ,user-name :password ,password))))))
-               (format *debug-io*
+                             `(:host ,host :port ,port :database ,database :user-name ,user-name :password ,password)))))
+                 (format *debug-io*
 "Usage:
    perec-testbed [--host <host>] [--port <port>] [--user-name <user-name>] [--password <password>] [--name name]
 
@@ -128,14 +128,14 @@ Some form of documentation :)
 PostgreSQL connection specification:
    ~S
 " (rdbms::connection-specification-of rdbms::*database*))
-               (labels ((signal-handler (signal code scp)
-                          (declare (ignore signal code scp))
-                          (format *debug-io* "SIGTERM/SIGINT was received, exiting~&")
-                          (force-output *debug-io*)
-                          (sb-ext:quit :recklessly-p t :unix-status -1)))
-                 (sb-sys:enable-interrupt sb-unix:sigterm #'signal-handler)
-                 (sb-sys:enable-interrupt sb-unix:sigint #'signal-handler)
-                 (create-swank-server))
+                 (labels ((signal-handler (signal code scp)
+                            (declare (ignore signal code scp))
+                            (format *debug-io* "SIGTERM/SIGINT was received, exiting~&")
+                            (force-output *debug-io*)
+                            (sb-ext:quit :recklessly-p t :unix-status -1)))
+                   (sb-sys:enable-interrupt sb-unix:sigterm #'signal-handler)
+                   (sb-sys:enable-interrupt sb-unix:sigint #'signal-handler)
+                   (create-swank-server)))
                0)))
 
 (build-image)
