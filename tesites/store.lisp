@@ -380,8 +380,7 @@
          (h-slot-reader-name (reader-name-of h-slot))
          
          ;; TODO performance: compile only one query using h-class and h-slot as lexical variables
-         ;; TODO add limit to the select
-         (query (make-query `(select (:flatp #f ,@(unless (time-dependent-p t-slot) `(:result-type scroll)))
+         (query (make-query `(select
                                (,@(when (time-dependent-p t-slot)
                                         `((validity-start-of h-instance)
                                           (validity-end-of h-instance)))
@@ -397,17 +396,13 @@
                                                  (local-time< validity-start (validity-end-of h-instance))))
                                        ,@(when (temporal-p t-slot)
                                                `((local-time<= (t-value-of h-instance) t-value)))))
-                               (order-by ,@(when (temporal-p t-slot)
-                                                 `(:descending (t-value-of h-instance)))))
-                            '(t-instance validity-start validity-end t-value)))
-         (result (execute-query query t-instance *validity-start* *validity-end* (when (temporal-p t-slot) *t*))))
+                               ,@(when (temporal-p t-slot)
+                                       `((order-by :descending (t-value-of h-instance))))
+                               ,@(unless (time-dependent-p t-slot)
+                                         `((limit 1))))
+                            '(t-instance validity-start validity-end t-value))))
 
-    (if (time-dependent-p t-slot)
-        result
-        (when (> (element-count result) 0)
-          (setf (page-size result) 1)
-          (first-page! result)
-          (elt (elements result) 0)))))
+    (execute-query query t-instance *validity-start* *validity-end* (when (temporal-p t-slot) *t*))))
 
 (defun insert-h-instance (t-class t-instance t-slot value t-value validity-start validity-end)
   (bind ((h-class (h-class-of t-class)))
