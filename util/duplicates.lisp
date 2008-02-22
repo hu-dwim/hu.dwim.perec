@@ -72,11 +72,6 @@
   "Collect elements from SEQUENCE for which the PREDICATE is true."
   (remove-if-not predicate sequence))
 
-(defun length=1 (list)
-  "Returns t if the length of the LIST is 1. (Faster than (= (length list) 1))"
-  (and (consp list)
-       (null (rest list))))
-
 (defun mappend (function &rest lists)
   "Same as mapcar except the results are appended."  
   (apply 'append (apply 'mapcar function lists)))
