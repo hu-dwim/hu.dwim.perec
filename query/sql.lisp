@@ -30,15 +30,13 @@
   "Generate a delete command for records in TABLE whose oid is in the set returned by SUBSELECT."
   (sql-delete-from-table
    table
-   :where `(sql-in
-            ,(sql-id-column-reference-for table)
-            ,subselect)))
+   :where (sql-in (sql-id-column-reference-for table) subselect)))
 
 (defun sql-delete-from-table (table &key where)
   "Generate a delete command for records in TABLE that satisfies the WHERE clause."
-  `(sql-delete
-    :table ,(sql-table-reference-for table nil)
-    :where ,where))
+  (sql-delete
+    :table (sql-table-reference-for table nil)
+    :where where))
 
 (defun tables-for-delete (class)
   "Returns the tables where instances of CLASS are stored."
@@ -175,16 +173,12 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
                (otherwise nil)))) ; FIXME signal error
 
   (:method ((type syntax-object) &optional alias) ;; type unknown at compile time
-           (make-function-call
-            :fn 'sql-table-reference-for-type
-            :args (list (backquote-type-syntax type) `',alias)))
+    (sql-unquote :form `(sql-table-reference-for-type ,(backquote-type-syntax type) ',alias)))
 
   (:method ((combined-type list) &optional alias)
            (if (contains-syntax-p combined-type)
                ;; delay evaluation until run-time
-               (make-function-call
-                :fn 'sql-table-reference-for-type
-                :args (list (backquote-type-syntax combined-type) `',alias))
+               (sql-unquote :form `(sql-table-reference-for-type ,(backquote-type-syntax combined-type) ',alias))
                ;; and/or/not types
                (labels ((ensure-sql-query (table-ref)
                           (assert (not (syntax-object-p table-ref)))
@@ -280,13 +274,13 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
  has the type TYPE."
   (bind ((table-ref (sql-table-reference-for-type type type)))
     (if table-ref
-        `(sql-exists
-          (sql-subquery
+        (sql-exists
+         (sql-subquery
            :query
            (sql-select
-            :columns (list 1)
-            :tables (list ,table-ref)
-            :where ,(sql-join-condition-for variable type nil))))
+             :columns (list 1)
+             :tables (list table-ref)
+             :where (sql-join-condition-for variable type nil))))
         (sql-false-literal))))
 
 (defun sql-exists-subselect-for-association-end (variable association-end &optional class)
@@ -295,13 +289,13 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   (bind ((class (or class (slot-definition-class (other-association-end-of association-end))))
          (table-ref (sql-table-reference-for class (sql-alias-for class))))
     (if table-ref
-        `(sql-exists
-          (sql-subquery
+        (sql-exists
+         (sql-subquery
            :query
            (sql-select
-            :columns (list 1)
-            :tables (list ,table-ref)
-            :where ,(sql-join-condition-for variable class (other-association-end-of association-end)))))
+             :columns (list 1)
+             :tables (list table-ref)
+             :where (sql-join-condition-for variable class (other-association-end-of association-end)))))
         (sql-false-literal))))
 
 (defun sql-aggregate-subselect-for-variable (aggregate-function n-association-end 1-var)
@@ -312,12 +306,12 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
          (table-ref (sql-table-reference-for n-var n-var)))
     (cond
       (table-ref
-       `(sql-subquery
+       (sql-subquery
          :query
          (sql-select
-          :columns (list (,aggregate-function ,(sql-id-column-reference-for n-var)))
-          :tables (list ,table-ref)
-          :where ,(sql-join-condition-for 1-var n-var 1-association-end))))
+           :columns (list (funcall aggregate-function (sql-id-column-reference-for n-var)))
+           :tables (list table-ref)
+           :where (sql-join-condition-for 1-var n-var 1-association-end))))
       ((eq aggregate-function 'sql-count)
        (sql-literal :value 0))
       (t
@@ -327,42 +321,42 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   (bind ((other-end (other-association-end-of association-end))
          (association (association-of association-end))
          (table (primary-table-of association)))
-    `(sql-subquery
+    (sql-subquery
       :query
       (sql-select
-       :columns (list (,aggregate-function ,(sql-column-reference-for association-end table)))
-       :tables (list ,(sql-table-reference-for association (name-of table)))
-       :where (sql-=
-               ,(sql-column-reference-for other-end (name-of table))
-               ,(sql-id-column-reference-for variable))))))
+        :columns (list (funcall aggregate-function (sql-column-reference-for association-end table)))
+        :tables (list (sql-table-reference-for association (name-of table)))
+        :where (sql-=
+                (sql-column-reference-for other-end (name-of table))
+                (sql-id-column-reference-for variable))))))
 
 (defun sql-subselect-for-secondary-association-end (association-end variable)
   (bind ((primary-association-end (other-association-end-of association-end))
          (class (slot-definition-class primary-association-end))
          (table-ref (sql-table-reference-for class nil)))
     (if table-ref
-        `(sql-subquery
+        (sql-subquery
           :query
           (sql-select
-           :columns (list ,(sql-id-column-reference-for nil))
-           :tables (list ,table-ref)
-           :where (sql-=
-                   ,(sql-column-reference-for primary-association-end nil)
-                   ,(sql-id-column-reference-for variable))))
-        (sql-null-literal)))) ; FIXME
+            :columns (list (sql-id-column-reference-for nil))
+            :tables (list table-ref)
+            :where (sql-=
+                    (sql-column-reference-for primary-association-end nil)
+                    (sql-id-column-reference-for variable))))
+        (sql-null-literal))))           ; FIXME
 
 (defun sql-subselect-for-m-n-association (association-end variable)
   (bind ((other-end (other-association-end-of association-end))
          (association (association-of association-end))
          (table (primary-table-of association)))
-    `(sql-subquery
+    (sql-subquery
       :query
       (sql-select
-       :columns (list ,(sql-column-reference-for association-end table))
-       :tables (list ,(sql-table-reference-for association (name-of table)))
-       :where (sql-=
-               ,(sql-column-reference-for other-end (name-of table))
-               ,(sql-id-column-reference-for variable))))))
+        :columns (list (sql-column-reference-for association-end table))
+        :tables (list (sql-table-reference-for association (name-of table)))
+        :where (sql-=
+                (sql-column-reference-for other-end (name-of table))
+                (sql-id-column-reference-for variable))))))
 
 
 
@@ -408,13 +402,13 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 
 (defun sql-join-condition-for-m-n-association (object-1 object-2 association-end-2)
   (bind ((table (primary-table-of (association-of association-end-2))))
-    `(sql-exists
-      (sql-subquery
+    (sql-exists
+     (sql-subquery
        :query
        (sql-select
-        :columns (list 1)
-        :tables (list (sql-identifier :name ',(name-of table)))
-        :where ,(sql-join-condition-for object-1 object-2 association-end-2))))))
+         :columns (list 1)
+         :tables (list (sql-identifier :name (name-of table)))
+         :where (sql-join-condition-for object-1 object-2 association-end-2))))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Boundp check
@@ -478,45 +472,45 @@ value is equal, when they represent the NIL lisp value)."
   (flet ((sql-is-null (sql unbound-check null-check null-tag-1 null-tag-2)
            (cond
              ((sql-null-literal-p sql)
-              `(sql-= ,null-tag-1 ,null-tag-2))
+              (sql-= null-tag-1 null-tag-2))
              ((and unbound-check null-check)
-              `(sql-if ,unbound-check
-                       (sql-null-literal)
-                       (sql-= ,null-tag-1 ,null-tag-2)))
+              (sql-if unbound-check
+                      (sql-null-literal)
+                      (sql-= null-tag-1 null-tag-2)))
              (unbound-check
-              `(sql-if ,unbound-check
-                       (sql-null-literal)
-                       (sql-false-literal)))
+              (sql-if unbound-check
+                      (sql-null-literal)
+                      (sql-false-literal)))
              (null-check
-              `(sql-= ,null-tag-1 ,null-tag-2))
+              (sql-= null-tag-1 null-tag-2))
              (t
               (sql-false-literal))))
          (wrap-with-null-check (eq-check)
            (cond
              ((and null-check-1 null-check-2)
-              `(sql-if (sql-or ,null-check-1 ,null-check-2)
-                       (sql-= ,null-tag-1 ,null-tag-2)
-                       ,eq-check))
+              (sql-if (sql-or null-check-1 null-check-2)
+                      (sql-= null-tag-1 null-tag-2)
+                      eq-check))
              (null-check-1
-              `(sql-and (sql-not ,null-check-1) ,eq-check))
+              (sql-and (sql-not null-check-1) eq-check))
              (null-check-2
-              `(sql-and (sql-not ,null-check-2) ,eq-check))
+              (sql-and (sql-not null-check-2) eq-check))
              (t
               eq-check)))
          (wrap-with-unbound-check (eq-check)
            (cond
              ((and unbound-check-1 unbound-check-2)
-              `(sql-if (sql-or ,unbound-check-1 ,unbound-check-2)
-                       (sql-null-literal)
-                       ,eq-check))
+              (sql-if (sql-or unbound-check-1 unbound-check-2)
+                      (sql-null-literal)
+                      eq-check))
              (unbound-check-1
-              `(sql-if ,unbound-check-1
-                       (sql-null-literal)
-                       ,eq-check))
+              (sql-if unbound-check-1
+                      (sql-null-literal)
+                      eq-check))
              (unbound-check-2
-              `(sql-if ,unbound-check-2
-                       (sql-null-literal)
-                       ,eq-check))
+              (sql-if unbound-check-2
+                      (sql-null-literal)
+                      eq-check))
              (t
               eq-check))))
     (cond
@@ -527,7 +521,7 @@ value is equal, when they represent the NIL lisp value)."
       (t
        (wrap-with-unbound-check
         (wrap-with-null-check
-         `(sql-= ,sql-expr-1 ,sql-expr-2)))))))
+         (sql-= sql-expr-1 sql-expr-2)))))))
 
 (defun sql-subseq (seq start &optional end)
   "TODO: other sequnce types"

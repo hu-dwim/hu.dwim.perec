@@ -69,7 +69,9 @@
                      (after (date-of message) yesterday)))))"
   (declare (ignore select-list clauses))
   (let* ((lexical-variables (remove-duplicates (arnesi::lexical-variables env))))
-    (if nil ;; TODO: check for option :compile-at-macroexpand
+    (if (and (consp (second select-form))
+             (keywordp (first (second select-form)))
+             (getf (second select-form) :compile-at-macroexpand))
         `(funcall ,(compile-query (make-query select-form lexical-variables))
                   ,@lexical-variables)
         `(execute-query

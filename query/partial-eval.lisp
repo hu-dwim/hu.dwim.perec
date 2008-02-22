@@ -100,7 +100,12 @@ if it was fully evaluated.")
              (cond
                ((null list) nil)
                (t (setf args (list object list))
-                  (call-next-method 'member 2 object list args call))))))
+                  (call-next-method 'member 2 object list args call)))))
+
+  ;; evaluating sql-text causes an error
+  (:method ((fn (eql 'sql-text)) (n-args (eql 1)) string dummy args call)
+    (setf (args-of call) (mapcar 'syntax-from-value args (args-of call)))
+    call))
 
 (defgeneric %partial-eval-macro-call (macro n-args arg-1 arg-2 args call query)
 

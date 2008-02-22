@@ -44,8 +44,9 @@
 ;;; 
 ;;; SQL text fragments
 ;;;
-(defmacro sql-text (string)
-  `(sql-fragment :sql ,string))
+(defun sql-text (string)
+  (declare (ignore string))
+  (error "SQL text cannot be executed in lisp"))
 
 ;;;
 ;;; Caching

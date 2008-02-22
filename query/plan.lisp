@@ -376,7 +376,7 @@
                            ((:asc :ascending) :ascending)
                            ((:desc :descending) :descending))))
           (if success
-              (collect `(sql-sort-spec :sort-key ,sort-key :ordering ,ordering))
+              (collect (sql-sort-spec :sort-key sort-key :ordering ordering))
               (leave)))))
 
 (defun to-sql (list)
@@ -388,8 +388,8 @@
         (finally (return-from to-sql (values sql-forms lisp-forms)))))
 
 (defun sql-text-p (expr)
-  (and (macro-call-p expr)
-       (eq (macro-of expr) 'sql-text)))
+  (and (function-call-p expr)
+       (eq (fn-of expr) 'sql-text)))
 
 
 ;;;
@@ -412,46 +412,49 @@
     (with-slots (query result-type distinct columns tables where group-by having order-by offset limit)
         sql-query
       (with-unique-names (scroll-offset scroll-limit)
-       `(open-result-set
-         ',result-type
-         (lambda (,scroll-offset ,scroll-limit)
-           (declare (ignorable ,scroll-offset ,scroll-limit))
-           ,(partial-eval
-             `(sql-select
-                :distinct ,distinct
-                :columns (list ,@columns)
-                :tables  (list ,@tables)
-                :where ,where
-                :group-by (list ,@group-by)
-                :having ,having
-                :order-by (list ,@order-by)
-                :offset ,(ecase result-type
-                                (scroll (if offset
-                                            `(sql-+ ,offset (sql-literal :value ,scroll-offset))
-                                            `(sql-literal :value ,scroll-offset)))
-                                (list offset))
-                :limit ,(ecase result-type
-                               (scroll `(sql-literal :value ,scroll-limit))
-                               (list limit)))
-             query))
-         ,@(when (eq result-type 'scroll)
-                 (list (partial-eval
-                        `(sql-select
-                           :columns (list (cl-rdbms::sql-count-*))
-                           :tables (list (sql-table-reference-for
-                                          (sql-subquery
-                                            :query
-                                            (sql-select
-                                              :distinct ,distinct
-                                              :columns (list ,@columns)
-                                              :tables (list ,@tables)
-                                              :where ,where
-                                              :group-by (list ,@group-by)
-                                              :having ,having
-                                              :offset ,offset
-                                              :limit ,limit))
-                                          (gensym "pg"))))
-                        query)))))))
+        `(open-result-set
+          ',result-type
+          (lambda (,scroll-offset ,scroll-limit)
+            (declare (ignorable ,scroll-offset ,scroll-limit))
+            ,(rdbms::expand-sql-ast-into-lambda-form
+              (sql-select
+                :distinct distinct
+                :columns columns
+                :tables  tables
+                :where where
+                :group-by group-by
+                :having having
+                :order-by order-by
+                :offset (ecase result-type
+                          (scroll (if offset
+                                      (sql-+ offset (sql-unquote :form
+                                                                 `(sql-literal :value ,scroll-offset
+                                                                               :type (sql-numeric-type))))
+                                      (sql-unquote :form `(sql-literal :value ,scroll-offset
+                                                                       :type (sql-numeric-type)))))
+                          (list offset))
+                :limit (ecase result-type
+                         (scroll (sql-unquote :form `(sql-literal :value ,scroll-limit
+                                                                  :type (sql-numeric-type))))
+                         (list limit)))))
+          ,@(when (eq result-type 'scroll)
+                  (list (partial-eval
+                         `(sql-select
+                            :columns (list (cl-rdbms::sql-count-*))
+                            :tables (list (sql-table-reference-for
+                                           (sql-subquery
+                                             :query
+                                             (sql-select
+                                               :distinct ,distinct
+                                               :columns (list ,@columns)
+                                               :tables (list ,@tables)
+                                               :where ,where
+                                               :group-by (list ,@group-by)
+                                               :having ,having
+                                               :offset ,offset
+                                               :limit ,limit))
+                                           (gensym "pg"))))
+                         query)))))))
 
   (:method ((filter filter-operation))
     (with-slots (input condition) filter
@@ -559,26 +562,32 @@
                 (type (persistent-type-of variable))
                 (tables (when (persistent-class-p type) (tables-for-delete type))))
            (if (length=1 tables)        ; simple delete
-               `(execute ,(sql-delete-from-table (first tables) :where (where-of input)))
+               `(execute ,(rdbms::expand-sql-ast-into-lambda-form
+                           (sql-delete-from-table (first tables) :where (where-of input))))
                (bind ((temp-table (rdbms-name-for 'deleted-ids :table))
-                      (select-deleted-ids `(sql-select
-                                             :columns (list ,(sql-id-column-reference-for variable))
-                                             :tables  (list ,@(tables-of input))
-                                             :where ,(where-of input)))
-                      (create-table (create-temporary-table temp-table
-                                                            (list
-                                                             (sql-column
-                                                               :name +oid-id-column-name+
-                                                               :type +oid-id-sql-type+))
-                                                            select-deleted-ids
-                                                            *database*))
-                      (delete-where `(sql-subquery
-                                       :query
-                                       (sql-select
-                                         :columns (list ',+oid-id-column-name+)
-                                         :tables (list ',temp-table))))
+                      (select-deleted-ids
+                       (sql-select
+                         :columns (list (sql-id-column-reference-for variable))
+                         :tables  (tables-of input)
+                         :where (where-of input)))
+                      (create-table
+                       (rdbms::expand-sql-ast-into-lambda-form
+                        (create-temporary-table temp-table
+                                                (list
+                                                 (sql-column
+                                                   :name +oid-id-column-name+
+                                                   :type +oid-id-sql-type+))
+                                                select-deleted-ids
+                                                *database*)))
+                      (delete-where (sql-subquery
+                                      :query
+                                      (sql-select
+                                        :columns (list +oid-id-column-name+)
+                                        :tables (list temp-table))))
                       (deletes (delete nil
-                                       (mapcar (lambda (table) (sql-delete-for-subselect table delete-where))
+                                       (mapcar (lambda (table)
+                                                 (rdbms::expand-sql-ast-into-lambda-form
+                                                  (sql-delete-for-subselect table delete-where)))
                                                tables)))
                       (drop-table (drop-temporary-table temp-table *database*)))
                  `(execute-protected
@@ -588,21 +597,18 @@
 
 (defgeneric create-temporary-table (table-name columns subselect database)
   (:method (table-name columns subselect database)
-           `(sql-create-table
-             :name ',table-name
-             :temporary #t
-             :columns (list ,@(mapcar (lambda (column)
-                                        (sql-identifier :name (slot-value column 'arnesi:name)))
-                                      columns))
-             :as (sql-subquery :query ,subselect)))
+    (sql-create-table
+      :name table-name
+      :temporary #t
+      :columns (mapcar (lambda (column) (sql-identifier :name (slot-value column 'arnesi:name))) columns)
+      :as (sql-subquery :query subselect)))
 
   (:method (table-name columns subselect (database oracle))
-           (ensure-oracle-temporary-table-exists table-name columns)
-           `(sql-insert
-             :table ',table-name
-             :columns (list ,@columns)
-             :subselect (sql-subquery
-                         :query ,subselect))))
+    (ensure-oracle-temporary-table-exists table-name columns)
+    (sql-insert
+       :table table-name
+       :columns columns
+       :subselect (sql-subquery :query subselect))))
 
 (defun ensure-oracle-temporary-table-exists (table-name columns)
   (unless (oracle-temporary-table-exists-p table-name)
@@ -619,7 +625,7 @@
 
 (defgeneric drop-temporary-table (table-name database)
   (:method (table-name database)
-           `(sql-drop-table :name ',table-name))
+           (sql-drop-table :name table-name))
 
   (:method (table-name (database oracle))
            nil))
@@ -807,17 +813,17 @@ If true then all query variables must be under some aggregate call."
     (bind ((where (where-of sql-query)))
       (if (null where)
           (progn
-            (setf (where-of sql-query) `(sql-and ,@conditions)))
+            (setf (where-of sql-query) (apply 'sql-and conditions)))
           (progn
-            (assert (and (consp where) (eq (first where) 'sql-and)))
-            (setf (where-of sql-query) (nconc where conditions)))))))
+            (assert (and (typep where 'sql-n-ary-operator) (string= (rdbms::name-of where) "AND")))
+            (appendf (rdbms::expressions-of where) conditions))))))
 
 (defun add-sql-having-conditions (sql-query conditions)
   (when conditions
     (bind ((having (having-of sql-query)))
       (if (null having)
           (progn
-            (setf (having-of sql-query) `(sql-and ,@conditions)))
+            (setf (having-of sql-query) (apply 'sql-and conditions)))
           (progn
-            (assert (and (consp having) (eq (first having) 'sql-and)))
-            (setf (having-of sql-query) (nconc having conditions)))))))
+            (assert (and (typep having 'sql-n-ary-operator) (string= (rdbms::name-of having) "AND")))
+            (appendf (rdbms::expressions-of having) conditions))))))
