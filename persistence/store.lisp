@@ -66,9 +66,23 @@
 
   (:method ((class persistent-class) (instance persistent-object) (slot persistent-effective-slot-definition))
     (values
-     (cond ((and (typep slot 'persistent-association-end-effective-slot-definition)
-                 (eq (association-kind-of (association-of slot)) :1-1)
-                 (secondary-association-end-p slot))
+     (if (set-type-p* (canonical-type-of slot))
+         (if *lazy-slot-value-collections*
+             (make-instance 'persistent-slot-set-container :instance instance :slot slot)
+             (restore-slot-set instance slot))
+         (bind ((record
+                 (elt-0
+                  (select-records (columns-of slot)
+                                  (list (name-of (table-of slot)))
+                                  :where (id-column-matcher-where-clause instance)))))
+           (restore-slot-value instance slot record 0)))
+     slot))
+
+  (:method ((class persistent-class) (instance persistent-object) (slot persistent-association-end-effective-slot-definition))
+    (values
+     (ecase (association-kind-of (association-of slot))
+       (:1-1
+        (if (secondary-association-end-p slot)
             (bind ((records
                     (select-records +oid-column-names+
                                     (list (name-of (table-of slot)))
@@ -76,29 +90,18 @@
                                                   (sql-identifier :name (id-column-of slot))))))
               (declare (type vector records))
               (unless (zerop (length records))
-                (restore-slot-value instance slot (elt-0 records) 0))))
-           ((and (typep slot 'persistent-association-end-effective-slot-definition)
-                 (eq (association-kind-of (association-of slot)) :1-n)
-                 (eq (cardinality-kind-of slot) :n))
+                (restore-slot-value instance slot (elt-0 records) 0)))
+            (call-next-method)))
+       (:1-n
+        (if (eq (cardinality-kind-of slot) :n)
             (if *lazy-slot-value-collections*
                 (make-instance 'persistent-1-n-association-end-set-container :instance instance :slot slot)
-                (restore-1-n-association-end-set instance slot)))
-           ((and (typep slot 'persistent-association-end-effective-slot-definition)
-                 (eq (association-kind-of (association-of slot)) :m-n))
-            (if *lazy-slot-value-collections*
-                (make-instance 'persistent-m-n-association-end-set-container :instance instance :slot slot)
-                (restore-m-n-association-end-set instance slot)))
-           ((set-type-p* (canonical-type-of slot))
-            (if *lazy-slot-value-collections*
-                (make-instance 'persistent-slot-set-container :instance instance :slot slot)
-                (restore-slot-set instance slot)))
-           (t
-            (bind ((record
-                    (elt-0
-                     (select-records (columns-of slot)
-                                     (list (name-of (table-of slot)))
-                                     :where (id-column-matcher-where-clause instance)))))
-              (restore-slot-value instance slot record 0))))
+                (restore-1-n-association-end-set instance slot))
+            (call-next-method)))
+       (:m-n
+        (if *lazy-slot-value-collections*
+            (make-instance 'persistent-m-n-association-end-set-container :instance instance :slot slot)
+            (restore-m-n-association-end-set instance slot))))
      slot)))
 
 (defgeneric restore-prefetched-slots (class instance &optional allow-missing)
@@ -226,45 +229,48 @@
   (:documentation "Stores a single slot without local side effects into the database.")
 
   (:method ((class persistent-class) (instance persistent-object) (slot persistent-effective-slot-definition) value)
-    (cond ((and (typep slot 'persistent-association-end-effective-slot-definition)
-                (eq (association-kind-of (association-of slot)) :1-1)
-                (secondary-association-end-p slot))
-           (check-slot-value-type instance slot value)
-           (when-bind other-instance (and (persistent-p instance)
-                                          (slot-boundp-using-class (class-of instance) instance slot)
-                                          (slot-value-using-class (class-of instance) instance slot))
-             (bind ((other-class (class-of other-instance))
-                    (other-slot (other-effective-association-end-for other-class slot)))
-               (store-slot other-class other-instance other-slot nil)))
-           (when (and value
-                      (not (unbound-slot-marker-p value)))
-             (bind ((value-class (class-of value))
-                    (other-slot (other-effective-association-end-for value-class slot)))
-               (store-slot value-class value other-slot instance))))
-          ((and (typep slot 'persistent-association-end-effective-slot-definition)
-                (eq (association-kind-of (association-of slot)) :1-n)
-                (eq (cardinality-kind-of slot) :n))
+    (if (set-type-p* (canonical-type-of slot))
+        (store-slot-set instance slot value)
+        (progn
+          (check-slot-value-type instance slot value)
+          (when-bind columns (columns-of slot)
+            (bind ((rdbms-values (make-array (length (the list columns)))))
+              (store-slot-value instance slot value rdbms-values 0)
+              (bind ((count
+                      (update-records (name-of (table-of slot))
+                                      columns
+                                      rdbms-values
+                                      (id-column-matcher-where-clause instance))))
+                (assert (= 1 count))))))))
+
+  (:method ((class persistent-class) (instance persistent-object) (slot persistent-association-end-effective-slot-definition) value)
+    (ecase (association-kind-of (association-of slot))
+      (:1-1
+       (if (secondary-association-end-p slot)
+           (progn
+             (check-slot-value-type instance slot value)
+             (when-bind other-instance (and (persistent-p instance)
+                                            (slot-boundp-using-class (class-of instance) instance slot)
+                                            (slot-value-using-class (class-of instance) instance slot))
+               (bind ((other-class (class-of other-instance))
+                      (other-slot (other-effective-association-end-for other-class slot)))
+                 (store-slot other-class other-instance other-slot nil)))
+             (when (and value
+                        (not (unbound-slot-marker-p value)))
+               (bind ((value-class (class-of value))
+                      (other-slot (other-effective-association-end-for value-class slot)))
+                 (store-slot value-class value other-slot instance))))
+           (call-next-method)))
+      (:1-n
+       (if (eq (cardinality-kind-of slot) :n)
            (when (or value
                      (persistent-p instance))
-             (store-1-n-association-end-set instance slot value)))
-          ((and (typep slot 'persistent-association-end-effective-slot-definition)
-                (eq (association-kind-of (association-of slot)) :m-n))
-           (when (or value
-                     (persistent-p instance))
-             (store-m-n-association-end-set instance slot value)))
-          ((set-type-p* (canonical-type-of slot))
-           (store-slot-set instance slot value))
-          (t
-           (check-slot-value-type instance slot value)
-           (when-bind columns (columns-of slot)
-             (bind ((rdbms-values (make-array (length (the list columns)))))
-               (store-slot-value instance slot value rdbms-values 0)
-               (bind ((count
-                       (update-records (name-of (table-of slot))
-                                       columns
-                                       rdbms-values
-                                       (id-column-matcher-where-clause instance))))
-                 (assert (= 1 count)))))))))
+             (store-1-n-association-end-set instance slot value))
+           (call-next-method)))
+      (:m-n
+       (when (or value
+                 (persistent-p instance))
+         (store-m-n-association-end-set instance slot value))))))
 
 (defgeneric store-prefetched-slots (class instance)
   (:documentation "Stores all prefetched slots without local side effects into the database. Executes one insert statement for each table.")
