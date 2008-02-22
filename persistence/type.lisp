@@ -307,9 +307,9 @@
       float-64
       float
       double
+      duration
       number
       text
-      duration
       string
       timestamp
       date
