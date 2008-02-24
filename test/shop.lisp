@@ -15,7 +15,7 @@
   (:documentation "Holds a list of product, quantity pairs"))
 
 (defpclass* product ()
-  ((name :type (text 30))
+  ((name :type (text 30) :unique #t)
    (unit-price :type number))
   (:abstract #t)
   (:documentation "Serves as base class for products"))
@@ -70,14 +70,12 @@
                   :unit-price 500
                   :size 28)))
 
-(defun find-product-by-name (name)
+(defun find-product (name)
   (first
    (select (p)
      (from (p product))
-     (where (equal (name-of p) name))))
-  #+nil
-  (select-instance (p product)
-    (where (equal (name-of p) name))))
+     (where (equal (name-of p) name))
+     (limit 1))))
 
 (defun create-baskets ()
   "Creates hypotetical baskets with products"
@@ -86,28 +84,32 @@
          (b3 (make-instance 'basket :ordered #t)))
     (make-instance 'products-in-basket
                    :basket b1
-                   :product (find-product-by-name "Apple")
+                   :product (find-product "Apple")
                    :quantity 1)
     (make-instance 'products-in-basket
                    :basket b1
-                   :product (find-product-by-name "Csengi")
+                   :product (find-product "Csengi")
                    :quantity 2)
     (make-instance 'products-in-basket
                    :basket b2
-                   :product (find-product-by-name "Nandi")
+                   :product (find-product "Nandi")
                    :quantity 1)
     (make-instance 'products-in-basket
                    :basket b3
-                   :product (find-product-by-name "Orange")
+                   :product (find-product "Orange")
                    :quantity 3)
     (list b1 b2 b3)))
 
 (defun select-ordered-baskets (created-before)
-  "This query compiles into the following SQL either at compile time or
+  "Selects the baskets which have been ordered and created before the provided timestamp.
+Returns a list of basket and total price pairs.
+
+This query compiles into the following SQL either at compile time or
 at runtime based on the :compile-at-macroexpand parameter. The compiled
 query is always cached, so subsequent calls reuse the result. Use macroexpand
-when the parameter is set to #t to see how the query compiler compiles
-down parts to static SQL and how it leaves other parts in lisp.
+when the parameter is set to #t or trace cl-perec::compile-query when it is set
+to #f to see how the query compiler compiles down parts to static SQL and how
+it leaves other parts in lisp.
 
 SELECT _pib._basket_id, SUM((_pib._quantity * _product3355._unit_price))
 FROM _product _product3355, _basket _basket3354, _products_in_basket _pib
@@ -116,10 +118,9 @@ WHERE ((_product3355._id = _pib._product_id) AND
         _basket3354._ordered AND
        ((_basket3354._created_at = $1::TIMESTAMP WITH TIME ZONE)))
 GROUP BY _pib._basket_id"
-  (select (:compile-at-macroexpand #f) ;; TODO: allow to set it to #t
-    ((basket-of pib)
-     (sum (* (quantity-of pib)
-             (unit-price-of (product-of pib)))))
+  (select ((basket-of pib)
+           (sum (* (quantity-of pib)
+                   (unit-price-of (product-of pib)))))
     (from (pib products-in-basket))
     (where (and (ordered-p (basket-of pib))
                 (local-time<= (created-at-of (basket-of pib)) created-before)))
