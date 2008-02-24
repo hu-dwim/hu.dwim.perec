@@ -143,12 +143,9 @@
     (where ,(select-similar-assert-for type rest))))
 
 (defmacro select-instance (&optional variable &body body)
-  `(let ((scroll (simple-select (:result-type scroll :flatp #t) ,variable ,@body)))
-    (setf (page-size scroll) 1)
-    (case (element-count scroll)
-      (0 nil)
-      (1 (first-page! scroll) (elt (elements scroll) 0))
-      (otherwise (error "Query did not return only one result.")))))
+  `(let ((result (simple-select (:flatp #t) ,variable ,@body (limit 2))))
+     (assert (<= (length result) 1) nil "Query did return multiple result.")
+     (first result)))
 
 (defmacro select-instances (&optional variable &body body)
   "Select objects using one variable and collect the values of that variable based upon a set of asserts."
@@ -156,12 +153,9 @@
 
 (defmacro select-the-only-one (&whole select-form (&rest select-list) &body clauses)
   (declare (ignore clauses select-list))
-  `(let ((scroll (select (:result-type scroll :flatp #t) ,@(rest select-form))))
-     (setf (page-size scroll) 1)
-     (case (element-count scroll)
-       (0 nil)
-       (1 (first-page! scroll) (elt (elements scroll) 0))
-       (otherwise (error "Query did not return only one result.")))))
+  `(let ((result (select (:flatp #t) ,@(rest select-form) (limit 2))))
+     (assert (<= (length result) 1) nil "Query did return multiple result.")
+     (first result)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Execute and compile
