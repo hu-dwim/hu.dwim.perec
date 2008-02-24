@@ -77,8 +77,15 @@
                        (setf (rdbms::connection-specification-of rdbms::*database*)
                              `(:host ,host :port ,port :database ,database :user-name ,user-name :password ,password)))))
                  (format *debug-io*
-"Usage:
-   perec-testbed [--host <host>] [--port <port>] [--user-name <user-name>] [--password <password>] [--name name]
+"Testbed Usage:
+   perec-testbed [--host <host>] [--port <port>] [--database <database>] [--user-name <user-name>] [--password <password>]
+
+Testbed default parameters (port is set to PostgreSQL default port):
+   host: localhost
+   port: 5432
+   database: perec-test
+   user-name: perec-test
+   password: test123
 
 To install postgresql:
    sudo apt-get install postgresql
@@ -100,41 +107,53 @@ To test cl-perec:
    (retest) ; should print a lot of dots and stuff and takes a while
 
 To play around:
+   ;; to turn on logging of SQL statements in SLIME
    (start-sql-recording)
-   ;; or a simple example
+   ;; to create a persistent class
    (defpclass* test ()
      ((name :type (text 20))
       (age :type integer-32)
       (flag :type boolean)))
-   ;; make an instance (should automatically update table)
+   ;; to make an instance 
+   ;; this should automatically create/update the tables needed for the class
+   ;; note: if you have run the test suite, this might execute several queries
+   ;;       to check all persistent classes present in your lisp image
+   (defvar p
+     (with-transaction
+        (make-instance 'test :name \"Hello\" :age 42 :flag t)))
+   ;; to reuse the instance in another transaction
    (with-transaction
-     (make-instance 'test :name \"Hello\" :age 42 :flag t))
-   ;; reuse the instance
-   (with-transaction
-     (with-revived-instance *
-       (describe *)))
-   ;; query instances
+     (with-revived-instance p
+       (describe p)))
+   ;; to query instances of the class just defined
    (with-transaction
      (select (instance)
        (from (instance test))
        (where (and (equal (name-of instance) \"Hello\")
                    (< (age-of instance) 100)))
        (order-by :descending (age-of instance))))
-   ;; queries are polimorph by default, use macroexpand to see how it compiles down to straight SQL
+   ;; queries are polimorph by default (this should actually return all persistent instances)
+   ;; use macroexpand to see how it compiles down to straight SQL
    (with-transaction
      (select (:compile-at-macroexpand t) (instance)
        (from (instance persistent-object))))
-   ;; see the tests in the repository at http://common-lisp.net/cgi-bin/darcsweb/darcsweb.cgi?r=cl-perec-cl-perec-helium;a=tree;f=/test
-   ;; also check the showcase on the website at http://common-lisp.net/project/cl-perec/showcase.html
+   ;; see the tests in the repository at http://common-lisp.net/cgi-bin/darcsweb/darcsweb.cgi?r=cl-perec-cl-perec;a=tree;f=/test
+   ;; see a somewhat more complicated example at: http://common-lisp.net/project/cl-perec/shop.html
+   ;; and also check the showcase on the website at http://common-lisp.net/project/cl-perec/showcase.html
 
-To read more:
+To read more about the project:
    http://common-lisp.net/project/cl-perec
 
-Some form of documentation :)
+There is some form of documentation at:)
    http://common-lisp.net/project/cl-perec/documentation/index.html
 
-PostgreSQL connection specification:
+Suggestions, bug reports are welcomed at:
+   cl-perec-devel@common-lisp.net
+
+The current PostgreSQL connection specification is:
    ~S
+
+To exit press Control-C.
 " (rdbms::connection-specification-of rdbms::*database*))
                  (labels ((signal-handler (signal code scp)
                             (declare (ignore signal code scp))

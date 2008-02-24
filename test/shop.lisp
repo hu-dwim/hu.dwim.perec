@@ -9,21 +9,30 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Define the classes for the shop
 
+;; the defpclass is used to define persistent classes
+;; defpclass* is a shortcut and means that accessors and
+;; initargs will be derived from slot names
+;; (slot-name) -> (slot-name :initarg :slot-name :accessor slot-name-of)
 (defpclass* basket ()
   ((created-at (transaction-timestamp) :type timestamp)
-   (ordered #f :type boolean))
+   (ordered #f :type boolean :documentation "The consumer confirmed the order and willing to pay"))
   (:documentation "Holds a list of product, quantity pairs"))
 
+;; abstract classes cannot be instantiated
+;; an error will be thrown if make-instance is called for them
 (defpclass* product ()
   ((name :type (text 30) :unique #t)
    (unit-price :type number))
   (:abstract #t)
   (:documentation "Serves as base class for products"))
 
+;; for availabe slot type see the cl-perec home page
 (defpclass* products-in-basket ()
   ((quantity :type integer-16))
   (:documentation "Specifies the quantity of a product in a basket"))
 
+;; defassociation is used to define 1-1, 1-n, m-n persistent associations
+;; referential integrity is kept between the two slots in the two owner classes
 (defassociation*
   ((:class basket :slot products-in-basket :type (set products-in-basket))
    (:class products-in-basket :slot basket :type basket)))
@@ -32,6 +41,10 @@
   ((:class product :slot products-in-basket :type (set products-in-basket))
    (:class products-in-basket :slot product :type product)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Define some actual products
+
+;; subclass product
 (defpclass* computer (product)
   ((kind :type (member :desktop :notebook))
    (memory :type integer-32)))
@@ -44,6 +57,8 @@
 
 (defun purge-shop ()
   "Purges all data from the shop"
+  ;; we could simply do (purge-instance 'persistent-object)
+  ;; but that may affect other loaded progams data, so make it safe
   (purge-instances 'product) ;; this is polymorph
   (purge-instances 'basket)
   (purge-instances 'products-in-basket))
@@ -71,11 +86,9 @@
                   :size 28)))
 
 (defun find-product (name)
-  (first
-   (select (p)
-     (from (p product))
-     (where (equal (name-of p) name))
-     (limit 1))))
+  ;; query a single instance
+  (select-instance (p product)
+    (where (equal (name-of p) name))))
 
 (defun create-baskets ()
   "Creates hypotetical baskets with products"
@@ -101,8 +114,8 @@
     (list b1 b2 b3)))
 
 (defun select-ordered-baskets (created-before)
-  "Selects the baskets which have been ordered and created before the provided timestamp.
-Returns a list of basket and total price pairs.
+  "Selects the baskets which have been ordered (confirmed) and created before
+the provided timestamp. Returns a list of basket and total price pairs.
 
 This query compiles into the following SQL either at compile time or
 at runtime based on the :compile-at-macroexpand parameter. The compiled
