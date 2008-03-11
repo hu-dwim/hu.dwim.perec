@@ -50,8 +50,11 @@
    (action-column
     (compute-as (first (columns-of (action-slot-of -self-))))
     :type column)
+   (h-slot-name
+    (compute-as ()) ; TODO
+    :type symbol)
    (h-slot
-    (compute-as (find-slot (slot-definition-class -self-) (h-slot-name-of -self-))))
+    (compute-as (find-slot (h-class-of -self-) (h-slot-name-of -self-))))
    (h-oid-columns
     (compute-as (columns-of (h-slot-of -self-)))
     :type list)

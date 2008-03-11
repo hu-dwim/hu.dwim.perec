@@ -119,7 +119,7 @@
              (:file "object" :depends-on ("class"))
              (:file "transaction")
              (:file "values-having-validity" :depends-on ("api"))
-             (:file "store" :depends-on ("values-having-validity" "class" "object"))
+             (:file "store" :depends-on ("values-having-validity" "class" "association" "object"))
              (:file "type")
              (:file "slot-value" :depends-on ("store" "association"))
              (:file "transformer" :depends-on ("type"))))

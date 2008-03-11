@@ -438,7 +438,7 @@
                                                                   :type (sql-numeric-type))))
                          (list limit)))))
           ,@(when (eq result-type 'scroll)
-                  (list (partial-eval
+                  (list (partial-eval ;; TODO use expand-sql-ast-into-lambda-form
                          `(sql-select
                             :columns (list (cl-rdbms::sql-count-*))
                             :tables (list (sql-table-reference-for
