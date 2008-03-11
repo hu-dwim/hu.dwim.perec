@@ -150,16 +150,16 @@
 ;;; Drop
 
 (def function drop-persistent-classes ()
-  (flet ((drop-table (owner)
+  (flet ((drop-table* (owner)
            (when (table-exists-p (name-of owner))
-             (rdbms::drop-table (name-of owner)))
+             (drop-table (name-of owner) :cascade #t))
            (invalidate-computed-slot owner 'ensure-exported)))
     (iter (for (class-name class) :in-hashtable *persistent-classes*)
           (awhen (primary-table-of class)
-            (drop-table it)))
+            (drop-table* it)))
     (iter (for (association-name association) :in-hashtable *persistent-associations*)
           (awhen (primary-table-of association)
-            (drop-table it)))))
+            (drop-table* it)))))
 
 ;;;;;;;;
 ;;; Lock
