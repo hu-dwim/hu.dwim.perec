@@ -726,9 +726,9 @@
     ((free-of-query-variables-p list)
      (sql-unquote :form
                   `(if (null ,(unparse-query-syntax list))
-                       (sql-false-literal)
-                       (sql-in ,(syntax-to-sql item)
-                               ,(syntax-to-sql list)))))
+                       ,(sql-false-literal)
+                       ,(sql-in (syntax-to-sql item)
+                                (syntax-to-sql list)))))
     (t (sql-in (syntax-to-sql item) (syntax-to-sql list)))))
 
 #+nil
