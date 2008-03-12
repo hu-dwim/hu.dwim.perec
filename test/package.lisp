@@ -48,6 +48,7 @@
                                 clear-compiled-query-cache reset-compile-query-counter
                                 ensure-exported primary-table-slot-p data-table-slot-p
                                 primary-table-of primary-tables-of data-tables-of
+                                primary-view-of data-view-of
                                 prefetch-p cache-p compute-mapping reader-of writer-of
                                 compute-rdbms-types compute-reader compute-writer
                                 table-of columns-of reader-name-of writer-name-of
