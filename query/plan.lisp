@@ -791,7 +791,7 @@ If true then all query variables must be under some aggregate call."
          (if (aggregate-function-call-p expr)
              `(funcall
                ,(aggregate-function-accumulate (aggregate-function-for (fn-of expr)))
-               ,(first (args-of expr)) (pop ,acc-var))
+               ,(first (args-of expr)) (pop ,acc-var)) ;; FIXME handle unbound slot access
              `(progn
                (pop ,acc-var)
                ,expr)))

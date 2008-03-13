@@ -5,8 +5,8 @@
 
 (defpclass* aggregate-test ()
   ((int-attr :type (or null integer-32))
-   (str-attr :type (or null (text 50)))
-   (date-attr :type (or null date))))
+   (str-attr :type (or unbound null (text 50)))
+   (date-attr :type (or unbound null date))))
 
 (defixture aggregate-data
   (with-transaction
@@ -26,7 +26,9 @@
     (make-instance 'aggregate-test
                    :int-attr nil
                    :str-attr nil
-                   :date-attr nil)))
+                   :date-attr nil)
+    (make-instance 'aggregate-test
+                   :int-attr nil)))
 
 (defmacro def-aggregate-test (name (&rest args) &body body)
   `(deftest ,name ,args

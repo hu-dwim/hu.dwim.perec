@@ -665,22 +665,22 @@
 
 (def query-function min (column)
   ""
-  (declare (persistent-type (forall ((a (or null number string date time timestamp))) (function (a) a))))
+  (declare (persistent-type (forall ((a (or unbound null number string date time timestamp))) (function (a) a))))
   (sql-min column))
 
 (def query-function max (column)
   ""
-  (declare (persistent-type (forall ((a (or null number string date time timestamp))) (function (a) a))))
+  (declare (persistent-type (forall ((a (or unbound null number string date time timestamp))) (function (a) a))))
   (sql-max column))
 
 (def query-function sum (column)
   ""
-  (declare (persistent-type (forall ((a (or null number))) (function (a) a))))
+  (declare (persistent-type (forall ((a (or unbound null number))) (function (a) a))))
   (sql-sum column))
 
 (def query-function avg (column)
   ""
-  (declare (persistent-type (forall ((a (or null number))) (function (a) a))))
+  (declare (persistent-type (forall ((a (or unbound null number))) (function (a) a))))
   (sql-avg column))
 
 ;;;
