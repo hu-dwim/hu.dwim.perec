@@ -13,7 +13,7 @@
        ;; instance <-> old-other-instance
        ;; new-value <-> old-other-new-value
        (flet ((update-cached-slot-value-in-other-instance (instance slot)
-                (bind (((values cache-p other-instance) (slot-value-cached-p instance slot)))
+                (bind (((:values cache-p other-instance) (slot-value-cached-p instance slot)))
                   (when (and cache-p
                              other-instance
                              (not (unbound-slot-marker-p other-instance)))
@@ -34,7 +34,7 @@
        ;; invalidate all cached back references 
        (if (eq (cardinality-kind-of slot) :n)
            (bind ((other-slot (other-association-end-of slot))
-                  ((values cache-p old-slot-value) (slot-value-cached-p instance slot)))
+                  ((:values cache-p old-slot-value) (slot-value-cached-p instance slot)))
              (if cache-p
                  (unless (unbound-slot-marker-p old-slot-value)
                    (dolist (child old-slot-value)

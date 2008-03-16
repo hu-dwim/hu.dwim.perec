@@ -116,7 +116,7 @@
       (cl-serializer::default-deserializer-mapper code context)))
 
 (def (function o) serializer-mapper (object context)
-  (bind (((values code has-identity writer-function)
+  (bind (((:values code has-identity writer-function)
           (cl-serializer::default-serializer-mapper object context)))
     (if (and (eq code serializer::+standard-object-code+)
              (typep object 'persistent-object))

@@ -162,7 +162,7 @@
 (def (function o) restore-all-slots (instance)
   "Restores all slots wihtout local side effects from the database."
   (bind ((class (class-of instance))
-         ((values prefetched-slot-values prefetched-slots) (restore-prefetched-slots class instance))
+         ((:values prefetched-slot-values prefetched-slots) (restore-prefetched-slots class instance))
          (non-prefetched-slots (non-prefetched-slots-of class)))
     (values (append prefetched-slot-values (mapcar #L(restore-slot class instance !1) non-prefetched-slots))
             (append prefetched-slots non-prefetched-slots))))

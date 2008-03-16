@@ -226,7 +226,7 @@
         (collect -variable-name- :into result))))
 
 (defun lambda-list-to-funcall-expression (function args)
-  (bind (((values arg-list rest-variable) (lambda-list-to-funcall-list args)))
+  (bind (((:values arg-list rest-variable) (lambda-list-to-funcall-list args)))
     (if rest-variable
         `(apply ,function ,@arg-list ,rest-variable)
         `(funcall ,function ,@arg-list))))

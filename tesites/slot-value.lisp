@@ -89,7 +89,7 @@
                           value)))))
     (bind ((persistent (persistent-p instance)))
       (assert-instance-access instance persistent)
-      (bind (((values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
+      (bind (((:values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
         (when (or (not persistent)
                   (and *cache-slot-values*
                        slot-value-cached))
@@ -100,7 +100,7 @@
                   *t*)
                 (if (unbound-slot-marker-p cached-value)
                     (slot-unbound-t instance slot)
-                    (bind (((values value covers-validity-range-p)
+                    (bind (((:values value covers-validity-range-p)
                             (extract-values-having-validity cached-value *validity-start* *validity-end*)))
                       (if covers-validity-range-p
                           (return-value value)

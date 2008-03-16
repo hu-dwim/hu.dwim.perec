@@ -163,7 +163,7 @@
 (defun add-grouping (input query)
   (bind ((group-by (group-by-of query))
          (collects (collects-of query))
-         ((values aggregates non-aggregated-variables)
+         ((:values aggregates non-aggregated-variables)
           (collect-aggregate-calls collects group-by))) ;; FIXME order-by,having
     (when (and aggregates non-aggregated-variables)
       (error "Collect clause (~S) not compatible with the group-by clause (~S)"
@@ -269,7 +269,7 @@
                 ;; Move filter conditions that can be mapped to sql into the
                 ;; sql select.
                 (bind ((sql-query (input-of filter))
-                       ((values sql-conditions lisp-conditions)
+                       ((:values sql-conditions lisp-conditions)
                         (to-sql (rest (condition-of filter)))))
                   (if (null (group-by-of sql-query))
                       (add-sql-where-conditions sql-query sql-conditions)
@@ -305,8 +305,8 @@
                 ;; each collected expression can be mapped to sql,
                 ;; then merge the grouping with the sql select.
                 (bind ((sql-query (input-of grouping))
-                       ((values sql-exprs lisp-exprs) (to-sql (collected-expressions-of grouping)))
-                       ((values sql-groupby lisp-groupby) (to-sql (group-by-of grouping))))
+                       ((:values sql-exprs lisp-exprs) (to-sql (collected-expressions-of grouping)))
+                       ((:values sql-groupby lisp-groupby) (to-sql (group-by-of grouping))))
                   (if (or lisp-exprs lisp-groupby) ;; TODO check each group-by is a column-ref
                       grouping
                       (progn
@@ -333,7 +333,7 @@
                                                                    (persistent-class-p type)
                                                                    (set-type-p* type)))))
                                                       collects))
-                     ((values sql-exprs lisp-exprs) (to-sql collects)))
+                     ((:values sql-exprs lisp-exprs) (to-sql collects)))
                 (if (or lisp-exprs persistent-object-query-p) ;; TODO refine condition
                     projection                                ;; all needed table is joined?
                     (progn
@@ -371,7 +371,7 @@
 
 (defun order-by-to-sql (order-by)
   (iter (for (dir expr) on order-by by 'cddr)
-        (bind (((values sort-key success) (transform-to-sql expr))
+        (bind (((:values sort-key success) (transform-to-sql expr))
                (ordering (ecase dir
                            ((:asc :ascending) :ascending)
                            ((:desc :descending) :descending))))
@@ -381,7 +381,7 @@
 
 (defun to-sql (list)
   (iter (for form in list)
-        (bind (((values sql success) (transform-to-sql form)))
+        (bind (((:values sql success) (transform-to-sql form)))
           (if success
               (collect sql into sql-forms)
               (collect form into lisp-forms)))
@@ -459,7 +459,7 @@
   (:method ((filter filter-operation))
     (with-slots (input condition) filter
       (with-unique-names (row)
-        (bind (((values bindings condition) (funcall (binder-of input) row condition)))
+        (bind (((:values bindings condition) (funcall (binder-of input) row condition)))
           `(make-filtered-result-set
             ,(%compile-plan input)
             (lambda (,row)
@@ -469,7 +469,7 @@
   (:method ((projection projection-operation))
     (with-slots (input values) projection
       (with-unique-names (row)
-        (bind (((values bindings values) (funcall (binder-of input) row values)))
+        (bind (((:values bindings values) (funcall (binder-of input) row values)))
           `(make-mapped-result-set
             ,(%compile-plan input)
             (lambda (,row)
@@ -505,8 +505,8 @@
     (with-slots (input group-by collected-expressions) gamma
       (with-unique-names (row acc)
         (bind ((binder (binder-of input))
-               ((values group-by-bindings group-by) (funcall binder row group-by))
-               ((values collect-bindings collected-expressions) (funcall binder row collected-expressions)))
+               ((:values group-by-bindings group-by) (funcall binder row group-by))
+               ((:values collect-bindings collected-expressions) (funcall binder row collected-expressions)))
           `(make-grouped-result-set
             ,(%compile-plan input)
             (lambda (,row)
@@ -707,9 +707,9 @@
 
 (defun binder-append (binder1 binder2)
   (lambda (row referenced-by &key suffix)
-    (bind (((values bindings1 expr1 end-index1)
+    (bind (((:values bindings1 expr1 end-index1)
             (funcall binder1 row referenced-by :suffix suffix :start-index 0))
-           ((values bindings2 expr2 end-index2)
+           ((:values bindings2 expr2 end-index2)
             (funcall binder2 row expr1 :suffix suffix :start-index end-index1)))
       (values
        (append bindings1 bindings2)

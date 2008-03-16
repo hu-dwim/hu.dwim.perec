@@ -55,7 +55,7 @@
     ((atom form) form)
     ((constantp form) form)
     ((query-macro-expander-of (car form))
-     (bind (((values expanded-form expanded-p) (query-macroexpand1 form)))
+     (bind (((:values expanded-form expanded-p) (query-macroexpand1 form)))
        (if (or expanded-form expanded-p)
            (query-macroexpand ; TODO: detect infinite loops
             expanded-form)

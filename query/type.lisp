@@ -136,7 +136,7 @@
         (finally (return (values mandatory-arg-types optional-arg-types rest-arg-type key-arg-types)))))
 
 (def function expand-arg-typespec (arg-typespec args)
-  (bind (((values mandatory-arg-types optional-arg-types rest-arg-type key-arg-types) (parse-arg-typespec arg-typespec))
+  (bind (((:values mandatory-arg-types optional-arg-types rest-arg-type key-arg-types) (parse-arg-typespec arg-typespec))
          (args args)
          (result nil))
 
@@ -356,7 +356,7 @@
 
 (defun maybe-null-subtype-p (type)
   (or (eq type +unknown-type+)
-      (bind (((values normalized-type null-subtype-p unbound-subtype-p) (destructure-type type)))
+      (bind (((:values normalized-type null-subtype-p unbound-subtype-p) (destructure-type type)))
         (declare (ignore normalized-type unbound-subtype-p))
         null-subtype-p)))
 

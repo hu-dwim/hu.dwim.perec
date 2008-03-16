@@ -15,7 +15,7 @@
 
 (def (function o) make-export-serializer-mapper (persistent-object-serializer)
   (lambda (instance context)
-    (bind (((values code has-identity writer-function)
+    (bind (((:values code has-identity writer-function)
             (cl-serializer::default-serializer-mapper instance context)))
       (if (and (eq code serializer::+standard-object-code+)
                (typep instance 'persistent-object))

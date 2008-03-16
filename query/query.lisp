@@ -237,7 +237,7 @@
   (labels ((query-macro-expand (form)
              (if (member (first form) '(select purge))
                  form
-                 (bind (((values form expanded-p) (macroexpand-1 form)))
+                 (bind (((:values form expanded-p) (macroexpand-1 form)))
                    (if expanded-p
                        (query-macro-expand form)
                        form))))

@@ -68,7 +68,7 @@
 
 (deftest test/tesites/temporal/store-value/2 ()
   (with-temporal-test-classes
-    (bind (((values instance t-value)
+    (bind (((:values instance t-value)
             (with-transaction
               (with-default-t
                 (values (make-instance *temporal-class-name* :population 1000) *t*)))))

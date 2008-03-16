@@ -23,8 +23,8 @@
   (complete-partial-timestamp timestamp))
 
 (def function last-moment-for-partial-timestamp (timestamp)
-  (bind (((values timestamp-string timestamp-partial-type) (complete-partial-timestamp timestamp))
-         ((values nsecond second minute hour day month year day-of-week daylight-saving-time-p timezone) (decode-local-time (parse-timestring timestamp-string))))
+  (bind (((:values timestamp-string timestamp-partial-type) (complete-partial-timestamp timestamp))
+         ((:values nsecond second minute hour day month year day-of-week daylight-saving-time-p timezone) (decode-local-time (parse-timestring timestamp-string))))
     (declare (ignore day-of-week daylight-saving-time-p))
     (flet ((1+* (partial-type value)
              (if (eq partial-type timestamp-partial-type)

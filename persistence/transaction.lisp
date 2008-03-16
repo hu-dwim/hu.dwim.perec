@@ -33,7 +33,7 @@
            (bind ((class (class-of instance)))
              (dolist (slot (persistent-effective-slots-of class))
                (when (eq :on-commit (type-check-of slot))
-                 (bind (((values cached-p slot-value) (slot-value-cached-p instance slot)))
+                 (bind (((:values cached-p slot-value) (slot-value-cached-p instance slot)))
                    (when cached-p
                      (check-slot-value-type instance slot slot-value #t))))))))
 

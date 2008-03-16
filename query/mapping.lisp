@@ -411,7 +411,7 @@
                       (push :lisp-args options))
                      (t (error "Flag '~A' is not available for definer ~S" flag (name-of -definer-))))))
            options))
-    (bind (((values body declarations documentation) (alexandria:parse-body body
+    (bind (((:values body declarations documentation) (alexandria:parse-body body
                                                                             :documentation #t
                                                                             :whole -whole-))
            (declarations (apply #'append (mapcar #'cdr declarations)))

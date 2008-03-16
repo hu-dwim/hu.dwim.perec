@@ -278,7 +278,7 @@
                                (values (aref timestamps index) index))))))
                 (with-transaction
                   (with-t (random-timestamp)
-                    (bind (((values start index) (random-timestamp))
+                    (bind (((:values start index) (random-timestamp))
                            (end (iter (for end = (random-timestamp index))
                                       (until (local-time> end start))
                                       (finally (return end)))))

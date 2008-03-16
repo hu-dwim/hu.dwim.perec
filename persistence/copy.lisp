@@ -42,7 +42,7 @@
   (bind ((class (class-of instance)))
     (dolist (slot (closer-mop:class-slots class))
       (cond ((typep slot 'persistent-effective-slot-definition)
-             (bind (((values cached-p value) (slot-value-cached-p instance slot)))
+             (bind (((:values cached-p value) (slot-value-cached-p instance slot)))
                (when cached-p
                  (setf (underlying-slot-boundp-or-value-using-class class copy slot)
                        (if (unbound-slot-marker-p value)
