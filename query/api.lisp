@@ -72,8 +72,7 @@
     (if (and (consp (second select-form))
              (keywordp (first (second select-form)))
              (getf (second select-form) :compile-at-macroexpand))
-        `(funcall ,(compile-query (make-query select-form lexical-variables))
-                  ,@lexical-variables)
+        `(progn ,@(alexandria:parse-body (cddr (compile-query (make-query select-form lexical-variables)))))
         `(execute-query
           (make-query ',select-form ',lexical-variables)
           ,@lexical-variables))))
