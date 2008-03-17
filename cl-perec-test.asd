@@ -93,7 +93,8 @@
                        (:file "expression" :depends-on ("suite"))
                        (:file "subselect" :depends-on ("suite"))
                        (:file "embedded-sql" :depends-on ("suite"))
-                       (:file "limit" :depends-on ("suite"))))))))
+                       (:file "limit" :depends-on ("suite"))
+                       (:file "update" :depends-on ("suite"))))))))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
   (in-package :cl-perec-test)

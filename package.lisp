@@ -228,6 +228,7 @@
            #:select
            #:simple-select
            #:purge
+           #:update
            #:from
            #:where
            #:group-by

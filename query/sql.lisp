@@ -26,6 +26,29 @@
 ;;;----------------------------------------------------------------------------
 ;;; Deletes
 
+(defun sql-delete-from-tables (data-tables joined-tables where &optional qualifier)
+  (bind ((temp-table (rdbms-name-for 'deleted-ids :table)))
+    (values
+      (rdbms::expand-sql-ast-into-lambda-form
+        (create-temporary-table temp-table
+                                (list
+                                 (sql-column :name +oid-id-column-name+ :type +oid-id-sql-type+))
+                                (sql-select
+                                  :columns (list (sql-id-column-reference-for qualifier))
+                                  :tables  joined-tables
+                                  :where where)
+                                *database*))
+      (mapcar (lambda (table)
+                (rdbms::expand-sql-ast-into-lambda-form
+                 (sql-delete-for-subselect table
+                                           (sql-subquery
+                                             :query
+                                             (sql-select
+                                               :columns (list +oid-id-column-name+)
+                                               :tables (list temp-table))))))
+              data-tables)
+      (drop-temporary-table temp-table *database*))))
+
 (defun sql-delete-for-subselect (table subselect)
   "Generate a delete command for records in TABLE whose oid is in the set returned by SUBSELECT."
   (sql-delete-from-table
@@ -53,6 +76,83 @@
               super-sub-primary-tables)))))
 
 ;;;----------------------------------------------------------------------------
+;;; Updates
+(defun sql-update-tables (table->column-value-pairs table-refs where &optional qualifier)
+  (bind ((temp-table (rdbms-name-for 'updated-ids :table)))
+    (values
+     (rdbms::expand-sql-ast-into-lambda-form
+      (create-temporary-table temp-table
+                              (list (sql-column :name +oid-id-column-name+ :type +oid-id-sql-type+))
+                              (sql-select
+                                :columns (list (sql-id-column-reference-for qualifier))
+                                :tables  table-refs
+                                :where where)
+                              *database*))
+     (maphash (lambda (table column-value-pairs)
+                (rdbms::expand-sql-ast-into-lambda-form
+                 (sql-update-for-subselect table
+                                           (mapcar #'first column-value-pairs)
+                                           (mapcar #'second column-value-pairs)
+                                           (sql-subquery
+                                             :query
+                                             (sql-select
+                                               :columns (list +oid-id-column-name+)
+                                               :tables (list temp-table))))))
+              table->column-value-pairs)
+     (drop-temporary-table temp-table *database*))))
+
+(defun sql-update-for-subselect (table columns values subselect)
+  "Generate a delete command for records in TABLE whose oid is in the set returned by SUBSELECT."
+  (sql-update-table
+   table columns values
+   :where (sql-in (sql-id-column-reference-for table) subselect)))
+
+(defun sql-update-table (table columns values &key from where)
+  (sql-update
+    :table (sql-table-reference-for table nil)
+    :columns (sql-column-references-for columns nil)
+    :values values
+    :from from
+    :where where))
+
+;;;----------------------------------------------------------------------------
+;;; Temporary tables
+(defgeneric create-temporary-table (table-name columns subselect database)
+  (:method (table-name columns subselect database)
+    (sql-create-table
+      :name table-name
+      :temporary #t
+      :columns (mapcar (lambda (column) (sql-identifier :name (slot-value column 'arnesi:name))) columns)
+      :as (sql-subquery :query subselect)))
+
+  (:method (table-name columns subselect (database oracle))
+    (ensure-oracle-temporary-table-exists table-name columns)
+    (sql-insert
+       :table table-name
+       :columns columns
+       :subselect (sql-subquery :query subselect))))
+
+(defun ensure-oracle-temporary-table-exists (table-name columns)
+  (unless (oracle-temporary-table-exists-p table-name)
+    (with-transaction (execute (sql-create-table
+                                :name table-name
+                                :temporary :delete-rows
+                                :columns columns)))))
+
+(defun oracle-temporary-table-exists-p (table-name)
+  (execute (format nil
+                   "select table_name from user_tables where lower(table_name)='~A' and temporary='Y'"
+                   (string-downcase (rdbms-name-for table-name))) ;; TODO should be case sensitive
+           :result-type 'list))
+
+(defgeneric drop-temporary-table (table-name database)
+  (:method (table-name database)
+           (sql-drop-table :name table-name))
+
+  (:method (table-name (database oracle))
+           nil))
+
+;;;----------------------------------------------------------------------------
 ;;; Alias names
 
 (defvar *suppress-alias-names* nil)
@@ -77,7 +177,6 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defgeneric sql-select-list-for (element)
   (:method ((query query))
            ;; select oids and prefetched slots
-           ;; TODO: if no prefetch, select the expressions in the collect clause
            (mapcan
             (lambda (variable) (sql-columns-for-variable variable (prefetch-mode-of query)))
             (query-variables-of query))))
@@ -244,11 +343,18 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (sql-column-reference-for (id-column-of association-end) qualifier))
 
   (:method ((slot persistent-slot-definition) qualifier)
-           (assert (column-names-of slot))
-           (sql-column-reference-for (last1 (column-names-of slot)) qualifier))
+           (bind ((column-names (column-names-of slot)))
+             (ecase (length column-names)
+               (1 (sql-column-reference-for (first column-names) qualifier))
+               (2 (values
+                   (sql-column-reference-for (second column-names) qualifier)
+                   (sql-column-reference-for (first column-names) qualifier))))))
 
   (:method (element qualifier)
-           (sql-column-reference-for element (sql-alias-for qualifier))))
+           (sql-column-reference-for element (sql-alias-for qualifier)))
+
+  (:method ((column-alias sql-column-alias) qualifier)
+           (sql-column-reference-for (rdbms::column-of column-alias) qualifier)))
 
 (defun sql-id-column-reference-for (qualifier)
   (sql-column-reference-for +oid-id-column-name+ qualifier))

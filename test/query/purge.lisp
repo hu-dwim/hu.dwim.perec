@@ -34,11 +34,11 @@
         (apply 'check-existing-records ,(first expected))))))
 
 ;;;
-;;;   0       1
+;;;   0       1           * = abstract
 ;;;          / \
 ;;;         2   3
 ;;;          \ / \ 
-;;;           4   7
+;;;           4*  7
 ;;;          / \
 ;;;         5   6
 

@@ -37,7 +37,7 @@
     :documentation "List of conditions of assert forms.")
    (action
     :collect
-    :type (member :collect :purge))
+    :type (member :collect :purge :update))
    (action-args
     nil
     :type list
@@ -90,7 +90,7 @@
               (list :flatp (flatp query)))
             (when (uniquep query)
               (list :uniquep #t))
-            (unless (eq (prefetch-mode-of query) :accessed)
+            (unless (eq (prefetch-mode-of query) :all)
               (list :prefetch-mode (prefetch-mode-of query)))
             (unless (eq (result-type-of query) 'list)
               (list :result-type (result-type-of query))))))
@@ -129,33 +129,60 @@
 
 (defgeneric select-form-of (query)
   (:method ((query query))
-           (flet ((optional (clause)
-                    (when clause (list clause))))
-             (bind ((action (ecase (action-of query) (:collect 'select) (:purge 'purge)))
-                    (action-list (action-args-of query))
-                    (options (options-of query))
-                    (variables (get-query-variable-names query))
-                    (asserts (asserts-of query))
-                    (where-clause (case (length asserts)
+    (flet ((optional (clause)
+             (when clause (list clause))))
+      (ecase (action-of query)
+        (:collect
+            (bind ((action-list (action-args-of query))
+                   (options (options-of query))
+                   (variables (get-query-variable-names query))
+                   (asserts (asserts-of query))
+                   (where-clause (case (length asserts)
+                                   (0 nil)
+                                   (1 `(where ,(first asserts)))
+                                   (t `(where (and ,@asserts)))))
+                   (group-by-clause (when (group-by-of query) `(group-by ,@(group-by-of query))))
+                   (having-clause (case (length (having-of query))
                                     (0 nil)
-                                    (1 `(where ,(first asserts)))
-                                    (t `(where (and ,@asserts)))))
-                    (group-by-clause (when (group-by-of query) `(group-by ,@(group-by-of query))))
-                    (having-clause (case (length (having-of query))
-                                     (0 nil)
-                                     (1 `(having ,(first (having-of query))))
-                                     (t `(having (and ,@(having-of query))))))
-                    (order-by-clause (when (order-by-of query) `(order-by ,@(order-by-of query))))
-                    (offset-clause (when (offset-of query) `(offset ,(offset-of query))))
-                    (limit-clause (when (limit-of query) `(limit ,(limit-of query)))))
-             `(,action ,options ,action-list
-                 (from ,@variables)
-                 ,@(optional where-clause)
-                 ,@(optional group-by-clause)
-                 ,@(optional having-clause)
-                 ,@(optional order-by-clause)
-                 ,@(optional offset-clause)
-                 ,@(optional limit-clause))))))
+                                    (1 `(having ,(first (having-of query))))
+                                    (t `(having (and ,@(having-of query))))))
+                   (order-by-clause (when (order-by-of query) `(order-by ,@(order-by-of query))))
+                   (offset-clause (when (offset-of query) `(offset ,(offset-of query))))
+                   (limit-clause (when (limit-of query) `(limit ,(limit-of query)))))
+              `(select ,@(optional options) ,action-list
+                       (from ,@variables)
+                       ,@(optional where-clause)
+                       ,@(optional group-by-clause)
+                       ,@(optional having-clause)
+                       ,@(optional order-by-clause)
+                       ,@(optional offset-clause)
+                       ,@(optional limit-clause))))
+        (:purge
+            (bind ((action-list (action-args-of query))
+                   (options (options-of query))
+                   (variables (get-query-variable-names query))
+                   (asserts (asserts-of query))
+                   (where-clause (case (length asserts)
+                                   (0 nil)
+                                   (1 `(where ,(first asserts)))
+                                   (t `(where (and ,@asserts))))))
+              `(purge ,@(optional options) ,action-list
+                      (from ,@variables)
+                      ,@(optional where-clause))))
+        (:update
+            (bind ((action-list (action-args-of query))
+                   (options (options-of query))
+                   (variables (get-query-variable-names query))
+                   (asserts (asserts-of query))
+                   (from-clause (when (rest variables) `(from ,@(rest variables))))
+                   (where-clause (case (length asserts)
+                                   (0 nil)
+                                   (1 `(where ,(first asserts)))
+                                   (t `(where (and ,@asserts))))))
+              `(update ,@(optional options) (,(first variables))
+                       (set ,@action-list)
+                       ,@(optional from-clause)
+                       ,@(optional where-clause))))))))
 
 
 (defgeneric collects-of (query)
@@ -235,7 +262,7 @@
 (defmethod make-query ((form cons) &optional lexical-variables)
 
   (labels ((query-macro-expand (form)
-             (if (member (first form) '(select purge))
+             (if (member (first form) '(select purge update))
                  form
                  (bind (((:values form expanded-p) (macroexpand-1 form)))
                    (if expanded-p
@@ -272,7 +299,7 @@
              (when (and clause (not (length=1 (rest clause))))
                (error 'malformed-query-clause-error
                       :form form
-                      :clause clause
+                      :clause-form clause
                       :detail "One condition expected in WHERE clause."))
              clause)
            (check-group-by-clause (clause)
@@ -359,6 +386,27 @@
                       :asserts asserts
                       :action :purge
                       :action-args purge-list
+                      options)))
+           (make-update (options update-list clauses)
+             (remf options :compile-at-macroexpand)
+             (bind ((lexical-variables (make-lexical-variables lexical-variables))
+                    (set-clause (find-clause 'set clauses))
+                    (from-clause (find-clause 'from clauses))
+                    (query-variables (make-query-variables (list* update-list (rest from-clause))))
+                    (where-clause (check-where-clause (find-clause 'where clauses)))
+                    (asserts (make-asserts where-clause (list* update-list (rest from-clause))))
+                    (extra-clauses (set-difference clauses (list set-clause from-clause where-clause))))
+               (when extra-clauses
+                 (error 'unrecognized-query-clause-error
+                        :form form
+                        :clause (first (first extra-clauses))))
+
+               (apply 'make-instance 'query
+                      :lexical-variables lexical-variables
+                      :query-variables query-variables
+                      :asserts asserts
+                      :action :update
+                      :action-args (rest set-clause)
                       options))))
     
     (pattern-case (query-macro-expand form)
@@ -372,6 +420,11 @@
        (make-purge ?options ?purge-list ?clauses))
       ((purge  (?is ?purge-list listp) . ?clauses)
        (make-purge nil ?purge-list ?clauses))
+      ((update (?and (?or nil ((?is ?k keywordp) . ?rest)) ?options) (?is ?update-list listp) .
+               ?clauses)
+       (make-update ?options ?update-list ?clauses))
+      ((update  (?is ?update-list listp) . ?clauses)
+       (make-update nil ?update-list ?clauses))
       (?otherwise
        (error 'query-syntax-error
               :form form)))))

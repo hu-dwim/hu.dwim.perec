@@ -7,18 +7,24 @@
 ;;; TODO: inherited associations mapped to column in the derived entity (missing)
 ;;;
 
-(defun transform-to-sql (condition)
-  "Transforms the CONDITION of an assert to an SQL expression."
-    (bind ((sql nil)
-          (success #f))
-     (catch 'sql-map-failed
-       (setf sql (syntax-to-sql condition))
-       (setf success #t))
-     (values sql success)))
+(defun transform-to-sql (syntax)
+  "Transforms the SYNTAX to an SQL expression. Returns the SQL expression and a success indicator."
+  (bind ((sql nil)
+         (success #f))
+    (catch 'sql-map-failed
+      (setf sql (syntax-to-sql syntax))
+      (setf success #t))
+    (values sql success)))
+
+(defun transform-to-sql* (syntax)
+  "Transforms the SYNTAX to a list of SQL expressions."
+  (bind (result)
+    (catch 'sql-map-failed
+      (setf result (multiple-value-list (syntax-to-sql syntax))))
+    result))
 
 (defun sql-map-failed ()
   (throw 'sql-map-failed nil))
-
 
 (defgeneric syntax-to-sql (syntax)
   (:documentation "Maps a lisp form to SQL.")
@@ -27,33 +33,33 @@
     (syntax-to-sql-literal-if-possible syntax))
 
   (:method ((literal literal-value))
-           (literal-to-sql (value-of literal) (persistent-type-of literal) literal))
+    (literal-to-sql (value-of literal) (persistent-type-of literal) literal))
 
   (:method ((variable lexical-variable))
     (emit-sql-literal variable))
 
   (:method ((variable query-variable))
-           (sql-id-column-reference-for variable))
+    (sql-id-column-reference-for variable))
 
   (:method ((access slot-access))
-           (slot-access-to-sql (accessor-of access) (arg-of access) access))
+    (slot-access-to-sql (accessor-of access) (arg-of access) access))
 
   (:method ((call function-call))
-           (bind ((fn (fn-of call))
-                  (args (args-of call)))
-             (function-call-to-sql fn (length args) (first args) (second args) call)))
+    (bind ((fn (fn-of call))
+           (args (args-of call)))
+      (function-call-to-sql fn (length args) (first args) (second args) call)))
 
   (:method ((call macro-call))
-           (bind ((macro (macro-of call))
-                  (args (args-of call)))
-             (macro-call-to-sql macro (length args) (first args) (second args) call))))
+    (bind ((macro (macro-of call))
+           (args (args-of call)))
+      (macro-call-to-sql macro (length args) (first args) (second args) call))))
 
 (defgeneric literal-to-sql (value type literal)
   (:documentation "Maps a literal value to SQL.")
 
   (:method (value type literal)
            (cond
-             ((and (keywordp value) (eq type 'keyword)) value)
+             ((and (keywordp value) (eq type 'keyword)) value) ; it is a keyword arg of a call
              ((syntax-object-p type) (emit-sql-literal literal))
              (t (value->sql-literal value type (compute-type-info type))))))
 
@@ -238,12 +244,16 @@
   (bind ((type (persistent-type-of syntax))
          (type-info (compute-type-info type)))
     (if type-info
-        (sql-unquote :form `(value->sql-literal ,syntax
-                                                ,(backquote-type-syntax type)
-                                                ,type-info))
-        (sql-unquote :form `(value->sql-literal ,syntax
-                                                ,(backquote-type-syntax type)
-                                                (compute-type-info ,(backquote-type-syntax type)))))))
+        (bind ((rdbms-types (ti-rdbms-types type-info))
+               (writer (ti-writer type-info)))
+          (values-list
+           (iter (for i index-of-sequence rdbms-types)
+                 (for rdbms-type in rdbms-types)
+                 (collect
+                     (sql-literal :value
+                                  (sql-unquote :form `(elt (funcall ,writer ,syntax) ,i))
+                                  :type rdbms-type)))))
+        (sql-unquote :form `(value->sql-literal ,syntax ,(backquote-type-syntax type) nil)))))
 
 (defgeneric unbound-check-for (syntax)
   (:documentation "Returns an SQL expression that checks if the value of SYNTAX is unbound.")

@@ -12,7 +12,7 @@
 
 (defcondition* query-syntax-error (query-error)
   ((form)
-   (detail))
+   (detail nil))
   (:report (lambda (condition stream)
              (with-slots (form detail) condition
                  (format stream "Syntax error~@[ (~A)~]:~%~%In query:~%~W"

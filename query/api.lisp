@@ -68,7 +68,7 @@
                      (eq (topic-of message) topic)
                      (after (date-of message) yesterday)))))"
   (declare (ignore select-list clauses))
-  (let* ((lexical-variables (remove-duplicates (arnesi::lexical-variables env))))
+  (bind ((lexical-variables (remove-duplicates (arnesi::lexical-variables env))))
     (if (and (consp (second select-form))
              (keywordp (first (second select-form)))
              (getf (second select-form) :compile-at-macroexpand))
@@ -93,9 +93,20 @@
 (defmacro purge (&whole purge-form (&rest purge-list) &body clauses &environment env)
   "TODO"
   (declare (ignore purge-list clauses))
-  (let* ((lexical-variables (remove-duplicates (arnesi::lexical-variables env))))
+  (bind ((lexical-variables (remove-duplicates (arnesi::lexical-variables env))))
     `(execute-query
       (make-query ',purge-form ',lexical-variables)
+      ,@lexical-variables)))
+
+(defmacro update (&whole update-form (&rest update-list) &body clauses &environment env)
+  "(update (instance user)
+     (set (name-of user) \"JD\")
+     (from ...)
+     (where (string= (name-of user) \"BB\")))"
+  (declare (ignore update-list clauses))
+  (bind ((lexical-variables (remove-duplicates (arnesi::lexical-variables env))))
+    `(execute-query
+      (make-query ',update-form ',lexical-variables)
       ,@lexical-variables)))
 
 (defmacro simple-select (options variable &body body)

@@ -1,0 +1,56 @@
+(in-package :cl-perec-test)
+
+(defsuite* (test/query/update :in test/query))
+
+(defpclass* update-1-test ()
+  ((int-attr :type integer-32)))
+
+(defpclass* update-2-test ()
+  ((int-attr :type integer-32)))
+
+(defixture update-query-fixture
+  (with-transaction
+    (purge-instances 'update-1-test)
+    (purge-instances 'update-2-test)
+    (make-instance 'update-1-test :int-attr 0)
+    (make-instance 'update-1-test :int-attr 1)
+    (make-instance 'update-2-test :int-attr 0)))
+
+(defmacro run-update-test (&body body)
+  `(progn
+    (update-query-fixture)
+    (with-transaction* (:default-terminal-action :rollback)
+      (when *show-query*
+        (format t "~{~&~A~}" ',body))
+      ,@body)))
+
+(defun check-database-content (expected)
+  (bind ((content (select ((int-attr-of instance))
+                    (from (instance update-1-test))
+                    (order-by :ascending (int-attr-of instance)))))
+    (is (equal content expected))))
+
+(deftest test/query/update/all ()
+  (run-update-test
+    (is (= 2
+           (update (instance update-1-test)
+             (set (int-attr-of instance) 2))))
+    (check-database-content '(2 2))))
+
+(deftest test/query/update/one ()
+  (run-update-test
+    (is (= 1
+           (update (instance update-1-test)
+             (set (int-attr-of instance) 2)
+             (where (= (int-attr-of instance) 0)))))
+    (check-database-content '(1 2))))
+
+(deftest test/query/update/joined ()
+  (run-update-test
+    (is (= 1
+           (update (instance update-1-test)
+             (set (int-attr-of instance) 2)
+             (from (instance2 update-2-test))
+             (where (= (int-attr-of instance) (int-attr-of instance2))))))
+    (check-database-content '(1 2))))
+

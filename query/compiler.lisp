@@ -10,13 +10,10 @@
 
 (enable-pattern-reader #\M)
 
-;;;; TODO: sorting and grouping
-;;;; TODO: sub queries?
-;;;; TODO: embedded SQL in queries
+;;;; TODO: subqueries
 ;;;; TODO: return nil if there is contradiction between asserts
 ;;;; TODO: eliminate tautologies from asserts
-;;;; TODO: n-m associations
-;;;; TODO: delete and update operations
+;;;; TODO: update
 ;;;; TODO: recursive selects
 ;;;; TODO: evaluate volatile expressions only once
 
@@ -131,7 +128,7 @@ with the result of the naively compiled query.")
 ;;;;
 (defclass* debug-query-compiler (query-compiler)
   ()
-  (:documentation "Query compiler which wraps the compiled code with a runtime check of the result."))
+  (:documentation "Query compiler which compiles the query with trivial-query-compiler and simple-query-compuler and checks that the results of the compiled queries matches. (used only for testing)"))
 
 (defmethod %compile-query ((compiler debug-query-compiler) (query query))
   "Emits code that checks that the result of COMPILED-FORM equals

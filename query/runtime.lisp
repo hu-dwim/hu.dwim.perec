@@ -83,38 +83,78 @@
        (slot-makunbound instance 'persistent)))))
 
 ;;;
+;;; Bracket
 ;;;
-;;;
-(defun execute-protected (init body cleanup)
+(defun execute-protected (init-command commands cleanup-command)
   (unwind-protect
-       (progn
-         (when init (execute init))
-         (mapc 'execute body))
-       (when cleanup (execute cleanup))))
+       (let (result)
+         (when init-command (execute init-command))
+         (dolist (command commands (values-list result))
+               (setf result (multiple-value-list (execute command)))))
+       (when cleanup-command (execute cleanup-command))))
 
 ;;;
 ;;; Writer
 ;;;
 
 (defstruct (type-info (:conc-name ti-))
-  column-type
-  mapping)
+  rdbms-types
+  writer ;; maps a lisp value to rdbms values
+  )
 
 (def function compute-type-info (type)
   (when (and (not (eq type +unknown-type+)) (not (contains-syntax-p type)))
-    (bind ((element-type
-            (if (set-type-p* type)
+    (bind ((set-type-p (set-type-p* type))
+           (element-type
+            (if set-type-p
                 (bind ((set-element (set-type-class-for type)))
                   (if (typep set-element 'standard-class)
                       (class-name set-element)
                       set-element))
                 (canonical-type-for type)))
-           (mapping (compute-mapping element-type))
-           (column-type (unless (persistent-class-type-p element-type)
-                          (last1 (rdbms-types-of mapping)))))
+           (mapping (compute-mapping element-type)))
       (make-type-info
-       :column-type column-type
-       :mapping mapping))))
+       :rdbms-types (compute-kludged-rdbms-types mapping element-type set-type-p)
+       :writer (compute-kludged-writer mapping element-type set-type-p)))))
+
+(def function compute-kludged-rdbms-types (mapping type set-type-p)
+  (if set-type-p
+      (list nil)
+      (bind ((rdbms-types (rdbms-types-of mapping)))
+        (ecase (length rdbms-types)
+          (1 rdbms-types)
+          (2 (cond
+               ((persistent-class-type-p type) (list (first rdbms-types))) ; only id column used
+               ((tagged-p mapping) (reverse rdbms-types)) ; TAG value is the second
+               (t (error "unsupported multi-column type: ~A" type))))))))
+
+(def function compute-kludged-writer (mapping type set-type-p)
+  (bind ((rdbms-types (rdbms-types-of mapping))
+         (column-count (length rdbms-types))
+         (writer (writer-of mapping)))
+    (if set-type-p
+        (bind ((element-writer (compose #'first (compute-kludged-writer mapping type #f))))
+          (lambda (value)
+            (list (mapcar element-writer value))))
+        (lambda (value)
+          (bind ((rdbms-values (make-array column-count)))
+            (declare (dynamic-extent rdbms-values))
+            (funcall writer value rdbms-values 0)
+
+            ;; KLUDGE: oddly enough, the current writer for boolean -> sql-boolean-type mapping
+            ;; creates "TRUE" or "FALSE". (should be #t or #f)
+            (bind ((rdbms-values (iter (for rdbms-type in rdbms-types)
+                                       (for rdbms-value in-vector rdbms-values)
+                                       (collect (if (and (typep rdbms-type 'sql-boolean-type)
+                                                         (typep rdbms-value 'string))
+                                                    (if value #t #f)
+                                                    rdbms-value)))))
+              (ecase column-count
+                (1 rdbms-values)
+                (2 (cond
+                     ((persistent-class-type-p type) (list (first rdbms-values))) ; only id column used
+                     ((tagged-p mapping) (nreverse rdbms-values)) ; TAG value is the second
+                     (t (error "unsupported multi-column type: ~A" type)))))))))))
 
 ;;;
 ;;; Conversion between lisp and sql values
@@ -139,8 +179,12 @@
     (assert (not (eql type +unknown-type+)))
     (assert type-info)
 
-    (sql-literal :value (value->sql-value value type-info)
-                 :type (ti-column-type type-info)))
+    (bind ((rdbms-types (ti-rdbms-types type-info))
+           (rdbms-values (funcall (ti-writer type-info) value)))
+      (values-list
+       (mapcar (lambda (value type)
+                 (sql-literal :value value :type type))
+               rdbms-values rdbms-types))))
 
   (:method (value (type persistent-class) type-info &optional args)
     (assert (null args))
@@ -177,6 +221,7 @@
 
   ;; Iterate on lists
 
+  #+nil
   (:method ((value list) (type (eql 'set)) type-info &optional args)
     (assert (not (null args)))
     (assert (every #L(typep !1 (first args)) value))
@@ -186,36 +231,9 @@
 
   (:method ((value list) (type (eql +unknown-type+)) type-info &optional args) ; FIXME hopefully not a form
     (assert (null args))
-    (sql-literal :value (mapcar
-                         #L(value->sql-literal !1 type type-info)
-                         value))))
-
-(defun value->sql-value (value type-info)
-  (declare (type type-info type-info))
-  (assert type-info)
-  (assert (<= 1 (length (rdbms-types-of (ti-mapping type-info))) 2))
-
-  ;; KLUDGE: oddly enough, the current writer for boolean -> sql-boolean-type mapping
-  ;; creates "TRUE" or "FALSE". (should be #t or #f)
-  (when (typep (ti-column-type type-info) 'sql-boolean-type)
-    (return-from value->sql-value (if value #t #f)))
-  
-  (bind ((sql-values (make-array 2)))
-    (declare (dynamic-extent sql-values))
-    (funcall (writer-of (ti-mapping type-info)) value sql-values 0)
-    (ecase (length (rdbms-types-of (ti-mapping type-info)))
-      (1 (elt sql-values 0))
-      (2 (cond
-           ((persistent-object-p value) ; only id column used
-            (elt sql-values 0))
-           ((tagged-p (ti-mapping type-info))
-            (assert (not (= (elt sql-values 0) (compute-type-tag 'unbound)))) ; check if BOUND
-            (elt sql-values 1))         ; omit TAG column
-           (t
-            (error "unsupported multi-column type: ~A" (ti-column-type type-info))))))))
+    (sql-literal :value (mapcar #L(value->sql-literal !1 type type-info) value))))
 
 (defun compose-type (type args)
   (if args (cons type args) type))
 
-  
 
