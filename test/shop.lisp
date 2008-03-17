@@ -49,7 +49,7 @@
   ((kind :type (member :desktop :notebook))
    (memory :type integer-32)))
 
-(defpclass* bycicle (product)
+(defpclass* bicycle (product)
   ((size :type integer-16)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -76,11 +76,11 @@
                   :kind :notebook
                   :unit-price 1400
                   :memory 2048)
-   (make-instance 'bycicle
+   (make-instance 'bicycle
                   :name "Csengi"
                   :unit-price 400
                   :size 26)
-   (make-instance 'bycicle
+   (make-instance 'bicycle
                   :name "Nandi"
                   :unit-price 500
                   :size 28)))
