@@ -441,7 +441,7 @@
           ',result-type
           (lambda (,scroll-offset ,scroll-limit)
             (declare (ignorable ,scroll-offset ,scroll-limit))
-            ,(rdbms::expand-sql-ast-into-lambda-form
+            ,(rdbms::expand-sql-ast-into-lambda-form ;; TODO export
               (sql-select
                 :distinct distinct
                 :columns columns
@@ -452,34 +452,32 @@
                 :order-by order-by
                 :offset (ecase result-type
                           (scroll (if offset
-                                      (sql-+ offset (sql-unquote :form
-                                                                 `(sql-literal :value ,scroll-offset
-                                                                               :type (sql-numeric-type))))
-                                      (sql-unquote :form `(sql-literal :value ,scroll-offset
-                                                                       :type (sql-numeric-type)))))
+                                      (sql-+ offset (sql-literal :value (sql-unquote :form scroll-offset)
+                                                                 :type (sql-numeric-type)))
+                                      (sql-literal :value (sql-unquote :form scroll-offset)
+                                                   :type (sql-numeric-type))))
                           (list offset))
                 :limit (ecase result-type
-                         (scroll (sql-unquote :form `(sql-literal :value ,scroll-limit
-                                                                  :type (sql-numeric-type))))
+                         (scroll (sql-literal :value (sql-unquote :form scroll-limit)
+                                              :type (sql-numeric-type)))
                          (list limit)))))
           ,@(when (eq result-type 'scroll)
-                  (list (partial-eval ;; TODO use expand-sql-ast-into-lambda-form
-                         `(sql-select
-                            :columns (list (cl-rdbms::sql-count-*))
-                            :tables (list (sql-table-reference-for
-                                           (sql-subquery
-                                             :query
-                                             (sql-select
-                                               :distinct ,distinct
-                                               :columns (list ,@columns)
-                                               :tables (list ,@tables)
-                                               :where ,where
-                                               :group-by (list ,@group-by)
-                                               :having ,having
-                                               :offset ,offset
-                                               :limit ,limit))
-                                           (gensym "pg"))))
-                         query)))))))
+                  (list (rdbms::expand-sql-ast-into-lambda-form
+                         (sql-select
+                           :columns (list (cl-rdbms::sql-count-*))
+                           :tables (list (sql-table-reference-for
+                                          (sql-subquery
+                                            :query
+                                            (sql-select
+                                              :distinct distinct
+                                              :columns columns
+                                              :tables tables
+                                              :where where
+                                              :group-by group-by
+                                              :having having
+                                              :offset offset
+                                              :limit limit))
+                                          (gensym "pg")))))))))))
 
   (:method ((filter filter-operation))
     (with-slots (input condition) filter
@@ -630,8 +628,8 @@
                               :visitor
                               (lambda (,row)
                                 (let ,bindings
-                                    (incf ,count)
-                                    (setf ,@(apply #'append place-value-pairs)))))))))
+                                  (incf ,count)
+                                  (setf ,@(apply #'append place-value-pairs)))))))))
              ((= 1 (hash-table-count table->column-value-pairs))
               ;; there is only one table to update => single SQL command
               (bind ((table (first (hash-table-keys table->column-value-pairs)))

@@ -221,14 +221,6 @@
 
   ;; Iterate on lists
 
-  #+nil
-  (:method ((value list) (type (eql 'set)) type-info &optional args)
-    (assert (not (null args)))
-    (assert (every #L(typep !1 (first args)) value))
-    (sql-literal :value (mapcar
-                         #L(value->sql-literal !1 (first args) type-info) ;; FIXME review: type-info should be transformed to element type
-                         value)))
-
   (:method ((value list) (type (eql +unknown-type+)) type-info &optional args) ; FIXME hopefully not a form
     (assert (null args))
     (sql-literal :value (mapcar #L(value->sql-literal !1 type type-info) value))))
