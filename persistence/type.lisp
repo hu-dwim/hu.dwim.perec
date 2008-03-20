@@ -567,8 +567,9 @@
 
 (def function persistent-class-type-p (type)
   "Returns true for persistent class types and false otherwise."
-  (and (symbolp type)
-       (find-persistent-class type)))
+  (or (typep type 'persistent-class)
+      (and (symbolp type)
+           (find-persistent-class type))))
 
 (def function persistent-class-type-p* (type)
   "Same as persistent-class-type-p but also accepts values such as (or unbound persistent-object), (or null persistent-object), (or unbound null persistent-object) etc."

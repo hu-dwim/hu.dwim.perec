@@ -307,6 +307,20 @@
   (awhen (data-view-of class)
     (ensure-exported it)))
 
+;;;;;;;;;;;
+;;; Mapping
+
+(defmethod compute-rdbms-types* ((mapped-type persistent-class) normalized-type)
+  (compute-rdbms-types* (class-name mapped-type) normalized-type))
+
+(defmethod compute-reader* ((mapped-type persistent-class) normalized-type)
+  (compute-reader* (class-name mapped-type) normalized-type))
+
+
+(defmethod compute-writer* ((mapped-type persistent-class) normalized-type)
+  (compute-writer* (class-name mapped-type) normalized-type))
+
+
 ;;;;;;;;;;;;
 ;;; Computed
 
