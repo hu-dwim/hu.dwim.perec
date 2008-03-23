@@ -53,9 +53,9 @@
                  :validity-starts (coerce validity-starts 'simple-vector)
                  :validity-ends (coerce validity-ends 'simple-vector)))
 
-(defprint-object (instance values-having-validity)
+(def print-object values-having-validity
   (write-char #\{)
-  (iter (for value :in-sequence (values-of instance))
+  (iter (for value :in-sequence (values-of self))
         (unless (first-iteration-p)
           (write-string ", "))
         (write value))

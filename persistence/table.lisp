@@ -32,10 +32,10 @@
     :documentation "An RDBMS index on this column."))
   (:documentation "An RDBMS column with some related RDBMS specific definitions."))
 
-(defprint-object (self table)
+(def print-object table
   (princ (name-of self)))
 
-(defprint-object (self column)
+(def print-object column
   (princ (rdbms::name-of self)))
 
 ;;;;;;;;;;;;;

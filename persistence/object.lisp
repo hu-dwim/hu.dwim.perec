@@ -89,7 +89,7 @@
            (write-string "nil"))
       (write-string "?")))
 
-(defprint-object (self persistent-object)
+(def print-object persistent-object
   "Prints the oid of the instance and whether the instance is known to be persistent or transient."
   (print-persistent-instance self))
 
