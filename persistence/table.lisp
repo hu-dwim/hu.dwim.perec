@@ -44,17 +44,14 @@
 (defun equal-type-p (type-1 type-2)
   (rdbms::equal-type-p type-1 type-2 nil))
 
-(define-constant +oid-id-sql-type+ (sql-integer-type :bit-size +oid-id-bit-size+)
-  :test equal-type-p
-  :documentation "The RDBMS type for the oid's id slot.")
+(def (constant :test 'equal-type-p) +oid-id-sql-type+ (sql-integer-type :bit-size +oid-id-bit-size+)
+  "The RDBMS type for the oid's id slot.")
 
-(define-constant +oid-class-id-sql-type+ (sql-integer-type :bit-size +oid-class-id-bit-size+)
-  :test equal-type-p
-  :documentation "The RDBMS type for the oid's class-id slot")
+(def (constant :test 'equal-type-p) +oid-class-id-sql-type+ (sql-integer-type :bit-size +oid-class-id-bit-size+)
+  "The RDBMS type for the oid's class-id slot")
 
-(define-constant +oid-class-name-sql-type+ (sql-character-varying-type :size +oid-class-name-character-size+)
-  :test equal-type-p
-  :documentation "The RDBMS type for the oid's class-name slot")
+(def (constant :test 'equal-type-p) +oid-class-name-sql-type+ (sql-character-varying-type :size +oid-class-name-character-size+)
+  "The RDBMS type for the oid's class-name slot")
 
 ;;;;;;;;;;
 ;;; Export

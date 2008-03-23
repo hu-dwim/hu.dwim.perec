@@ -11,9 +11,8 @@
     (defstruct h-unused-slot-marker
       "This structure is used to mark unused slot values for persistent slots. The type for that marker must be a subtype of t and cannot be a subtype of any other type.")))
 
-(define-constant +h-unused-slot-marker+ (make-h-unused-slot-marker)
-  :test equalp
-  :documentation "This value is used to signal unbound slot value returned from database.")
+(def (constant :test equalp) +h-unused-slot-marker+ (make-h-unused-slot-marker)
+  "This value is used to signal unbound slot value returned from database.")
 
 (defmethod make-load-form ((instance h-unused-slot-marker) &optional environment)
   (declare (ignore environment))
