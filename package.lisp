@@ -24,7 +24,9 @@
         :cl-ppcre
         :cl-serializer
         :cl-containers
-        :cl-rdbms)
+        :cl-rdbms
+        :cl-syntax-sugar
+        )
 
   (:shadow #:log
            #:name
@@ -37,6 +39,13 @@
            #:rdbms-name-for ;; TODO get rid of this
            #:float-type
            #:class-name-of)
+
+  (:shadowing-import-from :cl-syntax-sugar
+   ;; some clashes with arnesi
+   #:enable-sharp-l-syntax
+   #:with-sharp-l-syntax
+   #:with-package
+   )
 
   (:shadowing-import-from :iterate
                           #:finish)

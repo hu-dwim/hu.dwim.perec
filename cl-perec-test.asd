@@ -31,16 +31,9 @@
 
 (defsystem :cl-perec-test
   :description "Tests for cl-perec."
-  :depends-on (:iterate
-               :arnesi
-               :metabang-bind
-               :defclass-star
-               :local-time
+  :depends-on (:cl-perec
                :stefil
-               :cl-rdbms
-               :cl-perec
-               :contextl
-               :metacopy)
+               )
   :default-component-class local-cl-source-file
   :components
   ((:module :test

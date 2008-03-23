@@ -60,6 +60,7 @@
   :licence "Public Domain"
   :description "Persistent RDBMS based CLOS."
   :default-component-class local-cl-source-file
+  ;; TODO drop arnesi dependency
   :depends-on (:iterate
                :arnesi
                :alexandria
@@ -74,7 +75,10 @@
                :cl-serializer
                :cl-ppcre
                :cl-containers
-               :cl-rdbms)
+               :cl-rdbms
+               :cl-syntax-sugar
+               :cl-walker
+               )
   :components
   ((:file "package")
    (:file "configuration" :depends-on ("package"))
