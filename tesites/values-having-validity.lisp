@@ -66,17 +66,17 @@
 
 (defmacro-clause (for variables :in-values-having-validity v)
   "Use it like (for (value validity-start validity-end index) :in-values-having-validity v)"
-  (with-unique-names (value values validity-starts validity-ends)
+  (with-unique-names (value values values-having-validity-p validity-starts validity-ends)
     (let ((index (or (fourth variables) (gensym "INDEX-"))))
       `(progn
-        (with ,value = ,v)
-        (with ,values = (values-of ,value))
-        (with ,validity-starts = (validity-starts-of ,value))
-        (with ,validity-ends = (validity-ends-of ,value))
-        (for ,index :from 0 :below (length ,values))
-        (for ,(first variables) = (aref ,values ,index))
-        (for ,(second variables) = (aref ,validity-starts ,index))
-        (for ,(third variables) = (aref ,validity-ends ,index))))))
+         (with ,value = ,v)
+         (with ,values-having-validity-p = (values-having-validity-p ,value))
+         (with ,values = (if ,values-having-validity-p (values-of ,value) (vector ,value)))
+         (with ,validity-starts = (if ,values-having-validity-p (validity-starts-of ,value) (vector *validity-start*)))
+         (with ,validity-ends = (if ,values-having-validity-p (validity-ends-of ,value) (vector *validity-end*)))
+         (for ,index :from 0 :below (length ,values))
+         (for (values ,(first variables) ,(second variables) ,(third variables)) =
+              (values (aref ,values ,index) (aref ,validity-starts ,index) (aref ,validity-ends ,index)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; For primitive types
