@@ -134,7 +134,7 @@
              (:file "api")
              (:file "copy")
              (:file "macro")
-             (:file "syntax")
+             (:file "syntax" :depends-on ("copy"))
              (:file "runtime" :depends-on ("syntax"))
              (:file "scroll")
              (:file "result-set" :depends-on ("scroll"))

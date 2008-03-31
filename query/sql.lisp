@@ -176,10 +176,10 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 
 (defgeneric sql-select-list-for (element)
   (:method ((query query))
-           ;; select oids and prefetched slots
-           (mapcan
-            (lambda (variable) (sql-columns-for-variable variable (prefetch-mode-of query)))
-            (query-variables-of query))))
+    ;; select oids and prefetched slots
+    (mapcan
+     (lambda (variable) (sql-columns-for-variable variable (prefetch-mode-of query)))
+     (query-variables-of query))))
 
 (defun sql-columns-for-variable (variable prefetch-mode)
   (bind ((table-alias (sql-alias-for variable)))

@@ -42,25 +42,31 @@
 
 (defmacro define-syntax-node (name (&rest supers) slots)
   `(progn
-    ;; syntax-node class
-    ,(bind ((supers (append supers (list 'copyable-mixin))))
-           `(defclass* ,name ,supers
-             ,slots))
-    ;; make
-    ,(bind ((make-fn-name (concatenate-symbol "make-" name)))
-           `(defmacro ,make-fn-name (&rest args)
-             `(make-instance ',',name ,@args)))
-    ;; copy
-    ,(bind ((slot-names (mapcar #L(if (consp !1) (first !1) !1) slots)))
-           `(define-copy-method copy-inner-class progn ((self ,name) copy copy-htable)
-             (with-slot-copying (copy copy-htable self)
-               (copy-slots ,@slot-names))))
-    ;; predicate
-    ,(bind ((predicate-name (if (position #\- (symbol-name name))
-                                (concatenate-symbol name "-p")
-                                (concatenate-symbol name "p"))))
-           `(defun ,predicate-name (object)
-             (typep object ',name)))))
+     ;; syntax-node class
+     ,(bind ((supers (append supers (list 'copyable-mixin))))
+            `(defclass* ,name ,supers
+               ,slots))
+     ;; make
+     ,(bind ((make-fn-name (concatenate-symbol "make-" name)))
+            `(defmacro ,make-fn-name (&rest args)
+               `(make-instance ',',name ,@args)))
+     ;; copy
+     ,@(bind ((slot-names (mapcar #L(if (consp !1) (first !1) !1) slots)))
+             `((define-copy-method copy-inner-class progn ((self ,name) copy copy-htable)
+                                   (with-slot-copying (copy copy-htable self)
+                                     (copy-slots ,@slot-names)))
+               (define-copy-method (copy-inner-class copy-shallow) progn ((self ,name) copy copy-htable)
+                                   (with-slot-copying (copy copy-htable self)
+                                     ,@(mapcar (lambda (slot-name)
+                                                 `(when (slot-boundp self ',slot-name)
+                                                    (copy-set-slot ,slot-name (slot-value self ',slot-name))))
+                                               slot-names)))))
+     ;; predicate
+     ,(bind ((predicate-name (if (position #\- (symbol-name name))
+                                 (concatenate-symbol name "-p")
+                                 (concatenate-symbol name "p"))))
+            `(defun ,predicate-name (object)
+               (typep object ',name)))))
 
 ;;;
 ;;; Reader
@@ -265,31 +271,35 @@ Be careful when using in different situations, because it modifies *readtable*."
                 (call-next-method)))
   
   (:method ((syntax t) (subs null))
-           syntax)
+    syntax)
 
   (:method ((syntax t) (subs cons))
-           syntax)
+    syntax)
 
   (:method ((literal literal-value) (subs cons)) ; FIXME
-           (bind ((value (substitute-syntax (value-of literal) subs)))
-             (if (eq value (value-of literal))
-                 literal
-                 value)))
+    (bind ((value (substitute-syntax (value-of literal) subs)))
+      (if (eq value (value-of literal))
+          literal
+          value)))
 
   (:method ((cons cons) (subs cons))
-           (rcons (substitute-syntax (car cons) subs)
-                  (substitute-syntax (cdr cons) subs)
-                  cons))
+    (rcons (substitute-syntax (car cons) subs)
+           (substitute-syntax (cdr cons) subs)
+           cons))
 
   (:method ((unparsed unparsed-form) (subs cons))
-           (setf (form-of unparsed) (substitute-syntax (form-of unparsed) subs))
-           unparsed)
+    (bind ((form (substitute-syntax (form-of unparsed) subs)))
+      (if (eq form (form-of unparsed))
+          unparsed
+          (aprog1 (copy-shallow form)
+            (setf (form-of it) form)))))
 
   (:method ((compound compound-form) (subs cons))
-           (setf (operands-of compound) (substitute-syntax (operands-of compound) subs))
-           compound)
-
-  )
+    (bind ((operands (substitute-syntax (operands-of compound) subs)))
+      (if (eq operands (operands-of compound))
+          compound
+          (aprog1 (copy-shallow compound)
+            (setf (operands-of it) operands))))))
 
 (defgeneric syntax-fold (syntax f g)
 

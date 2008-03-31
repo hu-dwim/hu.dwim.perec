@@ -5,17 +5,16 @@
 ;;;; Lisp code that executes the query is generated from the plan.
 ;;;;
 
-
-(defclass* plan-node ()
+(defcclass* plan-node ()
   ((query)
-   (binder :type function :documentation "Function that creates a list of bindings
+   (binder nil :type function :documentation "Function that creates a list of bindings
  when called with the name of the input record.")))
 
-(defclass* list-result-node (plan-node)
+(defcclass* list-result-node (plan-node)
   ((list :type list))
   (:documentation "Creates a result-set from a constant list."))
 
-(defclass* sql-query-node (plan-node)
+(defcclass* sql-query-node (plan-node)
   ((result-type)
    (distinct nil)
    (columns)
@@ -28,41 +27,42 @@
    (limit nil))
   (:documentation "Creates a result-set from the records returned by an SQL query."))
 
-(defclass* unary-operation-node (plan-node)
-  ((input :type plan-node))
+(defcclass* unary-operation-node (plan-node)
+  ((binder (compute-as (binder-of (input-of -self-))))
+   (input :type plan-node))
   (:documentation "Base class for transformer nodes with one input."))
 
-(defclass* filter-operation (unary-operation-node)
+(defcclass* filter-operation (unary-operation-node)
   ((condition :documentation "A boolean expression."))
   (:documentation "Filters the result-set by a boolean condition."))
 
-(defclass* projection-operation (unary-operation-node)
+(defcclass* projection-operation (unary-operation-node)
   ((values :type list :documentation "List of expressions."))
   (:documentation "Computes a function of the input record."))
 
-(defclass* sort-operation (unary-operation-node)
+(defcclass* sort-operation (unary-operation-node)
   ((sort-spec :type list :documentation "List of :ascending/:descending and expression pairs.")))
 
-(defclass* unique-operation (unary-operation-node)
+(defcclass* unique-operation (unary-operation-node)
   ()
   (:documentation "Make the records of the result-set unique. (Using EQUAL)"))
 
-(defclass* group-operation (unary-operation-node)
+(defcclass* group-operation (unary-operation-node)
   ((group-by :documentation "Grouping expressions.")
    (collected-expressions :documentation "Collected expressions, each expression depends on the grouping expressions."))
   (:documentation "Groups records and computes aggregate functions."))
 
-(defclass* limit-operation (unary-operation-node)
+(defcclass* limit-operation (unary-operation-node)
   ((offset :documentation "Integer expression or NIL.")
    (limit :documentation "Integer expression or NIL."))
   (:documentation "Limits the range of the records by offset/limit."))
 
-(defclass* conversion-operation (unary-operation-node)
+(defcclass* conversion-operation (unary-operation-node)
   ((result-type)
    (flatp))
   (:documentation "Converts the result-set to the expected result type."))
 
-(defclass* delete-operation (unary-operation-node)
+(defcclass* delete-operation (unary-operation-node)
   ((variables))
   (:documentation "Makes the instances assigned to VARIABLES in the input result-set transient."))
 
@@ -169,7 +169,6 @@
     (if asserts
        (make-instance 'filter-operation
                       :query query
-                      :binder (binder-of input)
                       :input input
                       :condition `(and ,@asserts))
        input)))
@@ -196,7 +195,6 @@
     (if having
        (make-instance 'filter-operation
                       :query query
-                      :binder (binder-of input)
                       :input input
                       :condition `(and ,@having))
        input)))
@@ -210,7 +208,6 @@
         (progn
           (make-instance 'sort-operation
                          :query query
-                         :binder (binder-of input)
                          :input input
                          :sort-spec order-by))
         input)))
@@ -226,7 +223,6 @@
   (if (uniquep query)
       (make-instance 'unique-operation
                      :query query
-                     :binder (binder-of input)
                      :input input)
       input))
 
@@ -234,7 +230,6 @@
   (if (or (offset-of query) (limit-of query))
       (make-instance 'limit-operation
                      :query query
-                     :binder (binder-of input)
                      :input input
                      :offset (offset-of query)
                      :limit (limit-of query))
@@ -343,6 +338,7 @@
                 grouping)))
 
   (:method ((projection projection-operation))
+    ;; TODO eliminate projection if each rdbms value is mapped by identity-reader
            (call-next-method)
            (typecase (input-of projection)
              (sql-query-node
@@ -358,11 +354,11 @@
                                                                    (persistent-class-p type)
                                                                    (set-type-p* type)))))
                                                       collects))
-                     ((:values sql-exprs lisp-exprs) (to-sql collects)))
+                     ((:values sql-exprs lisp-exprs) (to-sql* collects)))
                 (if (or lisp-exprs persistent-object-query-p) ;; TODO refine condition
                     projection                                ;; all needed table is joined?
                     (progn
-                      (setf (binder-of sql-query) (field-binder collects) ;;(binder-of projection)
+                      (setf (binder-of sql-query) (field-binder collects)
                             (columns-of sql-query) sql-exprs)
                       projection))))
              (t
@@ -372,12 +368,13 @@
     (call-next-method)
     (typecase (input-of limit-op)
       (projection-operation
+       ;; swap limit and projection
        (bind ((projection (input-of limit-op)))
          (setf (input-of limit-op) (input-of projection)
-               (binder-of limit-op) (binder-of (input-of limit-op))
                (input-of projection) limit-op)
          (%optimize-plan projection)))
       (sql-query-node
+       ;; add limit/offset to sql query
        (bind ((sql-query (input-of limit-op))
               (lisp-offset (offset-of limit-op))
               (lisp-limit (limit-of limit-op))
@@ -411,6 +408,14 @@
               (collect sql into sql-forms)
               (collect form into lisp-forms)))
         (finally (return-from to-sql (values sql-forms lisp-forms)))))
+
+(defun to-sql* (list)
+  (iter (for form in list)
+        (bind ((sql (transform-to-sql* form)))
+          (if sql
+              (appending sql into sql-forms)
+              (collect form into lisp-forms)))
+        (finally (return-from to-sql* (values sql-forms lisp-forms)))))
 
 (defun sql-text-p (expr)
   (and (function-call-p expr)
@@ -482,42 +487,34 @@
   (:method ((filter filter-operation))
     (with-slots (input condition) filter
       (with-unique-names (row)
-        (bind (((:values bindings condition) (funcall (binder-of input) row condition)))
+        (bind (((:values bindings condition) (generate-bindings input row condition)))
           `(make-filtered-result-set
             ,(%compile-plan input)
             (lambda (,row)
-              (let (,@bindings)
+              (let* (,@bindings)
                 ,condition)))))))
 
   (:method ((projection projection-operation))
     (with-slots (input values) projection
       (with-unique-names (row)
-        (bind (((:values bindings values) (funcall (binder-of input) row values)))
+        (bind (((:values bindings values) (generate-bindings input row values)))
           `(make-mapped-result-set
             ,(%compile-plan input)
             (lambda (,row)
-              (let (,@bindings)
+              (let* (,@bindings)
                 ;;,(ignorable-variables-declaration variables)
                 (list ,@values))))))))
 
   (:method ((sort sort-operation))
     (with-slots (input sort-spec) sort
       (with-unique-names (row1 row2)
-        (flet ((rename-variables (expr suffix)
-                 (bind ((variables (collect-query-variables expr))
-                        (subs (mapcar #L(cons !1 (concatenate-symbol (name-of !1) suffix))
-                                      variables)))
-                   (substitute-syntax expr subs))))
-          (bind ((binder (binder-of input))
-                 (bindings1 (funcall binder row1 sort-spec :suffix "1"))
-                 (bindings2 (funcall binder row2 sort-spec :suffix "2"))
-                 (sort-spec1 (rename-variables (copy-query sort-spec) "1")) ;; FIXME
-                 (sort-spec2 (rename-variables (copy-query sort-spec) "2")))
-            `(make-ordered-result-set
-              ,(%compile-plan input)
-              (lambda (,row1 ,row2)
-                (let (,@bindings1 ,@bindings2)
-                  ,(generate-comparator sort-spec1 sort-spec2)))))))))
+        (bind (((:values bindings1 sort-spec1) (generate-bindings input row1 sort-spec))
+               ((:values bindings2 sort-spec2) (generate-bindings input row2 sort-spec)))
+          `(make-ordered-result-set
+            ,(%compile-plan input)
+            (lambda (,row1 ,row2)
+              (let* (,@bindings1 ,@bindings2)
+                ,(generate-comparator sort-spec1 sort-spec2))))))))
 
   (:method ((delta unique-operation))
     (with-slots (input) delta
@@ -527,19 +524,18 @@
   (:method ((gamma group-operation))
     (with-slots (input group-by collected-expressions) gamma
       (with-unique-names (row acc)
-        (bind ((binder (binder-of input))
-               ((:values group-by-bindings group-by) (funcall binder row group-by))
-               ((:values collect-bindings collected-expressions) (funcall binder row collected-expressions)))
+        (bind (((:values group-by-bindings group-by) (generate-bindings input row group-by))
+               ((:values collect-bindings collected-expressions) (generate-bindings input row collected-expressions)))
           `(make-grouped-result-set
             ,(%compile-plan input)
             (lambda (,row)
               (declare (ignorable ,row))
-              (let (,@group-by-bindings)
+              (let* (,@group-by-bindings)
                 (list ,@group-by))) ;; FIXME compared with equal, not ok for local-time
             (lambda ()
               ,(aggregate-init-fn-body-for collected-expressions))
             (lambda (,row ,acc)
-              (let (,@collect-bindings)
+              (let* (,@collect-bindings)
                 ,(aggregate-collect-fn-body-for acc collected-expressions)))
             (lambda (,acc)
               ,(aggregate-map-fn-body-for acc collected-expressions)))))))
@@ -569,11 +565,11 @@
                 (condition (condition-of input)))
            (assert (typep input2 'sql-query-node))
            (with-unique-names (row)
-             (bind ((bindings (funcall (binder-of input) row (append variables condition))))
+             (bind ((bindings (generate-bindings input row (append variables condition))))
                `(execute ,(%compile-plan input2)
                          :visitor
                          (lambda (,row)
-                           (let ,bindings
+                           (let* ,bindings
                              (when ,condition
                                ,@(mapcar
                                   (lambda (variable) `(make-transient ,variable))
@@ -602,13 +598,13 @@
            (bind ((filter input)
                   (sql-query (input-of filter))
                   (condition (condition-of filter))
-                  (bindings (funcall (binder-of filter) row (append place-value-pairs condition))))
+                  (bindings (generate-bindings filter row (append place-value-pairs condition))))
              (assert (typep sql-query 'sql-query-node))
              `(let ((,count 0))
                 (execute ,(%compile-plan sql-query)
                          :visitor
                          (lambda (,row)
-                           (let ,bindings
+                           (let* ,bindings
                              (when ,condition
                                (incf ,count)
                                (setf ,@(apply #'append place-value-pairs))))))
@@ -622,12 +618,12 @@
              ((null table->column-value-pairs)
               ;; some place is not a slot access => execute in lisp
               (with-unique-names (row count)
-                (bind ((bindings (funcall (binder-of sql-query) row place-value-pairs)))
+                (bind ((bindings (generate-bindings sql-query row place-value-pairs)))
                   `(prog1-bind ,count 0
                      (execute ,(%compile-plan sql-query)
                               :visitor
                               (lambda (,row)
-                                (let ,bindings
+                                (let* ,bindings
                                   (incf ,count)
                                   (setf ,@(apply #'append place-value-pairs)))))))))
              ((= 1 (hash-table-count table->column-value-pairs))
@@ -666,88 +662,120 @@
 ;;;
 ;;; Helpers
 ;;;
+(deftype syntax* ()
+  '(or cons syntax-object))
+
+(deftype binder ()
+  '(function
+    (symbol  ; name of the 'row' variable
+     symbol  ; name of the 'index' variable
+     syntax*) ; expressions that use the bindings
+    ;; ->
+    (values
+     list       ; list of let-bindings (updating index)
+     syntax*))) ; expressions in which the bound expressions are substituted by the variables
+
+(defun binder-append (binder1 binder2)
+  (lambda (row index referenced-by)
+    (bind (((:values bindings1 expr1)
+            (funcall binder1 row index referenced-by))
+           ((:values bindings2 expr2)
+            (funcall binder2 row index expr1)))
+      (values
+       (append bindings1 bindings2)
+       expr2))))
+
+(def function generate-bindings (node row referenced-by)
+  (bind ((index (gensym "I"))
+         (binder (binder-of node))
+         ((:values bindings exprs) (funcall binder row index referenced-by)))
+    (values
+     `((,index 0) ,@bindings)
+     exprs)))
 
 (defun field-binder (exprs)
-  (bind ((names (mapcar (lambda (expr)
-                          (if (and (function-call-p expr)
-                                   (aggregate-function-name-p (fn-of expr)))
-                              (gensym (symbol-name (fn-of expr)))
-                              (gensym "VAR")))
-                        exprs))
-         (substitutions (mapcar #'cons exprs names)))
-    (lambda (row referenced-by &key suffix (start-index 0))
+  (lambda (row i referenced-by)
+    (bind ((names (mapcar (lambda (expr)
+                            (if (function-call-p expr)
+                                (gensym (symbol-name (fn-of expr)))
+                                (gensym "VAR")))
+                          exprs))
+           (substitutions (mapcar #'cons exprs names)))
       (values
-       (iter (for field in names)
+       (iter (for name in names) ;; TODO generate binding for referenced exprs only
              (for expr in exprs)
-             (for i from start-index)
-             (for variable = (if suffix (concatenate-symbol field suffix) field))
-             (for type = (persistent-type-of expr))
-             (collect
-                 `(,variable
-                   ,(cond
-                     ((query-variable-p expr)
-                      `(object-reader ,row ,i))
-                     ((and (slot-access-p expr)
-                           (not (contains-syntax-p type))
-                           (not (eq type +unknown-type+)))
-                      `(funcall ',(compute-column-reader (persistent-type-of expr)) ,row ,i))
-                     ((and (slot-access-p expr) (not (eq type +unknown-type+)))
-                      `(funcall (compute-column-reader ,(backquote-type-syntax (persistent-type-of expr))) ,row ,i))
-                     (t
-                      `(if (eq (elt ,row ,i) :null) nil (elt ,row ,i))))))) ;; FIXME call reader
-       (substitute-syntax referenced-by substitutions) ;; FIXME mutating
-       (+ start-index (length names))))))
+             (bind (((:values reader column-count) (compute-column-reader-form (persistent-type-of expr))))
+               (collect `(,name (prog1 (funcall ,reader ,row ,i) (incf ,i ,column-count))))))
+       (substitute-syntax referenced-by substitutions)))))
 
-(defcfun (compute-column-reader :memoize-test-fn equalp :computed-in compute-as) (type)
-  (bind ((mapping (compute-mapping (canonical-type-for type)))
-         (reader (reader-of mapping)))
-    (if (tagged-p mapping)
-        (lambda (row index) ; KLUDGE add missing tag
-          (bind ((rdbms-values (make-array 2))
-                 (value (elt row index))
-                 (tag (if (eq value :null) 2 0)))
-            (setf (aref rdbms-values 0) tag
-                  (aref rdbms-values 1) value)
-            (funcall reader rdbms-values 0)))
-        reader)))
+(defcfun (compute-column-reader-form :memoize-test-fn equalp :computed-in compute-as) (type)
+  (cond ((eq type +unknown-type+)
+         (values
+          (lambda (row index)
+            (bind ((element (elt row index)))
+              (if (eq element :null) nil element)))
+          1))
+        ((contains-syntax-p type)
+         (values ;; TODO optimize: do not call compute-column-reader-form twice
+          `(nth-value 0 (compute-column-reader-form ,(backquote-type-syntax type)))
+          `(nth-value 1 (compute-column-reader-form ,(backquote-type-syntax type)))))
+        ((~persistent-class-type-p type)
+         (values
+          '(quote object-reader)
+          +oid-column-count+))
+        (t (bind ((mapping (compute-mapping (canonical-type-for type)))
+                  (reader (reader-of mapping)))
+             (if (tagged-p mapping)
+                 (values ;; FIXME columns generated in reversed order for tagged types
+                  (lambda (row index)
+                    (funcall reader (nreverse (subseq row index (+ index 2))) 0))
+                  2)
+                 (values
+                  `(quote ,reader)
+                  (length (rdbms-types-of mapping))))))))
+
+(defun ~persistent-class-type-p (type)
+  "KLUDGE because (subtypep '(and pclass-1 pclass-2) 'persistent-object) does not work."
+  (flet ((type-equal (type-1 type-2)
+           (bind (((:values subtype-p-1 valid-p-1) (subtypep type-1 type-2))
+                  ((:values subtype-p-2 valid-p-2) (subtypep type-2 type-1)))
+             (values (and subtype-p-1 subtype-p-2)
+                     (and valid-p-1 valid-p-2)))))
+    (type-equal type (canonical-type-for `(and ,type persistent-object)))))
 
 (defun query-variable-binder (query)
   (query-variable-binder2 (query-variables-of query)
                           (prefetch-mode-of query)))
 
 (defun query-variable-binder2 (variables &optional (prefetch-mode :accessed))
-  (lambda (row referenced-by &key suffix (start-index 0))
-      (bind ((referenced-variables (collect-query-variables referenced-by))
-             (end-index start-index))
-        (flet ((name-for (variable)
-                (if suffix
-                    (concatenate-symbol (name-of variable) suffix)
-                    (name-of variable))))
-          (values
-           (iter (for variable in variables)
-                 (for slots = (prefetched-slots-for variable prefetch-mode))
-                 (for column-count = (reduce '+ slots
-                                             :key 'column-count-of
-                                             :initial-value +oid-column-count+))
-                 (for i initially 0 then (+ i column-count))
-                 (incf end-index column-count)
-                 (if (member variable referenced-variables)
-                     (collect `(,(name-for variable)
-                                (cache-instance-with-prefetched-slots ,row ,i ,(persistent-type-of variable) ',slots
-                                 ',(mapcar #'column-count-of slots))))))
-           referenced-by
-           end-index)))))
-
-(defun binder-append (binder1 binder2)
-  (lambda (row referenced-by &key suffix)
-    (bind (((:values bindings1 expr1 end-index1)
-            (funcall binder1 row referenced-by :suffix suffix :start-index 0))
-           ((:values bindings2 expr2 end-index2)
-            (funcall binder2 row expr1 :suffix suffix :start-index end-index1)))
+  (lambda (row i referenced-by)
+    (bind ((referenced-variables (collect-query-variables referenced-by))
+           (names (mapcar (lambda (variable) (gensym (symbol-name (name-of variable)))) variables))
+           (substitutions (mapcar #'cons variables names)))
       (values
-       (append bindings1 bindings2)
-       expr2
-       end-index2))))
+       (iter (with skipped-columns = 0)
+             (for variable in variables)
+             (for name in names)
+             (for type = (persistent-type-of variable))
+             (for slots = (prefetched-slots-for variable prefetch-mode))
+             (for column-counts = (mapcar #'column-count-of slots))
+             (for total-column-count = (reduce '+ column-counts :initial-value +oid-column-count+))
+             (cond ((not (member variable referenced-variables))
+                    (incf skipped-columns total-column-count))
+                   
+                   ((zerop skipped-columns)
+                    (collect
+                        `(,name (prog1
+                                    (cache-instance-with-prefetched-slots ,row ,i ,type ',slots ',column-counts)
+                                  (incf ,i ,total-column-count)))))
+                   (t
+                    (collect
+                        `(,name (prog1
+                                    (cache-instance-with-prefetched-slots
+                                     ,row (+ ,i ,skipped-columns) ,type ',slots ',column-counts)
+                                  (incf ,i ,(+ total-column-count skipped-columns)))))
+                    (setf skipped-columns 0))))
+       (substitute-syntax referenced-by substitutions)))))
 
 (defun ignorable-variables-declaration (variables)
   `(declare (ignorable ,@(mapcar 'name-of variables))))
