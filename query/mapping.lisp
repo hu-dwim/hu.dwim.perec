@@ -361,7 +361,8 @@
       (bind ((mapping (compute-mapping (canonical-type-for type)))
              (unit-types (remove 'unbound (unit-types-of mapping))))
         (if unit-types
-            (sql-literal :value (compute-type-tag (first unit-types))) ; KLUDGE
+             ; FIXME does not work for (or null h-unused ...)
+            (sql-literal :value (compute-type-tag (first unit-types)))
             (sql-literal :value 0)))))
 
   (:method ((access slot-access))

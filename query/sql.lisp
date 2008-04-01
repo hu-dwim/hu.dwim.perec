@@ -572,6 +572,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 
 (defun sql-equal (sql-expr-1 sql-expr-2 &key unbound-check-1 unbound-check-2 null-check-1 null-check-2
                   null-tag-1 null-tag-2)
+
   "Generates an equality test for the two sql expression and the corresponding boundness checks.
 If one of the values is unbound, the test yields NULL, otherwise it yields true or false (two NULL
 value is equal, when they represent the NIL lisp value)."
@@ -582,13 +583,13 @@ value is equal, when they represent the NIL lisp value)."
              ((and unbound-check null-check)
               (sql-if unbound-check
                       (sql-null-literal)
-                      (sql-= null-tag-1 null-tag-2)))
+                      (sql-and null-check (sql-= null-tag-1 null-tag-2))))
              (unbound-check
               (sql-if unbound-check
                       (sql-null-literal)
                       (sql-false-literal)))
              (null-check
-              (sql-= null-tag-1 null-tag-2))
+              (sql-and null-check (sql-= null-tag-1 null-tag-2)))
              (t
               (sql-false-literal))))
          (wrap-with-null-check (eq-check)
