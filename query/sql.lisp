@@ -707,9 +707,10 @@ value is equal, when they represent the NIL lisp value)."
 (defun sql-null-literal-p (sql)
   (or (null sql)
       (and (typep sql 'sql-literal)
-           (member (cl-rdbms::value-of sql) '(nil :null))
-           (or (null (cl-rdbms::type-of sql))
-               (not (typep (cl-rdbms::type-of sql) 'cl-rdbms::sql-boolean-type))))))
+           (or (eq (rdbms::value-of sql) :null)
+               (and (eq (rdbms::value-of sql) nil)
+                    (or (null (cl-rdbms::type-of sql))
+                        (not (typep (cl-rdbms::type-of sql) 'cl-rdbms::sql-boolean-type))))))))
 
 (defun sql-literal-p (sql)
   (typep sql 'cl-rdbms::sql-literal*))
