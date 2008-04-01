@@ -147,9 +147,10 @@
             (iter (with in-requested-validity-range = #f)
                   (for (value validity-start validity-end) :in-values-having-validity values-having-validity)
                   (if in-requested-validity-range
-                      (when (local-time<= validity-start requested-validity-end validity-end)
-                        (push-value-with-validity value validity-start requested-validity-end)
-                        (setf in-requested-validity-range #f))
+                      (if (local-time<= validity-start requested-validity-end validity-end)
+                          (progn (push-value-with-validity value validity-start requested-validity-end)
+                                 (setf in-requested-validity-range #f))
+                          (push-value-with-validity value validity-start validity-end))
                       (when (local-time<= validity-start requested-validity-start validity-end)
                         (push-value-with-validity value requested-validity-start validity-end)
                         (setf in-requested-validity-range #t)))))

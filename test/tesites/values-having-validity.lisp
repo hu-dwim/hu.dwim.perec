@@ -51,20 +51,25 @@
   (iter (for (value validity-start validity-end index) :in-values-having-validity
              (extract-values-having-validity
               (make-instance 'values-having-validity
-                             :values (make-array 2 :initial-contents '(1000 2000))
-                             :validity-starts (make-array 2 :initial-contents (list (parse-timestring "2006-01-01TZ")
-                                                                                    (parse-timestring "2007-01-01TZ")))
-                             :validity-ends (make-array 2 :initial-contents (list (parse-timestring "2007-01-01TZ")
-                                                                                  (parse-timestring "2008-01-01TZ"))))
+                             :values (make-array 3 :initial-contents '(1000 2000 3000))
+                             :validity-starts (make-array 3 :initial-contents (list (parse-timestring "2006-01-01TZ")
+                                                                                    (parse-timestring "2007-01-01TZ")
+                                                                                    (parse-timestring "2008-01-01TZ")))
+                             :validity-ends (make-array 3 :initial-contents (list (parse-timestring "2007-01-01TZ")
+                                                                                  (parse-timestring "2008-01-01TZ")
+                                                                                  (parse-timestring "2009-01-01TZ"))))
               (parse-timestring "2006-06-06TZ")
-              (parse-timestring "2007-07-07TZ")))
+              (parse-timestring "2008-07-07TZ")))
         (ecase index
           (0 (is (= value 1000))
              (is (local-time= validity-start (parse-timestring "2006-06-06TZ")))
              (is (local-time= validity-end (parse-timestring "2007-01-01TZ"))))
           (1 (is (= value 2000))
              (is (local-time= validity-start (parse-timestring "2007-01-01TZ")))
-             (is (local-time= validity-end (parse-timestring "2007-07-07TZ")))))))
+             (is (local-time= validity-end (parse-timestring "2008-01-01TZ"))))
+          (2 (is (= value 3000))
+             (is (local-time= validity-start (parse-timestring "2008-01-01TZ")))
+             (is (local-time= validity-end (parse-timestring "2008-07-07TZ")))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Children having validity
