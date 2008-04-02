@@ -13,13 +13,18 @@
 
 (defmethod restore-slot ((t-class persistent-class-t) (t-instance t-object) (t-slot persistent-effective-slot-definition-t))
   (flet ((no-value-function (&optional validity-start validity-end)
-           (bind ((slot-type (canonical-type-of t-slot)))
-             (cond
-               ((null-subtype-p slot-type) nil)
-               ((unbound-subtype-p slot-type) +unbound-slot-marker+)
-               (t (error "No history record for ~S~:[~*~; before ~S~]~:[~2*~; with validity between ~S and ~S~]."
-                         t-instance (temporal-p t-slot) (when (temporal-p t-slot) *t*)
-                         (time-dependent-p t-slot) validity-start validity-end))))))
+           (declare (ignorable validity-start validity-end))
+           (bind ((slot-type (canonical-type-of t-slot))
+                  ((:values t-slot-default-value has-default-p) (default-value-for-type slot-type)))
+             (if has-default-p
+                 t-slot-default-value
+                 ;; There is no record for temporal slots before the time of creation.
+                 ;; Consider the slot unbound even if its type does not allow it.
+                 +unbound-slot-marker+
+                 #+nil
+                 (error "No history record for ~S~:[~*~; before ~S~]~:[~2*~; with validity between ~S and ~S~]."
+                        t-instance (temporal-p t-slot) (when (temporal-p t-slot) *t*)
+                        (time-dependent-p t-slot) validity-start validity-end)))))
     (bind ((records (select-slot-values-with-validity t-class t-instance t-slot)))
       (if (time-dependent-p t-slot)
           (collect-values-having-validity

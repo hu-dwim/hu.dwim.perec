@@ -7,10 +7,28 @@
 (in-package :cl-perec-test)
 
 (defpclass* tesites-complex-test ()
+  ((slot 0 :type integer-32)
+   (temporal-slot 0 :type integer-32 :temporal #t)
+   (time-dependent-slot 0 :type integer-32 :time-dependent #t)
+   (temporal-and-time-dependent-slot 0 :type integer-32 :temporal #t :time-dependent #t)))
+
+(defpclass* tesites-complex-null-test ()
   ((slot :type (or null integer-32))
    (temporal-slot :type (or null integer-32) :temporal #t)
    (time-dependent-slot :type (or null integer-32) :time-dependent #t)
    (temporal-and-time-dependent-slot :type (or null integer-32) :temporal #t :time-dependent #t)))
+
+(defpclass* tesites-complex-unbound-test ()
+  ((slot :type (or unbound integer-32))
+   (temporal-slot :type (or unbound integer-32) :temporal #t)
+   (time-dependent-slot :type (or unbound integer-32) :time-dependent #t)
+   (temporal-and-time-dependent-slot :type (or unbound integer-32) :temporal #t :time-dependent #t)))
+
+(defpclass* tesites-complex-unbound-null-test ()
+  ((slot :type (or unbound null integer-32))
+   (temporal-slot :type (or unbound null integer-32) :temporal #t)
+   (time-dependent-slot :type (or unbound null integer-32) :time-dependent #t)
+   (temporal-and-time-dependent-slot :type (or unbound null integer-32) :temporal #t :time-dependent #t)))
 
 (defpclass* tesites-complex-slot-test ()
   ((slot :type (or null integer-32))))
@@ -58,7 +76,9 @@
                                         (and (equal (oid-of instance) (oid-of (he-instance entry)))
                                              (eq slot-name (he-slot-name entry))))
                                       *history-entries*))
-         (default-value nil))
+         ((:values slot-default-value has-default-p) (prc::default-value-for-type (prc::canonical-type-of slot)))
+         (default-value (if has-default-p slot-default-value +unbound-slot-marker+)))
+    
     (flet ((sort-entries-by-step (entries)
              (stable-sort entries #'> :key #'he-step))
            (sort-entries-by-t (entries)
@@ -66,37 +86,43 @@
            (validity-range-overlap-p (entry)
              (and (local-time< (he-validity-start entry) *validity-end*)
                   (local-time< *validity-start* (he-validity-end entry)))))
-      (when history-entries
-        (bind ((value
-                (cond ((and (not temporal-p)
-                            (not time-dependent-p))
-                       (aif (first (sort-entries-by-step history-entries))
-                            (he-value it)
-                            default-value))
-                      ((and temporal-p
-                            time-dependent-p)
-                       (prc::collect-values-having-validity
-                        (sort-entries-by-t
-                         (collect-if (lambda (entry)
-                                       (and (local-time<= (he-t-value entry) *t*)
-                                            (validity-range-overlap-p entry)))
-                                     history-entries))
-                        #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*))
-                      (temporal-p
-                       (aif (find-if #L(local-time<= (he-t-value !1) *t*)
-                                     (sort-entries-by-t history-entries))
-                            (he-value it)
-                            default-value))
-                      (time-dependent-p
-                       (prc::collect-values-having-validity
-                        (sort-entries-by-step
-                         (collect-if (lambda (entry)
-                                       (validity-range-overlap-p entry))
-                                     history-entries))
-                        #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*)))))
-          (if (single-values-having-validity-p value)
-              (elt-0 (prc::values-of value))
-              value))))))
+      (bind ((value
+              (cond ((and (not temporal-p)
+                          (not time-dependent-p))
+                     (aif (first (sort-entries-by-step history-entries))
+                          (he-value it)
+                          default-value))
+                    ((and temporal-p
+                          time-dependent-p)
+                     (prc::collect-values-having-validity
+                      (sort-entries-by-t
+                       (collect-if (lambda (entry)
+                                     (and (local-time<= (he-t-value entry) *t*)
+                                          (validity-range-overlap-p entry)))
+                                   history-entries))
+                      #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*))
+                    (temporal-p
+                     (aif (find-if #L(local-time<= (he-t-value !1) *t*)
+                                   (sort-entries-by-t history-entries))
+                          (he-value it)
+                          default-value))
+                    (time-dependent-p
+                     (prc::collect-values-having-validity
+                      (sort-entries-by-step
+                       (collect-if (lambda (entry)
+                                     (validity-range-overlap-p entry))
+                                   history-entries))
+                      #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*)))))
+        (cond
+          ((single-values-having-validity-p value)
+           (elt-0 (prc::values-of value)))
+
+          ((and (values-having-validity-p value)
+                (iter (for (v s e) :in-values-having-validity value)
+                      (thereis (prc::unbound-slot-marker-p v))))
+           +unbound-slot-marker+)
+
+          (t value))))))
 
 (defun (setf slot-value*) (new-value instance slot-name)
   (assert (not (values-having-validity-p new-value)))
@@ -116,8 +142,8 @@
   (iter (repeat count)
         (for instance = (make-instance class-name))
         (iter (for slot-name :in (complext-test-slot-names instance))
-              (for persistent-value = (slot-value instance slot-name))
-              (setf (slot-value* instance slot-name) persistent-value))
+              (when (slot-boundp instance slot-name)
+                (setf (slot-value* instance slot-name) (slot-value instance slot-name))))
         (collect instance)))
 
 (defun compare-persistent-and-test-values (persistent-value test-value)
@@ -140,7 +166,9 @@
         (for class = (class-of instance))
         (revive-instance instance)
         (iter (for slot-name :in (complext-test-slot-names instance))
-              (for persistent-value = (slot-value instance slot-name))
+              (for persistent-value = (if (slot-boundp instance slot-name)
+                                          (slot-value instance slot-name)
+                                          +unbound-slot-marker+))
               (for test-value = (slot-value* instance slot-name))
               (assert-persistent-and-test-values instance slot-name persistent-value test-value))))
 

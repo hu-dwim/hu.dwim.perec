@@ -104,7 +104,9 @@
        (,defclass-macro ,h-class-name ,h-superclasses
          ,(mapcar (lambda (slot-definition)
                     (bind ((slot-name (car slot-definition))
-                           (slot-options (cdr slot-definition))) ;; TODO remove initform from slot-options
+                           (slot-options (cdr slot-definition)))
+                      (when (oddp (length slot-options)) ; remove initform from slot options
+                        (pop slot-options))
                       (list* slot-name
                              +h-unused-slot-marker+
                              (aprog1 (remf-keywords slot-options :time-dependent :temporal)
