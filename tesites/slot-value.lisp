@@ -49,12 +49,17 @@
 ;;;;;;;;;;;;;;
 ;;; Integrated
 
-(defun integrated-time-dependent-slot-value (instance slot-name)
+(defun integrated-time-dependent-slot-value (instance slot-name &optional (ignore-nil #f))
   (bind ((slot-values (slot-value instance slot-name)))
     (if (typep slot-values 'values-having-validity)
         (iter (for (value validity-start validity-end index) :in-values-having-validity slot-values)
-              (summing (* value (local-time- validity-end validity-start))))
-        (* slot-values (local-time- *validity-end* *validity-start*)))))
+              (unless (and ignore-nil
+                           (not value))
+                (summing (* value (local-time- validity-end validity-start)))))
+        (if (and ignore-nil
+                 (not slot-values))
+            0
+            (* slot-values (local-time- *validity-end* *validity-start*))))))
 
 (defun (setf integrated-time-dependent-slot-value) (new-value instance slot-name)
   (setf (slot-value instance slot-name)
@@ -64,14 +69,9 @@
 ;;;;;;;;;;;;
 ;;; Averaged
 
-(defun averaged-time-dependent-slot-value (instance slot-name)
-  (bind ((slot-values (slot-value instance slot-name)))
-    (if (typep slot-values 'values-having-validity)
-        (iter (for (value validity-start validity-end index) :in-values-having-validity slot-values)
-              (summing (* value (local-time- validity-end validity-start)) :into sum)
-              (finally
-               (return (/ sum (local-time- *validity-end* *validity-start*)))))
-        slot-values)))
+(defun averaged-time-dependent-slot-value (instance slot-name &optional (ignore-nil #f))
+  (/ (integrated-time-dependent-slot-value instance slot-name ignore-nil)
+     (local-time- *validity-end* *validity-start*)))
 
 (defun (setf averaged-time-dependent-slot-value) (new-value instance slot-name)
   (setf (slot-value instance slot-name) new-value))
