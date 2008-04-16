@@ -61,6 +61,10 @@
                       rdbms-values
                       (id-column-matcher-where-clause item)))))
 
+(defmethod ensure-item ((set persistent-slot-set-container) (item persistent-object))
+  (unless (find-item set item)
+    (insert-item set item)))
+
 (defmethod delete-item ((set persistent-slot-set-container) (item persistent-object))
   (bind ((slot (slot-of set)))
     (check-slot-value-type (instance-of set) slot item)
@@ -69,8 +73,10 @@
                     '(nil nil)
                     (id-column-matcher-where-clause item))))
 
-(defmethod search-for-item ((set persistent-slot-set-container) (item persistent-object) &key &allow-other-keys)
-  (not-yet-implemented))
+(defmethod find-item ((set persistent-slot-set-container) (item persistent-object))
+  (bind ((slot (slot-of set)))
+    (not (zerop (select-count-* (list (name-of (table-of slot)))
+                                (sql-and (id-column-matcher-where-clause (instance-of set) (id-column-of slot))))))))
 
 (defmethod size ((set persistent-slot-set-container))
   (bind ((slot (slot-of set)))
@@ -106,7 +112,7 @@
 (defmethod delete-item ((set persistent-set) (item persistent-object))
   (not-yet-implemented))
 
-(defmethod search-for-item ((set persistent-set) (item persistent-object) &key &allow-other-keys)
+(defmethod find-item ((set persistent-set) (item persistent-object))
   (not-yet-implemented))
 
 (defmethod size ((set persistent-set))

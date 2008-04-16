@@ -100,7 +100,10 @@
 ;;;;;;;;;;;;;;
 ;;; collection
 
-;;; insert-item, delete-item, empty-p, empty!, search-for-item are inherited from cl-containers
+;;; insert-item, delete-item, empty-p, empty!, find-item are inherited from cl-containers
+
+(defgeneric ensure-item (persistent-collection fn)
+  (:documentation "Ensure that item is present in the container."))
 
 (defgeneric iterate-items (persistent-collection fn)
   (:documentation "Applies function to each item in the persistent container."))

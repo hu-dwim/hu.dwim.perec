@@ -203,7 +203,7 @@
 
 (def (function o) delete-m-n-association-end-set (instance slot)
   (delete-records (name-of (table-of slot))
-		  (id-column-matcher-where-clause instance (id-column-of slot))))
+		  (id-column-matcher-where-clause instance (id-column-of (other-association-end-of slot)))))
 
 (def (function o) insert-into-m-n-association-end-set (instance slot value)
   (check-slot-value-type instance slot value)
