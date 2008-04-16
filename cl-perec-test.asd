@@ -67,6 +67,7 @@
                        (:file "time-dependent")
                        (:file "tesites")
                        (:file "complex")
+                       (:file "slot" :depends-on ("complex"))
                        (:file "1-1-association" :depends-on ("complex"))
                        (:file "1-n-association" :depends-on ("complex"))
                        (:file "m-n-association" :depends-on ("complex"))))
