@@ -103,10 +103,8 @@
                                       (ecase association-kind
                                         (:1-1 (when (p-eq slot-value (he-value entry))
                                                 (setf slot-value default-value)))
-                                        (:1-n (ecase (prc::cardinality-kind-of slot)
-                                                (:1 (when (p-eq slot-value (he-value entry))
-                                                      (setf slot-value default-value)))
-                                                (:n (setf slot-value (set-difference slot-value (he-value entry))))))
+                                        (:1-n (when (eq :n (prc::cardinality-kind-of slot))
+                                                (setf slot-value (set-difference slot-value (he-value entry)))))
                                         (:m-n (values)))))
                                  ((eq other-slot-name (he-slot-name entry))
                                   (ecase association-kind 
