@@ -66,10 +66,10 @@
                        (:file "temporal")
                        (:file "time-dependent")
                        (:file "tesites")
-                       (:file "1-1-association")
-                       (:file "1-n-association")
-                       (:file "m-n-association")
-                       (:file "complex")))
+                       (:file "complex")
+                       (:file "1-1-association" :depends-on ("complex"))
+                       (:file "1-n-association" :depends-on ("complex"))
+                       (:file "m-n-association" :depends-on ("complex"))))
              (:module "query"
                       :depends-on ("suite")
                       :components

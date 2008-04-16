@@ -6,17 +6,16 @@
 
 (in-package :cl-perec-test)
 
+;;;;;;;;;;;
+;;; Complex
+
+(defsuite* (test/tesites/complex :in test/tesites))
+
 (defpclass* tesites-complex-test ()
   ((slot 0 :type integer-32)
    (temporal-slot 0 :type integer-32 :temporal #t)
    (time-dependent-slot 0 :type integer-32 :time-dependent #t)
    (temporal-and-time-dependent-slot 0 :type integer-32 :temporal #t :time-dependent #t)))
-
-(defpclass* tesites-complex-null-test ()
-  ((slot :type (or null integer-32))
-   (temporal-slot :type (or null integer-32) :temporal #t)
-   (time-dependent-slot :type (or null integer-32) :time-dependent #t)
-   (temporal-and-time-dependent-slot :type (or null integer-32) :temporal #t :time-dependent #t)))
 
 (defpclass* tesites-complex-unbound-test ()
   ((slot :type (or unbound integer-32))
@@ -24,7 +23,13 @@
    (time-dependent-slot :type (or unbound integer-32) :time-dependent #t)
    (temporal-and-time-dependent-slot :type (or unbound integer-32) :temporal #t :time-dependent #t)))
 
-(defpclass* tesites-complex-unbound-null-test ()
+(defpclass* tesites-complex-null-test ()
+  ((slot :type (or null integer-32))
+   (temporal-slot :type (or null integer-32) :temporal #t)
+   (time-dependent-slot :type (or null integer-32) :time-dependent #t)
+   (temporal-and-time-dependent-slot :type (or null integer-32) :temporal #t :time-dependent #t)))
+
+(defpclass* tesites-complex-unbound-or-null-test ()
   ((slot :type (or unbound null integer-32))
    (temporal-slot :type (or unbound null integer-32) :temporal #t)
    (time-dependent-slot :type (or unbound null integer-32) :time-dependent #t)
@@ -60,10 +65,11 @@
   (validity-end nil :type (or null local-time))
   (value nil :type t))
 
-(defun complext-test-slot-names (instance)
-  (iter (for slot :in (prc::persistent-effective-slots-of (class-of instance)))
-        (when (primitive-type-p* (prc::canonical-type-of slot))
-          (collect (slot-definition-name slot)))))
+(defun complext-test-slot-names (class)
+  (iter (for slot :in (prc::persistent-effective-slots-of class))
+        (for slot-name = (slot-definition-name slot))
+        (unless (eq slot-name 'h-objects)
+          (collect slot-name))))
 
 (defun slot-value* (instance slot-name)
   (bind ((class (class-of instance))
@@ -78,7 +84,6 @@
                                       *history-entries*))
          ((:values slot-default-value has-default-p) (prc::default-value-for-type (prc::canonical-type-of slot)))
          (default-value (if has-default-p slot-default-value +unbound-slot-marker+)))
-    
     (flet ((sort-entries-by-step (entries)
              (stable-sort entries #'> :key #'he-step))
            (sort-entries-by-t (entries)
@@ -113,16 +118,13 @@
                                      (validity-range-overlap-p entry))
                                    history-entries))
                       #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*)))))
-        (cond
-          ((single-values-having-validity-p value)
-           (elt-0 (prc::values-of value)))
-
-          ((and (values-having-validity-p value)
-                (iter (for (v s e) :in-values-having-validity value)
-                      (thereis (prc::unbound-slot-marker-p v))))
-           +unbound-slot-marker+)
-
-          (t value))))))
+        (cond ((single-values-having-validity-p value)
+               (elt-0 (prc::values-of value)))
+              ((and (values-having-validity-p value)
+                    (iter (for (v s e) :in-values-having-validity value)
+                          (thereis (prc::unbound-slot-marker-p v))))
+               +unbound-slot-marker+)
+              (t value))))))
 
 (defun (setf slot-value*) (new-value instance slot-name)
   (assert (not (values-having-validity-p new-value)))
@@ -138,10 +140,11 @@
   (setf (slot-value instance slot-name) new-value)
   (setf (slot-value* instance slot-name) new-value))
 
-(defun generate-instances (class-name count)
+(defun generate-instances (class-names count)
   (iter (repeat count)
+        (for class-name = (random-elt class-names))
         (for instance = (make-instance class-name))
-        (iter (for slot-name :in (complext-test-slot-names instance))
+        (iter (for slot-name :in (complext-test-slot-names (class-of instance)))
               (when (slot-boundp instance slot-name)
                 (setf (slot-value* instance slot-name) (slot-value instance slot-name))))
         (collect instance)))
@@ -165,7 +168,7 @@
   (iter (for instance :in instances)
         (for class = (class-of instance))
         (revive-instance instance)
-        (iter (for slot-name :in (complext-test-slot-names instance))
+        (iter (for slot-name :in (complext-test-slot-names class))
               (for persistent-value = (if (slot-boundp instance slot-name)
                                           (slot-value instance slot-name)
                                           +unbound-slot-marker+))
@@ -213,6 +216,9 @@
                             (with-transaction
                               (compare-history instances))))))))))
 
+(defun random-elt (sequence)
+  (elt sequence (random (length sequence))))
+
 (defun random-universal-time ()
   (random 5000000000))
 
@@ -231,23 +237,29 @@
 
 (defun do-random-operations (instances &key (count 1) (slot-names nil))
   (iter (repeat count)
-        (bind ((instance (revive-instance (elt instances (random (length instances)))))
-               (slot-names (or slot-names (complext-test-slot-names instance)))
-               (slot-name (elt slot-names (random (length slot-names))))
-               (value (random 100)))
+        (bind ((instance (load-instance (random-elt instances)))
+               (slot-names (or slot-names (complext-test-slot-names (class-of instance))))
+               (slot-name (random-elt slot-names))
+               (slot-type (slot-definition-type (find-slot (class-of instance) slot-name)))
+               (value (if (primitive-type-p* slot-type)
+                          (random 100)
+                          (random-elt (collect-if #L(typep !1 slot-type) instances)))))
           (format t "~%Setting ~A in ~A~% with t ~A and with validity range ~A -> ~A~%to ~A"
                   slot-name instance *t* *validity-start* *validity-end* value)
           (setf (slot-value-and-slot-value* instance slot-name) value))))
 
-(deftest (test/tesites/complex :in test/tesites) (&key (class-name 'tesites-complex-test) (instance-count 1) (operation-count 1) (repeat-count 1) (new-timestamp-probability 0.25)
-                                                       (full-test #t) (test-epsilon-timestamps #t) (random-test-count 1) (slot-name nil) (slot-names nil))
+(defun run-complex-test (&key (class-name nil) (class-names nil) (instance-count 1) (operation-count 1) (repeat-count 1) (new-timestamp-probability 0.25)
+                         (full-test #t) (test-epsilon-timestamps #t) (random-test-count 1) (slot-name nil) (slot-names nil))
   (bind ((*history-entries* nil)
          (*history-entry-counter* 0)
          (error nil)
          (instances
           (with-transaction
             (with-default-t
-              (generate-instances class-name instance-count)))))
+              (generate-instances (if class-name
+                                      (list class-name)
+                                      class-names)
+                                  instance-count)))))
     (format t "~%Starting operations with ~A number of history entries..." (length *history-entries*))
     (restart-bind
         ((print-test
@@ -286,7 +298,7 @@
                                    (bind ((persistent-value (slot-value instance ',slot-name))
                                           (test-value (slot-value* instance ',slot-name)))
                                      (assert-persistent-and-test-values instance ',slot-name persistent-value test-value))))))))))
-            (return-from test/tesites/complex))
+            (return-from run-complex-test))
            :report-function (lambda (stream)
                               (format stream "Print a specific test case for this error and skip this complex test"))))
       (handler-bind
@@ -338,3 +350,28 @@
                        (with-random-t
                          (with-random-validity-range
                            (compare-history instances)))))))))))
+
+(deftest test/tesites/complex/slot ()
+  (run-complex-test :class-name 'tesites-complex-test
+                    :instance-count 1
+                    :operation-count 10))
+
+(deftest test/tesites/complex/unbound-slot ()
+  (run-complex-test :class-name 'tesites-complex-unbound-test
+                    :instance-count 1
+                    :operation-count 10))
+
+(deftest test/tesites/complex/null-slot ()
+  (run-complex-test :class-name 'tesites-complex-null-test
+                    :instance-count 1
+                    :operation-count 10))
+
+(deftest test/tesites/complex/unbound-or-null-slot ()
+  (run-complex-test :class-name 'tesites-complex-unbound-or-null-test
+                    :instance-count 1
+                    :operation-count 10))
+
+(deftest test/tesites/complex/inheritance ()
+  (run-complex-test :class-name 'tesites-complex-inheritance-test
+                    :instance-count 1
+                    :operation-count 10))
