@@ -18,8 +18,29 @@
   ())
 
 (defassociation*
-  ((:class tesites-sister-test :slot parent :type (or null tesites-brother-test))
-   (:class tesites-brother-test :slot children :type (set tesites-sister-test)))
-  (:time-dependent #t)
+  ((:class tesites-sister-test :slot brother :type (or null tesites-brother-test))
+   (:class tesites-brother-test :slot sister :type (or null tesites-sister-test))))
+
+#+nil
+(defassociation*
+  ((:class tesites-sister-test :slot temporal-brother :type (or null tesites-brother-test))
+   (:class tesites-brother-test :slot temporal-sister :type (or null tesites-sister-test)))
   (:temporal #t))
 
+#+nil
+(defassociation*
+  ((:class tesites-sister-test :slot time-dependent-brother :type (or null tesites-brother-test))
+   (:class tesites-brother-test :slot time-dependent-sister :type (or null tesites-sister-test)))
+  (:time-dependent #t))
+
+#+nil
+(defassociation*
+  ((:class tesites-sister-test :slot temporal-and-time-dependent-brother :type (or null tesites-brother-test))
+   (:class tesites-brother-test :slot temporal-and-time-dependent-sister :type (or null tesites-sister-test)))
+  (:temporal #t)
+  (:time-dependent #t))
+
+(deftest test/tesites/association/1-1/complex ()
+  (run-complex-test :class-names '(tesites-brother-test tesites-sister-test)
+                    :instance-count 10
+                    :operation-count 10))
