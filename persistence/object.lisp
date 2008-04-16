@@ -72,8 +72,10 @@
 (defun p-eq (instance-1 instance-2)
   "Tests if two instances are the same persistent instance. Normally there at most one persistent instance for each oid in a transaction so eq may be safely used. On the other hand huge transactions may require to throw away instances form the instance cache which results in several instances for the same oid within the same transaction."
   (or (eq instance-1 instance-2)
-      (= (id-of instance-1)
-         (id-of instance-2))))
+      (and (not (null instance-1))
+           (not (null instance-2))
+           (= (id-of instance-1)
+              (id-of instance-2)))))
 
 (defun print-persistent-instance (instance)
   (declare (type persistent-object instance))
