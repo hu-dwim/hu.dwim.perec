@@ -43,4 +43,4 @@
 (deftest test/tesites/association/1-n/complex ()
   (run-complex-test :class-names '(tesites-parent-test tesites-child-test)
                     :instance-count 10
-                    :operation-count 10))
+                    :operation-count 100))
