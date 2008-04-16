@@ -44,7 +44,7 @@
        (select-records (oid-columns-of (table-of slot))
                        (list (name-of (table-of slot)))
                        :where (id-column-matcher-where-clause instance (id-column-of slot))
-                       :order-by (let ((type (canonical-type-of slot)))
+                       :order-by (bind ((type (canonical-type-of slot)))
                                    (if (ordered-set-type-p type)
                                        ;; TODO: use reflection instead of third
                                        (list (sql-identifier :name (rdbms-name-for (third type)))))))))
@@ -178,9 +178,9 @@
 
 (def (function o) delete-slot-set (instance slot)
   (update-records (name-of (table-of slot))
-		  (columns-of slot)
-		  '(nil nil)
-		  (id-column-matcher-where-clause instance (id-column-of slot))))
+                  (columns-of slot)
+                  (make-array +oid-column-count+ :initial-element :null)
+                  (id-column-matcher-where-clause instance (id-column-of slot))))
 
 (def (function o) store-slot-set (instance slot values)
   "Stores the non lazy list without local side effects into the database."
@@ -190,7 +190,7 @@
     (dolist (value values)
       ;; TODO: this is incorrect, add test?
       (check-slot-value-type instance slot value))
-    (let ((rdbms-values (make-array +oid-column-count+)))
+    (bind ((rdbms-values (make-array +oid-column-count+)))
       (object-writer instance rdbms-values 0)
       (update-records (name-of (table-of slot))
                       (columns-of slot)
@@ -260,7 +260,13 @@
                (bind ((value-class (class-of value))
                       (other-slot (other-effective-association-end-for value-class slot)))
                  (store-slot value-class value other-slot instance))))
-           (call-next-method)))
+           (progn
+             (when value
+               (update-records (name-of (table-of slot))
+                               (columns-of slot)
+                               (make-array +oid-column-count+ :initial-element :null)
+                               (id-column-matcher-where-clause value (id-column-of slot))))
+             (call-next-method))))
       (:1-n
        (if (eq (cardinality-kind-of slot) :n)
            (when (or value
