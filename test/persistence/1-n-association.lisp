@@ -111,6 +111,13 @@
 
 (deftest test/persistence/association/1-n/collection/2 ()
   (with-parent-and-child-transaction
+    (bind ((children (children-of* parent)))
+      (insert-item children child)
+      (ensure-item children child)
+      (signals error (insert-item children child)))))
+
+(deftest test/persistence/association/1-n/collection/3 ()
+  (with-parent-and-child-transaction
     (bind ((children (children-of* parent))
            (other-child (make-instance *association-1-n-child-class-name*)))
       (insert-item children child)

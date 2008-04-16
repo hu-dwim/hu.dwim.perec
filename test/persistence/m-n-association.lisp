@@ -87,9 +87,8 @@
   (with-student-and-course-transaction
     (bind ((courses (courses-of* student)))
       (insert-item courses course)
-      (insert-item courses course)
-      (is (= 1 (size courses)))
-      (is (equal (list course) (list-of courses))))))
+      (ensure-item courses course)
+      (signals error (insert-item courses course)))))
 
 (deftest test/persistence/association/m-n/collection/3 ()
   (with-student-and-course-transaction
