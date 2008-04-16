@@ -107,7 +107,7 @@
                                                 (:1 (when (p-eq slot-value (he-value entry))
                                                       (setf slot-value default-value)))
                                                 (:n (setf slot-value (set-difference slot-value (he-value entry))))))
-                                        (:m-n (setf slot-value (set-difference slot-value (he-value entry)))))))
+                                        (:m-n (values)))))
                                  ((eq other-slot-name (he-slot-name entry))
                                   (ecase association-kind 
                                     (:1-1 (cond ((p-eq instance (he-value entry))
