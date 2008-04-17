@@ -9,7 +9,7 @@
 ;;;;;;;;;;;;;;;;;;;
 ;;; 1-n association
 
-(defsuite* (test/tesites/association/1-n :in test/tesites))
+(defsuite* (test/tesites/association/1-n :in test/tesites/association))
 
 (defpclass* tesites-parent-test ()
   ())
@@ -40,7 +40,26 @@
   (:temporal #t)
   (:time-dependent #t))
 
-(deftest test/tesites/association/1-n/complex ()
+(deftest test/tesites/association/1-n/normal ()
   (run-complex-test :class-names '(tesites-parent-test tesites-child-test)
+                    :slot-names '(parent children)
+                    :instance-count 10
+                    :operation-count 100))
+
+(deftest test/tesites/association/1-n/temporal ()
+  (run-complex-test :class-names '(tesites-parent-test tesites-child-test)
+                    :slot-names '(temporal-parent temporal-children)
+                    :instance-count 10
+                    :operation-count 100))
+
+(deftest test/tesites/association/1-n/time-dependent ()
+  (run-complex-test :class-names '(tesites-parent-test tesites-child-test)
+                    :slot-names '(time-dependent-parent time-dependent-children)
+                    :instance-count 10
+                    :operation-count 100))
+
+(deftest test/tesites/association/1-n/temporal-and-time-dependent ()
+  (run-complex-test :class-names '(tesites-parent-test tesites-child-test)
+                    :slot-names '(temporal-and-time-dependent-parent temporal-and-time-dependent-children)
                     :instance-count 10
                     :operation-count 100))

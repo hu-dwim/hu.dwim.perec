@@ -6,10 +6,10 @@
 
 (in-package :cl-perec-test)
 
-;;;;;;;;;;;
-;;; Complex
+;;;;;;;;
+;;; Slot
 
-(defsuite* (test/tesites/complex :in test/tesites))
+(defsuite* (test/tesites/slot :in test/tesites))
 
 (defpclass* tesites-complex-test ()
   ((slot 0 :type integer-32)
@@ -52,27 +52,27 @@
   ()
   (:metaclass persistent-class-t))
 
-(deftest test/tesites/complex/slot ()
+(deftest test/tesites/slot/normal ()
   (run-complex-test :class-name 'tesites-complex-test
                     :instance-count 1
                     :operation-count 10))
 
-(deftest test/tesites/complex/unbound-slot ()
+(deftest test/tesites/slot/unbound ()
   (run-complex-test :class-name 'tesites-complex-unbound-test
                     :instance-count 1
                     :operation-count 10))
 
-(deftest test/tesites/complex/null-slot ()
+(deftest test/tesites/slot/null ()
   (run-complex-test :class-name 'tesites-complex-null-test
                     :instance-count 1
                     :operation-count 10))
 
-(deftest test/tesites/complex/unbound-or-null-slot ()
+(deftest test/tesites/slot/unbound-or-null ()
   (run-complex-test :class-name 'tesites-complex-unbound-or-null-test
                     :instance-count 1
                     :operation-count 10))
 
-(deftest test/tesites/complex/inheritance ()
+(deftest test/tesites/slot/inheritance ()
   (run-complex-test :class-name 'tesites-complex-inheritance-test
                     :instance-count 1
                     :operation-count 10))
