@@ -46,14 +46,14 @@
          (association-kind (when association-slot-p (prc::association-kind-of (prc::association-of slot))))
          (temporal-p (and (typep slot 'persistent-effective-slot-definition-t) (prc::temporal-p slot)))
          (time-dependent-p (and (typep slot 'persistent-effective-slot-definition-t) (prc::time-dependent-p slot)))
-         (matching-history-entries (collect-if #L(matches-entry-instance-p !1 instance slot-name) *history-entries*))
+         (matching-history-entries (collect-if #L(matches-entry-instance-p !1 instance slot-name) (reverse *history-entries*)))
          ((:values slot-default-value has-default-p) (prc::default-value-for-type (prc::canonical-type-of slot)))
          (default-value (if has-default-p slot-default-value +unbound-slot-marker+))
          (value
           (flet ((non-time-dependent-slot-value (sort-function filter-function)
                    (if association-slot-p
                        (iter (with slot-value = default-value)
-                             (for entry :in (funcall sort-function (collect-if filter-function *history-entries*) :ascending #t))
+                             (for entry :in (funcall sort-function (collect-if filter-function (reverse *history-entries*)) :ascending #t))
                              ;; TODO: insert-item, delete-item
                              (cond ((eq slot-name (he-slot-name entry))
                                     (if (p-eq instance (he-instance entry))
@@ -206,7 +206,7 @@
 (defun assert-persistent-and-test-values (instance slot-name persistent-value test-value)
   (is (compare-persistent-and-test-values persistent-value test-value)
       "The persistent value: ~A and test value: ~A are different~%in the slot ~A of ~A~%with t ~A and with validity range ~A -> ~A~%with ~A history entries: ~A"
-      persistent-value test-value slot-name instance *t* *validity-start* *validity-end* (length *history-entries*) *history-entries*))
+      persistent-value test-value slot-name instance *t* *validity-start* *validity-end* (length *history-entries*) (reverse *history-entries*)))
 
 (defun compare-history (instances)
   (iter (for instance :in instances)
