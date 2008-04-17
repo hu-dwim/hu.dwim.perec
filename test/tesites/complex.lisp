@@ -46,14 +46,14 @@
          (association-kind (when association-slot-p (prc::association-kind-of (prc::association-of slot))))
          (temporal-p (and (typep slot 'persistent-effective-slot-definition-t) (prc::temporal-p slot)))
          (time-dependent-p (and (typep slot 'persistent-effective-slot-definition-t) (prc::time-dependent-p slot)))
-         (matching-history-entries (collect-if #L(matches-entry-instance-p !1 instance slot-name) (reverse *history-entries*)))
+         (matching-history-entries (collect-if #L(matches-entry-instance-p !1 instance slot-name) *history-entries*))
          ((:values slot-default-value has-default-p) (prc::default-value-for-type (prc::canonical-type-of slot)))
          (default-value (if has-default-p slot-default-value +unbound-slot-marker+))
          (value
           (flet ((non-time-dependent-slot-value (sort-function filter-function)
                    (if association-slot-p
                        (iter (with slot-value = default-value)
-                             (for entry :in (funcall sort-function (collect-if filter-function (reverse *history-entries*)) :ascending #t))
+                             (for entry :in (funcall sort-function (collect-if filter-function *history-entries*) :ascending #t))
                              ;; TODO: insert-item, delete-item
                              (cond ((eq slot-name (he-slot-name entry))
                                     (if (p-eq instance (he-instance entry))
@@ -118,7 +118,8 @@
                     #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*))
                   ((not temporal-p)
                    (prc::collect-values-having-validity
-                    (collect-if #'validity-range-overlaps-p matching-history-entries)
+                    (collect-if #'validity-range-overlaps-p
+                                (sort-entries-by-step matching-history-entries :ascending #f))
                     #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*))))))
     (cond ((single-values-having-validity-p value)
            (elt-0 (prc::values-of value)))
@@ -206,7 +207,7 @@
 (defun assert-persistent-and-test-values (instance slot-name persistent-value test-value)
   (is (compare-persistent-and-test-values persistent-value test-value)
       "The persistent value: ~A and test value: ~A are different~%in the slot ~A of ~A~%with t ~A and with validity range ~A -> ~A~%with ~A history entries: ~A"
-      persistent-value test-value slot-name instance *t* *validity-start* *validity-end* (length *history-entries*) (reverse *history-entries*)))
+      persistent-value test-value slot-name instance *t* *validity-start* *validity-end* (length *history-entries*) *history-entries*))
 
 (defun compare-history (instances)
   (iter (for instance :in instances)
@@ -309,7 +310,7 @@
             (:insert (insert-item-and-insert-item* instance slot-name slot-value))
             (:delete (delete-item-and-delete-item* instance slot-name slot-value))))))
 
-(defun run-complex-test (&key (class-name nil) (class-names nil) (instance-count 1) (operation-count 1) (repeat-count 1) (new-timestamp-probability 0.25)
+(defun run-complex-test (&key (class-name nil) (class-names nil) (instance-count 1) (operation-count 1) (transaction-count 1) (new-timestamp-probability 0.25)
                          (full-test #t) (test-epsilon-timestamps #t) (random-test-count 1) (slot-name nil) (slot-names nil))
   (bind ((*history-entries* nil)
          (*history-entry-counter* 0)
@@ -348,7 +349,7 @@
                                                           (make-instance ',(class-name (class-of instance)))))))))
                              (with-transaction
                                (with-revived-instances ,(mapcar #'instance-variable-name instances)
-                                 ,@(iter (for entry :in (reverse *history-entries*))
+                                 ,@(iter (for entry :in *history-entries*)
                                          (collect `(with-t ,(format-timestring (he-t-value entry) :timezone +utc-zone+)
                                                      (with-validity-range
                                                          ,(format-timestring (he-validity-start entry) :timezone +utc-zone+)
@@ -368,16 +369,15 @@
                                        ,(format-timestring *validity-end* :timezone +utc-zone+)
                                      (bind ((persistent-value (slot-value ,instance-variable-name ',slot-name))
                                             (test-value (slot-value* ,instance-variable-name ',slot-name)))
-                                       (assert-persistent-and-test-values ,instance-variable-name ',slot-name persistent-value test-value)))))))))))
-            (return-from run-complex-test))
+                                       (assert-persistent-and-test-values ,instance-variable-name ',slot-name persistent-value test-value))))))))))))
            :report-function (lambda (stream)
-                              (format stream "Print a specific test case for this error and skip this complex test"))))
+                              (format stream "Print a specific test case for this error"))))
       (handler-bind
           ((serious-condition
             (lambda (e)
               (setf error e))))
         (iter (with timestamps = (make-array 0 :fill-pointer 0))
-              (repeat repeat-count)
+              (repeat transaction-count)
               (flet ((random-timestamp (&optional (offset 0))
                        (bind ((max (- (length timestamps) offset)))
                          (if (or (<= max 0)
@@ -388,6 +388,7 @@
                              (bind ((index (+ offset (random max))))
                                (values (aref timestamps index) index))))))
                 (with-transaction
+                  (format t "Starting new transaction~%")
                   (with-t (random-timestamp)
                     (bind (((:values start index) (random-timestamp))
                            (end (iter (for end = (random-timestamp index))
@@ -400,6 +401,7 @@
                                           (list slot-name)
                                           slot-names)))))))
               (finally
+               (setf *history-entries* (nreverse *history-entries*))
                (when full-test
                  (full-compare-history instances :add-epsilon-timestamps test-epsilon-timestamps))
                ;; default x default
@@ -421,3 +423,19 @@
                        (with-random-t
                          (with-random-validity-range
                            (compare-history instances)))))))))))
+
+(deftest run-complex-tests (&rest args &key (instance-count 10) (operation-count 10) &allow-other-keys)
+  (apply #'run-complex-test
+         :instance-count instance-count
+         :operation-count 3
+         ;; operation-count
+         :transaction-count 1
+         :random-test-count 3
+         args)
+  (apply #'run-complex-test
+         :instance-count instance-count
+         :operation-count operation-count
+         :transaction-count 10
+         :random-test-count 10
+         :test-epsilon-timestamps #f
+         args))

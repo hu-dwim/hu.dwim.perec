@@ -53,26 +53,21 @@
   (:metaclass persistent-class-t))
 
 (deftest test/tesites/slot/normal ()
-  (run-complex-test :class-name 'tesites-complex-test
-                    :instance-count 1
-                    :operation-count 10))
+  (run-complex-tests :class-name 'tesites-complex-test
+                     :instance-count 1))
 
 (deftest test/tesites/slot/unbound ()
-  (run-complex-test :class-name 'tesites-complex-unbound-test
-                    :instance-count 1
-                    :operation-count 10))
+  (run-complex-tests :class-name 'tesites-complex-unbound-test
+                     :instance-count 1))
 
 (deftest test/tesites/slot/null ()
-  (run-complex-test :class-name 'tesites-complex-null-test
-                    :instance-count 1
-                    :operation-count 10))
+  (run-complex-tests :class-name 'tesites-complex-null-test
+                     :instance-count 1))
 
 (deftest test/tesites/slot/unbound-or-null ()
-  (run-complex-test :class-name 'tesites-complex-unbound-or-null-test
-                    :instance-count 1
-                    :operation-count 10))
+  (run-complex-tests :class-name 'tesites-complex-unbound-or-null-test
+                     :instance-count 1))
 
 (deftest test/tesites/slot/inheritance ()
-  (run-complex-test :class-name 'tesites-complex-inheritance-test
-                    :instance-count 1
-                    :operation-count 10))
+  (run-complex-tests :class-name 'tesites-complex-inheritance-test
+                     :instance-count 1))

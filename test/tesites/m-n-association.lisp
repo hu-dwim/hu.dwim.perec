@@ -41,25 +41,17 @@
   (:time-dependent #t))
 
 (deftest test/tesites/association/m-n/normal ()
-  (run-complex-test :class-names '(tesites-student-test tesites-course-test)
-                    :slot-names '(students courses)
-                    :instance-count 10
-                    :operation-count 100))
+  (run-complex-tests :class-names '(tesites-student-test tesites-course-test)
+                     :slot-names '(students courses)))
 
 (deftest test/tesites/association/m-n/temporal ()
-  (run-complex-test :class-names '(tesites-student-test tesites-course-test)
-                    :slot-names '(temporal-students temporal-courses)
-                    :instance-count 10
-                    :operation-count 100))
+  (run-complex-tests :class-names '(tesites-student-test tesites-course-test)
+                     :slot-names '(temporal-students temporal-courses)))
 
 (deftest test/tesites/association/m-n/time-dependent ()
-  (run-complex-test :class-names '(tesites-student-test tesites-course-test)
-                    :slot-names '(time-dependent-students time-dependent-courses)
-                    :instance-count 10
-                    :operation-count 100))
+  (run-complex-tests :class-names '(tesites-student-test tesites-course-test)
+                     :slot-names '(time-dependent-students time-dependent-courses)))
 
 (deftest test/tesites/association/m-n/temporal-and-time-dependent ()
-  (run-complex-test :class-names '(tesites-student-test tesites-course-test)
-                    :slot-names '(temporal-and-time-dependent-students temporal-and-time-dependent-courses)
-                    :instance-count 10
-                    :operation-count 100))
+  (run-complex-tests :class-names '(tesites-student-test tesites-course-test)
+                     :slot-names '(temporal-and-time-dependent-students temporal-and-time-dependent-courses)))

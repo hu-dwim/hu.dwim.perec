@@ -43,25 +43,17 @@
   (:time-dependent #t))
 
 (deftest test/tesites/association/1-1/normal ()
-  (run-complex-test :class-names '(tesites-brother-test tesites-sister-test)
-                    :slot-names '(sister brother)
-                    :instance-count 10
-                    :operation-count 100))
+  (run-complex-tests :class-names '(tesites-brother-test tesites-sister-test)
+                     :slot-names '(sister brother)))
 
 (deftest test/tesites/association/1-1/temporal ()
-  (run-complex-test :class-names '(tesites-brother-test tesites-sister-test)
-                    :slot-names '(temporal-sister temporal-brother)
-                    :instance-count 10
-                    :operation-count 100))
+  (run-complex-tests :class-names '(tesites-brother-test tesites-sister-test)
+                     :slot-names '(temporal-sister temporal-brother)))
 
 (deftest test/tesites/association/1-1/time-dependent ()
-  (run-complex-test :class-names '(tesites-brother-test tesites-sister-test)
-                    :slot-names '(time-dependent-sister time-dependent-brother)
-                    :instance-count 10
-                    :operation-count 100))
+  (run-complex-tests :class-names '(tesites-brother-test tesites-sister-test)
+                     :slot-names '(time-dependent-sister time-dependent-brother)))
 
 (deftest test/tesites/association/1-1/temporal-and-time-dependent ()
-  (run-complex-test :class-names '(tesites-brother-test tesites-sister-test)
-                    :slot-names '(temporal-and-time-dependent-sister temporal-and-time-dependent-brother)
-                    :instance-count 10
-                    :operation-count 100))
+  (run-complex-tests :class-names '(tesites-brother-test tesites-sister-test)
+                     :slot-names '(temporal-and-time-dependent-sister temporal-and-time-dependent-brother)))
