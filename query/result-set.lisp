@@ -381,7 +381,7 @@ If FLATP is true then the rows are flattened (useful when they contain only one 
 
 (defmethod revive-result-set! ((result-set scrolled-result-set))
   (with-slots (sql-count-query) result-set
-    (setf (record-count-of result-set) (elt-0-0 (execute sql-count-query))))
+    (setf (record-count-of result-set) (first-elt (first-elt (execute sql-count-query)))))
   (values))
 
 (defmethod records-of ((result-set scrolled-result-set) &optional start end)

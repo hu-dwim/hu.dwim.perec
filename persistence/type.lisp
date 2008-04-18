@@ -363,7 +363,7 @@
        (defmethod compute-reader* ((mapped-type (eql ',name)) normalized-type)
          (declare (ignorable normalized-type))
          ,(aif (function-designator-p reader)
-               (if cl-perec-system:*load-as-production-p*
+               (if *load-as-production-p*
                    `(fdefinition ',it)
                    `',it)
                reader))
@@ -371,7 +371,7 @@
        (defmethod compute-writer* ((mapped-type (eql ',name)) normalized-type)
          (declare (ignorable normalized-type))
          ,(aif (function-designator-p writer)
-               (if cl-perec-system:*load-as-production-p*
+               (if *load-as-production-p*
                    `(fdefinition ',it)
                    `',it)
                writer)))))
@@ -410,7 +410,7 @@
 
   (:method ((mapped-type symbol) normalized-type)
     (if (persistent-class-type-p mapped-type)
-        (if cl-perec-system:*load-as-production-p*
+        (if *load-as-production-p*
             #'object-reader
             'object-reader)
         (call-next-method))))
@@ -424,7 +424,7 @@
 
   (:method ((mapped-type symbol) normalized-type)
     (if (persistent-class-type-p mapped-type)
-        (if cl-perec-system:*load-as-production-p*
+        (if *load-as-production-p*
             #'object-writer
             'object-writer)
         (call-next-method))))

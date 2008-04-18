@@ -87,7 +87,7 @@
                                         &rest args
                                         &key page page-size elements
                                         &allow-other-keys)
-  (remf-keywords args :elements)
+  (remove-from-plistf args :elements)
   (setf elements (coerce elements 'vector))
   (apply #'call-next-method scroll :elements elements args)
   ;; send them through the standard setters for sanity checks

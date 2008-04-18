@@ -87,7 +87,7 @@
            (return-from slot-boundp-or-value-using-class-t
              (funcall return-with
                       (if (single-values-having-validity-p value)
-                          (elt-0 (values-of value))
+                          (first-elt (values-of value))
                           value)))))
     (bind ((persistent (persistent-p instance)))
       (assert-instance-access instance persistent)

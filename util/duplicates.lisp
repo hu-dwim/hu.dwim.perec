@@ -25,7 +25,7 @@
          (package (find-package package-name)))
     (intern symbol-name package)))
 
-(defun concatenate-symbol (&rest args)
+(def function concatenate-symbol (&rest args)
   "Args are processed as parts of the result symbol with an exception: when a package is encountered then it is stored as the target package at intern."
   (let* ((package nil)
          (symbol-name (string-upcase
@@ -44,10 +44,6 @@
         (intern symbol-name package)
         (intern symbol-name))))
 
-(defmacro delete! (object place)
-  `(setf ,place
-    (delete ,object ,place)))
-
 (def (function io) find-slot (class-or-name slot-name)
   (find slot-name
         (the list
@@ -57,49 +53,70 @@
         :key 'slot-definition-name
         :test 'eq))
 
-(defmacro aprog1 (ret &body body)
-  `(prog1-bind it ,ret ,@body))
+(def macro if-bind (var test &body then/else)
+  (assert (first then/else)
+          (then/else)
+          "IF-BIND missing THEN clause.")
+  (destructuring-bind (then &optional else)
+      then/else
+    `(let ((,var ,test))
+       (if ,var ,then ,else))))
 
-(defmacro prog1-bind (var ret &body body)
+(def macro when-bind (var test &body body)
+  `(if-bind ,var ,test (progn ,@body)))
+
+(def macro prog1-bind (var ret &body body)
   `(bind ((,var ,ret))
-    ,@body
-    ,var))
+     ,@body
+     ,var))
 
-(defun hasf (plist indicator)
+(def macro eval-always (&body body)
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
+     ,@body))
+
+(def macro rebind (bindings &body body)
+  `(let ,(loop
+            for symbol-name in bindings
+            collect (list symbol-name symbol-name))
+     ,@body))
+
+(def (constant :test 'equalp) +ascii-alphabet+ "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+(def function random-string (&optional (length 32) (alphabet +ascii-alphabet+))
+  (loop with id = (make-string length)
+     with alphabet-length = (length alphabet)
+     for i below length
+     do (setf (cl:aref id i)
+              (cl:aref alphabet (random alphabet-length)))
+     finally (return id)))
+
+(def (macro e) strcat (&rest strings)
+  `(concatenate 'string ,@strings))
+
+(def function hasf (plist indicator)
   (not (eq (getf plist indicator :unbound) :unbound)))
 
-(defun collect-if (predicate sequence)
+(def function collect-if (predicate sequence)
   "Collect elements from SEQUENCE for which the PREDICATE is true."
   (remove-if-not predicate sequence))
 
-(defun mappend (function &rest lists)
-  "Same as mapcar except the results are appended."  
-  (apply 'append (apply 'mapcar function lists)))
-
-(defmacro appendf (place &rest lists)
-  "Like append, but setfs back the result"
-  `(setf ,place (append ,place ,@lists)))
-
-(defmacro nconcf (place &rest lists)
-  `(setf ,place (nconc ,place ,@lists)))
-
-(defun rcons (car cdr cons)
+(def function rcons (car cdr cons)
   "Returns a cons having CAR as car and CDR as cdr reusing CONS if possible."
   (if (and (eq car (car cons)) (eq cdr (cdr cons)))
       cons
       (cons car cdr)))
 
-(defun tree-substitute (new old list
-                            &key from-end (test #'eql) (test-not nil)
-                            (end nil) (count nil) (key nil) (start 0))
+(def function tree-substitute (new old list
+                                   &key from-end (test #'eql) (test-not nil)
+                                   (end nil) (count nil) (key nil) (start 0))
   "Starting from LIST non-destructively replaces OLD with NEW."
   (if (consp list)
       (prog1-bind result
-        (iter (for newitem in (ensure-list new))
-              (for olditem in (ensure-list old))
-              (setf list (substitute newitem olditem list :from-end from-end :test test :test-not test-not
-                                     :end end :count count :key key :start start))
-              (finally (return list)))
+          (iter (for newitem in (ensure-list new))
+                (for olditem in (ensure-list old))
+                (setf list (substitute newitem olditem list :from-end from-end :test test :test-not test-not
+                                       :end end :count count :key key :start start))
+                (finally (return list)))
         (iter (for node first result then (cdr node))
               (until (null node))
               (for el = (car node))
@@ -109,38 +126,38 @@
           new
           list)))
 
-(defun find-tree-root (node parent-function)
+(def function find-tree-root (node parent-function)
   (find-on-parent-chain node parent-function
                         (lambda (node)
                           (if (funcall parent-function node)
                               nil
                               node))))
 
-(defun find-on-parent-chain (node parent-function map-function)
+(def function find-on-parent-chain (node parent-function map-function)
   (iter (for current-node :initially node :then (funcall parent-function current-node))
         (while current-node)
         (awhen (funcall map-function current-node)
           (return it))))
 
-(defun not-yet-implemented (&optional (datum "Not yet implemented." datum-p) &rest args)
+(def function not-yet-implemented (&optional (datum "Not yet implemented." datum-p) &rest args)
   (when datum-p
     (setf datum (strcat "Not yet implemented: " datum)))
   (apply #'cerror "Ignore and continue" datum args))
 
-(defmacro bind-cartesian-product (((&rest variables) lst) &body body)
+(def macro bind-cartesian-product (((&rest variables) lst) &body body)
   (labels ((generate (variables l)
              (if (cdr variables) 
                  `(dolist (,(car variables) ,l)
-                   ,(generate (cdr variables) l))
+                    ,(generate (cdr variables) l))
                  `(dolist (,(car variables) ,l)
-                   ,@body))))
+                    ,@body))))
     (if variables
         (with-unique-names (l)
           `(let ((,l ,lst))
-            ,(generate variables l)))
+             ,(generate variables l)))
         nil)))
 
-(defmacro bind-cartesian-product* (names-values-pairs &body forms)
+(def macro bind-cartesian-product* (names-values-pairs &body forms)
   (if names-values-pairs
       (bind ((names-and-values (first names-values-pairs))
              (names (first names-and-values))
@@ -148,75 +165,85 @@
         (cons 'progn
               (iter (for value :in values)
                     (collect `(bind ((,names ,value))
-                               (bind-cartesian-product* ,(rest names-values-pairs)
-                                ,@forms))))))
+                                (bind-cartesian-product* ,(rest names-values-pairs)
+                                  ,@forms))))))
       `(progn
-        ,@forms)) )
+         ,@forms)) )
 
-(defun lessp (obj1 obj2)
+(def function lessp (obj1 obj2)
   (typecase obj1
     (real (< obj1 obj2))
     (string (string< obj1 obj2))
     (character (char< obj1 obj2))
     (local-time (local-time< obj1 obj2))))
 
-(defun less-or-equal-p (obj1 obj2)
+(def function less-or-equal-p (obj1 obj2)
   (typecase obj1
     (real (<= obj1 obj2))
     (string (string<= obj1 obj2))
     (character (char<= obj1 obj2))
     (local-time (local-time<= obj1 obj2))))
 
-(defun greaterp (obj1 obj2)
+(def function greaterp (obj1 obj2)
   (typecase obj1
     (real (> obj1 obj2))
     (string (string> obj1 obj2))
     (character (char> obj1 obj2))
     (local-time (local-time> obj1 obj2))))
 
-(defun greater-or-equal-p (obj1 obj2)
+(def function greater-or-equal-p (obj1 obj2)
   (typecase obj1
     (real (>= obj1 obj2))
     (string (string>= obj1 obj2))
     (character (char>= obj1 obj2))
     (local-time (local-time>= obj1 obj2))))
 
-(defun combine-with (op list-or-item item)
+(def function combine-with (op list-or-item item)
   (cond
     ((null list-or-item) item)
     ((and (listp list-or-item) (eq (car list-or-item) op))
      (append list-or-item (list item)))
     (t (list op list-or-item item))))
 
+(def (function io) generalized-boolean->boolean (value)
+  (if value #t #f))
+
+(def function permute (vector indices)
+  (let ((vector-copy (make-array (length vector))))
+    (declare (dynamic-extent vector-copy))
+    (iter (for i :from 0 :below (length vector))
+          (setf (aref vector-copy i)
+                (aref vector (aref indices i))))
+    (replace vector vector-copy)))
 
 ;; Lambda list stuff from Stefil
-(defmacro with-lambda-parsing ((lambda-form &key finally) &body body)
+(def macro with-lambda-parsing ((lambda-form &key finally) &body body)
   (with-unique-names (cell)
     `(iter
-      (with -in-keywords- = #f)
-      (with -in-optionals- = #f)
-      (with -rest-variable-name- = nil)
-      (for ,cell :first ,lambda-form :then (cdr ,cell))
-      (while ,cell)
-      (for -variable-name- = (if (or -in-optionals-
-                                     -in-keywords-)
-                                 (first (ensure-list (car ,cell)))
-                                 (car ,cell)))
-      (for -default-value- = (if (or -in-optionals-
-                                     -in-keywords-)
-                                 (second (ensure-list (car ,cell)))
-                                 (car ,cell)))
-      (case -variable-name-
-        (&optional (setf -in-optionals- #t))
-        (&key (setf -in-keywords- #t)
-              (setf -in-optionals- #f))
-        (&allow-other-keys)
-        (&rest (setf -rest-variable-name- (car (cdr ,cell)))
-               (setf ,cell (cdr ,cell)))
-        (t ,@body))
-      (finally ,@finally))))
+       (with -in-keywords- = #f)
+       (with -in-optionals- = #f)
+       (with -rest-variable-name- = nil)
+       (for ,cell :first ,lambda-form :then (cdr ,cell))
+       (while ,cell)
+       (for -variable-name- = (if (or -in-optionals-
+                                      -in-keywords-)
+                                  (first (ensure-list (car ,cell)))
+                                  (car ,cell)))
+       (for -default-value- = (if (or -in-optionals-
+                                      -in-keywords-)
+                                  (second (ensure-list (car ,cell)))
+                                  (car ,cell)))
+       (case -variable-name-
+         (&optional (setf -in-optionals- #t))
+         (&key (setf -in-keywords- #t)
+               (setf -in-optionals- #f))
+         (&allow-other-keys)
+         (&rest (setf -rest-variable-name- (car (cdr ,cell)))
+                (setf ,cell (cdr ,cell)))
+         (t ,@body))
+       (finally ,@finally))))
 
-(defun lambda-list-to-funcall-list (args)
+(def function lambda-list-to-funcall-list (args)
   (with-lambda-parsing (args :finally ((return (values result -rest-variable-name-))))
     (if -in-keywords-
         (progn
@@ -225,39 +252,18 @@
           (collect -variable-name- :into result))
         (collect -variable-name- :into result))))
 
-(defun lambda-list-to-funcall-expression (function args)
+(def function lambda-list-to-funcall-expression (function args)
   (bind (((:values arg-list rest-variable) (lambda-list-to-funcall-list args)))
     (if rest-variable
         `(apply ,function ,@arg-list ,rest-variable)
         `(funcall ,function ,@arg-list))))
 
-(defun lambda-list-to-variable-list (args &key (include-defaults #f) (include-&rest #f))
+(def function lambda-list-to-variable-list (args &key (include-defaults #f) (include-&rest #f))
   (with-lambda-parsing (args :finally ((return (if (and include-&rest
-                                                        -rest-variable-name-)
-                                                   (cons -rest-variable-name- result)
-                                                   result))))
+                                                   -rest-variable-name-)
+                                              (cons -rest-variable-name- result)
+                                              result))))
     (collect (if include-defaults
                  (list -variable-name- -default-value-)
                  -variable-name-)
       :into result)))
-
-;; copied from alexandria
-(def (function io) elt-0 (vector)
-  (elt vector 0))
-
-(def (function io) elt-1 (vector)
-  (elt vector 1))
-
-(def (function io) elt-0-0 (vector)
-  (elt (elt vector 0) 0))
-
-(def (function io) generalized-boolean->boolean (value)
-  (if value #t #f))
-
-(defun permute (vector indices)
-  (let ((vector-copy (make-array (length vector))))
-    (declare (dynamic-extent vector-copy))
-    (iter (for i :from 0 :below (length vector))
-          (setf (aref vector-copy i)
-                (aref vector (aref indices i))))
-    (replace vector vector-copy)))

@@ -60,25 +60,27 @@
   :licence "Public Domain"
   :description "Persistent RDBMS based CLOS."
   :default-component-class local-cl-source-file
-  ;; TODO drop arnesi dependency
-  :depends-on (:iterate
-               :arnesi
+  :depends-on (:anaphora
+               :iterate
                :alexandria
                :metabang-bind
+               :closer-mop
                :computed-class
                :defclass-star
                :local-time
                :parse-number
                :contextl
                :metacopy
+               :babel
+               :ironclad
                :cl-def
-               :cl-serializer
+               :cl-yalog
                :cl-ppcre
+               :cl-serializer
                :cl-containers
                :cl-rdbms
                :cl-syntax-sugar
-               :cl-walker
-               )
+               :cl-walker)
   :components
   ((:file "package")
    (:file "configuration" :depends-on ("package"))
@@ -112,21 +114,6 @@
              (:file "association-end-set" :depends-on ("object"))
              (:file "copy" :depends-on ("object"))
              (:file "export" :depends-on ("object"))))
-   (:module "tesites"
-            :depends-on ("persistence" "query")
-            :components
-            ((:file "common")
-             (:file "api" :depends-on ("common"))
-             (:file "class" :depends-on ("type"))
-             (:file "association" :depends-on ("class"))
-             (:file "mop" :depends-on ("class" "association"))
-             (:file "object" :depends-on ("class"))
-             (:file "transaction")
-             (:file "values-having-validity" :depends-on ("api"))
-             (:file "store" :depends-on ("values-having-validity" "class" "association" "object"))
-             (:file "type")
-             (:file "slot-value" :depends-on ("store" "association"))
-             (:file "transformer" :depends-on ("type"))))
    (:module "query"
             :depends-on ("util" "persistence")
             :components
@@ -145,7 +132,22 @@
              (:file "partial-eval" :depends-on ("query"))
              (:file "mapping" :depends-on ("query" "sql" "partial-eval" "runtime"))
              (:file "plan" :depends-on ("mapping" "result-set" "runtime"))
-             (:file "compiler" :depends-on ("type" "copy" "plan" "macro"))))))
+             (:file "compiler" :depends-on ("type" "copy" "plan" "macro"))))
+   (:module "tesites"
+            :depends-on ("persistence" "query")
+            :components
+            ((:file "common")
+             (:file "api" :depends-on ("common"))
+             (:file "class" :depends-on ("type"))
+             (:file "association" :depends-on ("class"))
+             (:file "mop" :depends-on ("class" "association"))
+             (:file "object" :depends-on ("class"))
+             (:file "transaction")
+             (:file "values-having-validity" :depends-on ("api"))
+             (:file "store" :depends-on ("values-having-validity" "class" "association" "object"))
+             (:file "type")
+             (:file "slot-value" :depends-on ("store" "association"))
+             (:file "transformer" :depends-on ("type"))))))
 
 (defmethod perform ((op test-op) (system (eql (find-system :cl-perec))))
   (operate 'load-op :cl-perec-test)

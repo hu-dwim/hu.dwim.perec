@@ -68,7 +68,7 @@
                      (eq (topic-of message) topic)
                      (after (date-of message) yesterday)))))"
   (declare (ignore select-list clauses))
-  (bind ((lexical-variables (remove-duplicates (arnesi::lexical-variables env))))
+  (bind ((lexical-variables (remove-duplicates (collect-variables-in-lexenv env))))
     (if (and (consp (second select-form))
              (keywordp (first (second select-form)))
              (getf (second select-form) :compile-at-macroexpand))
@@ -78,11 +78,11 @@
           ,@lexical-variables))))
 
 (defwalker-handler select (form parent env)
-  (let* ((lexical-variables (remove-duplicates (append (arnesi::lexical-variables (cdr env))
-                                                       ;; TODO: arnesi sux when accessing environment
-                                                       (iter (for entry :in (car env))
-                                                             (when (eq :lexical-let (first entry))
-                                                               (collect (second entry))))))))
+  (let ((lexical-variables (remove-duplicates (append (collect-variables-in-lexenv (cdr env))
+                                                      ;; TODO: walker sux when accessing environment
+                                                      (iter (for entry :in (car env))
+                                                            (when (eq :variable (first entry))
+                                                              (collect (second entry))))))))
     (walk-form `(execute-query
                  (make-query ',form ',lexical-variables)
                  ,@lexical-variables)
@@ -92,7 +92,7 @@
 (defmacro purge (&whole purge-form (&rest purge-list) &body clauses &environment env)
   "TODO"
   (declare (ignore purge-list clauses))
-  (bind ((lexical-variables (remove-duplicates (arnesi::lexical-variables env))))
+  (bind ((lexical-variables (remove-duplicates (collect-variables-in-lexenv env))))
     `(execute-query
       (make-query ',purge-form ',lexical-variables)
       ,@lexical-variables)))
@@ -103,7 +103,7 @@
      (from ...)
      (where (string= (name-of user) \"BB\")))"
   (declare (ignore update-list clauses))
-  (bind ((lexical-variables (remove-duplicates (arnesi::lexical-variables env))))
+  (bind ((lexical-variables (remove-duplicates (collect-variables-in-lexenv env))))
     `(execute-query
       (make-query ',update-form ',lexical-variables)
       ,@lexical-variables)))

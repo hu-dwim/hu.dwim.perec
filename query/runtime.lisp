@@ -133,7 +133,7 @@
          (column-count (length rdbms-types))
          (writer (writer-of mapping)))
     (if set-type-p
-        (bind ((element-writer (compose #'first (compute-kludged-writer mapping type #f))))
+        (bind ((element-writer (compose #'first (coerce (compute-kludged-writer mapping type #f) 'function))))
           (lambda (value)
             (list (mapcar element-writer value))))
         (lambda (value)

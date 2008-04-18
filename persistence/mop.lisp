@@ -35,14 +35,14 @@
 
 (defmethod reinitialize-instance :around ((class persistent-class) &rest args)
   ;; update type dependencies first
-  (mapc #L(delete! class (depends-on-of !1))
+  (mapc #L(deletef (depends-on-of !1) class)
         (depends-on-me-of class))
   (setf (depends-on-me-of class) nil)
   ;; emulate shared initialize which is not allowed to be overridden
   (apply #'shared-ininitialize-around-persistent-class class #'call-next-method :name (class-name class) args))
 
 (defmethod reinitialize-instance :before ((association persistent-association) &key &allow-other-keys)
-  (mapc #L(delete! association (depends-on-of !1))
+  (mapc #L(deletef (depends-on-of !1) association)
         (associated-classes-of association)))
 
 (defmethod shared-initialize :after ((association persistent-association) slot-names &key &allow-other-keys)
@@ -200,7 +200,7 @@
                  direct-slot
                  (if (hasf direct-slot :persistent)
                      ;; remove :persistent nil
-                     (remove-keywords direct-slot :persistent)
+                     (remove-from-plist direct-slot :persistent)
                      ;; add default :persistent t
                      (append direct-slot '(:persistent t))))))
 
@@ -216,7 +216,7 @@
                   (mapcar #L(append (list :name (getf !1 :slot)
                                           :association association
                                           :persistent #t)
-                                    (remove-keywords !1 :slot :class :accessor))
+                                    (remove-from-plist !1 :slot :class :accessor))
                           association-end-definitions)))
                depends-on-associations))))
 
@@ -232,7 +232,7 @@
                                    (association-direct-slot-definitions class))
              :direct-superclasses (ensure-persistent-class-default-superclass class name direct-superclasses)
              :abstract (first (getf args :abstract))
-             (remove-keywords args :direct-slots :direct-superclasses :abstract))
+             (remove-from-plist args :direct-slots :direct-superclasses :abstract))
     (setf (find-persistent-class name) class)
     (invalidate-inheritance class)
     (invalidate-computed-slot class 'standard-direct-slots)

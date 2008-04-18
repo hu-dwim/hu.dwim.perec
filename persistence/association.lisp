@@ -259,9 +259,9 @@
                 (call-next-method)
                 (columns-of (other-association-end-of slot))))
       (:m-n (make-columns-for-reference-slot (class-name (slot-definition-class slot))
-                                             (strcat (slot-definition-name slot)
+                                             (strcat (symbol-name (slot-definition-name slot))
                                                      "-for-"
-                                                     (set-type-class-for (canonical-type-of slot))))))))
+                                                     (symbol-name (set-type-class-for (canonical-type-of slot)))))))))
 
 (defmethod compute-data-table-slot-p ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))

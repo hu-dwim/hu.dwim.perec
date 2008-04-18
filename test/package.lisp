@@ -12,7 +12,8 @@
   (:use :common-lisp
         :closer-mop
         :iterate
-        :arnesi
+        :anaphora
+        :alexandria
         :bind
         :defclass-star
         :computed-class
@@ -37,7 +38,6 @@
                                 *persistent-associations* *cache-slot-values*
                                 *mapped-type-precedence-list* *canonical-types* *compile-query-counter*
                                 *test-query-compiler* +unbound-slot-marker+ +not-cached-slot-marker+
-                                elt-0-0 elt-0 elt-1
                                 canonical-type-for normalized-type-for mapped-type-for 
                                 first-moment-for-partial-timestamp last-moment-for-partial-timestamp
                                 less-or-equal-p greater-or-equal-p
@@ -56,5 +56,5 @@
                                 depends-on-of depends-on-me-of value-having-validity=
                                 prc::collect-children-having-validity collect-values-having-validity
                                 extract-values-having-validity
-                                compile-query)"))
+                                compile-query random-string)"))
           :cl-perec-test))

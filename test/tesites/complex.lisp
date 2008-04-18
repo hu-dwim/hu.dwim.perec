@@ -122,7 +122,7 @@
                                 (sort-entries-by-step matching-history-entries :ascending #f))
                     #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*))))))
     (cond ((single-values-having-validity-p value)
-           (elt-0 (prc::values-of value)))
+           (first-elt (prc::values-of value)))
           ((and (values-having-validity-p value)
                 (iter (for (v s e) :in-values-having-validity value)
                       (thereis (prc::unbound-slot-marker-p v))))
@@ -260,9 +260,6 @@
                           (with-validity-range validity-start validity-end
                             (with-transaction
                               (compare-history instances))))))))))
-
-(defun random-elt (sequence)
-  (elt sequence (random (length sequence))))
 
 (defun random-universal-time ()
   (random 5000000000))

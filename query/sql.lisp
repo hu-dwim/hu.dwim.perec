@@ -122,7 +122,7 @@
     (sql-create-table
       :name table-name
       :temporary #t
-      :columns (mapcar (lambda (column) (sql-identifier :name (slot-value column 'arnesi:name))) columns)
+      :columns (mapcar (lambda (column) (sql-identifier :name (slot-value column 'cl-rdbms::name))) columns)
       :as (sql-subquery :query subselect)))
 
   (:method (table-name columns subselect (database oracle))

@@ -16,7 +16,7 @@
   `(or ,@types))
 
 (defmethod shared-initialize :around ((type or-type) slot-names &rest args &key types &allow-other-keys)
-  (apply #'call-next-method type slot-names :types (mapcar #'parse-type types) (remove-keywords args :types)))
+  (apply #'call-next-method type slot-names :types (mapcar #'parse-type types) (remove-from-plist args :types)))
 
 ;;;;;;;
 ;;; And
@@ -27,7 +27,7 @@
   `(and ,@types))
 
 (defmethod shared-initialize :around ((type and-type) slot-names &rest args &key types &allow-other-keys)
-  (apply #'call-next-method type slot-names :types (mapcar #'parse-type types) (remove-keywords args :types)))
+  (apply #'call-next-method type slot-names :types (mapcar #'parse-type types) (remove-from-plist args :types)))
 
 ;;;;;;;
 ;;; Not
@@ -38,7 +38,7 @@
   `(not ,negated-type))
 
 (defmethod shared-initialize :around ((type not-type) slot-names &rest args &key negated-type &allow-other-keys)
-  (apply #'call-next-method type slot-names :negated-type (parse-type negated-type) (remove-keywords args :negated-type)))
+  (apply #'call-next-method type slot-names :negated-type (parse-type negated-type) (remove-from-plist args :negated-type)))
 
 ;;;;;;;;;;;;;
 ;;; Satisfies

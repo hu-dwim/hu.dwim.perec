@@ -71,7 +71,7 @@
              (make-instance 'persistent-slot-set-container :instance instance :slot slot)
              (restore-slot-set instance slot))
          (bind ((record
-                 (elt-0
+                 (first-elt
                   (select-records (columns-of slot)
                                   (list (name-of (table-of slot)))
                                   :where (id-column-matcher-where-clause instance)))))
@@ -90,7 +90,7 @@
                                                   (sql-identifier :name (id-column-of slot))))))
               (declare (type vector records))
               (unless (zerop (length records))
-                (restore-slot-value instance slot (elt-0 records) 0)))
+                (restore-slot-value instance slot (first-elt records) 0)))
             (call-next-method)))
        (:1-n
         (if (eq (cardinality-kind-of slot) :n)
@@ -108,7 +108,7 @@
   (:documentation "Restores all prefetched slots at once without local side effects from the database. Executes a single select statement.")
 
   (:method ((class persistent-class) (instance persistent-object) &optional (allow-missing #f))
-    (if-bind slots (prefetched-slots-of (class-of instance))
+    (when-bind slots (prefetched-slots-of (class-of instance))
       (bind ((records
               (select-records (mappend #'columns-of slots)
                               (list (name-of (data-relation-of class)))
@@ -116,7 +116,7 @@
              (record (unless (and allow-missing
                                   (zerop (length records)))
                        (assert (= 1 (length records)) nil "The persistent instance ~A is missing from the database" instance)
-                       (elt-0 records))))
+                       (first-elt records))))
         (declare (type vector records))
         (declare (type (or null vector) record))
         (when record
@@ -148,7 +148,7 @@
                                   (record (unless (and allow-missing
                                                        (zerop (length records)))
                                             (debug-only (assert (= 1 (length records))))
-                                            (elt-0 records))))
+                                            (first-elt records))))
                              (declare (type vector records))
                              (declare (type (or null vector) record))
                              (when record

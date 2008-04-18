@@ -223,8 +223,8 @@
     (count-instances (find-class class-name)))
 
   (:method ((class persistent-class))
-    (elt-0-0 (execute (sql-select :columns (list (sql-count (sql-all-columns)))
-                                  :tables (list (name-of (primary-table-of class))))))))
+    (first-elt (first-elt (execute (sql-select :columns (list (sql-count (sql-all-columns)))
+                                               :tables (list (name-of (primary-table-of class)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;;; Revive and reload

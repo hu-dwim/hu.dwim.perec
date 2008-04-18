@@ -15,7 +15,7 @@
                    (ecase (count #\: timestamp)
                      (0 '(:hour ":00:00Z"))
                      (1 '(:minute ":00Z"))
-                     (2 `(:sec ,(if (ends-with timestamp "Z") "" "Z"))))
+                     (2 `(:sec ,(if (ends-with #\Z timestamp) "" "Z"))))
                    '(:day "T00:00:00Z"))))))
     (values (strcat timestamp completion) partial-type)))
 

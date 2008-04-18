@@ -54,45 +54,46 @@
 (defmacro def-type-test (name type &optional (test-value nil test-value-p))
   (with-unique-names (value)
     `(deftest ,(concatenate-symbol "test/persistence/type/" name) ()
-      (let ((,value
-             ,(when test-value-p
-                    `(with-transaction ,test-value)))
-            object)
-        (declare (ignorable ,value))
-        (with-transaction
-          (with-confirmed-descructive-changes
-            (ensure-exported
-             (defpclass* type-test ()
-               ((,name :type ,type))))))
-        (flet ((make-object ()
-                 (delete-records (rdbms::sql-table-alias :name (rdbms-name-for 'type-test)))
-                 (setf object
-                       (apply #'make-instance
-                              'type-test
-                              ,(when test-value-p
-                                     `(list
-                                       (first (slot-definition-initargs (find-slot (find-class 'type-test) ',name)))
-                                       ,value)))))
-               (test-object (object)
-                 ,(when (and test-value-p test-value)
-                        `(is (= 0 (elt-0-0
-                                   (execute (rdbms::sql-select
-                                             :columns (list (rdbms::sql-count-*))
-                                             :tables (list (rdbms-name-for 'type-test))
-                                             :where (rdbms::sql-is-null
-                                                     (rdbms::sql-identifier
-                                                      :name
-                                                      (rdbms::name-of
-                                                       (last1
-                                                        (columns-of
-                                                         (find-slot
-                                                          (find-class 'type-test) ',name))))))))))))
-                 (is ,(if test-value-p
-                          `(object-equal-p ,value (slot-value object ',name))
-                          `(not (slot-boundp object ',name))))))
-          (with-and-without-caching-slot-values
-            (with-one-and-two-transactions (make-object)
-              (test-object -instance-))))))))
+       (let ((,value
+              ,(when test-value-p
+                     `(with-transaction ,test-value)))
+             object)
+         (declare (ignorable ,value))
+         (with-transaction
+           (with-confirmed-descructive-changes
+             (ensure-exported
+              (defpclass* type-test ()
+                ((,name :type ,type))))))
+         (flet ((make-object ()
+                  (delete-records (rdbms::sql-table-alias :name (rdbms-name-for 'type-test)))
+                  (setf object
+                        (apply #'make-instance
+                               'type-test
+                               ,(when test-value-p
+                                      `(list
+                                        (first (slot-definition-initargs (find-slot (find-class 'type-test) ',name)))
+                                        ,value)))))
+                (test-object (object)
+                  ,(when (and test-value-p test-value)
+                         `(is (= 0 (first-elt
+                                    (first-elt
+                                     (execute (rdbms::sql-select
+                                                :columns (list (rdbms::sql-count-*))
+                                                :tables (list (rdbms-name-for 'type-test))
+                                                :where (rdbms::sql-is-null
+                                                        (rdbms::sql-identifier
+                                                          :name
+                                                          (rdbms::name-of
+                                                           (last-elt
+                                                            (columns-of
+                                                             (find-slot
+                                                              (find-class 'type-test) ',name)))))))))))))
+                  (is ,(if test-value-p
+                           `(object-equal-p ,value (slot-value object ',name))
+                           `(not (slot-boundp object ',name))))))
+           (with-and-without-caching-slot-values
+             (with-one-and-two-transactions (make-object)
+               (test-object -instance-))))))))
 
 (defclass* standard-class-type-test ()
   ((slot 0)))

@@ -387,6 +387,9 @@
              ',(first combined-type)
              ,@(mapcar 'backquote-type-syntax (rest combined-type)))))
 
+;; TODO: is this the same as the one in alexandria
+;; TODO: eliminate this function if yes
+#+nil
 (defun type= (type-1 type-2)
   (or (equalp type-1 type-2)
       (and (or (persistent-class-p type-1) (symbolp type-1))

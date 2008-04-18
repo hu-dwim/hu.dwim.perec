@@ -10,23 +10,23 @@
 ;;; they are in a standalone file.
 
 (def macro debug-only (&body body)
-  (if cl-perec-system:*load-as-production-p*
+  (if *load-as-production-p*
       (values)
       `(progn
          ,@body)))
 
 (def macro debug-only* (&body body)
-  `(unless cl-perec-system:*load-as-production-p*
+  `(unless *load-as-production-p*
      ,@body))
 
 (def macro production-only (&body body)
-  (if cl-perec-system:*load-as-production-p*
+  (if *load-as-production-p*
       `(progn
          ,@body)
       (values)))
 
 (def macro production-only* (&body body)
-  `(if cl-perec-system:*load-as-production-p*
+  `(if *load-as-production-p*
        (progn
          ,@body)
        (values)))

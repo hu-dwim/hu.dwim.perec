@@ -177,7 +177,7 @@
                          (#.+t-insert+
                           (pushnew (funcall value-function value) set))
                          (#.+t-delete+
-                          (deletef (funcall value-function value) set)))))
+                          (deletef set (funcall value-function value))))))
                set)))
     (bind ((validities nil))
       (flet ((push-validity (validity)

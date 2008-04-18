@@ -6,12 +6,10 @@
 
 (in-package :cl-perec-test)
 
-;; TODO: drop all persistent class tables: e.g. h-object does not end with "test"
 (defun drop-all-test-tables ()
   (with-transaction
     (mapc #L(drop-table !1 :cascade #t)
-          (collect-if #L(and (starts-with !1 "_")
-                             (search "test" !1))
+          (collect-if #L(starts-with-subseq "_" !1)
                       (list-tables)))))
 
 (defmacro with-and-without-caching-slot-values (&body forms)

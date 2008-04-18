@@ -109,7 +109,7 @@
                         (pop slot-options))
                       (list* slot-name
                              +h-unused-slot-marker+
-                             (aprog1 (remf-keywords slot-options :time-dependent :temporal)
+                             (aprog1 (remove-from-plistf slot-options :time-dependent :temporal)
                                (setf (getf it :type)
                                      (bind ((type (getf it :type)))
                                        (if (or-type-p type)

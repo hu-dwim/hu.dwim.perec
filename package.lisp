@@ -14,19 +14,23 @@
         :bind
         :closer-mop
         :iterate
-        :arnesi
+        :anaphora
+        :alexandria
         :defclass-star
         :computed-class
+        :babel
+        :ironclad
         :local-time
         :parse-number
         :metacopy-with-contextl
         :cl-def
+        :cl-yalog
         :cl-ppcre
         :cl-serializer
         :cl-containers
         :cl-rdbms
         :cl-syntax-sugar
-        )
+        :cl-walker)
 
   (:shadow #:log
            #:name
@@ -39,13 +43,6 @@
            #:rdbms-name-for ;; TODO get rid of this
            #:float-type
            #:class-name-of)
-
-  (:shadowing-import-from :cl-syntax-sugar
-   ;; some clashes with arnesi
-   #:enable-sharp-l-syntax
-   #:with-sharp-l-syntax
-   #:with-package
-   )
 
   (:shadowing-import-from :iterate
                           #:finish)
@@ -343,13 +340,12 @@
 (import-sql-syntax-node-names)
 (import-sql-constructor-names)
 
-
 (define-computed-universe compute-as)
 
 (defun transform-function-definer-options (options)
-  (if cl-perec-system:*load-as-production-p*
+  (if *load-as-production-p*
       options
-      (remove-keywords options :inline :optimize)))
+      (remove-from-plist options :inline :optimize)))
 
 ;; TODO get rid of this, use string names
 (defun rdbms-name-for (name &optional thing)

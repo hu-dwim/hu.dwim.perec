@@ -189,7 +189,7 @@
                                      (for action = (elt record 1))
                                      (ecase action
                                        (#.+t-insert+ (pushnew value set))
-                                       (#.+t-delete+ (deletef value set))))
+                                       (#.+t-delete+ (deletef set value))))
                                set))))))))
 
 (defmethod store-slot ((t-class persistent-class-t) (t-instance t-object) (t-slot persistent-association-end-effective-slot-definition-t) value)
