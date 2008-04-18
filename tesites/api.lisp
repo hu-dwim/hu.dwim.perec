@@ -30,6 +30,9 @@
 ;;;;;;;;;;;;;
 ;;; Arguments
 
+(def function default-t ()
+  (transaction-timestamp))
+
 (def (function e) call-with-t (t-value thunk)
   (assert (not (boundp '*t*)) nil "Changing the time machine parameter *t* is not allowed within a single transaction.")
   (bind ((*t* t-value))
@@ -45,7 +48,7 @@
       ,@forms)))
 
 (def (macro e) with-default-t (&body forms)
-  `(with-t (transaction-timestamp)
+  `(with-t (default-t)
      ,@forms))
 
 (def (function e) call-with-validity-range (start end thunk)
