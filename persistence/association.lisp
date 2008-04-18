@@ -152,7 +152,7 @@
            (export-accessors-names-p (second (find :export-accessor-names-p options :key #'first)))
            (processed-association-ends (mapcar #'process-association-end association-ends))
            (final-association-ends (cons 'list (mapcar #'add-initfunction processed-association-ends))))
-      (with-decoded-association-ends association-ends
+      (with-decoded-association-ends processed-association-ends
         `(progn
            (eval-when (:compile-toplevel)
              ,(when (or primary-reader lazy-primary-reader secondary-reader lazy-secondary-reader)
