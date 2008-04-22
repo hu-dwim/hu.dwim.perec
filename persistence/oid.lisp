@@ -92,7 +92,7 @@
   (setf (gethash class-id *oid-class-id->class-name-map*) class-name))
 
 (def (function io) class-name->class-id (class-name)
-  (mod (octets-to-integer (digest-sequence :crc32 (string-to-octets (symbol-name class-name) :encoding :utf-8)))
+  (mod (ironclad:octets-to-integer (ironclad:digest-sequence :crc32 (string-to-octets (symbol-name class-name) :encoding :utf-8)))
        +oid-maximum-class-id+))
 
 (def (function io) class-id-and-instance-id->id (class-id instance-id)

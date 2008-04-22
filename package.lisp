@@ -19,7 +19,6 @@
         :defclass-star
         :computed-class
         :babel
-        :ironclad
         :local-time
         :parse-number
         :metacopy-with-contextl
