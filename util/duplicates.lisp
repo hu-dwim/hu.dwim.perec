@@ -90,7 +90,7 @@
               (cl:aref alphabet (random alphabet-length)))
      finally (return id)))
 
-(def (macro e) strcat (&rest strings)
+(def macro strcat (&rest strings)
   `(concatenate 'string ,@strings))
 
 (def function hasf (plist indicator)
