@@ -6,8 +6,9 @@
 
 (in-package :cl-perec)
 
-(defvar *runtime-log-level* (if *load-as-production-p* +info+ +debug+))
-(defvar *compile-time-log-level* (if *load-as-production-p* +debug+ +dribble+))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defvar *runtime-log-level* (if *load-as-production-p* +info+ +debug+))
+  (defvar *compile-time-log-level* (if *load-as-production-p* +debug+ +dribble+)))
 
 (deflogger plog ()
   :level *runtime-log-level*
