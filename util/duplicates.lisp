@@ -90,8 +90,8 @@
               (cl:aref alphabet (random alphabet-length)))
      finally (return id)))
 
-(def (macro e) concatenate-string (&rest strings)
-  `(concatenate 'string ,@strings))
+(def (function e) concatenate-string (&rest strings)
+  (apply #'concatenate 'string strings))
 
 (def function hasf (plist indicator)
   (not (eq (getf plist indicator :unbound) :unbound)))
