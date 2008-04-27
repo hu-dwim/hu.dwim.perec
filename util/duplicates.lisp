@@ -44,6 +44,9 @@
         (intern symbol-name package)
         (intern symbol-name))))
 
+(def (function eio) concatenate-string (&rest args)
+  (apply #'concatenate 'string args))
+
 (def (function io) find-slot (class-or-name slot-name)
   (find slot-name
         (the list
@@ -89,9 +92,6 @@
      do (setf (cl:aref id i)
               (cl:aref alphabet (random alphabet-length)))
      finally (return id)))
-
-(def (function e) concatenate-string (&rest strings)
-  (apply #'concatenate 'string strings))
 
 (def function hasf (plist indicator)
   (not (eq (getf plist indicator :unbound) :unbound)))

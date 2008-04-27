@@ -1,8 +1,6 @@
-- eliminate superfluous dependencies (cl-containers, cl-ppcre)
+- eliminate superfluous dependencies
 - eliminate duplicates
-
 - sqlite support:
   - there are no sequences
   - no reflection on the column level
-  - binding is not yet implemented in cl-rdbms
-  - no timestamp data type
+  - no date, time, timestamp data type
