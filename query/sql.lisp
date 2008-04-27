@@ -107,12 +107,11 @@
    table columns values
    :where (sql-in (sql-id-column-reference-for table) subselect)))
 
-(defun sql-update-table (table columns values &key from where)
+(defun sql-update-table (table columns values &key where)
   (sql-update
     :table (sql-table-reference-for table nil)
     :columns (sql-column-references-for columns nil)
     :values values
-    :from from
     :where where))
 
 ;;;----------------------------------------------------------------------------
