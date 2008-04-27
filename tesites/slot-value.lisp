@@ -27,7 +27,7 @@
                        (validity-start-of condition)
                        (validity-end-of condition))))))
 
-(defun slot-unbound-t (instance slot
+(def function slot-unbound-t (instance slot
                        &key (t-value nil t-value-p) (validity-start nil validity-start-p) (validity-end nil validity-end-p))
   (apply 'error 'unbound-slot-t
          :name (slot-definition-name slot)
@@ -49,7 +49,7 @@
 ;;;;;;;;;;;;;;
 ;;; Integrated
 
-(defun integrated-time-dependent-slot-value (instance slot-name &optional (ignore-nil #f))
+(def function integrated-time-dependent-slot-value (instance slot-name &optional (ignore-nil #f))
   (bind ((slot-values (slot-value instance slot-name)))
     (if (typep slot-values 'values-having-validity)
         (iter (for (value validity-start validity-end index) :in-values-having-validity slot-values)
@@ -61,20 +61,37 @@
             0
             (* slot-values (local-time- *validity-end* *validity-start*))))))
 
-(defun (setf integrated-time-dependent-slot-value) (new-value instance slot-name)
+(def function (setf integrated-time-dependent-slot-value) (new-value instance slot-name)
   (setf (slot-value instance slot-name)
         (/ new-value (local-time- *validity-end* *validity-start*))))
 
+(def (definer e :available-flags "e") slot-integrator (integrated-slot-name slot-name)
+  (bind ((integrated-slot-name (concatenate-symbol integrated-slot-name "-of")))
+    `(progn
+       (def (function e) ,integrated-slot-name (instance)
+         (integrated-time-dependent-slot-value instance ',slot-name))
+
+       (def (function e) (setf ,integrated-slot-name) (new-value instance)
+         (setf (integrated-time-dependent-slot-value instance ',slot-name) new-value)))))
 
 ;;;;;;;;;;;;
 ;;; Averaged
 
-(defun averaged-time-dependent-slot-value (instance slot-name &optional (ignore-nil #f))
+(def function averaged-time-dependent-slot-value (instance slot-name &optional (ignore-nil #f))
   (/ (integrated-time-dependent-slot-value instance slot-name ignore-nil)
      (local-time- *validity-end* *validity-start*)))
 
-(defun (setf averaged-time-dependent-slot-value) (new-value instance slot-name)
+(def function (setf averaged-time-dependent-slot-value) (new-value instance slot-name)
   (setf (slot-value instance slot-name) new-value))
+
+(def (definer e :available-flags "e") slot-averager (averaged-slot-name slot-name)
+  (bind ((averaged-slot-name (concatenate-symbol averaged-slot-name "-of")))
+    `(progn
+       (def (function e) ,averaged-slot-name (instance)
+         (averaged-time-dependent-slot-value instance ',slot-name))
+
+       (def (function e) (setf ,averaged-slot-name) (new-value instance)
+         (setf (averaged-time-dependent-slot-value instance ',slot-name) new-value)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Slot value and friends
