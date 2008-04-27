@@ -13,8 +13,11 @@
 
 (defvar *history-entries*)
 
+(defvar *transaction-counter*)
+
 (defstruct (history-entry (:conc-name he-))
   (step (incf *history-entry-counter*) :type integer)
+  (transaction-index *transaction-counter* :type integer)
   (action nil :type (member :set :insert :delete))
   (instance nil :type (or null persistent-object))
   (slot-name nil :type symbol)
@@ -24,10 +27,20 @@
   (value nil :type t))
 
 (defun sort-entries-by-step (entries &key (ascending #t))
-  (stable-sort entries (if ascending #'< #'>) :key #'he-step))
+  (sort entries (if ascending #'< #'>) :key #'he-step))
 
 (defun sort-entries-by-t (entries &key (ascending #t))
-  (stable-sort entries (if ascending #'local-time< #'local-time>) :key #'he-t-value))
+  (bind ((local-time-comparator (if ascending #'local-time< #'local-time>))
+         (step-comparator (if ascending #'< #'>)))
+    (sort entries (lambda (value-1 value-2)
+                    (or (funcall local-time-comparator
+                                 (he-t-value value-1)
+                                 (he-t-value value-2))
+                        (and (local-time= (he-t-value value-1)
+                                          (he-t-value value-2))
+                             (funcall step-comparator
+                                      (he-step value-1)
+                                      (he-step value-2))))))))
 
 (defun matches-entry-instance-p (entry instance slot-name)
   (and (eq slot-name (he-slot-name entry))
@@ -311,6 +324,7 @@
                          (full-test #t) (test-epsilon-timestamps #t) (random-test-count 1) (slot-name nil) (slot-names nil))
   (bind ((*history-entries* nil)
          (*history-entry-counter* 0)
+         (*transaction-counter* 0)
          (error nil)
          (instances
           (with-transaction
@@ -328,6 +342,7 @@
               (bind ((*print-level* nil)
                      (*print-length* nil)
                      (*print-lines* nil)
+                     (*print-circle* #f)
                      (failure-descriptions (stefil::failure-descriptions-of stefil::*global-context*))
                      (failure-description (aref failure-descriptions (1- (length failure-descriptions))))
                      (format-arguments (stefil::format-arguments-of failure-description))
@@ -339,25 +354,32 @@
                            ,(format nil "~A" error)
                            (bind ((*history-entries* nil)
                                   (*history-entry-counter* 0)
+                                  (*transaction-counter* 0)
                                   ,@(iter (for instance :in instances)
                                           (collect `(,(instance-variable-name instance)
                                                       (with-transaction
                                                         (with-default-t
                                                           (make-instance ',(class-name (class-of instance)))))))))
-                             (with-transaction
-                               (with-revived-instances ,(mapcar #'instance-variable-name instances)
-                                 ,@(iter (for entry :in *history-entries*)
-                                         (collect `(with-t ,(format-timestring (he-t-value entry) :timezone +utc-zone+)
-                                                     (with-validity-range
-                                                         ,(format-timestring (he-validity-start entry) :timezone +utc-zone+)
-                                                         ,(format-timestring (he-validity-end entry) :timezone +utc-zone+)
-                                                       (setf (slot-value-and-slot-value* ,(instance-variable-name (he-instance entry)) ',(he-slot-name entry))
-                                                             ,(bind ((value (he-value entry)))
-                                                                    (cond ((typep value 'persistent-object)
-                                                                           (instance-variable-name value))
-                                                                          ((listp value)
-                                                                           `(list ,@(mapcar #'instance-variable-name value)))
-                                                                          (t value))))))))))
+                             ,@(iter (for transaction-counter :from 0 :to *transaction-counter*)
+                                     (for history-entries = (collect-if #L(= transaction-counter (he-transaction-index !1)) *history-entries*))
+                                     (when history-entries
+                                       (appending
+                                        `((with-transaction
+                                            (with-revived-instances ,(mapcar #'instance-variable-name instances)
+                                              ,@(iter (for entry :in history-entries)
+                                                      (collect `(with-t ,(format-timestring (he-t-value entry) :timezone +utc-zone+)
+                                                                  (with-validity-range
+                                                                      ,(format-timestring (he-validity-start entry) :timezone +utc-zone+)
+                                                                      ,(format-timestring (he-validity-end entry) :timezone +utc-zone+)
+                                                                    (setf (slot-value-and-slot-value* ,(instance-variable-name (he-instance entry)) ',(he-slot-name entry))
+                                                                          ,(bind ((value (he-value entry)))
+                                                                                 (cond ((typep value 'persistent-object)
+                                                                                        (instance-variable-name value))
+                                                                                       ((listp value)
+                                                                                        `(list ,@(mapcar #'instance-variable-name value)))
+                                                                                       (t value))))))))))
+                                          (incf *transaction-counter*)))))
+                             (setf *history-entries* (nreverse *history-entries*))
                              (with-transaction
                                (with-revived-instance ,instance-variable-name
                                  (with-t ,(format-timestring *t* :timezone +utc-zone+)
@@ -396,7 +418,8 @@
                           :count operation-count
                           :slot-names (if slot-name
                                           (list slot-name)
-                                          slot-names)))))))
+                                          slot-names))))))
+                (incf *transaction-counter*))
               (finally
                (setf *history-entries* (nreverse *history-entries*))
                (when full-test
