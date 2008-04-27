@@ -190,12 +190,18 @@
 (defun generate-instances (class-names count)
   (iter (repeat count)
         (for class-name = (random-elt class-names))
-        (for instance = (make-instance class-name))
-        (iter (for slot-name :in (complext-test-slot-names (class-of instance)))
-              (when (slot-boundp instance slot-name)
-                (setf (slot-value* instance slot-name) (slot-value instance slot-name))))
+        (for instance = (make-instance* class-name))
         (format t "Generated instance ~A~%" instance)
         (collect instance)))
+
+(defun make-instance* (class-name)
+  (bind ((instance (make-instance class-name)))
+    (iter (for slot-name :in (complext-test-slot-names (class-of instance)))
+          (setf (slot-value* instance slot-name)
+                (if (slot-boundp instance slot-name)
+                    (slot-value instance slot-name)
+                    +unbound-slot-marker+)))
+    instance))
 
 (defun compare-persistent-and-test-values (persistent-value test-value)
   (flet ((compare (persistent-value test-value)
@@ -359,7 +365,7 @@
                                           (collect `(,(instance-variable-name instance)
                                                       (with-transaction
                                                         (with-default-t
-                                                          (make-instance ',(class-name (class-of instance)))))))))
+                                                          (make-instance* ',(class-name (class-of instance)))))))))
                              ,@(iter (for transaction-counter :from 0 :to *transaction-counter*)
                                      (for history-entries = (collect-if #L(= transaction-counter (he-transaction-index !1)) *history-entries*))
                                      (when history-entries
@@ -386,7 +392,9 @@
                                    (with-validity-range
                                        ,(format-timestring *validity-start* :timezone +utc-zone+)
                                        ,(format-timestring *validity-end* :timezone +utc-zone+)
-                                     (bind ((persistent-value (slot-value ,instance-variable-name ',slot-name))
+                                     (bind ((persistent-value (if (slot-boundp ,instance-variable-name ',slot-name)
+                                                                  (slot-value ,instance-variable-name ',slot-name)
+                                                                  +unbound-slot-marker+))
                                             (test-value (slot-value* ,instance-variable-name ',slot-name)))
                                        (assert-persistent-and-test-values ,instance-variable-name ',slot-name persistent-value test-value))))))))))))
            :report-function (lambda (stream)
