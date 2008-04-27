@@ -281,7 +281,7 @@
     (let ((num "1"))
       (select (topic)
         (from (topic topic-test))
-        (where (equal (title-of topic) (strcat "topic" num)))))))
+        (where (equal (title-of topic) (concatenate-string "topic" num)))))))
 
 (deftest test/query/select/like ()
   (test-query (:select-count 1 :record-count 1 :fixture forum-data)
@@ -289,11 +289,11 @@
       (from (topic topic-test))
       (where (like (title-of topic) "t%pi_1")))))
 
-(deftest test/query/select/strcat ()
+(deftest test/query/select/concatenate-string ()
   (test-query (:select-count 1 :record-count 1 :fixture forum-data)
     (select (tc m u)
       (from (tc topic-test) (m message-test) (u user-test))
-      (where (equal (strcat (title-of tc) ":" (subject-of m) ":" (name-of u))
+      (where (equal (concatenate-string (title-of tc) ":" (subject-of m) ":" (name-of u))
                     "topic1:subject1:user1")))))
 
 (deftest test/query/select/non-persistent-slot ()

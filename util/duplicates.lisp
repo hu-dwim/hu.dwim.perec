@@ -90,7 +90,7 @@
               (cl:aref alphabet (random alphabet-length)))
      finally (return id)))
 
-(def macro strcat (&rest strings)
+(def (macro e) concatenate-string (&rest strings)
   `(concatenate 'string ,@strings))
 
 (def function hasf (plist indicator)
@@ -141,7 +141,7 @@
 
 (def function not-yet-implemented (&optional (datum "Not yet implemented." datum-p) &rest args)
   (when datum-p
-    (setf datum (strcat "Not yet implemented: " datum)))
+    (setf datum (concatenate-string "Not yet implemented: " datum)))
   (apply #'cerror "Ignore and continue" datum args))
 
 (def macro bind-cartesian-product (((&rest variables) lst) &body body)

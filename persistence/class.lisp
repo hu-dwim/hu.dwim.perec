@@ -491,7 +491,7 @@
                  (rdbms-types (column-types-of slot)))
             (when type
               (cond ((set-type-p* type)
-                     (make-columns-for-reference-slot class-name (strcat (symbol-name name) "-for-" (symbol-name class-name))))
+                     (make-columns-for-reference-slot class-name (concatenate-string (symbol-name name) "-for-" (symbol-name class-name))))
                     ((persistent-class-type-p* type)
                      (append
                       (when (tagged-p mapping)
