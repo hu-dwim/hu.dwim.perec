@@ -9,7 +9,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Persistent object base class
 
-(defvar *make-persistent-instances* #t
+(def special-variable *make-persistent-instances* #t
   "True means make-instance will make the new instance persistent by default.")
 
 (defpclass* persistent-object ()
@@ -36,18 +36,18 @@
   (:abstract #t)
   (:documentation "Base class for all persistent classes. If this class is not inherited by a persistent class then it is automatically added to the direct superclasses. There is only one persistent instance in a transaction with a give oid therefore eq will return true iff the oids are equal."))
 
-(defmacro with-making-persistent-instances (&body forms)
+(def (macro e) with-making-persistent-instances (&body forms)
   `(let ((*make-persistent-instances* #t))
-    ,@forms))
+     ,@forms))
 
-(defmacro with-making-transient-instances (&body forms)
+(def (macro e) with-making-transient-instances (&body forms)
   `(let ((*make-persistent-instances* #f))
-    ,@forms))
+     ,@forms))
 
 ;;;;;;;;;;;;;;;
 ;;; MOP methods
 
-(defmethod initialize-instance :around ((instance persistent-object) &rest args &key persistent)
+(def method initialize-instance :around ((instance persistent-object) &rest args &key persistent)
   (bind ((class (class-of instance)))
     (when persistent
       (ensure-exported class))
@@ -57,19 +57,19 @@
       (when (eq persistent #t)
         (make-persistent instance)))))
 
-(defmethod make-instance :before ((class persistent-class) &key &allow-other-keys)
+(def method make-instance :before ((class persistent-class) &key &allow-other-keys)
   (when (abstract-p class)
     (error "Cannot make instances of abstract class ~A" class)))
 
 ;;;;;;;;;;;
 ;;; Utility
 
-(defvar +persistent-object-class+ (find-class 'persistent-object))
+(def special-variable +persistent-object-class+ (find-class 'persistent-object))
 
-(defun persistent-object-p (instance)
+(def function persistent-object-p (instance)
   (typep instance 'persistent-object))
 
-(defun p-eq (instance-1 instance-2)
+(def function p-eq (instance-1 instance-2)
   "Tests if two instances are the same persistent instance. Normally there at most one persistent instance for each oid in a transaction so eq may be safely used. On the other hand huge transactions may require to throw away instances form the instance cache which results in several instances for the same oid within the same transaction."
   (or (eq instance-1 instance-2)
       (and (not (null instance-1))
@@ -77,7 +77,7 @@
            (= (id-of instance-1)
               (id-of instance-2)))))
 
-(defun print-persistent-instance (instance)
+(def function print-persistent-instance (instance)
   (declare (type persistent-object instance))
   (write-string ":persistent ")
   (write-string (cond ((not (slot-boundp instance 'persistent))
@@ -95,20 +95,20 @@
   "Prints the oid of the instance and whether the instance is known to be persistent or transient."
   (print-persistent-instance self))
 
-(defun created-p (instance)
+(def function created-p (instance)
   (eq :created (transaction-event-of instance)))
 
-(defun modified-p (instance)
+(def function modified-p (instance)
   (eq :modified (transaction-event-of instance)))
 
-(defun deleted-p (instance)
+(def function deleted-p (instance)
   (eq :deleted (transaction-event-of instance)))
 
-(defun ensure-oid (instance)
+(def function ensure-oid (instance)
   "Makes sure that the instance has a valid oid."
   (unless (oid-of instance)
     (setf (oid-of instance) (make-class-oid (class-name (class-of instance))))))
 
-(defun id-of (instance)
+(def (function e) id-of (instance)
   "Shortcut for the unique identifier number of the instance."
   (oid-id (oid-of instance)))
