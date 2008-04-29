@@ -229,10 +229,10 @@
         (intersection slot-names available-slot-names)
         available-slot-names)))
 
-(defun generate-instances (class-names count)
+(defun generate-instances (class-names count &key (slot-names nil))
   (iter (repeat count)
         (for class-name = (random-elt class-names))
-        (for instance = (make-instance* class-name))
+        (for instance = (make-instance* class-name :slot-names slot-names))
         (format t "Generated instance ~A~%" instance)
         (collect instance)))
 
@@ -375,7 +375,7 @@
          (instances
           (with-transaction
             (with-default-t
-              (generate-instances class-names instance-count)))))
+              (generate-instances class-names instance-count :slot-names slot-names)))))
     (format t "Starting operations with ~A number of history entries...~%" (length *history-entries*))
     (restart-bind
         ((print-test
@@ -402,7 +402,7 @@
                                           (collect `(,(instance-variable-name instance)
                                                       (with-transaction
                                                         (with-default-t
-                                                          (make-instance* ',(class-name (class-of instance)))))))))
+                                                          (make-instance ',(class-name (class-of instance)))))))))
                              ,@(iter (for transaction-counter :from 0 :to *transaction-counter*)
                                      (for history-entries = (collect-if #L(= transaction-counter (he-transaction-index !1)) *history-entries*))
                                      (when history-entries
