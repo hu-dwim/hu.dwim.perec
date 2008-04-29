@@ -53,6 +53,12 @@
                  :validity-starts (coerce validity-starts 'simple-vector)
                  :validity-ends (coerce validity-ends 'simple-vector)))
 
+(def (function e) values-having-validity-value (values-having-validity validity-start validity-end)
+  (not-yet-implemented))
+
+(def (function e) (setf values-having-validity-value) (new-value values-having-validity validity-start validity-end)
+  (not-yet-implemented))
+
 (def print-object values-having-validity
   (write-char #\{)
   (iter (for value :in-sequence (values-of self))

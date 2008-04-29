@@ -42,14 +42,6 @@
                                       (he-step value-1)
                                       (he-step value-2))))))))
 
-(defun matches-entry-instance-p (entry instance slot-name)
-  (and (eq slot-name (he-slot-name entry))
-       (p-eq instance (he-instance entry))))
-
-(defun validity-range-overlaps-p (entry)
-  (and (local-time< (he-validity-start entry) *validity-end*)
-       (local-time< *validity-start* (he-validity-end entry))))
-
 (defun slot-value* (instance slot-name)
   (bind ((class (class-of instance))
          (slot (find-slot class slot-name))
@@ -59,86 +51,105 @@
          (association-kind (when association-slot-p (prc::association-kind-of (prc::association-of slot))))
          (temporal-p (and (typep slot 'persistent-effective-slot-definition-t) (prc::temporal-p slot)))
          (time-dependent-p (and (typep slot 'persistent-effective-slot-definition-t) (prc::time-dependent-p slot)))
-         (matching-history-entries (collect-if #L(matches-entry-instance-p !1 instance slot-name) *history-entries*))
          ((:values slot-default-value has-default-p) (prc::default-value-for-type (prc::canonical-type-of slot)))
-         (default-value (if has-default-p slot-default-value +unbound-slot-marker+))
+         (default-value (if has-default-p
+                            slot-default-value
+                            +unbound-slot-marker+))
+         (sort-function (if temporal-p
+                            #'sort-entries-by-t
+                            #'sort-entries-by-step))
+         (temporal-filter-function (if temporal-p
+                                       #L(local-time<= (he-t-value !1) *t*)
+                                       (constantly #t)))
+         (time-dependent-filter-function (if time-dependent-p
+                                             #L(and (local-time< (he-validity-start !1) *validity-end*)
+                                                    (local-time< *validity-start* (he-validity-end !1)))
+                                             (constantly #t)))
+         (filter-function #L(and (funcall temporal-filter-function !1)
+                                 (funcall time-dependent-filter-function !1)))
+         (current-slot-value-function (if time-dependent-p
+                                          #'values-having-validity-value
+                                          (lambda (current-value validity-start validity-end)
+                                            (declare (ignore validity-start validity-end))
+                                            current-value)))
+         (new-slot-value-function (if time-dependent-p
+                                      #'(setf values-having-validity-value)
+                                      (lambda (new-value old-value validity-start validity-end)
+                                        (declare (ignore old-value validity-start validity-end))
+                                        new-value)))
+         (return-value-function (if time-dependent-p
+                                    #L(collect-values-having-validity !1 #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*)
+                                    #L(aif (first !1)
+                                           (he-value it)
+                                           default-value)))
+
          (value
-          (flet ((non-time-dependent-slot-value (sort-function filter-function)
-                   (if association-slot-p
-                       (iter (with slot-value = default-value)
-                             (for entry :in (funcall sort-function (collect-if filter-function *history-entries*) :ascending #t))
-                             ;; TODO: insert-item, delete-item
-                             (cond ((eq slot-name (he-slot-name entry))
-                                    (if (p-eq instance (he-instance entry))
-                                        (setf slot-value (he-value entry))
-                                        (ecase association-kind
-                                          (:1-1 (when (p-eq slot-value (he-value entry))
-                                                  (setf slot-value default-value)))
-                                          (:1-n (when (eq :n (prc::cardinality-kind-of slot))
-                                                  (setf slot-value (set-difference slot-value (he-value entry)))))
-                                          (:m-n (values)))))
-                                   ((eq other-slot-name (he-slot-name entry))
-                                    (ecase association-kind 
-                                      (:1-1 (cond ((p-eq instance (he-value entry))
-                                                   (setf slot-value (he-instance entry)))
-                                                  ((and (not (p-eq instance (he-value entry)))
-                                                        (p-eq slot-value (he-instance entry)))
-                                                   (setf slot-value default-value))))
-                                      (:1-n (ecase (prc::cardinality-kind-of slot)
-                                              (:1 (bind ((he-instance-is-slot-value (p-eq slot-value (he-instance entry)))
-                                                         (instance-is-member-of-he-value (member instance (he-value entry) :test #'p-eq)))
-                                                    (cond ((and he-instance-is-slot-value
-                                                                (not instance-is-member-of-he-value))
-                                                           (setf slot-value default-value))
-                                                          ((and (not he-instance-is-slot-value)
-                                                                instance-is-member-of-he-value)
-                                                           (setf slot-value (he-instance entry))))))
-                                              (:n (bind ((he-instance-is-member-of-slot-value (member (he-instance entry) slot-value :test #'p-eq))
-                                                         (instance-is-he-value (p-eq instance (he-value entry))))
-                                                    (cond ((and he-instance-is-member-of-slot-value
-                                                                (not instance-is-he-value))
-                                                           (alexandria:removef slot-value (he-instance entry) :test #'p-eq))
-                                                          ((and (not he-instance-is-member-of-slot-value)
-                                                                instance-is-he-value)
-                                                           (push (he-instance entry) slot-value)))))))
-                                      (:m-n (bind ((he-instance-is-member-of-slot-value (member (he-instance entry) slot-value :test #'p-eq))
-                                                   (instance-is-member-of-he-value (member instance (he-value entry) :test #'p-eq)))
-                                              (cond ((and he-instance-is-member-of-slot-value
-                                                          (not instance-is-member-of-he-value))
-                                                     (alexandria:removef slot-value (he-instance entry) :test #'p-eq))
-                                                    ((and (not he-instance-is-member-of-slot-value)
-                                                          instance-is-member-of-he-value)
-                                                     (push (he-instance entry) slot-value))))))))
-                             (finally (return slot-value)))
-                       (aif (find-if filter-function (funcall sort-function matching-history-entries :ascending #f))
-                            (he-value it)
-                            default-value))))
-            (cond ((not time-dependent-p)
-                   (non-time-dependent-slot-value (if temporal-p
-                                                      #'sort-entries-by-t
-                                                      #'sort-entries-by-step)
-                                                  (if temporal-p
-                                                      #L(local-time<= (he-t-value !1) *t*)
-                                                      (constantly #t))))
-                  (temporal-p
-                   (prc::collect-values-having-validity
-                    (sort-entries-by-t
-                     (collect-if (lambda (entry)
-                                   (and (local-time<= (he-t-value entry) *t*)
-                                        (validity-range-overlaps-p entry)))
-                                 matching-history-entries)
-                     :ascending #f)
-                    #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*))
-                  ((not temporal-p)
-                   (prc::collect-values-having-validity
-                    (collect-if #'validity-range-overlaps-p
-                                (sort-entries-by-step matching-history-entries :ascending #f))
-                    #'he-value #'he-validity-start #'he-validity-end (constantly default-value) *validity-start* *validity-end*))))))
+          (if association-slot-p
+              (iter (with slot-value = default-value)
+                    (for entry :in (funcall sort-function (collect-if filter-function *history-entries*) :ascending #t))
+                    ;; TODO: insert-item, delete-item
+                    (labels ((%slot-value ()
+                               (funcall current-slot-value-function slot-value (he-validity-start entry) (he-validity-end entry)))
+                             ((setf %slot-value) (new-value)
+                               (setf slot-value (funcall new-slot-value-function new-value slot-value (he-validity-start entry) (he-validity-end entry))))
+                             (%push-slot-value (new-value)
+                               (setf (%slot-value) (cons new-value (%slot-value))))
+                             (%remove-slot-value (new-value)
+                               (setf (%slot-value) (remove (%slot-value) new-value :test #'p-eq))))
+                      (cond ((eq slot-name (he-slot-name entry))
+                             (if (p-eq instance (he-instance entry))
+                                 (setf (%slot-value) (he-value entry))
+                                 (ecase association-kind
+                                   (:1-1 (when (p-eq slot-value (he-value entry))
+                                           (setf (%slot-value) default-value)))
+                                   (:1-n (when (eq :n (prc::cardinality-kind-of slot))
+                                           (setf (%slot-value) (set-difference (%slot-value) (he-value entry)))))
+                                   (:m-n (values)))))
+                            ((eq other-slot-name (he-slot-name entry))
+                             (ecase association-kind 
+                               (:1-1 (cond ((p-eq instance (he-value entry))
+                                            (setf (%slot-value) (he-instance entry)))
+                                           ((and (not (p-eq instance (he-value entry)))
+                                                 (p-eq slot-value (he-instance entry)))
+                                            (setf (%slot-value) default-value))))
+                               (:1-n (ecase (prc::cardinality-kind-of slot)
+                                       (:1 (bind ((he-instance-is-slot-value (p-eq slot-value (he-instance entry)))
+                                                  (instance-is-member-of-he-value (member instance (he-value entry) :test #'p-eq)))
+                                             (cond ((and he-instance-is-slot-value
+                                                         (not instance-is-member-of-he-value))
+                                                    (setf (%slot-value) default-value))
+                                                   ((and (not he-instance-is-slot-value)
+                                                         instance-is-member-of-he-value)
+                                                    (setf (%slot-value) (he-instance entry))))))
+                                       (:n (bind ((he-instance-is-member-of-slot-value (member (he-instance entry) slot-value :test #'p-eq))
+                                                  (instance-is-he-value (p-eq instance (he-value entry))))
+                                             (cond ((and he-instance-is-member-of-slot-value
+                                                         (not instance-is-he-value))
+                                                    (%remove-slot-value (he-instance entry)))
+                                                   ((and (not he-instance-is-member-of-slot-value)
+                                                         instance-is-he-value)
+                                                    (%push-slot-value (he-instance entry))))))))
+                               (:m-n (bind ((he-instance-is-member-of-slot-value (member (he-instance entry) slot-value :test #'p-eq))
+                                            (instance-is-member-of-he-value (member instance (he-value entry) :test #'p-eq)))
+                                       (cond ((and he-instance-is-member-of-slot-value
+                                                   (not instance-is-member-of-he-value))
+                                              (%remove-slot-value (he-instance entry)))
+                                             ((and (not he-instance-is-member-of-slot-value)
+                                                   instance-is-member-of-he-value)
+                                              (%push-slot-value (he-instance entry))))))))))
+                    (finally (return slot-value)))
+              (funcall return-value-function
+                       (collect-if filter-function
+                                   (funcall sort-function
+                                            (collect-if #L(and (eq slot-name (he-slot-name !1))
+                                                               (p-eq instance (he-instance !1)))
+                                                        *history-entries*)
+                                            :ascending #f))))))
     (cond ((single-values-having-validity-p value)
            (first-elt (prc::values-of value)))
           ((and (values-having-validity-p value)
                 (iter (for (v s e) :in-values-having-validity value)
-                      (thereis (prc::unbound-slot-marker-p v))))
+                      (thereis (unbound-slot-marker-p v))))
            +unbound-slot-marker+)
           (t value))))
 
@@ -311,7 +322,7 @@
                       ((set-type-p* slot-type)
                        (bind ((instances (collect-if #L(typep !1 (prc::set-type-class-for slot-type)) instances)))
                          (ecase (random 3)
-                           (0 (values :set (subseq (alexandria:shuffle instances) 0 (random (length instances)))))
+                           (0 (values :set (subseq (shuffle instances) 0 (random (length instances)))))
                            (1 (values :insert (random-elt instances)))
                            (2 (values :delete (random-elt instances))))))
                       (t (error "Unknown type ~A" slot-type)))))
