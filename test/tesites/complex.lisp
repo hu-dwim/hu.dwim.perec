@@ -219,11 +219,15 @@
                               :value item)
           *history-entries*)))
 
-(defun complext-test-slot-names (class)
-  (iter (for slot :in (prc::persistent-effective-slots-of class))
-        (for slot-name = (slot-definition-name slot))
-        (unless (eq slot-name 'h-objects)
-          (collect slot-name))))
+(defun complex-test-slot-names (class slot-names)
+  (bind ((available-slot-names
+          (iter (for slot :in (prc::persistent-effective-slots-of class))
+                (for slot-name = (slot-definition-name slot))
+                (unless (eq slot-name 'h-objects)
+                  (collect slot-name)))))
+    (if slot-names
+        (intersection slot-names available-slot-names)
+        available-slot-names)))
 
 (defun generate-instances (class-names count)
   (iter (repeat count)
@@ -232,14 +236,14 @@
         (format t "Generated instance ~A~%" instance)
         (collect instance)))
 
-(defun make-instance* (class-name)
-  (bind ((instance (make-instance class-name)))
-    (iter (for slot-name :in (complext-test-slot-names (class-of instance)))
-          (setf (slot-value* instance slot-name)
-                (if (slot-boundp instance slot-name)
-                    (slot-value instance slot-name)
-                    +unbound-slot-marker+)))
-    instance))
+(defun make-instance* (class-name &key (slot-names nil))
+  (iter (with instance = (make-instance class-name))
+        (for slot-name :in (complex-test-slot-names (class-of instance) slot-names))
+        (setf (slot-value* instance slot-name)
+              (if (slot-boundp instance slot-name)
+                  (slot-value instance slot-name)
+                  +unbound-slot-marker+))
+        (finally (return instance))))
 
 (defun compare-persistent-and-test-values (persistent-value test-value)
   (flet ((compare (persistent-value test-value)
@@ -266,18 +270,18 @@
       "The persistent value: ~A and test value: ~A are different~%in the slot ~A of ~A~%with t ~A and with validity range ~A -> ~A~%with ~A history entries: ~A"
       persistent-value test-value slot-name instance *t* *validity-start* *validity-end* (length *history-entries*) *history-entries*))
 
-(defun compare-history (instances)
+(defun compare-history (instances &key (slot-names nil))
   (iter (for instance :in instances)
         (for class = (class-of instance))
         (revive-instance instance)
-        (iter (for slot-name :in (complext-test-slot-names class))
+        (iter (for slot-name :in (complex-test-slot-names (class-of instance) slot-names))
               (for persistent-value = (if (slot-boundp instance slot-name)
                                           (slot-value instance slot-name)
                                           +unbound-slot-marker+))
               (for test-value = (slot-value* instance slot-name))
               (assert-persistent-and-test-values instance slot-name persistent-value test-value))))
 
-(defun full-compare-history (instances &key (add-epsilon-timestamps t))
+(defun full-compare-history (instances &key (slot-names nil) (add-epsilon-timestamps t))
   (labels ((extend-timestamps (timestamps)
              (bind ((epsilon-nsec 1000000))
                (append (list +beginning-of-time+)
@@ -316,7 +320,7 @@
                         (with-t t-value
                           (with-validity-range validity-start validity-end
                             (with-transaction
-                              (compare-history instances))))))))))
+                              (compare-history instances :slot-names slot-names))))))))))
 
 (defun random-universal-time ()
   (random 5000000000))
@@ -337,9 +341,7 @@
 (defun do-random-operations (instances &key (count 1) (slot-names nil))
   (iter (repeat count)
         (bind ((instance (load-instance (random-elt instances)))
-               (available-slot-names (complext-test-slot-names (class-of instance)))
-               (slot-names (if slot-names (intersection slot-names available-slot-names) available-slot-names))
-               (slot-name (random-elt slot-names))
+               (slot-name (random-elt (complex-test-slot-names (class-of instance) slot-names)))
                (slot-type (slot-definition-type (find-slot (class-of instance) slot-name)))
                ((:values action slot-value)
                 (cond ((primitive-type-p* slot-type)
@@ -364,8 +366,8 @@
             (:insert (insert-item-and-insert-item* instance slot-name slot-value))
             (:delete (delete-item-and-delete-item* instance slot-name slot-value))))))
 
-(defun run-complex-test (&key (class-name nil) (class-names nil) (instance-count 1) (operation-count 1) (transaction-count 1) (new-timestamp-probability 0.25)
-                         (full-test #t) (test-epsilon-timestamps #t) (random-test-count 1) (slot-name nil) (slot-names nil))
+(defun run-complex-test (&key (class-name nil) (class-names (when class-name (list class-name))) (instance-count 1) (operation-count 1) (transaction-count 1) (new-timestamp-probability 0.25)
+                         (full-test #t) (test-epsilon-timestamps #t) (random-test-count 1) (slot-name nil) (slot-names (when slot-name (list slot-name))))
   (bind ((*history-entries* nil)
          (*history-entry-counter* 0)
          (*transaction-counter* 0)
@@ -373,10 +375,7 @@
          (instances
           (with-transaction
             (with-default-t
-              (generate-instances (if class-name
-                                      (list class-name)
-                                      class-names)
-                                  instance-count)))))
+              (generate-instances class-names instance-count)))))
     (format t "Starting operations with ~A number of history entries...~%" (length *history-entries*))
     (restart-bind
         ((print-test
@@ -465,35 +464,31 @@
                                       (until (local-time> end start))
                                       (finally (return end)))))
                       (with-validity-range start end
-                        (do-random-operations instances
-                          :count operation-count
-                          :slot-names (if slot-name
-                                          (list slot-name)
-                                          slot-names))))))
+                        (do-random-operations instances :count operation-count :slot-names slot-names)))))
                 (incf *transaction-counter*))
               (finally
                (setf *history-entries* (nreverse *history-entries*))
                (when full-test
-                 (full-compare-history instances :add-epsilon-timestamps test-epsilon-timestamps))
+                 (full-compare-history instances :slot-names slot-names :add-epsilon-timestamps test-epsilon-timestamps))
                ;; default x default
                (with-transaction
                  (with-default-t
-                   (compare-history instances)))
+                   (compare-history instances :slot-names slot-names)))
                (iter (repeat random-test-count)
                      ;; default x random
                      (with-transaction
                        (with-default-t
                          (with-random-validity-range
-                           (compare-history instances))))
+                           (compare-history instances :slot-names slot-names))))
                      ;; random x default
                      (with-transaction
                        (with-random-t
-                         (compare-history instances)))
+                         (compare-history instances :slot-names slot-names)))
                      ;; random x random
                      (with-transaction
                        (with-random-t
                          (with-random-validity-range
-                           (compare-history instances)))))))))))
+                           (compare-history instances :slot-names slot-names)))))))))))
 
 (deftest run-complex-tests (&rest args &key (instance-count 10) (operation-count 10) &allow-other-keys)
   (apply #'run-complex-test
