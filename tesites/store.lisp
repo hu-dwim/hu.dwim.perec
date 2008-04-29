@@ -137,11 +137,8 @@
                      ;; delete
                      (if (all-slots-unused-p h-instance :except h-slot-name)
                          (purge-instance h-instance)
-                         (store-slot h-class h-instance h-slot +h-unused-slot-marker+))))))))
+                         (store-slot h-class h-instance h-slot +h-unused-slot-marker+)))))))))
 
-      #+nil(debug-only (assert-no-overlapping-validities )))
-
-    
     (when (typep value 'persistent-object)
       (invalidate-all-cached-slots value)) ;; FIXME why?
     ;; TODO: if t-instance is cached either invalidate it or set the value on it
@@ -152,50 +149,177 @@
 ;;;;;;;;;;;;;;;;
 ;;; Associations
 
-(defmethod restore-slot ((t-class persistent-class-t) (t-instance t-object) (t-association-end persistent-association-end-effective-slot-definition-t))
-  (flet ((no-value-function (&optional validity-start validity-end)
-           (bind ((slot-type (canonical-type-of t-association-end)))
-             (cond
-               ((null-subtype-p slot-type) nil)
-               ((unbound-subtype-p slot-type) +unbound-slot-marker+)
-               (t (error "No history record for ~S~:[~*~; before ~S~]~:[~2*~; with validity between ~S and ~S~]."
-                         t-instance (temporal-p t-association-end) (when (temporal-p t-association-end) *t*)
-                         (time-dependent-p t-association-end) validity-start validity-end))))))
-    (bind ((records (select-association-end-values-with-validity t-class t-instance t-association-end))
-           (association-kind (association-kind-of (association-of t-association-end))))
-      (if (time-dependent-p t-association-end)
-          (ecase association-kind
-            (:1-1 (collect-values-having-validity
-                   records
-                   (lambda (record) (elt record 0))
-                   (lambda (record) (elt record 1))
-                   (lambda (record) (elt record 2))
-                   #'no-value-function
-                   *validity-start* *validity-end*))
-            ((:1-n :m-n) (collect-children-having-validity
-                          records
-                          (lambda (record) (elt record 0))
-                          (lambda (record) (elt record 1))
-                          (lambda (record) (elt record 2))
-                          (lambda (record) (elt record 3))
-                          *validity-start* *validity-end*)))
-          (if (zerop (length records))
-              (no-value-function)
-              (ecase association-kind
-                (:1-1 (elt records 0))
-                ((:1-n :m-n) (let (set)
-                               (iter (for record :in-sequence records)
-                                     (for value = (elt record 0))
-                                     (for action = (elt record 1))
-                                     (ecase action
-                                       (#.+t-insert+ (pushnew value set))
-                                       (#.+t-delete+ (deletef set value))))
-                               set))))))))
+(defmethod restore-slot ((class persistent-class) (instance persistent-object) (t-association-end persistent-association-end-effective-slot-definition-t))
+  (labels ((no-value-function (&optional validity-start validity-end)
+             (bind ((slot-type (canonical-type-of t-association-end)))
+               (cond
+                 ((null-subtype-p slot-type) nil)
+                 ((unbound-subtype-p slot-type) +unbound-slot-marker+)
+                 (t (error "No history record for ~S~:[~*~; before ~S~]~:[~2*~; with validity between ~S and ~S~]."
+                           instance (temporal-p t-association-end) (when (temporal-p t-association-end) *t*)
+                           (time-dependent-p t-association-end) validity-start validity-end)))))
+           
+           (unchecked-value (t-association-end instance &optional (validity-start *validity-start*)
+                                               (validity-end *validity-end*))
+             (bind ((records (select-association-end-values-with-validity t-association-end instance
+                                                                          validity-start validity-end))
+                    (association-kind (association-kind-of (association-of t-association-end)))
+                    (time-dependent-p (time-dependent-p t-association-end)))
+               (if (zerop (length records))
+                   (if time-dependent-p
+                       (make-single-values-having-validity (no-value-function validity-start validity-end)
+                                                           validity-start validity-end)
+                       (no-value-function))
+                   (ecase association-kind
+                     (:1-1
+                      (if time-dependent-p
+                          (collect-values-having-validity
+                           records
+                           (lambda (record) (elt record 0))
+                           (lambda (record) (elt record 1))
+                           (lambda (record) (elt record 2))
+                           #'no-value-function
+                           validity-start validity-end)
+                          (elt records 0)))
+                     ((:1-n :m-n)
+                      (if time-dependent-p
+                          (collect-children-having-validity
+                           records
+                           (lambda (record) (elt record 0))
+                           (lambda (record) (elt record 1))
+                           (lambda (record) (elt record 2))
+                           (lambda (record) (elt record 3))
+                           validity-start validity-end)
+                          (let (set)
+                            (iter (for record :in-sequence records)
+                                  (for value = (elt record 0))
+                                  (for action = (elt record 1))
+                                  (ecase action
+                                    (#.+t-insert+ (pushnew value set))
+                                    (#.+t-delete+ (deletef value set))))
+                            set)))))))
+           (check-result (instance result)
+             (bind ((other-association-end (other-association-end-of t-association-end)))
+               (cond
+                 ((or (null result) (eq result +unbound-slot-marker+))
+                  result)
+                 ((values-having-validity-p result)
+                  (bind ((values (make-array 0 :adjustable #t :fill-pointer 0))
+                         (validity-starts (make-array 0 :adjustable #t :fill-pointer 0))
+                         (validity-ends (make-array 0 :adjustable #t :fill-pointer 0)))
+                    (iter (for (value start end) :in-values-having-validity result)
+                          (for others = (unchecked-value other-association-end value start end))
+                          (iter (for (other-value other-start other-end) :in-values-having-validity others)
+                                (if (find instance (ensure-list other-value))
+                                    (vector-push-extend value values)
+                                    (vector-push-extend (no-value-function) values))
+                                (vector-push-extend other-start validity-starts)
+                                (vector-push-extend other-end validity-ends)))
+                    (make-values-having-validity values validity-starts validity-ends)))
+                 ((persistent-object-p result)
+                  (if (find instance (ensure-list (unchecked-value other-association-end result)))
+                      result
+                      (no-value-function)))
+                 ((listp result)
+                  (remove-if-not #L(find instance (ensure-list (unchecked-value other-association-end !1)))
+                                 result))
+                 (t
+                  (error ""))))))
+    
+    (check-result instance (unchecked-value t-association-end instance))))
 
-(defmethod store-slot ((t-class persistent-class-t) (t-instance t-object) (t-slot persistent-association-end-effective-slot-definition-t) value)
-  
-  ;; TODO
-  )
+(defmethod store-slot ((class persistent-class) (instance persistent-object) (t-slot persistent-association-end-effective-slot-definition-t) value)
+(if (values-having-validity-p value)
+      (iter (for (v start end) :in-values-having-validity value)
+            (check-slot-value-type instance t-slot v))
+      (check-slot-value-type instance t-slot value))
+
+  ;; this lock ensures that
+  ;; the insert/update operations on the h-table are serialized properly.
+  (lock-t-slot instance t-slot)
+    
+  (if (time-dependent-p t-slot)
+      (if (typep value 'values-having-validity)
+          (iter (for (v start end) :in-values-having-validity value) ;; TODO probably suboptimal
+                (store-t-association-end t-slot instance v start end))
+          (store-t-association-end t-slot instance value *validity-start* *validity-end*))
+      (store-t-association-end t-slot instance value +beginning-of-time+ +end-of-time+)))
+
+(def function store-t-association-end (t-association-end instance value validity-start validity-end)
+  (assert (or (not (time-dependent-p t-association-end))
+              (and validity-start validity-end)))
+
+  (bind ((temporal-p (temporal-p t-association-end))
+         (time-dependent-p (time-dependent-p t-association-end))
+         (t-value (when (boundp '*t*) *t*))
+         ((:values t-slot-default-value has-default-p) (default-value-for-type (slot-definition-type t-association-end)))
+         (default-value-p (and has-default-p (eq value t-slot-default-value)))
+         (overlapping-instances (select-current-h-associations-with-overlapping-validity
+                                 t-association-end instance value validity-start validity-end)))
+
+    (when (or (not default-value-p) (temporal-p t-association-end))
+      (insert-1-1-h-association-end t-association-end instance value
+                                    t-value validity-start validity-end))
+
+    (when overlapping-instances
+      (bind ((h-class (h-class-of t-association-end))
+             (h-slot (h-slot-of t-association-end))
+             (h-slot-name (slot-definition-name h-slot))
+             (other-h-slot (other-end-h-slot-of t-association-end))
+             (other-h-slot-name (slot-definition-name other-h-slot)))
+        (iter (for h-instance in-sequence overlapping-instances)
+              (for validity-start2 = (when time-dependent-p (validity-start-of h-instance)))
+              (for validity-end2 = (when time-dependent-p (validity-end-of h-instance)))
+              (for t-value2 = (when temporal-p (t-value-of h-instance)))
+              (for instance2 = (if (slot-boundp h-instance h-slot-name)
+                                   (slot-value h-instance h-slot-name)
+                                   +unbound-slot-marker+))
+              (for other-instance2 = (if (slot-boundp h-instance other-h-slot-name)
+                                         (slot-value h-instance other-h-slot-name)
+                                         +unbound-slot-marker+))
+                
+
+              (cond
+                ;; |----|      old
+                ;;    |----|   new       ->  shrink old
+                ((and time-dependent-p
+                      (local-time< validity-start2 validity-start)
+                      (local-time<= validity-end2 validity-end))
+                 (store-slot h-class h-instance (validity-end-slot-of t-association-end) validity-start))
+                ;;   |----|  old
+                ;; |----|    new         ->  shrink old
+                ((and time-dependent-p
+                      (local-time<= validity-start validity-start2)
+                      (local-time< validity-end validity-end2))
+                 (store-slot h-class h-instance (validity-start-slot-of t-association-end) validity-end))
+                ;; |---------|  old
+                ;;    |---|     new      -> split old
+                ((and time-dependent-p
+                      (local-time< validity-start2 validity-start)
+                      (local-time< validity-end validity-end2))
+                 (store-slot h-class h-instance (validity-end-slot-of t-association-end) validity-start)
+                 (insert-1-1-h-association-end t-association-end instance2 other-instance2
+                                               t-value2 validity-end validity-end2))
+                ;;    |---|    old
+                ;; |---------| new       -> clear instance from old, delete if empty
+                (t
+                 ;; A - B       new: CB
+                 ;;    /        old: AB, CD or CB
+                 ;;   /
+                 ;; C - D
+                 (cond
+                   ((and (eq instance instance2) (eq value other-instance2)) ;; CB
+                    (purge-instance h-instance))
+                   ((eq instance instance2) ;; CD
+                    (if other-instance2
+                        (store-slot h-class h-instance h-slot nil)
+                        (purge-instance h-instance)))
+                   ((and value (eq value other-instance2)) ;; AB
+                    (if instance2
+                        (store-slot h-class h-instance other-h-slot nil)
+                        (purge-instance h-instance)))))))))
+
+    value))
 
 
 ;;;
@@ -228,8 +352,6 @@
          tables
          where-clause
          count)
-
-    
 
     (pushnew (name-of (table-of value-slot)) tables)
     (pushnew (name-of (table-of (parent-slot-of t-class))) tables)
@@ -345,9 +467,28 @@
 
     (execute-query query t-instance *validity-start* *validity-end* (when (temporal-p t-slot) *t*))))
 
-(defun select-association-end-values-with-validity (t-class t-instance t-association-end)
+(defun insert-h-instance (t-class t-instance t-slot value t-value validity-start validity-end)
+  (bind ((h-class (h-class-of t-class)))
+    (apply 'make-instance
+           h-class
+           :t-object t-instance
+           (first (slot-definition-initargs t-slot)) value
+           (append
+            (when (subtypep h-class 'temporal-object)
+              (list :t-value t-value))
+            (when (subtypep h-class 'time-dependent-object)
+              (list :validity-start validity-start
+                    :validity-end validity-end))))))
+
+;;
+;; Association helpers
+;;
+
+(defun select-association-end-values-with-validity (t-association-end instance
+                                                    &optional
+                                                    (validity-start *validity-start*)
+                                                    (validity-end *validity-end*))
   "Returns the values of the association-end (with validity if time-dependent) in descending t order (if temporal). When temporal, but not time-dependent then only the most recent queried."
-  (declare (ignore t-class))
   (bind ((h-class-name (class-name (h-class-of t-association-end)))
          (h-association-end (h-slot-of t-association-end))
          (h-association-end-reader-name (reader-name-of h-association-end))
@@ -365,7 +506,7 @@
                                         `((action-of h-instance))))
                                (from (h-instance ,h-class-name))
                                (where (and
-                                       (eq (,h-association-end-reader-name h-instance) t-instance)
+                                       (eq (,h-association-end-reader-name h-instance) instance)
                                        ,@(when (time-dependent-p t-association-end)
                                                `((local-time< (validity-start-of h-instance) validity-end)
                                                  (local-time< validity-start (validity-end-of h-instance))))
@@ -376,17 +517,66 @@
                                ,@(when (and (not (time-dependent-p t-association-end))
                                             (eq association-kind :1-1))
                                          `((limit 1))))
-                            '(t-instance validity-start validity-end t-value))))
+                            '(instance validity-start validity-end t-value)))
+         (result (execute-query query instance validity-start validity-end (when (temporal-p t-association-end) *t*))))
 
-    (execute-query query t-instance *validity-start* *validity-end* (when (temporal-p t-association-end) *t*))))
+    result
 
-(defun insert-h-instance (t-class t-instance t-slot value t-value validity-start validity-end)
-  (bind ((h-class (h-class-of t-class)))
+    ))
+
+(defun select-current-h-associations-with-overlapping-validity (t-association-end instance value
+                                                                &optional validity-start validity-end)
+
+  (assert (or (not (time-dependent-p t-association-end))
+              (and validity-start validity-end)))
+  
+  ;; TODO performance: compile only one query using lexical variables
+  (bind ((h-class-name (class-name (h-class-of t-association-end)))
+         (h-slot-reader-name (reader-name-of (h-slot-of t-association-end)))
+         (other-h-slot-reader-name (reader-name-of (other-end-h-slot-of t-association-end)))
+         (query (make-query `(select (h-instance)
+                               (from (h-instance ,h-class-name))
+                               (where (and
+                                       (or
+                                        (eq (,h-slot-reader-name h-instance) instance)
+                                        (and (not (null value))
+                                             (eq (,other-h-slot-reader-name h-instance) value)))
+                                       ,@(when (time-dependent-p t-association-end)
+                                               `((local-time< (validity-start-of h-instance) validity-end)
+                                                 (local-time< validity-start (validity-end-of h-instance))))
+                                       ,@(when (temporal-p t-association-end)
+                                               `((local-time= (t-value-of h-instance) t-value))))))
+                            '(instance value validity-start validity-end t-value))))
+    (execute-query query instance value validity-start validity-end (when (temporal-p t-association-end) *t*))))
+
+
+(defun update-1-1-association-h-instance (t-association-end instance other-instance &optional validity-start validity-end)
+  (bind ((h-class (h-class-of t-association-end))
+         (reader (reader-name-of (h-slot-of t-association-end)))
+         (other-reader (reader-name-of (other-end-h-slot-of t-association-end)))
+         (query (make-query
+                 `(update (h-instance ,h-class)
+                    (set (,other-reader h-instance) other-instance)
+                    (where (and (eq (,reader h-instance) instance)
+                                ,@(when (temporal-p t-association-end)
+                                        (list `(eq (t-value-of h-instance) t-value)))
+                                ,@(when (time-dependent-p t-association-end)
+                                        (list `(and (eq (validity-start-of h-instance) validity-start)
+                                                    (eq (validity-end-of h-instance) validity-end)))))))
+                 '(instance other-instance t-value validity-start validity-end)))
+         (count (execute-query query instance other-instance *t* validity-start validity-end)))
+    (assert (<= count 1) nil "Inconsistent database")
+    count))
+
+(defun insert-1-1-h-association-end (t-association-end instance other-instance t-value validity-start validity-end)
+  (bind ((h-class (h-class-of t-association-end))
+         (h-init-arg (first (slot-definition-initargs (h-slot-of t-association-end))))
+         (other-h-init-arg (first (slot-definition-initargs (other-end-h-slot-of t-association-end)))))
     (apply 'make-instance
            h-class
-           :t-object t-instance
-           (first (slot-definition-initargs t-slot)) value
            (append
+            (list h-init-arg instance)
+            (list other-h-init-arg other-instance)
             (when (subtypep h-class 'temporal-object)
               (list :t-value t-value))
             (when (subtypep h-class 'time-dependent-object)

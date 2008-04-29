@@ -9,6 +9,8 @@
 ;;;;;;;;;
 ;;; Model
 
+;;; TODO change the representation: one adjustable vector of structs containing the three fields
+
 (defclass* values-having-validity ()
   ((values :type (vector t))
    (validity-starts :type (vector timestamp))
@@ -43,6 +45,11 @@
                    :validity-starts (make-single-element-vector validity-start)
                    :validity-ends (make-single-element-vector validity-end))))
 
+(def (function e) ensure-values-having-validity (value validity-start validity-end)
+  (if (values-having-validity-p value)
+      value
+      (make-single-values-having-validity value validity-start validity-end)))
+
 (def (function e) single-values-having-validity-p (instance)
   (and (values-having-validity-p instance)
        (= 1 (length (values-of instance)))))
@@ -52,12 +59,6 @@
                  :values (coerce values 'simple-vector)
                  :validity-starts (coerce validity-starts 'simple-vector)
                  :validity-ends (coerce validity-ends 'simple-vector)))
-
-(def (function e) values-having-validity-value (values-having-validity validity-start validity-end)
-  (not-yet-implemented))
-
-(def (function e) (setf values-having-validity-value) (new-value values-having-validity validity-start validity-end)
-  (not-yet-implemented))
 
 (def print-object values-having-validity
   (write-char #\{)
@@ -130,7 +131,7 @@
                          :validity-starts validity-starts
                          :validity-ends validity-ends)))))
 
-(def function extract-values-having-validity (values-having-validity requested-validity-start requested-validity-end)
+(def function values-having-validity-value (values-having-validity requested-validity-start requested-validity-end)
   "Extracts the requested range if possible, secondary value indicates success."
   (bind ((validity-starts (validity-starts-of values-having-validity))
          (validity-ends (validity-ends-of values-having-validity))
@@ -162,6 +163,65 @@
                         (setf in-requested-validity-range #t)))))
           (values result #t))
         (values nil #f))))
+
+(def (function e) (setf values-having-validity-value) (new-value values-having-validity validity-start validity-end)
+  (bind ((values (make-array 0 :adjustable #t :fill-pointer 0))
+         (validity-starts(make-array 0 :adjustable #t :fill-pointer 0))
+         (validity-ends (make-array 0 :adjustable #t :fill-pointer 0))
+         (addedp #f))
+    (flet ((add (value start end)
+             (vector-push-extend value values)
+             (vector-push-extend start validity-starts)
+             (vector-push-extend end validity-ends)))
+      (iter (for (value start end) :in-values-having-validity values-having-validity)
+
+            (cond
+              ;; |---|        old
+              ;;       |---|  new
+              ((local-time<= end validity-start)
+               (add value start end))
+              ;;       |---|  old
+              ;; |---|        new
+              ((local-time<= validity-end start)
+               (unless addedp
+                 (add new-value validity-start validity-end)
+                 (setf addedp #t))
+               (add value start end))
+              ;; |----|    old
+              ;;   |----|  new
+              ((and (local-time< start validity-start)
+                    (local-time<= end validity-end))
+               (add value start validity-start)
+               (add new-value validity-start validity-end)
+               (setf addedp #t))
+              ;; |--------| old
+              ;;   |----|   new
+              ((local-time< start validity-start)
+               (add value start validity-start)
+               (add new-value validity-start validity-end)
+               (add value validity-end end)
+               (setf addedp #t))
+              ;;   |-----| old
+              ;; |----|    new
+              ((and (local-time<= validity-start start)
+                    (local-time< validity-end end))
+               (unless addedp
+                 (add new-value validity-start validity-end)
+                 (setf addedp #t))
+               (add value validity-end end))
+              ;;    |---|    old
+              ;; |---------| new
+              (t
+               (unless addedp
+                 (add new-value validity-start validity-end)
+                 (setf addedp #t))))
+        
+            (finally
+             (unless addedp
+               (add new-value validity-start validity-end))
+             (setf (values-of values-having-validity) values
+                   (validity-starts-of values-having-validity) validity-starts
+                   (validity-ends-of values-having-validity) validity-ends))))))
 
 ;;;;;;;;;;;;;;;;;
 ;;; For set types
@@ -266,3 +326,46 @@
    (lambda (validity-start validity-end)
      (slot-unbound-t instance slot :validity-start validity-start :validity-end validity-end))
    *validity-start* *validity-end*))
+
+;;;
+;;;
+
+(def (function e) map-values-having-validity (function values-having-validity)
+  (bind ((length (length (values-of values-having-validity)))
+         (values (make-array length))
+         (validity-starts (make-array length))
+         (validity-ends (make-array length)))
+    (iter (for (value start end) :in-values-having-validity values-having-validity)
+          (for index from 0)
+          (setf (svref values index) (funcall function value)
+                (svref validity-starts index) start
+                (svref validity-ends index) end))
+    (make-values-having-validity values validity-starts validity-ends)))
+
+(def (function e) consolidate-values-having-validity (values-having-validity &key (test #'eql))
+  (if (values-having-validity-p values-having-validity)
+      (if (values-having-validity-p values-having-validity)
+          (if (iter (for (value start end) :in-values-having-validity values-having-validity)
+                    (for prev-value :previous value)
+                    (for prev-end :previous end)
+                    (always (or (first-iteration-p)
+                                (local-time/= start prev-end)
+                                (not (funcall test value prev-value)))))
+              values-having-validity
+              (iter (with values = (make-array 0 :adjustable #t :fill-pointer 0))
+                    (with validity-starts = (make-array 0 :adjustable #t :fill-pointer 0))
+                    (with validity-ends = (make-array 0 :adjustable #t :fill-pointer 0))
+                    (for (value start end) :in-values-having-validity values-having-validity)
+                    (for prev-value :previous value)
+                    (for prev-end :previous end)
+                    (unless (and (not (first-iteration-p))
+                                 (local-time= start prev-end)
+                                 (funcall test value prev-value))
+                      (progn
+                        (when prev-end (vector-push-extend prev-end validity-ends))
+                        (vector-push-extend value values)
+                        (vector-push-extend start validity-starts)))
+                    (finally
+                     (vector-push-extend prev-end validity-ends)
+                     (return (make-values-having-validity values validity-starts validity-ends))))))
+      (make-single-values-having-validity values-having-validity *validity-start* *validity-end*)))

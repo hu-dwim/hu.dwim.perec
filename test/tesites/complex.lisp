@@ -73,7 +73,12 @@
                                             (declare (ignore validity-start validity-end))
                                             current-value)))
          (new-slot-value-function (if time-dependent-p
-                                      #'(setf values-having-validity-value)
+                                      (lambda (new-value old-value validity-start validity-end)
+                                        (if (values-having-validity-p old-value)
+                                            (progn
+                                              (setf (values-having-validity-value old-value validity-start validity-end) new-value)
+                                              old-value)
+                                            (make-single-values-having-validity new-value validity-start validity-end)))
                                       (lambda (new-value old-value validity-start validity-end)
                                         (declare (ignore old-value validity-start validity-end))
                                         new-value)))
@@ -223,7 +228,7 @@
   (bind ((available-slot-names
           (iter (for slot :in (prc::persistent-effective-slots-of class))
                 (for slot-name = (slot-definition-name slot))
-                (unless (eq slot-name 'h-objects)
+                (unless (starts-with-subseq (symbol-name slot-name) "H-") ;was (eq slot-name 'h-objects)
                   (collect slot-name)))))
     (if slot-names
         (intersection slot-names available-slot-names)
@@ -258,8 +263,8 @@
                  (t (eql persistent-value test-value)))))
     (or (and (values-having-validity-p persistent-value)
              (values-having-validity-p test-value)
-             (iter (for (persistent-value persistent-validity-start persistent-validity-end) :in-values-having-validity persistent-value)
-                   (for (test-value test-validity-start test-validity-end) :in-values-having-validity test-value)
+             (iter (for (persistent-value persistent-validity-start persistent-validity-end) :in-values-having-validity (consolidate-values-having-validity persistent-value))
+                   (for (test-value test-validity-start test-validity-end) :in-values-having-validity (consolidate-values-having-validity test-value))
                    (always (and (compare persistent-value test-value)
                                 (local-time= persistent-validity-start test-validity-start)
                                 (local-time= persistent-validity-end test-validity-end)))))

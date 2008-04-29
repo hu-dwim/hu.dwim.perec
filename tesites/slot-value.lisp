@@ -106,12 +106,12 @@
                       (if (single-values-having-validity-p value)
                           (first-elt (values-of value))
                           value)))))
-    (bind ((persistent (persistent-p instance)))
+    (bind ((persistent (persistent-p instance))
+           (cache-p (and *cache-slot-values* (cache-p slot))))
       (assert-instance-access instance persistent)
       (bind (((:values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
         (when (or (not persistent)
-                  (and *cache-slot-values*
-                       slot-value-cached))
+                  (and cache-p slot-value-cached))
           (if (time-dependent-p slot)
               (progn
                 *validity-start* *validity-end*
@@ -120,7 +120,7 @@
                 (if (unbound-slot-marker-p cached-value)
                     (return-value +unbound-slot-marker+)
                     (bind (((:values value covers-validity-range-p)
-                            (extract-values-having-validity cached-value *validity-start* *validity-end*)))
+                            (values-having-validity-value cached-value *validity-start* *validity-end*)))
                       (if covers-validity-range-p
                           (return-value value)
                           (unless persistent
@@ -129,10 +129,12 @@
                 *t*
                 (return-value cached-value))))
         (bind ((value (restore-slot class instance slot)))
-          (setf (underlying-slot-value-using-class class instance slot)
-                (if (values-having-validity-p value)
-                    value
-                    (make-single-values-having-validity value *validity-start* *validity-end*)))
+          (when (or (not persistent)
+                    cache-p)
+            (setf (underlying-slot-value-using-class class instance slot)
+                  (if (values-having-validity-p value)
+                      value
+                      (make-single-values-having-validity value *validity-start* *validity-end*))))
           (return-value value))))))
 
 (def (function io) (setf slot-boundp-or-value-using-class-t) (new-value class instance slot)
@@ -153,7 +155,7 @@
   new-value)
 
 
-(defmethod slot-value-using-class ((class persistent-class-t)
+(defmethod slot-value-using-class ((class persistent-class)
                                    (instance persistent-object)
                                    (slot persistent-effective-slot-definition-t))
   "Reads the slot value from the database or the cache."
@@ -169,13 +171,13 @@
                                           value))))
 
 (defmethod (setf slot-value-using-class) (new-value
-                                          (class persistent-class-t)
+                                          (class persistent-class)
                                           (instance persistent-object)
                                           (slot persistent-effective-slot-definition-t))
   "Writes the new slot value to the database and the cache."
   (setf (slot-boundp-or-value-using-class-t class instance slot) new-value))
 
-(defmethod slot-boundp-using-class ((class persistent-class-t)
+(defmethod slot-boundp-using-class ((class persistent-class)
                                     (instance persistent-object)
                                     (slot persistent-effective-slot-definition-t))
   "Reads boundness from the database or the cache."
@@ -186,9 +188,10 @@
                                                   (always (not (unbound-slot-marker-p v))))
                                             (not (unbound-slot-marker-p value))))))
 
-(defmethod slot-makunbound-using-class ((class persistent-class-t)
+(defmethod slot-makunbound-using-class ((class persistent-class)
                                         (instance persistent-object)
                                         (slot persistent-effective-slot-definition-t))
   "Writes boundness to the database and the cache."
   (setf (slot-boundp-or-value-using-class-t class instance slot) +unbound-slot-marker+)
   instance)
+

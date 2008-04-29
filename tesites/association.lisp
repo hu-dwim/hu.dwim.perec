@@ -24,7 +24,10 @@
 
 (defcclass* persistent-association-end-effective-slot-definition-t
     (persistent-association-end-slot-definition-t persistent-effective-slot-definition-t persistent-association-end-effective-slot-definition)
-  ((h-class
+  ((prefetch #f)          ;; TODO temporarily
+   (type-check :always)
+   (cache #f)             ;; TODO temporarily
+   (h-class
     (compute-as (h-class-of (association-of -self-)))
     :type persistent-class)
    (table
@@ -51,7 +54,7 @@
     (compute-as (first (columns-of (action-slot-of -self-))))
     :type column)
    (h-slot-name
-    (compute-as ()) ; TODO
+    (compute-as (concatenate-symbol "t-" (slot-definition-name (other-association-end-of -self-)) *package*))
     :type symbol)
    (h-slot
     (compute-as (find-slot (h-class-of -self-) (h-slot-name-of -self-))))
@@ -100,8 +103,8 @@
          (defpclass* ,association-name ,superclasses
            ())
          (defassociation*
-           ((:class ,association-name :slot ,(concatenate-symbol "t-" secondary-slot *package*) :type ,primary-class)
+           ((:class ,association-name :slot ,(concatenate-symbol "t-" secondary-slot *package*) :type (or null ,primary-class))
             (:class ,primary-class :slot ,(concatenate-symbol "h-" primary-slot *package*) :type (set ,association-name))))
          (defassociation*
-           ((:class ,association-name :slot ,(concatenate-symbol "t-" primary-slot *package*) :type ,secondary-class)
+           ((:class ,association-name :slot ,(concatenate-symbol "t-" primary-slot *package*) :type (or null ,secondary-class))
             (:class ,secondary-class :slot ,(concatenate-symbol "h-" secondary-slot *package*) :type (set ,association-name))))))))
