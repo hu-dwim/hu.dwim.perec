@@ -40,7 +40,7 @@
 
 (defmethod store-slot ((t-class persistent-class-t) (t-instance t-object) (t-slot persistent-effective-slot-definition-t) value)
   (if (values-having-validity-p value)
-      (iter (for (v start end) :in-values-having-validity value)
+      (iter (for (start end v) :in-values-having-validity value)
             (check-slot-value-type t-instance t-slot v))
       (check-slot-value-type t-instance t-slot value))
 
@@ -50,7 +50,7 @@
     
   (if (time-dependent-p t-slot)
       (if (typep value 'values-having-validity)
-          (iter (for (v start end) :in-values-having-validity value) ;; TODO probably suboptimal
+          (iter (for (start end v) :in-values-having-validity value) ;; TODO probably suboptimal
                 (store-slot-t* t-class t-instance t-slot v start end))
           (store-slot-t* t-class t-instance t-slot value *validity-start* *validity-end*))
       (store-slot-t* t-class t-instance t-slot value +beginning-of-time+ +end-of-time+)))
@@ -207,9 +207,9 @@
                   (bind ((values (make-array 0 :adjustable #t :fill-pointer 0))
                          (validity-starts (make-array 0 :adjustable #t :fill-pointer 0))
                          (validity-ends (make-array 0 :adjustable #t :fill-pointer 0)))
-                    (iter (for (value start end) :in-values-having-validity result)
+                    (iter (for (start end value) :in-values-having-validity result)
                           (for others = (unchecked-value other-association-end value start end))
-                          (iter (for (other-value other-start other-end) :in-values-having-validity others)
+                          (iter (for (other-start other-end other-value) :in-values-having-validity others)
                                 (if (find instance (ensure-list other-value))
                                     (vector-push-extend value values)
                                     (vector-push-extend (no-value-function) values))
@@ -230,7 +230,7 @@
 
 (defmethod store-slot ((class persistent-class) (instance persistent-object) (t-slot persistent-association-end-effective-slot-definition-t) value)
 (if (values-having-validity-p value)
-      (iter (for (v start end) :in-values-having-validity value)
+      (iter (for (start end v) :in-values-having-validity value)
             (check-slot-value-type instance t-slot v))
       (check-slot-value-type instance t-slot value))
 
@@ -240,7 +240,7 @@
     
   (if (time-dependent-p t-slot)
       (if (typep value 'values-having-validity)
-          (iter (for (v start end) :in-values-having-validity value) ;; TODO probably suboptimal
+          (iter (for (start end v) :in-values-having-validity value) ;; TODO probably suboptimal
                 (store-t-association-end t-slot instance v start end))
           (store-t-association-end t-slot instance value *validity-start* *validity-end*))
       (store-t-association-end t-slot instance value +beginning-of-time+ +end-of-time+)))

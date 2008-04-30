@@ -48,7 +48,7 @@
         (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ")))))
 
 (deftest test/tesites/values-having-validity/extract ()
-  (iter (for (value validity-start validity-end index) :in-values-having-validity
+  (iter (for (validity-start validity-end value) :in-values-having-validity
              (values-having-validity-value
               (make-instance 'values-having-validity
                              :values (make-array 3 :initial-contents '(1000 2000 3000))
@@ -60,6 +60,7 @@
                                                                                   (parse-timestring "2009-01-01TZ"))))
               (parse-timestring "2006-06-06TZ")
               (parse-timestring "2008-07-07TZ")))
+        (for index from 0)
         (ecase index
           (0 (is (= value 1000))
              (is (local-time= validity-start (parse-timestring "2006-06-06TZ")))
@@ -151,6 +152,22 @@
                (collect-value-with-validity (value start end))))
        (make-values-having-validity* '((1 "2005-01-01TZ" "2006-01-01TZ")
                                        (3 "2007-01-01TZ" "2008-01-01TZ"))))))
+
+(deftest test/tesites/values-having-validity/iterate ()
+  (is (values-having-validity=
+       (iter (for (s e v1 v2) :in-values-having-validity ((make-values-having-validity*
+                                                           '((2 "2005-01-01TZ" "2006-01-01TZ")
+                                                             (3 "2006-01-01TZ" "2007-01-01TZ")
+                                                             (5 "2007-01-01TZ" "2008-01-01TZ")))
+                                                          (make-values-having-validity*
+                                                           '((7 "2005-01-01TZ" "2006-06-01TZ")
+                                                             (11 "2006-06-01TZ" "2007-06-01TZ")
+                                                             (13 "2007-06-01TZ" "2008-01-01TZ")))))
+             (collect-value-with-validity (* v1 v2) :from s :to e))
+       (make-values-having-validity* '((1 "2005-01-01TZ" "2006-01-01TZ")
+                                       (2 "2006-01-01TZ" "2007-01-01TZ")
+                                       (3 "2007-01-01TZ" "2008-01-01TZ"))))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Children having validity

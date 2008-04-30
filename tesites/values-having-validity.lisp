@@ -80,32 +80,73 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Iteratation support
+(defmacro-clause (for variables :in-values-having-validity value-having-validities)
+  "Use it like (for (validity-start validity-end value1 ...) :in-values-having-validity v)"
+  (assert (and (listp variables) (>= (length variables) 3)))
+  
+  (bind ((validity-start-variable (first variables))
+         (validity-end-variable (second variables))
+         (value-variables (cddr variables)))
 
-(defmacro-clause (for variables :in-values-having-validity v)
-  "Use it like (for (value validity-start validity-end index) :in-values-having-validity v)"
-  (with-unique-names (value values validity-starts validity-ends)
-    (let ((index (or (fourth variables) (gensym "INDEX-"))))
-      `(progn
-         (with ,value = ,v)
-         (with ,values = (values-of ,value))
-         (with ,validity-starts = (validity-starts-of ,value))
-         (with ,validity-ends = (validity-ends-of ,value))
-         (for ,index :from 0 :below (length ,values))
-         (for (values ,(first variables) ,(second variables) ,(third variables)) =
-              (values (aref ,values ,index) (aref ,validity-starts ,index) (aref ,validity-ends ,index)))))))
+    (assert validity-start-variable () "")
+    (assert validity-end-variable () "")
+    (assert (or (length=1 value-variables)
+                (and (listp value-having-validities)
+                     (= (length value-variables) (length value-having-validities)))) ()
+                     "TODO")
+    
+    (if (length=1 value-variables)
+        ;; efficient version for iterating on one values-having-validity
+        (with-unique-names (value-having-validity-variable values validity-starts validity-ends index)
+          `(progn
+             (with ,value-having-validity-variable = ,value-having-validities)
+             (with ,values = (values-of ,value-having-validity-variable))
+             (with ,validity-starts = (validity-starts-of ,value-having-validity-variable))
+             (with ,validity-ends = (validity-ends-of ,value-having-validity-variable))
+             (for ,index :index-of-vector ,values)
+             (for ,(first value-variables) = (aref ,values ,index))
+             (for ,validity-start-variable = (aref ,validity-starts ,index))
+             (for ,validity-end-variable = (aref ,validity-ends ,index))))
+        ;; iterating on several values-having-validity parallel, TODO there is place for optimization here
+        ;; TODO three option for holes: error (default option)/ skip / use given default value
+        (bind ((value-having-validity-variables (mapcar #L(gensym (symbol-name !1)) value-variables)))
+          `(progn
+             ,@(iter (for variable :in value-having-validity-variables)
+                     (for value-having-validity :in value-having-validities)
+                     (collect `(with ,variable = ,value-having-validity)))
+             (for ,validity-end-variable :in-vector (merge-validities ,@value-having-validity-variables))
+             (for ,validity-start-variable :previous ,validity-end-variable)
+             (unless ,validity-start-variable (next-iteration))
+             ;; (format t "Start: ~S End: ~S~%" ,validity-start-variable ,validity-end-variable)
+             ,@(iter (for variable :in value-variables)
+                     (for values-having-validity-variable :in value-having-validity-variables)
+                     (collect `(for ,variable =
+                                    (single-values-having-validity-value
+                                     ;; be aware: iterates with _one_ value
+                                     (values-having-validity-value ,values-having-validity-variable ,validity-start-variable ,validity-end-variable))))))))))
+
 
 (def function merge-validities (&rest values-having-validities)
-  (iter (with result = (make-array 0 :adjustable t :fill-pointer 0))
-        (for values-having-validity :in values-having-validities)
-        (flet ((add-validities (validities)
-                 (iter (for validity :in-vector validities)
-                       (unless (find validity result :test #'local-time=)
-                         (vector-push-extend validity result)))))
-          (add-validities (validity-starts-of values-having-validity))
-          (add-validities (validity-ends-of values-having-validity)))
-        (finally
-         (sort result #'local-time<)
-         (return result))))
+  (if (some #L(= 0 (length (values-of !1))) values-having-validities)
+      (make-empty-values-having-validity)
+      (bind ((max-validity-start (apply 'local-time-max (map 'list #L(first-elt (validity-starts-of !1))
+                                                             values-having-validities)))
+             (min-validity-end (apply 'local-time-min (map 'list #L(last-elt (validity-ends-of !1))
+                                                             values-having-validities))))
+        (if (local-time< max-validity-start min-validity-end)
+            (iter (with result = (make-array 0 :adjustable t :fill-pointer 0))
+                  (for values-having-validity :in values-having-validities)
+                  (flet ((add-validities (validities)
+                           (iter (for validity :in-vector validities)
+                                 (when (and (local-time<= max-validity-start validity min-validity-end)
+                                            (not (find validity result :test #'local-time=)))
+                                   (vector-push-extend validity result)))))
+                    (add-validities (validity-starts-of values-having-validity))
+                    (add-validities (validity-ends-of values-having-validity)))
+                  (finally
+                   (sort result #'local-time<)
+                   (return result)))
+            (make-empty-values-having-validity)))))
 
 (def (macro e) do-values-having-validity (values-having-validities &body forms)
   (with-unique-names (validity-start validity-end)
@@ -223,30 +264,23 @@
          (last-validity-end (aref validity-ends (1- (length validity-ends)))))
     (if (and (local-time<= first-validity-start requested-validity-start)
              (local-time<= requested-validity-end last-validity-end))
-        (bind ((values (make-array 8 :adjustable #t :fill-pointer 0))
-               (validity-starts (make-array 8 :adjustable #t :fill-pointer 0))
-               (validity-ends (make-array 8 :adjustable #t :fill-pointer 0))
-               (result
-                (make-instance 'values-having-validity
-                               :values values
-                               :validity-starts validity-starts
-                               :validity-ends validity-ends)))
-          (flet ((push-value-with-validity (value validity-start validity-end)
-                   (unless (local-time= validity-start validity-end)
-                     (vector-push-extend value values)
-                     (vector-push-extend validity-start validity-starts)
-                     (vector-push-extend validity-end validity-ends))))
-            (iter (with in-requested-validity-range = #f)
-                  (for (value validity-start validity-end) :in-values-having-validity values-having-validity)
-                  (if in-requested-validity-range
-                      (if (local-time<= validity-start requested-validity-end validity-end)
-                          (progn (push-value-with-validity value validity-start requested-validity-end)
-                                 (setf in-requested-validity-range #f))
-                          (push-value-with-validity value validity-start validity-end))
-                      (when (local-time<= validity-start requested-validity-start validity-end)
-                        (push-value-with-validity value requested-validity-start validity-end)
-                        (setf in-requested-validity-range #t)))))
-          (values result #t))
+        (values
+         ;; TODO binary search?
+         (iter (for (validity-start validity-end value) :in-values-having-validity values-having-validity)
+               ;;(format t "~S ~S~%" validity-start validity-end)
+               (cond
+                 ((local-time<= validity-end requested-validity-start)
+                  nil)
+                 ((local-time>= validity-start requested-validity-end)
+                  (finish))
+                 ((and (local-time<= requested-validity-start validity-start)
+                       (local-time<= validity-end requested-validity-end))
+                  (collect-value-with-validity value :from validity-start :to validity-end))
+                 ((local-time< validity-start requested-validity-start)
+                  (collect-value-with-validity value :from requested-validity-start :to validity-end))
+                 (t
+                  (collect-value-with-validity value :from validity-start :to requested-validity-end))))
+         #t)
         (values (make-empty-values-having-validity) #f))))
 
 (def (function e) (setf values-having-validity-value) (new-value values-having-validity validity-start validity-end)
@@ -258,7 +292,7 @@
              (vector-push-extend value values)
              (vector-push-extend start validity-starts)
              (vector-push-extend end validity-ends)))
-      (iter (for (value start end) :in-values-having-validity values-having-validity)
+      (iter (for (start end value) :in-values-having-validity values-having-validity)
 
             (cond
               ;; |---|        old
@@ -412,15 +446,12 @@
      (slot-unbound-t instance slot :validity-start validity-start :validity-end validity-end))
    *validity-start* *validity-end*))
 
-;;;
-;;;
-
 (def (function e) map-values-having-validity (function values-having-validity)
   (bind ((length (length (values-of values-having-validity)))
          (values (make-array length))
          (validity-starts (make-array length))
          (validity-ends (make-array length)))
-    (iter (for (value start end) :in-values-having-validity values-having-validity)
+    (iter (for (start end value) :in-values-having-validity values-having-validity)
           (for index from 0)
           (setf (svref values index) (funcall function value)
                 (svref validity-starts index) start
@@ -428,17 +459,17 @@
     (make-values-having-validity values validity-starts validity-ends)))
 
 (def (function e) consolidate-values-having-validity (values-having-validity &key (test #'eql))
-  (if (iter (for (value start end) :in-values-having-validity values-having-validity)
+  (if (iter (for (start end value) :in-values-having-validity values-having-validity)
             (for prev-value :previous value)
             (for prev-end :previous end)
             (always (or (first-iteration-p)
                         (local-time/= start prev-end)
                         (not (funcall test value prev-value)))))
-      values-having-validity
+      values-having-validity ; already consolidated
       (iter (with values = (make-array 0 :adjustable #t :fill-pointer 0))
             (with validity-starts = (make-array 0 :adjustable #t :fill-pointer 0))
             (with validity-ends = (make-array 0 :adjustable #t :fill-pointer 0))
-            (for (value start end) :in-values-having-validity values-having-validity)
+            (for (start end value) :in-values-having-validity values-having-validity)
             (for prev-value :previous value)
             (for prev-end :previous end)
             (unless (and (not (first-iteration-p))

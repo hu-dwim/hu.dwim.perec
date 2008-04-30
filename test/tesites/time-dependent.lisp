@@ -136,7 +136,7 @@
       (setf (population-of -instance-) 2007))
     (with-validity-range "2006" "2008"
       (iter (for index :from 0)
-            (for (value validity-start validity-end) :in-values-having-validity (population-of -instance-))
+            (for (validity-start validity-end value) :in-values-having-validity (population-of -instance-))
             (ecase index
               (0 (is (= 2006 value))
                  (is (local-time= (parse-datestring "2006-01-01") validity-start))

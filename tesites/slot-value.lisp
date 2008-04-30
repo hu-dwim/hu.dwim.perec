@@ -52,7 +52,7 @@
 (def function integrated-time-dependent-slot-value (instance slot-name &optional (ignore-nil #f))
   (bind ((slot-values (slot-value instance slot-name)))
     (if (typep slot-values 'values-having-validity)
-        (iter (for (value validity-start validity-end index) :in-values-having-validity slot-values)
+        (iter (for (validity-start validity-end value) :in-values-having-validity slot-values)
               (unless (and ignore-nil
                            (not value))
                 (summing (* value (local-time- validity-end validity-start)))))
@@ -165,7 +165,7 @@
                                                  (when (unbound-slot-marker-p value)
                                                    (slot-unbound-t instance slot))))
                                           (if (values-having-validity-p value)
-                                              (iter (for (v s e) :in-values-having-validity value)
+                                              (iter (for (s e v) :in-values-having-validity value)
                                                     (check-value v))
                                               (check-value value))
                                           value))))
@@ -184,7 +184,7 @@
   (slot-boundp-or-value-using-class-t class instance slot
                                       (lambda (value)
                                         (if (values-having-validity-p value)
-                                            (iter (for (v s e) :in-values-having-validity value)
+                                            (iter (for (s e v) :in-values-having-validity value)
                                                   (always (not (unbound-slot-marker-p v))))
                                             (not (unbound-slot-marker-p value))))))
 
