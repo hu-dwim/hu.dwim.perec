@@ -114,6 +114,44 @@
                                          (2000 "2007-01-01TZ" "2008-01-01TZ")
                                          (3000 "2008-01-01TZ" "2009-01-01TZ")))))))
 
+(deftest test/tesites/values-having-validity/collect ()
+  (is (values-having-validity=
+       (iter (for value in '(1 2 3))
+             (for start in '("2005-01-01TZ" "2006-01-01TZ" "2007-01-01TZ"))
+             (for end in '("2006-01-01TZ" "2007-01-01TZ" "2008-01-01TZ"))
+             (collect-value-with-validity value :from start :to end))
+       (make-values-having-validity* '((1 "2005-01-01TZ" "2006-01-01TZ")
+                                       (2 "2006-01-01TZ" "2007-01-01TZ")
+                                       (3 "2007-01-01TZ" "2008-01-01TZ")))))
+
+  (is (values-having-validity=
+       (iter (for value in '(1 2 3))
+             (for start in '("2005-01-01TZ" "2006-01-01TZ" "2007-01-01TZ"))
+             (for end in '("2006-01-01TZ" "2007-01-01TZ" "2008-01-01TZ"))
+             (collect-value-with-validity (value start end)))
+       (make-values-having-validity* '((1 "2005-01-01TZ" "2006-01-01TZ")
+                                       (2 "2006-01-01TZ" "2007-01-01TZ")
+                                       (3 "2007-01-01TZ" "2008-01-01TZ")))))
+
+  (is (values-having-validity=
+       (iter (for value in '(1 2 3))
+             (for start in '("2005-01-01TZ" "2006-01-01TZ" "2007-01-01TZ"))
+             (for end in '("2006-01-01TZ" "2007-01-01TZ" "2008-01-01TZ"))
+             (collect-value-with-validity (value start end) into a)
+             (finally (return a)))
+       (make-values-having-validity* '((1 "2005-01-01TZ" "2006-01-01TZ")
+                                       (2 "2006-01-01TZ" "2007-01-01TZ")
+                                       (3 "2007-01-01TZ" "2008-01-01TZ")))))
+
+  (is (values-having-validity=
+       (iter (for value in '(1 2 3))
+             (for start in '("2005-01-01TZ" "2006-01-01TZ" "2007-01-01TZ"))
+             (for end in '("2006-01-01TZ" "2007-01-01TZ" "2008-01-01TZ"))
+             (when (oddp value)
+               (collect-value-with-validity (value start end))))
+       (make-values-having-validity* '((1 "2005-01-01TZ" "2006-01-01TZ")
+                                       (3 "2007-01-01TZ" "2008-01-01TZ"))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Children having validity
 

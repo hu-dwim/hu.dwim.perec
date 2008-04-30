@@ -119,6 +119,56 @@
                                         (values-having-validity-value ,values-having-validity *validity-start* *validity-end*)))))
                  ,@forms))))))
 
+(defun normalize-validity (validity)
+  (typecase validity
+    (local-time validity)
+    (string (parse-timestring validity))
+    (t (error "Local-time or string expected in COLLECT-VALUE-WITH-VALIDITY, received ~S."
+              validity))))
+
+(export 'collect-value-with-validity)
+
+;;; (COLLECT &optional INTO AT RESULT-TYPE)
+(iter::defclause (collect-value-with-validity expr
+                                              &optional
+                                              from validity-start
+                                              to validity-end
+                                              into variable)
+  "Collect into a values-having-validity."
+  (assert (or (and validity-start validity-end)
+              (and (null validity-start) (null validity-end) (= (length expr) 3)))
+          () "Wrong COLLECT-VALUE-WITH-VALIDITY clause in iterate. Use 'COLLECT-VALUES-WITH-VALIDITY <value> FROM <validity-start> TO <validity-end>' or 'COLLECT-VALUES-WITH-VALIDITY (<value> <validity-start> <validity-end>)'.")
+  
+  (let* ((collect-var-spec (or variable iter::*result-var*))
+         (collect-var (iter::extract-var collect-var-spec))
+         (validity-start-expr (or validity-start (second expr)))
+         (validity-end-expr (or validity-end (third expr)))
+         (value-expr (if (and validity-start validity-end) expr (first expr))))
+
+    (iter::make-accum-var-binding collect-var-spec nil :collect-value-with-validity)
+      
+    (when (stringp validity-start-expr)
+      (setf validity-start-expr (parse-timestring validity-start-expr)))
+
+    (when (stringp validity-end-expr)
+      (setf validity-end-expr (parse-timestring validity-end-expr)))
+    
+    (iter::return-code
+     :initial `((setf ,collect-var (make-instance 'values-having-validity
+                                                  :values (make-array 4 :adjustable #t :fill-pointer 0)
+                                                  :validity-starts (make-array 4 :adjustable #t :fill-pointer 0)
+                                                  :validity-ends (make-array 4 :adjustable #t :fill-pointer 0))))
+     :body `((progn
+               (vector-push-extend ,value-expr (values-of ,collect-var))
+               (vector-push-extend ,(if (typep validity-start-expr 'local-time)
+                                        validity-start-expr
+                                        `(normalize-validity ,validity-start-expr))
+                                   (validity-starts-of ,collect-var))
+               (vector-push-extend ,(if (typep validity-end-expr 'local-time)
+                                        validity-end-expr
+                                        `(normalize-validity ,validity-end-expr))
+                                   (validity-ends-of ,collect-var)))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; For primitive types
 
@@ -378,27 +428,26 @@
     (make-values-having-validity values validity-starts validity-ends)))
 
 (def (function e) consolidate-values-having-validity (values-having-validity &key (test #'eql))
-  (if (values-having-validity-p values-having-validity)
-      (if (iter (for (value start end) :in-values-having-validity values-having-validity)
-                (for prev-value :previous value)
-                (for prev-end :previous end)
-                (always (or (first-iteration-p)
-                            (local-time/= start prev-end)
-                            (not (funcall test value prev-value)))))
-          values-having-validity
-          (iter (with values = (make-array 0 :adjustable #t :fill-pointer 0))
-                (with validity-starts = (make-array 0 :adjustable #t :fill-pointer 0))
-                (with validity-ends = (make-array 0 :adjustable #t :fill-pointer 0))
-                (for (value start end) :in-values-having-validity values-having-validity)
-                (for prev-value :previous value)
-                (for prev-end :previous end)
-                (unless (and (not (first-iteration-p))
-                             (local-time= start prev-end)
-                             (funcall test value prev-value))
-                  (progn
-                    (when prev-end (vector-push-extend prev-end validity-ends))
-                    (vector-push-extend value values)
-                    (vector-push-extend start validity-starts)))
-                (finally
-                 (vector-push-extend prev-end validity-ends)
-                 (return (make-values-having-validity values validity-starts validity-ends)))))))
+  (if (iter (for (value start end) :in-values-having-validity values-having-validity)
+            (for prev-value :previous value)
+            (for prev-end :previous end)
+            (always (or (first-iteration-p)
+                        (local-time/= start prev-end)
+                        (not (funcall test value prev-value)))))
+      values-having-validity
+      (iter (with values = (make-array 0 :adjustable #t :fill-pointer 0))
+            (with validity-starts = (make-array 0 :adjustable #t :fill-pointer 0))
+            (with validity-ends = (make-array 0 :adjustable #t :fill-pointer 0))
+            (for (value start end) :in-values-having-validity values-having-validity)
+            (for prev-value :previous value)
+            (for prev-end :previous end)
+            (unless (and (not (first-iteration-p))
+                         (local-time= start prev-end)
+                         (funcall test value prev-value))
+              (progn
+                (when prev-end (vector-push-extend prev-end validity-ends))
+                (vector-push-extend value values)
+                (vector-push-extend start validity-starts)))
+            (finally
+             (vector-push-extend prev-end validity-ends)
+             (return (make-values-having-validity values validity-starts validity-ends))))))
