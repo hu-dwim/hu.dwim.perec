@@ -36,6 +36,12 @@
                (always (local-time= s-1 s-2))
                (always (local-time= e-1 e-2))))))
 
+(def (function e) make-empty-values-having-validity ()
+  (make-instance 'values-having-validity
+                 :values #()
+                 :validity-starts #()
+                 :validity-ends #()))
+
 (def (function e) make-single-values-having-validity (value validity-start validity-end)
   (flet ((make-single-element-vector (element)
            (aprog1 (make-array 1)
@@ -53,6 +59,10 @@
 (def (function e) single-values-having-validity-p (instance)
   (and (values-having-validity-p instance)
        (= 1 (length (values-of instance)))))
+
+(def (function e) single-values-having-validity-value (instance)
+  (assert (single-values-having-validity-p instance))
+  (elt-values-having-validity instance 0))
 
 (def (function e) make-values-having-validity (values validity-starts validity-ends)
   (make-instance 'values-having-validity
@@ -83,6 +93,31 @@
          (for ,index :from 0 :below (length ,values))
          (for (values ,(first variables) ,(second variables) ,(third variables)) =
               (values (aref ,values ,index) (aref ,validity-starts ,index) (aref ,validity-ends ,index)))))))
+
+(def function merge-validities (&rest values-having-validities)
+  (iter (with result = (make-array 0 :adjustable t :fill-pointer 0))
+        (for values-having-validity :in values-having-validities)
+        (flet ((add-validities (validities)
+                 (iter (for validity :in-vector validities)
+                       (unless (find validity result :test #'local-time=)
+                         (vector-push-extend validity result)))))
+          (add-validities (validity-starts-of values-having-validity))
+          (add-validities (validity-ends-of values-having-validity)))
+        (finally
+         (sort result #'local-time<)
+         (return result))))
+
+(def (macro e) do-values-having-validity (values-having-validities &body forms)
+  (with-unique-names (validity-start validity-end)
+    `(iter (for ,validity-end :in-vector (merge-validities ,@values-having-validities))
+           (for ,validity-start :previous ,validity-end)
+           (when ,validity-start
+             (with-validity-range ,validity-start ,validity-end
+               (bind ,(iter (for values-having-validity :in values-having-validities)
+                            (collect `(,values-having-validity
+                                       (single-values-having-validity-value
+                                        (values-having-validity-value ,values-having-validity *validity-start* *validity-end*)))))
+                 ,@forms))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; For primitive types
@@ -147,9 +182,10 @@
                                :validity-starts validity-starts
                                :validity-ends validity-ends)))
           (flet ((push-value-with-validity (value validity-start validity-end)
-                   (vector-push-extend value values)
-                   (vector-push-extend validity-start validity-starts)
-                   (vector-push-extend validity-end validity-ends)))
+                   (unless (local-time= validity-start validity-end)
+                     (vector-push-extend value values)
+                     (vector-push-extend validity-start validity-starts)
+                     (vector-push-extend validity-end validity-ends))))
             (iter (with in-requested-validity-range = #f)
                   (for (value validity-start validity-end) :in-values-having-validity values-having-validity)
                   (if in-requested-validity-range
@@ -161,7 +197,7 @@
                         (push-value-with-validity value requested-validity-start validity-end)
                         (setf in-requested-validity-range #t)))))
           (values result #t))
-        (values nil #f))))
+        (values (make-empty-values-having-validity) #f))))
 
 (def (function e) (setf values-having-validity-value) (new-value values-having-validity validity-start validity-end)
   (bind ((values (make-array 0 :adjustable #t :fill-pointer 0))
