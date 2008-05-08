@@ -44,8 +44,12 @@
         (intern symbol-name package)
         (intern symbol-name))))
 
-(def (function eio) concatenate-string (&rest args)
+(def (function eo) concatenate-string (&rest args)
+  ;; don't inline, otherwise the compiler macro is kicked
   (apply #'concatenate 'string args))
+
+(def compiler-macro concatenate-string (&rest args)
+  `(concatenate 'string ,@args))
 
 (def (function io) find-slot (class-or-name slot-name)
   (find slot-name
