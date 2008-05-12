@@ -10,7 +10,7 @@
 
 (def (with-macro e) with-compiled-query-cache (cache)
   (bind ((*compiled-query-cache* cache))
-    -body-))
+    (-body-)))
 
 (def (macro e) with-new-compiled-query-cache (&body body)
   `(with-compiled-query-cache (make-compiled-query-cache)
