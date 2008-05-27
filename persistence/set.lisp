@@ -76,7 +76,8 @@
 (defmethod find-item ((set persistent-slot-set-container) (item persistent-object))
   (bind ((slot (slot-of set)))
     (not (zerop (select-count-* (list (name-of (table-of slot)))
-                                (sql-and (id-column-matcher-where-clause (instance-of set) (id-column-of slot))))))))
+                                (sql-and (id-column-matcher-where-clause (instance-of set) (id-column-of slot))
+                                         (id-column-matcher-where-clause item)))))))
 
 (defmethod size ((set persistent-slot-set-container))
   (bind ((slot (slot-of set)))

@@ -132,3 +132,11 @@
       (insert-item children child)
       (delete-item children child)
       (signals error (delete-item children child)))))
+
+(deftest test/persistence/association/1-n/collection/5 ()
+  (with-parent-and-child-transaction
+    (bind ((children (children-of* parent))
+           (other-child (make-instance *association-1-n-child-class-name*)))
+      (insert-item children child)
+      (is (find-item children child))
+      (is (not (find-item children other-child))))))
