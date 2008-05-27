@@ -125,3 +125,10 @@
       (delete-item children child)
       (is (= 1 (size children)))
       (is (equal (list other-child) (list-of children))))))
+
+(deftest test/persistence/association/1-n/collection/4 ()
+  (with-parent-and-child-transaction
+    (bind ((children (children-of* parent)))
+      (insert-item children child)
+      (delete-item children child)
+      (signals error (delete-item children child)))))
