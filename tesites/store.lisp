@@ -270,6 +270,8 @@
              (h-slot-name (slot-definition-name h-slot))
              (other-h-slot (other-end-h-slot-of t-association-end))
              (other-h-slot-name (slot-definition-name other-h-slot)))
+
+        
         (iter (for h-instance in-sequence overlapping-instances)
               (for validity-start2 = (when time-dependent-p (validity-start-of h-instance)))
               (for validity-end2 = (when time-dependent-p (validity-end-of h-instance)))
@@ -280,7 +282,26 @@
               (for other-instance2 = (if (slot-boundp h-instance other-h-slot-name)
                                          (slot-value h-instance other-h-slot-name)
                                          +unbound-slot-marker+))
-                
+
+              ;; insert record that clear the other ends too
+              ;; see test/tesites/association/1-1/integrity
+              (when (and temporal-p time-dependent-p)
+                (bind ((start (local-time-max validity-start validity-start2))
+                       (end (local-time-min validity-end validity-end2)))
+                  (assert (local-time< start end))
+                  
+                  (cond
+                    ((and (p-eq instance instance2) other-instance2)
+
+                     (unless (p-eq value other-instance2)
+                       (insert-1-1-h-association-end (other-association-end-of t-association-end)
+                                                     other-instance2 nil
+                                                     t-value start end)))
+                    ((and (p-eq value other-instance2) instance2)
+                     (unless (p-eq instance instance2)
+                       (insert-1-1-h-association-end t-association-end
+                                                     instance2 nil
+                                                     t-value start end))))))
 
               (cond
                 ;; |----|      old
@@ -323,7 +344,9 @@
                         (store-slot h-class h-instance other-h-slot nil)
                         (purge-instance h-instance)))
                    (t
-                    (error "Bug"))))))))
+                    (error "Bug")))))
+
+              )))
 
     value))
 

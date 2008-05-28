@@ -24,7 +24,7 @@
           (elt (validity-starts-of instance) index)
           (elt (validity-ends-of instance) index)))
 
-(def (function e) values-having-validity= (values-1 values-2)
+(def (function e) values-having-validity= (values-1 values-2 &key (test #'equal))
   (and (length (values-of values-1))
        (length (values-of values-2))
        (iter (for index :from 0 :below (length (values-of values-1)))
@@ -32,7 +32,7 @@
                      (elt-values-having-validity values-1 index))
                     ((:values v-2 s-2 e-2)
                      (elt-values-having-validity values-2 index)))
-               (always (equal v-1 v-2))
+               (always (funcall test v-1 v-2))
                (always (local-time= s-1 s-2))
                (always (local-time= e-1 e-2))))))
 
