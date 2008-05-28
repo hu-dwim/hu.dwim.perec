@@ -559,32 +559,32 @@
 
 (def query-function local-time= (&rest values)
   ""
-  (declare (persistent-type (forall ((a (or null date time timestamp))) (function (&rest a) boolean))))
+  (declare (persistent-type (forall ((a (or null unbound date time timestamp))) (function (&rest a) boolean))))
   (apply (chained-operator 'sql-= #t) values))
 
 (def query-function local-time/= (&rest values)
   ""
-  (declare (persistent-type (forall ((a (or null date time timestamp))) (function (&rest a) boolean))))
+  (declare (persistent-type (forall ((a (or null unbound date time timestamp))) (function (&rest a) boolean))))
   (apply (chained-operator 'sql-/= #t) values)) ;; TODO should not be pairwise-operator?
 
 (def query-function local-time> (&rest values)
   ""
-  (declare (persistent-type (forall ((a (or null date time timestamp))) (function (&rest a) boolean))))
+  (declare (persistent-type (forall ((a (or null unbound date time timestamp))) (function (&rest a) boolean))))
   (apply (chained-operator 'sql-> #t) values))
 
 (def query-function local-time< (&rest values)
   ""
-  (declare (persistent-type (forall ((a (or null date time timestamp))) (function (&rest a) boolean))))
+  (declare (persistent-type (forall ((a (or null unbound date time timestamp))) (function (&rest a) boolean))))
   (apply (chained-operator 'sql-< #t) values))
 
 (def query-function local-time>= (&rest values)
   ""
-  (declare (persistent-type (forall ((a (or null date time timestamp))) (function (&rest a) boolean))))
+  (declare (persistent-type (forall ((a (or null unbound date time timestamp))) (function (&rest a) boolean))))
   (apply (chained-operator 'sql->= #t) values))
 
 (def query-function local-time<= (&rest values)
   ""
-  (declare (persistent-type (forall ((a (or null date time timestamp))) (function (&rest a) boolean))))
+  (declare (persistent-type (forall ((a (or null unbound date time timestamp))) (function (&rest a) boolean))))
   (apply (chained-operator 'sql-<= #t) values))
 
 ;;;
