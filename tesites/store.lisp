@@ -229,7 +229,11 @@
                  (t
                   (error ""))))))
 
-    (check-result instance (unchecked-value t-association-end instance))))
+    (if (and *lazy-slot-value-collections*
+             (eq (cardinality-kind-of t-association-end) :n))
+        (make-instance 'persistent-association-end-set-container-t
+                       :instance instance :slot t-association-end)
+        (check-result instance (unchecked-value t-association-end instance)))))
 
 (defmethod store-slot ((class persistent-class) (instance persistent-object) (t-slot persistent-association-end-effective-slot-definition-t) value)
 (if (values-having-validity-p value)
@@ -349,6 +353,19 @@
               )))
 
     value))
+
+;; allow vhv as item?
+(defmethod insert-into-association-end-set-t ((instance persistent-object)
+                                              (t-association-end persistent-association-end-effective-slot-definition-t)
+                                              (item persistent-object))
+  (not-yet-implemented))
+
+;; allow vhv as item?
+(defmethod delete-from-association-end-set-t ((instance persistent-object)
+                                              (t-association-end persistent-association-end-effective-slot-definition-t)
+                                              (item persistent-object))
+  (not-yet-implemented))
+
 
 
 ;;;

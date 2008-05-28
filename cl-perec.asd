@@ -144,10 +144,11 @@
              (:file "object" :depends-on ("class"))
              (:file "transaction")
              (:file "values-having-validity" :depends-on ("api"))
-             (:file "store" :depends-on ("values-having-validity" "class" "association" "object"))
+             (:file "store" :depends-on ("values-having-validity" "class" "association" "object" "association-end-set"))
              (:file "type")
              (:file "slot-value" :depends-on ("store" "association"))
-             (:file "transformer" :depends-on ("type"))))))
+             (:file "transformer" :depends-on ("type"))
+             (:file "association-end-set")))))
 
 (defmethod perform ((op test-op) (system (eql (find-system :cl-perec))))
   (operate 'load-op :cl-perec-test)
