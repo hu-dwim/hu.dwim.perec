@@ -34,7 +34,6 @@
    (:class tesites-brother-test :slot time-dependent-sister :type (or null tesites-sister-test)))
   (:time-dependent #t))
 
-#+nil
 (defassociation*
   ((:class tesites-sister-test :slot temporal-and-time-dependent-brother :type (or null tesites-brother-test))
    (:class tesites-brother-test :slot temporal-and-time-dependent-sister :type (or null tesites-sister-test)))
@@ -51,9 +50,7 @@
 
 (deftest test/tesites/association/1-1/time-dependent ()
   (run-complex-tests :class-names '(tesites-brother-test tesites-sister-test)
-                     :slot-names '(time-dependent-sister time-dependent-brother)
-                     :instance-count 2
-                     :operation-count 2))
+                     :slot-names '(time-dependent-sister time-dependent-brother)))
 
 (deftest test/tesites/association/1-1/temporal-and-time-dependent ()
   (run-complex-tests :class-names '(tesites-brother-test tesites-sister-test)

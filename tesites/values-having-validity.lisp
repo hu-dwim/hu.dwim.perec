@@ -88,12 +88,13 @@
          (validity-end-variable (second variables))
          (value-variables (cddr variables)))
 
-    (assert validity-start-variable () "")
-    (assert validity-end-variable () "")
+    (assert (and validity-start-variable validity-end-variable)
+            () "Expects (FOR (validity-start validity-end ...) IN-VALUES-HAVING-VALIDITY ...)")
+    
     (assert (or (length=1 value-variables)
                 (and (listp value-having-validities)
                      (= (length value-variables) (length value-having-validities)))) ()
-                     "TODO")
+                     "Expects the same number of variables as values-having-validities in (FOR (validity-start validity-end variable ...) IN-VALUES-HAVING-VALIDITY values-having-validity ...)")
     
     (if (length=1 value-variables)
         ;; efficient version for iterating on one values-having-validity
@@ -108,8 +109,16 @@
              (for ,validity-start-variable = (aref ,validity-starts ,index))
              (for ,validity-end-variable = (aref ,validity-ends ,index))))
         ;; iterating on several values-having-validity parallel, TODO there is place for optimization here
-        ;; TODO three option for holes: error (default option)/ skip / use given default value
-        (bind ((value-having-validity-variables (mapcar #L(gensym (symbol-name !1)) value-variables)))
+        (bind ((actions-if-missing (mapcar (lambda (var)
+                                             ;; three option for holes:
+                                             ;; error (default option)/ skip / use given default value
+                                             (acond
+                                               ((not (listp var)) :error)
+                                               ((member :default var) (list :default (second it)))
+                                               ((member :skip-if-missing var) :skip)))
+                                           value-variables))
+               (value-variables (mapcar #L(if (consp !1) (first !1) !1) value-variables))
+               (value-having-validity-variables (mapcar #L(gensym (symbol-name !1)) value-variables)))
           `(progn
              ,@(iter (for variable :in value-having-validity-variables)
                      (for value-having-validity :in value-having-validities)
@@ -118,35 +127,38 @@
              (for ,validity-start-variable :previous ,validity-end-variable)
              (unless ,validity-start-variable (next-iteration))
              ;; (format t "Start: ~S End: ~S~%" ,validity-start-variable ,validity-end-variable)
-             ,@(iter (for variable :in value-variables)
-                     (for values-having-validity-variable :in value-having-validity-variables)
-                     (collect `(for ,variable =
-                                    (single-values-having-validity-value
-                                     ;; be aware: iterates with _one_ value
-                                     (values-having-validity-value ,values-having-validity-variable ,validity-start-variable ,validity-end-variable))))))))))
+             ,@(iter (for values-having-validity-variable :in value-having-validity-variables)
+                     (for value-with-validity-variable = (gensym (symbol-name values-having-validity-variable)))
+                     (for variable :in value-variables)
+                     (for action :in actions-if-missing)
+                     (collect `(for ,value-with-validity-variable =
+                                    ;; be aware: iterates with _one_ value
+                                    (values-having-validity-value ,values-having-validity-variable ,validity-start-variable ,validity-end-variable)))
+                     
+                     (if (member action (list :error :skip))
+                         (appending `((unless (single-values-having-validity-p ,value-with-validity-variable)
+                                        ,(if (eq action :error)
+                                             `(error "Missing value for ~S in interval [~S,~S)" ',variable
+                                                     ,validity-start-variable ,validity-end-variable)
+                                             `(next-iteration)))
+                                      (for ,variable = (single-values-having-validity-value ,value-with-validity-variable))))
+                         (collect `(for ,variable = (if (single-values-having-validity-p ,value-with-validity-variable)
+                                                        (single-values-having-validity-value ,value-with-validity-variable)
+                                                        ,(second action)))))))))))
 
 
 (def function merge-validities (&rest values-having-validities)
-  (if (some #L(= 0 (length (values-of !1))) values-having-validities)
-      (make-empty-values-having-validity)
-      (bind ((max-validity-start (apply 'local-time-max (map 'list #L(first-elt (validity-starts-of !1))
-                                                             values-having-validities)))
-             (min-validity-end (apply 'local-time-min (map 'list #L(last-elt (validity-ends-of !1))
-                                                             values-having-validities))))
-        (if (local-time< max-validity-start min-validity-end)
-            (iter (with result = (make-array 0 :adjustable t :fill-pointer 0))
-                  (for values-having-validity :in values-having-validities)
-                  (flet ((add-validities (validities)
-                           (iter (for validity :in-vector validities)
-                                 (when (and (local-time<= max-validity-start validity min-validity-end)
-                                            (not (find validity result :test #'local-time=)))
-                                   (vector-push-extend validity result)))))
-                    (add-validities (validity-starts-of values-having-validity))
-                    (add-validities (validity-ends-of values-having-validity)))
-                  (finally
-                   (sort result #'local-time<)
-                   (return result)))
-            (make-empty-values-having-validity)))))
+  (iter (with result = (make-array 0 :adjustable t :fill-pointer 0))
+        (for values-having-validity :in values-having-validities)
+        (flet ((add-validities (validities)
+                 (iter (for validity :in-vector validities)
+                       (unless (find validity result :test #'local-time=)
+                         (vector-push-extend validity result)))))
+          (add-validities (validity-starts-of values-having-validity))
+          (add-validities (validity-ends-of values-having-validity)))
+        (finally
+         (sort result #'local-time<)
+         (return result))))
 
 (def (macro e) do-values-having-validity (values-having-validities &body forms)
   (with-unique-names (validity-start validity-end)
@@ -446,6 +458,9 @@
      (slot-unbound-t instance slot :validity-start validity-start :validity-end validity-end))
    *validity-start* *validity-end*))
 
+;;
+;;
+;;
 (def (function e) map-values-having-validity (function values-having-validity)
   (bind ((length (length (values-of values-having-validity)))
          (values (make-array length))
@@ -480,5 +495,6 @@
                 (vector-push-extend value values)
                 (vector-push-extend start validity-starts)))
             (finally
-             (vector-push-extend prev-end validity-ends)
+             (when end (vector-push-extend end validity-ends))
              (return (make-values-having-validity values validity-starts validity-ends))))))
+

@@ -153,20 +153,63 @@
        (make-values-having-validity* '((1 "2005-01-01TZ" "2006-01-01TZ")
                                        (3 "2007-01-01TZ" "2008-01-01TZ"))))))
 
-(deftest test/tesites/values-having-validity/iterate ()
+(deftest test/tesites/values-having-validity/iterate-1 ()
   (is (values-having-validity=
-       (iter (for (s e v1 v2) :in-values-having-validity ((make-values-having-validity*
-                                                           '((2 "2005-01-01TZ" "2006-01-01TZ")
-                                                             (3 "2006-01-01TZ" "2007-01-01TZ")
-                                                             (5 "2007-01-01TZ" "2008-01-01TZ")))
-                                                          (make-values-having-validity*
-                                                           '((7 "2005-01-01TZ" "2006-06-01TZ")
-                                                             (11 "2006-06-01TZ" "2007-06-01TZ")
-                                                             (13 "2007-06-01TZ" "2008-01-01TZ")))))
+       (iter (for (s e (v1 :skip-if-missing) (v2 :skip-if-missing))
+                  :in-values-having-validity ((make-values-having-validity*
+                                               '((2 "2005-01-01TZ" "2006-01-01TZ")
+                                                 (3 "2006-01-01TZ" "2007-01-01TZ")
+                                                 (5 "2007-01-01TZ" "2008-01-01TZ")))
+                                              (make-values-having-validity*
+                                               '((7 "2005-06-01TZ" "2006-06-01TZ")
+                                                 (11 "2006-06-01TZ" "2007-06-01TZ")
+                                                 (13 "2007-06-01TZ" "2008-06-01TZ")))))
              (collect-value-with-validity (* v1 v2) :from s :to e))
-       (make-values-having-validity* '((1 "2005-01-01TZ" "2006-01-01TZ")
-                                       (2 "2006-01-01TZ" "2007-01-01TZ")
-                                       (3 "2007-01-01TZ" "2008-01-01TZ"))))))
+       (make-values-having-validity* '((14 "2005-06-01TZ" "2006-01-01TZ")
+                                       (21 "2006-01-01TZ" "2006-06-01TZ")
+                                       (33 "2006-06-01TZ" "2007-01-01TZ")
+                                       (55 "2007-01-01TZ" "2007-06-01TZ")
+                                       (65 "2007-06-01TZ" "2008-01-01TZ"))))))
+
+(deftest test/tesites/values-having-validity/iterate-2 ()
+  (is (values-having-validity=
+       (iter (for (s e (v1 :default 1) (v2 :default 1))
+                  :in-values-having-validity ((make-values-having-validity*
+                                               '((2 "2005-01-01TZ" "2006-01-01TZ")
+                                                 (3 "2006-01-01TZ" "2007-01-01TZ")
+                                                 (5 "2007-01-01TZ" "2008-01-01TZ")))
+                                              (make-values-having-validity*
+                                               '((7 "2005-06-01TZ" "2006-06-01TZ")
+                                                 (11 "2006-06-01TZ" "2007-06-01TZ")
+                                                 (13 "2007-06-01TZ" "2008-06-01TZ")))))
+             (collect-value-with-validity (* v1 v2) :from s :to e))
+       (make-values-having-validity* '((2 "2005-01-01TZ" "2005-06-01TZ")
+                                       (14 "2005-06-01TZ" "2006-01-01TZ")
+                                       (21 "2006-01-01TZ" "2006-06-01TZ")
+                                       (33 "2006-06-01TZ" "2007-01-01TZ")
+                                       (55 "2007-01-01TZ" "2007-06-01TZ")
+                                       (65 "2007-06-01TZ" "2008-01-01TZ")
+                                       (13 "2008-01-01TZ" "2008-06-01TZ"))))))
+
+(deftest test/tesites/values-having-validity/iterate-3 ()
+  (is (values-having-validity=
+       (iter (for (s e v1 v2)
+                  :in-values-having-validity ((make-values-having-validity*
+                                               '((2 "2005-01-01TZ" "2006-01-01TZ")
+                                                 (3 "2006-01-01TZ" "2007-01-01TZ")
+                                                 (5 "2007-01-01TZ" "2008-01-01TZ")))
+                                              (make-values-having-validity*
+                                               '((7 "2005-06-01TZ" "2006-06-01TZ")
+                                                 (11 "2006-06-01TZ" "2007-06-01TZ")
+                                                 (13 "2007-06-01TZ" "2008-06-01TZ")))))
+             (collect-value-with-validity (* v1 v2) :from s :to e))
+       (make-values-having-validity* '((2 "2005-01-01TZ" "2005-06-01TZ")
+                                       (14 "2005-06-01TZ" "2006-01-01TZ")
+                                       (21 "2006-01-01TZ" "2006-06-01TZ")
+                                       (33 "2006-06-01TZ" "2007-01-01TZ")
+                                       (55 "2007-01-01TZ" "2007-06-01TZ")
+                                       (65 "2007-06-01TZ" "2008-01-01TZ")
+                                       (13 "2008-01-01TZ" "2008-06-01TZ"))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;

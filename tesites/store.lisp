@@ -165,6 +165,8 @@
                                                                           validity-start validity-end))
                     (association-kind (association-kind-of (association-of t-association-end)))
                     (time-dependent-p (time-dependent-p t-association-end)))
+               #+nil(format t "assoc-end: ~S instance: ~S start: ~S end: ~S records: ~S~%"
+                            t-association-end instance validity-start validity-end records)
                (if (zerop (length records))
                    (if time-dependent-p
                        (make-single-values-having-validity (no-value-function validity-start validity-end)
@@ -208,6 +210,7 @@
                          (validity-starts (make-array 0 :adjustable #t :fill-pointer 0))
                          (validity-ends (make-array 0 :adjustable #t :fill-pointer 0)))
                     (iter (for (start end value) :in-values-having-validity result)
+                          ;;(format t "Check ~S~%" value)
                           (for others = (unchecked-value other-association-end value start end))
                           (iter (for (other-start other-end other-value) :in-values-having-validity others)
                                 (if (find instance (ensure-list other-value))
@@ -225,7 +228,7 @@
                                  result))
                  (t
                   (error ""))))))
-    
+
     (check-result instance (unchecked-value t-association-end instance))))
 
 (defmethod store-slot ((class persistent-class) (instance persistent-object) (t-slot persistent-association-end-effective-slot-definition-t) value)
@@ -307,17 +310,20 @@
                  ;;    /        old: AB, CD or CB
                  ;;   /
                  ;; C - D
+                 ;; FIXME why p-eq needed? eq does not seem to work somehow
                  (cond
-                   ((and (eq instance instance2) (eq value other-instance2)) ;; CB
+                   ((and (p-eq instance instance2) (p-eq value other-instance2)) ;; CB
                     (purge-instance h-instance))
-                   ((eq instance instance2) ;; CD
+                   ((p-eq instance instance2) ;; CD
                     (if other-instance2
                         (store-slot h-class h-instance h-slot nil)
                         (purge-instance h-instance)))
-                   ((and value (eq value other-instance2)) ;; AB
+                   ((and value (p-eq value other-instance2)) ;; AB
                     (if instance2
                         (store-slot h-class h-instance other-h-slot nil)
-                        (purge-instance h-instance)))))))))
+                        (purge-instance h-instance)))
+                   (t
+                    (error "Bug"))))))))
 
     value))
 

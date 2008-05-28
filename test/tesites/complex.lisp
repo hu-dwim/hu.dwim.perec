@@ -42,7 +42,327 @@
                                       (he-step value-1)
                                       (he-step value-2))))))))
 
+(defun take (n list)
+  (labels ((recurse (n list result)
+             (cond
+               ((zerop n) result)
+               ((null list) result)
+               (t (recurse (1- n) (rest list) (cons (first list) result))))))
+    (nreverse (recurse n list nil))))
+
+(defgeneric filter-and-sort-history-entries (instance slot)
+
+  ;; normal slot
+  (:method ((instance persistent-object) (slot persistent-slot-definition))
+    (bind ((slot-name (slot-definition-name slot)))
+      (take 1
+            (sort-entries-by-step
+             (collect-if #L(and (eq slot-name (he-slot-name !1))
+                                (p-eq instance (he-instance !1)))
+                         *history-entries*)
+             :ascending #f))))
+
+  ;; normal association-end
+  (:method ((instance persistent-object) (slot persistent-association-end-slot-definition))
+    (bind ((slot-name (slot-definition-name slot))
+           (other-slot-name (slot-definition-name (prc::other-association-end-of slot))))
+      (sort-entries-by-step
+       (collect-if #L(or (eq slot-name (he-slot-name !1))
+                         (eq other-slot-name (he-slot-name !1)))
+                   *history-entries*)
+       :ascending #t)))
+
+  ;; t-s slot
+  (:method ((instance persistent-object) (slot persistent-slot-definition-t))
+    (bind ((slot-name (slot-definition-name slot)))
+      (cond
+        ((and (prc::temporal-p slot) (prc::time-dependent-p slot))
+         (sort-entries-by-t
+          (collect-if #L(and (eq slot-name (he-slot-name !1))
+                             (p-eq instance (he-instance !1))
+                             (local-time<= (he-t-value !1) *t*)
+                             (local-time< (he-validity-start !1) *validity-end*)
+                             (local-time< *validity-start* (he-validity-end !1)))
+                      *history-entries*)
+          :ascending #t))
+        ((prc::temporal-p slot)
+         (take 1
+               (sort-entries-by-t
+                (collect-if #L(and (eq slot-name (he-slot-name !1))
+                                   (p-eq instance (he-instance !1))
+                                   (local-time<= (he-t-value !1) *t*))
+                            *history-entries*)
+                :ascending #f)))
+        ((prc::time-dependent-p slot)
+         (sort-entries-by-step
+          (collect-if #L(and (eq slot-name (he-slot-name !1))
+                             (p-eq instance (he-instance !1))
+                             (local-time< (he-validity-start !1) *validity-end*)
+                             (local-time< *validity-start* (he-validity-end !1)))
+                      *history-entries*)
+          :ascending #t))
+        (t
+         (error "Bug")))))
+
+  ;; t-s association-end
+  (:method ((instance persistent-object) (slot persistent-association-end-slot-definition-t))
+    (bind ((slot-name (slot-definition-name slot))
+           (other-slot-name (slot-definition-name (prc::other-association-end-of slot))))
+      (cond
+        ((and (prc::temporal-p slot) (prc::time-dependent-p slot))
+         (sort-entries-by-t
+          (collect-if #L(and (or (eq slot-name (he-slot-name !1))
+                                 (eq other-slot-name (he-slot-name !1)))
+                             (local-time<= (he-t-value !1) *t*)
+                             (local-time< (he-validity-start !1) *validity-end*)
+                             (local-time< *validity-start* (he-validity-end !1)))
+                      *history-entries*)
+          :ascending #t))
+        ((prc::temporal-p slot)
+         (sort-entries-by-t
+          (collect-if #L(and (or (eq slot-name (he-slot-name !1))
+                                 (eq other-slot-name (he-slot-name !1)))
+                             (local-time<= (he-t-value !1) *t*))
+                      *history-entries*)
+          :ascending #t))
+        ((prc::time-dependent-p slot)
+         (sort-entries-by-step
+          (collect-if #L(and (or (eq slot-name (he-slot-name !1))
+                                 (eq other-slot-name (he-slot-name !1)))
+                             (local-time< (he-validity-start !1) *validity-end*)
+                             (local-time< *validity-start* (he-validity-end !1)))
+                      *history-entries*)
+          :ascending #t))
+        (t
+         (error "Bug"))))))
+
+(defun default-value-for-slot (slot)
+  (bind (((:values slot-default-value has-default-p) (prc::default-value-for-type (prc::canonical-type-of slot)))
+         (default-value (if has-default-p slot-default-value +unbound-slot-marker+)))
+    (if (and (typep slot 'prc::persistent-slot-definition-t)
+             (prc::time-dependent-p slot))
+        (make-single-values-having-validity default-value *validity-start* *validity-end*)
+        default-value)))
+
+(defun execute-history-entries (history-entries instance slot)
+  "Executes the given history entries on the slot and returns the slot-value."
+  (iter (with slot-value = (default-value-for-slot slot))
+        (for entry :in history-entries)
+        (setf slot-value (execute-history-entry instance slot slot-value entry))
+        (finally (return slot-value))))
+
+(defmacro lift-values-having-validity ((slot-value &rest variables) &body body)
+  (bind ((variable-names (mapcar #'first variables))
+         (missing-value (cons nil nil))
+         (variable-specs (mapcar #L(list !1 :default `',missing-value) variable-names)))
+    `(typecase ,slot-value
+      (values-having-validity
+       (bind (,@(mapcar #L(list (first !1)
+                                `(make-single-values-having-validity ,(first !1) ,(second !1) ,(third !1)))
+                        variables))
+         (iter (for (validity-start validity-end (,slot-value :skip-if-missing #t) ,@variable-specs) :in-values-having-validity (,slot-value ,@variable-names))
+               (collect-value-with-validity
+                (if (or ,@(mapcar (lambda (name) `(eq ,name ',missing-value)) variable-names))
+                    ,slot-value (progn ,@body))
+                from validity-start to validity-end))))
+      (t
+       (progn ,@body)))))
+
+(defgeneric execute-history-entry (instance slot slot-value entry)
+  (:documentation "Returns the new slot-value.")
+
+  ;; slot
+  (:method ((instance persistent-object) (slot persistent-slot-definition) slot-value entry)
+    (if (and (p-eq instance (he-instance entry))
+             (eq (slot-definition-name slot) (he-slot-name entry)))
+
+        (bind ((he-value (he-value entry))
+               (he-validity-start (he-validity-start entry))
+               (he-validity-end (he-validity-end entry)))
+          (lift-values-having-validity (slot-value (he-value he-validity-start he-validity-end))
+            he-value))
+        slot-value))
+
+  ;; association-end
+  (:method ((instance persistent-object) (slot persistent-association-end-slot-definition) slot-value entry)
+    (bind ((slot-name (slot-definition-name slot))
+           (other-slot-name (slot-definition-name (prc::other-association-end-of slot)))
+           (association-kind (prc::association-kind-of (prc::association-of slot)))
+           (slot-cardinality-kind (prc::cardinality-kind-of slot))
+           (he-instance (he-instance entry))
+           (he-value (he-value entry))
+           (he-slot-name (he-slot-name entry))
+           (he-action (he-action entry))
+           (he-validity-start (he-validity-start entry))
+           (he-validity-end (he-validity-end entry)))
+      (ecase association-kind
+        (:1-1
+         ;;  A----EV       EI: he-instance
+         ;;      /         EV: he-value
+         ;;     /          I:  instance
+         ;;    /           V:  slot-value
+         ;;  EI----B
+         (cond
+           ;; set slot of this instance (I=EI)
+           ((and (eq slot-name he-slot-name)
+                 (p-eq instance he-instance))
+            (lift-values-having-validity (slot-value (he-value he-validity-start he-validity-end))
+              he-value))
+           ;; set other-slot of some other instance to this instance (I=EV)
+           ((and (eq other-slot-name he-slot-name)
+                 he-value
+                 (p-eq instance he-value))
+            (lift-values-having-validity (slot-value (he-instance he-validity-start he-validity-end))
+              he-instance))
+           ;; set slot of some other instance to the same value as this instance had-> clear slot value (I=A)
+           ((and (eq slot-name he-slot-name)
+                 he-value)
+            (lift-values-having-validity (slot-value (he-value he-validity-start he-validity-end))
+              (if (p-eq slot-value he-value)
+                  nil
+                  slot-value)))
+           ;; set other slot of the value this instance had -> clear slot value (I=B)
+           ((eq other-slot-name he-slot-name)
+            (lift-values-having-validity (slot-value (he-instance he-validity-start he-validity-end))
+              (if (p-eq slot-value he-instance)
+                  nil
+                  slot-value)))
+           (t
+            slot-value)))
+        (:1-n
+         (ecase slot-cardinality-kind
+           ;; instance = parent
+           (:n
+            ;;  A----EV       EI: he-instance
+            ;;      /         EV: he-value
+            ;;     /          I:  instance
+            ;;    /           V:  slot-value
+            ;;  EI----B
+            (cond
+              ;; set/insert/delete children of this instance (I=EI)
+              ((and (eq slot-name he-slot-name)
+                    (p-eq instance he-instance))
+               (lift-values-having-validity (slot-value (he-value he-validity-start he-validity-end))
+                 (ecase he-action
+                   (:set he-value)
+                   (:insert (adjoin he-value slot-value :test #'p-eq))
+                   (:delete (remove he-value slot-value :test #'p-eq)))))
+              ;; set parent of some child to this instance (I=EV)
+              ((and (eq other-slot-name he-slot-name)
+                    he-value
+                    (p-eq instance he-value))
+               (lift-values-having-validity (slot-value (he-instance he-validity-start he-validity-end))
+                 (adjoin he-instance slot-value :test #'p-eq)))
+              ;; set/add children of some other instance and this instance had those children -> remove children (I=A)
+              ((and (eq slot-name he-slot-name)
+                    he-value)
+               (lift-values-having-validity (slot-value (he-value he-validity-start he-validity-end))
+                 (ecase he-action
+                   (:set (set-difference slot-value he-value :test #'p-eq))
+                   (:insert (remove he-value slot-value :test #'p-eq))
+                   (:delete slot-value))))
+              ;; set parent of some current child to another one (or null) -> remove that child (I=B)
+              ((eq other-slot-name he-slot-name)
+               (lift-values-having-validity (slot-value (he-instance he-validity-start he-validity-end))
+                 (remove he-instance slot-value :test #'p-eq)))
+              (t
+               slot-value)))
+           ;; instance = child
+           (:1
+            ;;  A----EV       EI: he-instance
+            ;;      /         EV: he-value
+            ;;     /          I:  instance
+            ;;    /           V:  slot-value
+            ;;  EI----B
+            (cond
+              ;; set parent of this instance (I=EI)
+              ((and (eq slot-name he-slot-name)
+                    (p-eq instance he-instance))
+               (lift-values-having-validity (slot-value (he-value he-validity-start he-validity-end))
+                 he-value))
+              ;; set children
+              ((and (eq other-slot-name he-slot-name)
+                    slot-value)
+               (lift-values-having-validity (slot-value (he-instance he-validity-start he-validity-end)
+                                                        (he-value he-validity-start he-validity-end))
+                 (if (p-eq slot-value he-instance)
+                     ;; set/remove children of the current parent -> clear parent (I=B)
+                     (ecase he-action
+                       (:set (if (member instance he-value :test #'p-eq) slot-value nil))
+                       (:insert slot-value)
+                       (:delete (if (p-eq instance he-value) nil slot-value)))
+                     ;; set/insert this child to some other parent (I=EV)
+                     (ecase he-action
+                       (:set (if (member instance he-value :test #'p-eq) he-instance slot-value))
+                       (:insert (if (p-eq instance he-value) he-instance slot-value))
+                       (:delete slot-value)))))
+              ;; set/insert this child to some other parent (I=EV)
+              ((and (eq other-slot-name he-slot-name)
+                    he-value)
+               (lift-values-having-validity (slot-value (he-value he-validity-start he-validity-end))
+                 (ecase he-action
+                   (:set (if (member instance he-value :test #'p-eq) he-instance slot-value))
+                   (:insert (if (p-eq instance he-value) he-instance slot-value))
+                   (:delete slot-value))))
+              (t
+               slot-value)))))
+        (:m-n
+         (cond
+           ;; set this slot (I=EI)
+           ((and (eq slot-name he-slot-name)
+                 (p-eq instance he-instance))
+
+            (lift-values-having-validity (slot-value (he-value he-validity-start he-validity-end))
+              (ecase he-action
+                (:set he-value)
+                (:insert (adjoin he-value slot-value :test #'p-eq))
+                (:delete (remove he-value slot-value :test #'p-eq)))))
+           ;; set other slot (I=EV)
+           ((eq other-slot-name he-slot-name)
+            (lift-values-having-validity (slot-value (he-value he-validity-start he-validity-end)
+                                                     (he-instance he-validity-start he-validity-end))
+              
+              (ecase he-action
+                (:set
+                 (cond
+                   ((member instance he-value :test #'p-eq)
+                    (adjoin he-instance slot-value :test #'p-eq))
+                   ((member he-instance slot-value :test #'p-eq)
+                    (remove he-instance slot-value :test #'p-eq))
+                   (t
+                    slot-value)))
+                (:insert
+                 (cond
+                   ((p-eq instance he-value)
+                    (adjoin he-instance slot-value :test #'p-eq))
+                   (t
+                    slot-value)))
+                (:delete
+                 (cond
+                   ((p-eq instance he-value)
+                    (remove he-instance slot-value :test #'p-eq))
+                   (t
+                    slot-value))))))
+           (t
+            slot-value)))))))
+
 (defun slot-value* (instance slot-name)
+  (bind ((slot (find-slot (class-of instance) slot-name))
+         (entries (filter-and-sort-history-entries instance slot))
+         (value (execute-history-entries entries instance slot)))
+
+    (cond
+      ((single-values-having-validity-p value)
+       (first-elt (prc::values-of value)))
+      ((and (values-having-validity-p value)
+            (iter (for (s e v) :in-values-having-validity value)
+                  (thereis (unbound-slot-marker-p v))))
+       +unbound-slot-marker+)
+      (t value))))
+
+
+
+(defun slot-value** (instance slot-name)
   (bind ((class (class-of instance))
          (slot (find-slot class slot-name))
          (association-slot-p (typep slot 'persistent-association-end-effective-slot-definition))
@@ -202,7 +522,8 @@
 
 (defun insert-item-and-insert-item* (instance slot-name item)
   (with-lazy-slot-value-collections
-    (insert-item (slot-value instance slot-name) item)
+    (unless (find-item (slot-value instance slot-name) item)
+      (insert-item (slot-value instance slot-name) item))
     (push (make-history-entry :action :insert
                               :instance instance
                               :slot-name slot-name
@@ -214,7 +535,8 @@
 
 (defun delete-item-and-delete-item* (instance slot-name item)
   (with-lazy-slot-value-collections
-    (delete-item (slot-value instance slot-name) item)
+    (when (find-item (slot-value instance slot-name) item)
+      (delete-item (slot-value instance slot-name) item))
     (push (make-history-entry :action :delete
                               :instance instance
                               :slot-name slot-name
@@ -261,19 +583,43 @@
                          (sort (copy-seq persistent-value) #'< :key #'prc::id-of)
                          (sort (copy-seq test-value) #'< :key #'prc::id-of)))
                  (t (eql persistent-value test-value)))))
-    (or (and (values-having-validity-p persistent-value)
-             (values-having-validity-p test-value)
-             (iter (for (persistent-validity-start persistent-validity-end persistent-value) :in-values-having-validity (consolidate-values-having-validity persistent-value))
-                   (for (test-validity-start test-validity-end test-value) :in-values-having-validity (consolidate-values-having-validity test-value))
-                   (always (and (compare persistent-value test-value)
-                                (local-time= persistent-validity-start test-validity-start)
-                                (local-time= persistent-validity-end test-validity-end)))))
-        (compare persistent-value test-value))))
+
+    ;; TODO slot-value should consolidate
+    (when (values-having-validity-p persistent-value)
+      (setf persistent-value (consolidate-values-having-validity persistent-value :test #'compare)))
+    (when (values-having-validity-p test-value)
+      (setf test-value (consolidate-values-having-validity test-value :test #'compare)))
+
+    
+    (cond ;; TODO check only vhv=vhv and value=value
+      ((and (values-having-validity-p persistent-value)
+            (values-having-validity-p test-value))
+       (iter (for (persistent-validity-start persistent-validity-end persistent-value) :in-values-having-validity persistent-value)
+             (for (test-validity-start test-validity-end test-value) :in-values-having-validity test-value)
+             (always (and (compare persistent-value test-value)
+                          (local-time= persistent-validity-start test-validity-start)
+                          (local-time= persistent-validity-end test-validity-end)))))
+      ((values-having-validity-p persistent-value)
+       (iter (for (validity-start validity-end persistent-value) :in-values-having-validity persistent-value)
+             (always (compare persistent-value test-value))))
+      ((values-having-validity-p test-value)
+       (iter (for (validity-start validity-end test-value) :in-values-having-validity test-value)
+             (always (compare persistent-value test-value))))
+      (t
+       (compare persistent-value test-value)))))
 
 (defun assert-persistent-and-test-values (instance slot-name persistent-value test-value)
-  (is (compare-persistent-and-test-values persistent-value test-value)
-      "The persistent value: ~A and test value: ~A are different~%in the slot ~A of ~A~%with t ~A and with validity range ~A -> ~A~%with ~A history entries: ~A"
-      persistent-value test-value slot-name instance *t* *validity-start* *validity-end* (length *history-entries*) *history-entries*))
+  (bind ((result (compare-persistent-and-test-values persistent-value test-value)))
+    #+nil
+    (unless result
+      (format t "instance: ~S slot:~S persistent-value: ~S test-value:~S~%" instance slot-name persistent-value test-value)
+      (trace rdbms::execute-command)
+      (slot-value instance slot-name)
+      (untrace)
+      #+nil(break "Failed: ~S ~S ~S~%" persistent-value (slot-value instance slot-name) test-value))
+    (is result
+       "The persistent value: ~A and test value: ~A are different~%in the slot ~A of ~A~%with t ~A and with validity range ~A -> ~A~%with ~A history entries: ~A"
+       persistent-value test-value slot-name instance *t* *validity-start* *validity-end* (length *history-entries*) *history-entries*)))
 
 (defun compare-history (instances &key (slot-names nil))
   (iter (for instance :in instances)
@@ -497,6 +843,7 @@
                            (compare-history instances :slot-names slot-names)))))))))))
 
 (deftest run-complex-tests (&rest args &key (instance-count 10) (operation-count 10) &allow-other-keys)
+  #+nil
   (apply #'run-complex-test
          :instance-count instance-count
          :operation-count 1
