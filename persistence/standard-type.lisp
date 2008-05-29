@@ -495,7 +495,8 @@
 ;;; IP address
 
 (defptype ip-address ()
-  '(unsigned-byte-vector 4 16))
+  '(or (vector (unsigned-byte 8) 4)
+       (vector (unsigned-byte 16) 8)))
 
 (defmapping ip-address (sql-binary-large-object-type :size 16)
   'unsigned-byte-array->ip-address-reader

@@ -191,6 +191,7 @@
       timestamp
       date
       time
+      ip-address
       unsigned-byte-vector
       member
       symbol*
@@ -314,6 +315,7 @@
       timestamp
       date
       time
+      ip-address
       unsigned-byte-vector
       member
       symbol*

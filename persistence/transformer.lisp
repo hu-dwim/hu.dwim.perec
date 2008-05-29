@@ -341,7 +341,7 @@
     (cond ((= (length slot-value) 4)
            (setf result (coerce slot-value 'unsigned-byte-vector)))
           ((= (length slot-value) 8)
-           (setf result (make-array 16 :adjustable #f :fill-pointer 0))
+           (setf result (make-array 16 :element-type '(unsigned-byte 8) :adjustable #f :fill-pointer 0))
            (loop for part :across slot-value do
                 (vector-push (ldb (byte 8 8) part) result)
                 (vector-push (ldb (byte 8 0) part) result)))
