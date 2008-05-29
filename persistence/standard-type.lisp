@@ -81,16 +81,15 @@
 ;;; t -> type-error
 
 (eval-always
-  (unless (fboundp 'make-unbound-slot-marker)
-    (defstruct unbound-slot-marker
-      "This structure is used for the unbound slot value marker. The type for that marker must be a subtype of t and cannot be a subtype of any other type.")))
-
-(def (constant :test 'equalp) +unbound-slot-marker+ (make-unbound-slot-marker)
-  "This value is used to signal unbound slot value returned from database.")
-
-(defmethod make-load-form ((instance unbound-slot-marker) &optional environment)
-  (declare (ignore environment))
-  '+unbound-slot-marker+)
+  ;; This value is used to signal unbound slot value returned from database.
+  (def load-time-constant +unbound-slot-marker+
+      (progn
+        (defstruct unbound-slot-marker
+          "This structure is used for the unbound slot value marker. The type for that marker must be a subtype of t and cannot be a subtype of any other type.")
+        (defmethod make-load-form ((self unbound-slot-marker) &optional environment)
+          (declare (ignore environment))
+          '%%%+unbound-slot-marker+)
+        (make-unbound-slot-marker))))
 
 (defptype eql (value)
   `(eql ,value))

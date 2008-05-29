@@ -9,10 +9,10 @@
 ;;;;;;;;;;;;;
 ;;; Constants
 
-(def (constant e :test 'local-time=) +beginning-of-time+ (parse-timestring "1000-01-01TZ")
+(def (load-time-constant e) +beginning-of-time+ (parse-timestring "1000-01-01TZ")
   "All timestamps for temporal and time dependent slots are equal or greater than the beginning of time. Basically there should be no timestamp before the beginning of time.")
 
-(def (constant e :test 'local-time=) +end-of-time+ (parse-timestring "3000-01-01TZ")
+(def (load-time-constant e) +end-of-time+ (parse-timestring "3000-01-01TZ")
   "All timestamps for temporal and time dependent slots are equal or less than the end of time. Basically there should be no timestamp after the end of time.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
