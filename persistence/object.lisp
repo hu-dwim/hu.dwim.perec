@@ -93,7 +93,7 @@
 
 (def print-object persistent-object
   "Prints the oid of the instance and whether the instance is known to be persistent or transient."
-  (print-persistent-instance self))
+  (print-persistent-instance -self-))
 
 (def function created-p (instance)
   (eq :created (transaction-event-of instance)))

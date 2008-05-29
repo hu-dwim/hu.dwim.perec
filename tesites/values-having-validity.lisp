@@ -72,7 +72,7 @@
 
 (def print-object values-having-validity
   (write-char #\{)
-  (iter (for value :in-sequence (values-of self))
+  (iter (for value :in-sequence (values-of -self-))
         (unless (first-iteration-p)
           (write-string ", "))
         (write value))

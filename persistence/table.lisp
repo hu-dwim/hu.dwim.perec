@@ -33,10 +33,10 @@
   (:documentation "An RDBMS column with some related RDBMS specific definitions."))
 
 (def print-object table
-  (princ (name-of self)))
+  (princ (name-of -self-)))
 
 (def print-object column
-  (princ (rdbms::name-of self)))
+  (princ (rdbms::name-of -self-)))
 
 ;;;;;;;;;;;;;
 ;;; Constants

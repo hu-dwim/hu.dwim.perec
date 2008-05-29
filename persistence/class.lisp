@@ -276,7 +276,7 @@
        (princ (format nil "The primary tables are: ~A" (primary-tables-of instance)) stream)))
 
 (def print-object persistent-slot-definition
-  (princ (slot-definition-name self)))
+  (princ (slot-definition-name -self-)))
 
 ;;;;;;;;;;;;;
 ;;; defpclass
