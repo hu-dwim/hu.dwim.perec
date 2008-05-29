@@ -424,7 +424,7 @@
   (collect-single-slot-values-having-validity
    instance slot records
    (lambda (record)
-     (restore-slot-value h-slot record value-index))
+     (restore-slot-value instance h-slot record value-index))
    (lambda (record)
      (elt record 0))
    (lambda (record)
