@@ -550,7 +550,7 @@
   (bind ((available-slot-names
           (iter (for slot :in (prc::persistent-effective-slots-of class))
                 (for slot-name = (slot-definition-name slot))
-                (unless (starts-with-subseq (symbol-name slot-name) "H-") ;was (eq slot-name 'h-objects)
+                (unless (starts-with-subseq "H-" (symbol-name slot-name)) ;was (eq slot-name 'h-objects)
                   (collect slot-name)))))
     (if slot-names
         (intersection slot-names available-slot-names)
