@@ -97,11 +97,17 @@
                               (when time-dependent-p
                                 (list :time-dependent #t))
                               !1)
-                    association-ends)))
+                    association-ends))
+           (primary-slot-type (getf primary-association-end :type))
+           (secondary-slot-type (getf secondary-association-end :type))
+           (slot-definitions (if (or (set-type-p* primary-slot-type)
+                                     (set-type-p* secondary-slot-type))
+                                 '((action :type integer-8))
+                                 '())))
       `(progn
          ,(call-next-method metaclass processed-association-ends processed-options)
          (defpclass* ,association-name ,superclasses
-           ())
+           ,slot-definitions)
          (defassociation*
            ((:class ,association-name :slot ,(concatenate-symbol "t-" secondary-slot *package*) :type (or null ,primary-class))
             (:class ,primary-class :slot ,(concatenate-symbol "h-" primary-slot *package*) :type (set ,association-name))))
