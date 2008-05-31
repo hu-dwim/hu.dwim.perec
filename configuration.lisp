@@ -34,7 +34,3 @@
 (defun setup-readtable ()
   (enable-sharp-boolean-syntax)
   (enable-sharp-l-syntax))
-
-#+#.(cl:when (cl:find-package "SWANK") '(:and))
-(register-readtable-for-swank
- '("CL-PEREC" "CL-PEREC-TEST") 'setup-readtable)

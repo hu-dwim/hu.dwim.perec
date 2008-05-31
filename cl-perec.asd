@@ -22,8 +22,20 @@
 
 (in-package :cl-user)
 
+;;; try to load asdf-system-connections
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (flet ((try (system)
+           (unless (asdf:find-system system nil)
+             (warn "Trying to install required dependency: ~S" system)
+             (when (find-package :asdf-install)
+               (funcall (read-from-string "asdf-install:install") system))
+             (unless (asdf:find-system system nil)
+               (error "The ~A system requires ~A." (or *compile-file-pathname* *load-pathname*) system)))
+           (asdf:operate 'asdf:load-op system)))
+    (try :asdf-system-connections)))
+
 (defpackage :cl-perec-system
-  (:use :cl :asdf)
+  (:use :cl :asdf :asdf-system-connections)
 
   (:export
    #:*load-as-production-p*))
@@ -149,6 +161,12 @@
              (:file "slot-value" :depends-on ("store" "association"))
              (:file "transformer" :depends-on ("type"))
              (:file "association-end-set")))))
+
+(defsystem-connection cl-perec-and-swank
+  :requires (:cl-perec :swank)
+  :components
+  ((:module "integration"
+            :components ((:file "swank-integration")))))
 
 (defmethod perform ((op test-op) (system (eql (find-system :cl-perec))))
   (operate 'load-op :cl-perec-test)
