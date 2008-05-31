@@ -4,7 +4,7 @@
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :cl-syntax-sugar)
+(in-package :cl-perec)
 
 (register-readtable-for-swank
  '("CL-PEREC" "CL-PEREC-TEST") 'setup-readtable)
