@@ -296,7 +296,7 @@
                  (1 (first found-clauses))
                  (t (error 'duplicated-query-clause-error :form form :clause clause-name)))))
            (check-where-clause (clause)
-             (when (and clause (not (length=1 (rest clause))))
+             (when (and clause (not (length= 1 (rest clause))))
                (error 'malformed-query-clause-error
                       :form form
                       :clause-form clause
@@ -305,7 +305,7 @@
            (check-group-by-clause (clause)
              clause)
            (check-having-clause (clause)
-             (when (and clause (not (length=1 (rest clause))))
+             (when (and clause (not (length= 1 (rest clause))))
                (error 'malformed-query-clause-error
                       :form form
                       :clause clause
@@ -327,7 +327,7 @@
              clause)
            (check-offset-limit-clause (clause)
              (when clause
-               (unless (length=1 (rest clause))
+               (unless (length= 1 (rest clause))
                  (error 'malformed-query-clause-error
                         :form form
                         :clause clause

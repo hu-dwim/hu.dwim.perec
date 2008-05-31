@@ -32,16 +32,16 @@
                                              `(select ((,,accessor o))
                                                 (from (o query-type-test))
                                                 (where (,test-fn (,,accessor o) ',,value)))))))
-                           (is (and (length=1 ,result)
+                           (is (and (length= 1 ,result)
                                     (object-equal-p (first ,result) ,value))))
-                        `(is (length=1
+                        `(is (length= 1
                               (execute-query
                                (make-query
                                 `(select (o)
                                    (from (o query-type-test))
                                    (where (not (slot-boundp o ',',name)))))))))
                    #+nil
-                   (is (length=1
+                   (is (length= 1
                         (execute-query
                          (make-query
                           ,(if test-value-p

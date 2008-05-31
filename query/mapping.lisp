@@ -347,7 +347,7 @@
           ((tagged-p mapping)
            (sql-literal :value (aref rdbms-values 0)))
           ((eq (aref rdbms-values (1- (length rdbms-values))) :null)
-           (assert (and (length=1 unit-types) (not (eq (first unit-types) 'unbound))))
+           (assert (and (length= 1 unit-types) (not (eq (first unit-types) 'unbound))))
            (sql-literal :value (compute-type-tag (first unit-types))))
           (t
            (sql-literal :value 0))))))
@@ -383,7 +383,7 @@
           ((tagged-p mapping)
            (sql-column-reference-for (tag-column-of slot) variable))
           (unit-types
-           (assert (length=1 unit-types))
+           (assert (length= 1 unit-types))
            (sql-literal :value (compute-type-tag (first unit-types))))
           (t
            (sql-literal :value 0))))))

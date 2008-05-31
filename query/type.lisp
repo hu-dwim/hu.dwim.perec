@@ -31,7 +31,7 @@
   (setf (get name 'persistent-ftype) type-specifier))
 
 (def macro declaim-ftype (names &body type-spec)
-  (assert (length=1 type-spec))
+  (assert (length= 1 type-spec))
   `(progn
      ,@(iter (for name in (ensure-list names))
              (collect `(setf  (persistent-ftype-of ',name) ',(first type-spec))))))
@@ -273,7 +273,7 @@
 (defun find-slot-by-owner-type (owner slots)
   (bind ((owner-type (normalized-type-for* (persistent-type-of owner))))
     (acond
-     ((length=1 slots)
+     ((length= 1 slots)
       (first slots))
      ((and (not (eq owner-type +unknown-type+))
            (not (contains-syntax-p owner-type)))
@@ -281,7 +281,7 @@
 
 (defun find-slot-by-slot-type (type slots)
   (cond
-    ((length=1 slots) (first slots))
+    ((length= 1 slots) (first slots))
     ((and (not (eq type +unknown-type+))
           (not (contains-syntax-p type)))
      (find type slots
@@ -421,7 +421,7 @@
                   (bind  ((operands (remove-duplicates (mapcar #'simplify-persistent-class-type
                                                                (rest combined-type))
                                                        :test #'type=)))
-                    (if (length=1 operands)
+                    (if (length= 1 operands)
                         (first operands)
                         (cons (car combined-type) operands))))
                  (not

@@ -192,14 +192,14 @@ and false/true means a generalized boolean literal."
          (bind ((operands (remove-if 'is-false-literal (simplify-args 'or ?args))))
            (cond
              ((null operands) (make-literal-value :value #f))
-             ((length=1 operands) (first operands))
+             ((length= 1 operands) (first operands))
              ((find-if 'is-true-literal operands) (make-literal-value :value #t))
              (t (make-macro-call :macro 'or :args operands)))))
       (#M(macro-call :macro and :args ?args)
          (bind ((operands (remove-if 'is-true-literal (simplify-args 'and ?args))))
            (cond
              ((null operands) (make-literal-value :value #t))
-             ((length=1 operands) (first operands))
+             ((length= 1 operands) (first operands))
              ((find-if 'is-false-literal operands) (make-literal-value :value #f))
              (t (make-macro-call :macro 'and :args operands)))))
       (?otherwise syntax))))

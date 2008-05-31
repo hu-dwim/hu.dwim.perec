@@ -163,14 +163,14 @@ and false/true means a generalized boolean literal."
        (bind ((operands (remove #f (simplify-args 'or (cdr form)))))
          (cond
            ((null operands) #f)
-           ((length=1 operands) (first operands))
+           ((length= 1 operands) (first operands))
            ((some #L(eq !1 #t) operands) #t)
            (t `(or ,@operands)))))
       (and
        (bind ((operands (remove #t (simplify-args 'and (cdr form)))))
          (cond
            ((null operands) #t)
-           ((length=1 operands) (first operands))
+           ((length= 1 operands) (first operands))
            ((some #L(eq !1 #f) operands) #f)
            (t `(and ,@operands)))))
       (t

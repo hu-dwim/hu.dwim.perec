@@ -576,11 +576,11 @@
                                   variables)))))))))
         ;; sql deletes
         (sql-query-node
-         (assert (length=1 variables))  ; FIXME check earlier
+         (assert (length= 1 variables))  ; FIXME check earlier
          (bind ((variable (first (variables-of delete)))
                 (type (persistent-type-of variable))
                 (tables (when (persistent-class-p type) (tables-for-delete type))))
-           (if (length=1 tables)        ; simple delete
+           (if (length= 1 tables)        ; simple delete
                `(execute ,(rdbms::expand-sql-ast-into-lambda-form
                            (sql-delete-from-table (first tables) :where (where-of input))))
                (bind (((:values create-temporary-table deletes drop-temporary-table)
@@ -830,7 +830,7 @@ If true then all query variables must be under some aggregate call."
        (list node)))
    (lambda (parent &rest children)
      (declare (ignore parent))
-     (if (length=1 children)
+     (if (length= 1 children)
          (first children)
          (reduce #'union children :initial-value nil)))))
 

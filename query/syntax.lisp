@@ -212,7 +212,7 @@ Be careful when using in different situations, because it modifies *readtable*."
    ((and (symbolp (first form)) (special-operator-p (first form)))
     (make-special-form :operator (first form)
                        :operands (mapcar #L(make-unparsed-form :form !1) (rest form))))
-   ((and (member (first form) '(static volatile)) (length=1 (rest form)))
+   ((and (member (first form) '(static volatile)) (length= 1 (rest form)))
     (bind ((syntax (parse-query-form (second form) variables)))
       (setf (volatilep syntax) (eq (first form) 'volatile))
       syntax))

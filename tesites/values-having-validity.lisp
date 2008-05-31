@@ -91,12 +91,12 @@
     (assert (and validity-start-variable validity-end-variable)
             () "Expects (FOR (validity-start validity-end ...) IN-VALUES-HAVING-VALIDITY ...)")
     
-    (assert (or (length=1 value-variables)
+    (assert (or (length= 1 value-variables)
                 (and (listp value-having-validities)
                      (= (length value-variables) (length value-having-validities)))) ()
                      "Expects the same number of variables as values-having-validities in (FOR (validity-start validity-end variable ...) IN-VALUES-HAVING-VALIDITY values-having-validity ...)")
     
-    (if (length=1 value-variables)
+    (if (length= 1 value-variables)
         ;; efficient version for iterating on one values-having-validity
         (with-unique-names (value-having-validity-variable values validity-starts validity-ends index)
           `(progn

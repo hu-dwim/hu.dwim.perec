@@ -432,7 +432,7 @@
                      (sql-= (sql-identifier :name t-value-column-name) t-literal))))))
 
     (setf count
-          (if (length=1 tables)
+          (if (length= 1 tables)
               (update-records (name-of (table-of value-slot))
                               value-columns
                               rdbms-values
