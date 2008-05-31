@@ -163,7 +163,7 @@
              (:file "association-end-set")))))
 
 (defsystem-connection cl-perec-and-swank
-  :requires (:cl-perec :swank)
+  :requires (:cl-perec :swank #:cl-syntax-sugar-and-swank)
   :components
   ((:module "integration"
             :components ((:file "swank-integration")))))
