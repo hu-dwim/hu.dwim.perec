@@ -318,20 +318,23 @@
 ;;;;;;;;;;;;;;
 ;;; IP address
 
-(def function unsigned-byte-array->ip-address-reader (rdbms-values index)
+(def (function o) unsigned-byte-array->ip-address-reader (rdbms-values index)
   (bind ((bytes (elt rdbms-values index)))
     (cond ((= (length bytes) 4)
            bytes)
           ((= (length bytes) 16)
-           (loop with result = (make-array 8 :element-type '(unsigned-byte 16) :adjustable #f :fill-pointer 0)
-              for idx :from 0 :below 16 :by 2
-              do (vector-push (+ (aref bytes idx)
-                                 (ash (aref bytes (1+ idx)) 8))
-                              result)
-              finally (return result)))
+           (loop
+              :with result = (make-array 8 :element-type '(unsigned-byte 16))
+              :for output-idx :from 0 :below 8
+              :for input-idx  :from 0 :below 16 :by 2
+              :do (let ((part 0))
+                    (setf (ldb (byte 8 8) part) (aref bytes input-idx))
+                    (setf (ldb (byte 8 0) part) (aref bytes (1+ input-idx)))
+                    (setf (aref result output-idx) part))
+              :finally (return result)))
           (t +type-error-marker+))))
 
-(def function ip-address->unsigned-byte-array-writer (slot-value rdbms-values index)
+(def (function o) ip-address->unsigned-byte-array-writer (slot-value rdbms-values index)
   (assert (and (typep slot-value 'vector)
                (or (and (= (length slot-value) 4)
                         (subtypep (array-element-type slot-value) '(unsigned-byte 8)))
@@ -341,9 +344,12 @@
     (cond ((= (length slot-value) 4)
            (setf result (coerce slot-value 'unsigned-byte-vector)))
           ((= (length slot-value) 8)
-           (setf result (make-array 16 :element-type '(unsigned-byte 8) :adjustable #f :fill-pointer 0))
-           (loop for part :across slot-value do
-                (vector-push (ldb (byte 8 8) part) result)
-                (vector-push (ldb (byte 8 0) part) result)))
+           (setf result (make-array 16 :element-type '(unsigned-byte 8)))
+           (loop
+              :with idx = -1
+              :for part :across slot-value
+              :do (progn
+                    (setf (aref result (incf idx)) (ldb (byte 8 8) part))
+                    (setf (aref result (incf idx)) (ldb (byte 8 0) part)))))
           (t +type-error-marker+))
     (setf (elt rdbms-values index) result)))
