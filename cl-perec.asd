@@ -121,7 +121,7 @@
              (:file "store" :depends-on ("oid" "class" "object" "standard-type"))
              (:file "slot-value" :depends-on ("store"))
              (:file "persistent" :depends-on ("oid"))
-             (:file "transformer" :depends-on ("type"))
+             (:file "transformer" :depends-on ("type" "standard-type"))
              (:file "set")
              (:file "association-end-set" :depends-on ("object"))
              (:file "copy" :depends-on ("object"))
