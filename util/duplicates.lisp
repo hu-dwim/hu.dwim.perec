@@ -310,3 +310,4 @@
               (when (funcall sort-fn value (funcall key (aref vector i)))
                 (return i))
               (finally (return size))))))
+
