@@ -19,10 +19,10 @@
 ;;; empty-p, ensure-item, iterate-items inherited
 
 (defmethod insert-item ((set persistent-association-end-set-container-t) item)
-  (insert-into-association-end-set-t (class-of (instance-of set)) (instance-of set) (slot-of set) item))
+  (insert-into-association-end-set-t (instance-of set) (slot-of set) item))
 
 (defmethod delete-item ((set persistent-association-end-set-container-t) item)
-  (delete-from-association-end-set-t (class-of (instance-of set)) (instance-of set) (slot-of set) item))
+  (delete-from-association-end-set-t (instance-of set) (slot-of set) item))
 
 (defmethod find-item ((set persistent-association-end-set-container-t) (item persistent-object))
   (not-yet-implemented))

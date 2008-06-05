@@ -311,3 +311,12 @@
                 (return i))
               (finally (return size))))))
 
+(defun negate-boolean-form (form)
+  (if (and (consp form) (eq (first form) 'not))
+      (second form)
+      `(not ,form)))
+
+(defmacro implies (premise conclusion)
+  `(or ,(negate-boolean-form premise)
+       ,conclusion))
+

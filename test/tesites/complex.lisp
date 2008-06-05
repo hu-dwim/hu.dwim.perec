@@ -522,7 +522,8 @@
 
 (defun insert-item-and-insert-item* (instance slot-name item)
   (with-lazy-slot-value-collections
-    (unless (find-item (slot-value instance slot-name) item)
+    (when (or (typep (find-slot (class-of instance) slot-name) 'persistent-association-end-slot-definition-t)
+              (not (find-item (slot-value instance slot-name) item)))
       (insert-item (slot-value instance slot-name) item))
     (push (make-history-entry :action :insert
                               :instance instance
@@ -535,7 +536,8 @@
 
 (defun delete-item-and-delete-item* (instance slot-name item)
   (with-lazy-slot-value-collections
-    (when (find-item (slot-value instance slot-name) item)
+    (when (or (typep (find-slot (class-of instance) slot-name) 'persistent-association-end-slot-definition-t)
+              (find-item (slot-value instance slot-name) item))
       (delete-item (slot-value instance slot-name) item))
     (push (make-history-entry :action :delete
                               :instance instance

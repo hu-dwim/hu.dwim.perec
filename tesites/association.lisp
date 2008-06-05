@@ -14,6 +14,9 @@
     (compute-as (find-class (name-of -self-)))
     :type persistent-class)))
 
+(defmethod compute-primary-table ((association persistent-association-t) current-table)
+  nil)
+
 (defcclass* persistent-association-end-slot-definition-t (persistent-slot-definition-t persistent-association-end-slot-definition)
   ())
 
@@ -102,7 +105,7 @@
            (secondary-slot-type (getf secondary-association-end :type))
            (slot-definitions (if (or (set-type-p* primary-slot-type)
                                      (set-type-p* secondary-slot-type))
-                                 '((action :type integer-8))
+                                 '((action :accessor action-of :type integer-8))
                                  '())))
       `(progn
          ,(call-next-method metaclass processed-association-ends processed-options)

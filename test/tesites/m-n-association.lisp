@@ -21,19 +21,16 @@
   ((:class tesites-course-test :slot students :type (set tesites-student-test))
    (:class tesites-student-test :slot courses :type (set tesites-course-test))))
 
-#+nil
 (defassociation*
   ((:class tesites-course-test :slot temporal-students :type (set tesites-student-test))
    (:class tesites-student-test :slot temporal-courses :type (set tesites-course-test)))
   (:temporal #t))
 
-#+nil
 (defassociation*
   ((:class tesites-course-test :slot time-dependent-students :type (set tesites-student-test))
    (:class tesites-student-test :slot time-dependent-courses :type (set tesites-course-test)))
   (:time-dependent #t))
 
-#+nil
 (defassociation*
   ((:class tesites-course-test :slot temporal-and-time-dependent-students :type (set tesites-student-test))
    (:class tesites-student-test :slot temporal-and-time-dependent-courses :type (set tesites-course-test)))

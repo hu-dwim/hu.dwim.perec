@@ -40,9 +40,11 @@
 
 (deftest test/tesites/values-having-validity/collect/multiple-value ()
   (is (values-having-validity=
-       (make-values-having-validity (list 2000 1000 3000 nil)
-                                    (list (parse-timestring "2007-01-01TZ") (parse-timestring "2007-01-10TZ") (parse-timestring "2007-01-20TZ") (parse-timestring "2007-01-30TZ"))
-                                    (list (parse-timestring "2007-01-10TZ") (parse-timestring "2007-01-20TZ") (parse-timestring "2007-01-30TZ") (parse-timestring "2008-01-01TZ")))
+       (make-values-having-validity*
+        '((2000 "2007-01-01TZ" "2007-01-10TZ")
+          (1000 "2007-01-10TZ" "2007-01-20TZ")
+          (3000 "2007-01-20TZ" "2007-01-30TZ")
+          (nil "2007-01-30TZ" "2008-01-01TZ")))
        (collect-values-having-validity
         `((1000 ,(parse-timestring "2007-01-10TZ") ,(parse-timestring "2007-01-20TZ"))
           (2000 ,(parse-timestring "2007-01-01TZ") ,(parse-timestring "2007-01-15TZ"))
@@ -224,9 +226,10 @@
 
 (deftest test/tesites/children-having-validity/collect/single-value ()
   (is (values-having-validity=
-       (make-single-values-having-validity '(1000) (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ"))
+       (make-values-having-validity*
+        '(((1000) "2007-01-01TZ" "2008-01-01TZ")))
        (collect-children-having-validity
-        `((1000 ,(parse-timestring "2007-01-01TZ") ,(parse-timestring "2008-01-01TZ") 1))
+        `((1000 ,(parse-timestring "2007-01-01TZ") ,(parse-timestring "2008-01-01TZ") ,prc::+t-insert+))
         (lambda (e)
           (elt e 0))
         (lambda (e)
@@ -239,7 +242,8 @@
 
 (deftest test/tesites/children-having-validity/collect/no-value ()
   (is (values-having-validity=
-       (make-single-values-having-validity nil (parse-timestring "2006-01-01TZ") (parse-timestring "2008-01-01TZ"))
+       (make-values-having-validity*
+        '((nil "2006-01-01TZ" "2008-01-01TZ")))
        (collect-children-having-validity
         ()
         (lambda (e)
@@ -257,15 +261,15 @@
        (make-values-having-validity*
         `((() "2006-01-01TZ" "2007-01-01TZ")
           ((2000) "2007-01-01TZ" "2007-01-05TZ")
-          ((3000 2000) "2007-01-05TZ" "2007-01-10TZ")
-          ((3000 2000 1000) "2007-01-10TZ" "2007-01-15TZ")
-          ((3000 1000) "2007-01-15TZ" "2007-01-20TZ")
+          ((2000 3000) "2007-01-05TZ" "2007-01-10TZ")
+          ((1000 2000 3000) "2007-01-10TZ" "2007-01-15TZ")
+          ((1000 3000) "2007-01-15TZ" "2007-01-20TZ")
           ((3000)  "2007-01-20TZ" "2007-01-30TZ")
           (() "2007-01-30TZ" "2008-01-01TZ")))
        (collect-children-having-validity
-        `((1000 ,(parse-timestring "2007-01-10TZ") ,(parse-timestring "2007-01-20TZ") 1)
-          (2000 ,(parse-timestring "2007-01-01TZ") ,(parse-timestring "2007-01-15TZ") 1)
-          (3000 ,(parse-timestring "2007-01-05TZ") ,(parse-timestring "2007-01-30TZ") 1))
+        `((1000 ,(parse-timestring "2007-01-10TZ") ,(parse-timestring "2007-01-20TZ") ,prc::+t-insert+)
+          (2000 ,(parse-timestring "2007-01-01TZ") ,(parse-timestring "2007-01-15TZ") ,prc::+t-insert+)
+          (3000 ,(parse-timestring "2007-01-05TZ") ,(parse-timestring "2007-01-30TZ") ,prc::+t-insert+))
         (lambda (e)
           (elt e 0))
         (lambda (e)
@@ -274,4 +278,6 @@
           (elt e 2))
         (lambda (e)
           (elt e 3))
-        (parse-timestring "2006-01-01TZ") (parse-timestring "2008-01-01TZ")))))
+        (parse-timestring "2006-01-01TZ") (parse-timestring "2008-01-01TZ"))
+       :test (lambda (set1 set2)
+               (null (set-difference set1 set2))))))
