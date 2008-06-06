@@ -104,7 +104,7 @@
            (return-from slot-boundp-or-value-using-class-t
              (funcall return-with
                       (if (single-values-having-validity-p value)
-                          (first-elt (values-of value))
+                          (single-values-having-validity-value value)
                           value)))))
     (bind ((persistent (persistent-p instance))
            (cache-p (and *cache-slot-values* (cache-p slot))))
@@ -114,9 +114,9 @@
                   (and cache-p slot-value-cached))
           (if (time-dependent-p slot)
               (progn
-                *validity-start* *validity-end*
+                (assert (and (boundp '*validity-start*) (boundp '*validity-end*)))
                 (when (temporal-p slot)
-                  *t*)
+                  (assert (boundp '*t*)))
                 (if (unbound-slot-marker-p cached-value)
                     (return-value +unbound-slot-marker+)
                     (bind (((:values value covers-validity-range-p)
@@ -126,7 +126,7 @@
                           (unless persistent
                             (return-value +unbound-slot-marker+))))))
               (progn
-                *t*
+                (assert (boundp '*t*))
                 (return-value cached-value))))
         (bind ((value (restore-slot class instance slot)))
           (when (or (not persistent)

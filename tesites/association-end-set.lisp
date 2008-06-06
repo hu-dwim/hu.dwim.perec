@@ -16,8 +16,6 @@
 (defclass* persistent-association-end-set-container-t (persistent-association-end-set-container)
   ())
 
-;;; empty-p, ensure-item, iterate-items inherited
-
 (defmethod insert-item ((set persistent-association-end-set-container-t) item)
   (insert-into-association-end-set-t (instance-of set) (slot-of set) item))
 
@@ -27,7 +25,13 @@
 (defmethod find-item ((set persistent-association-end-set-container-t) (item persistent-object))
   (not-yet-implemented))
 
+(defmethod ensure-item ((set persistent-association-end-set-container-t) (item persistent-object))
+  (not-yet-implemented))
+
 (defmethod size ((set persistent-association-end-set-container-t))
+  (not-yet-implemented))
+
+(defmethod empty-p ((set persistent-association-end-set-container-t))
   (not-yet-implemented))
 
 (defmethod empty! ((set persistent-association-end-set-container-t))
@@ -37,5 +41,8 @@
   (not-yet-implemented))
 
 (defmethod (setf list-of) (new-value (set persistent-association-end-set-container-t))
+  (not-yet-implemented))
+
+(defmethod iterate-items ((set persistent-association-end-set-container-t) fn)
   (not-yet-implemented))
 
