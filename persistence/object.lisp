@@ -36,6 +36,9 @@
   (:abstract #t)
   (:documentation "Base class for all persistent classes. If this class is not inherited by a persistent class then it is automatically added to the direct superclasses. There is only one persistent instance in a transaction with a give oid therefore eq will return true iff the oids are equal."))
 
+(def (function e) persistent-object-internal-slot-p (slot)
+  (member (slot-definition-name slot) '(oid persistent transaction transaction-event) :test #'eq))
+
 (def (macro e) with-making-persistent-instances (&body forms)
   `(let ((*make-persistent-instances* #t))
      ,@forms))
