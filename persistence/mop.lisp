@@ -274,3 +274,6 @@
 
 (def function writer-name-of (effective-slot)
   (first (some #'slot-definition-writers (direct-slots-of effective-slot))))
+
+(def function class-slots (class)
+  (closer-mop:class-slots (ensure-finalized class)))

@@ -45,7 +45,7 @@
                    (and (persistent-slot-p slot)
                         (not (eq (closer-mop:slot-definition-allocation slot) :class))
                         (not (member (closer-mop:slot-definition-name slot) exclude-slots))))
-                 (closer-mop:class-slots class))))
+                 (class-slots class))))
     (serializer::serialize-element (if include-oid #t #f) context)
     (when include-oid
       (write-persistent-object-oid instance context))

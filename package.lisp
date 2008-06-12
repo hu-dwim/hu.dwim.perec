@@ -38,6 +38,7 @@
            #:form
            #:children
            #:variable
+           #:class-slots
            #:transaction
            #:create-temporary-table ; TODO resolve by renaming something. cl-rdbms exports this.
            #:rdbms-name-for ;; TODO get rid of this

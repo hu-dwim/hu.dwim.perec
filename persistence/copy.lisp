@@ -20,7 +20,7 @@
 
 (define-copy-method (copy-inner-class copy-persistent-instance) progn ((instance persistent-object) (copy persistent-object) hash-table)
   (bind ((class (class-of instance)))
-    (dolist (slot (closer-mop:class-slots class))
+    (dolist (slot (class-slots class))
       (when (typep slot 'persistent-effective-slot-definition)
         (slot-boundp-or-value-using-class class instance slot
                                           #L(unless (unbound-slot-marker-p !1)
@@ -40,7 +40,7 @@
 
 (define-copy-method (copy-inner-class copy-into-transaction-cache) progn ((instance persistent-object) (copy persistent-object) hash-table)
   (bind ((class (class-of instance)))
-    (dolist (slot (closer-mop:class-slots class))
+    (dolist (slot (class-slots class))
       (cond ((typep slot 'persistent-effective-slot-definition)
              (bind (((:values cached-p value) (slot-value-cached-p instance slot)))
                (when cached-p
