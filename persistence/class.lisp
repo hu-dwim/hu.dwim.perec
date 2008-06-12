@@ -362,6 +362,10 @@
   (:method ((class persistent-class) current-table)
     (ensure-finalized class)
     (flet ((primary-table-columns-for-class (class)
+             (ensure-finalized class)
+             (dolist (el (depends-on-of class))
+               (when (typep el 'class)
+                 (ensure-finalized el)))
              ;; those mappends may collect the same columns several times (compare by identity)
              (delete-duplicates
               (append
