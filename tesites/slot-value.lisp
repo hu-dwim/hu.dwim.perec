@@ -114,9 +114,10 @@
                   (and cache-p slot-value-cached))
           (if (time-dependent-p slot)
               (progn
-                (assert (and (boundp '*validity-start*) (boundp '*validity-end*)))
+                (assert (boundp '*validity-start*) () 'unbound-variable :name '*validity-start*)
+                (assert (boundp '*validity-end*) () 'unbound-variable :name '*validity-end*)
                 (when (temporal-p slot)
-                  (assert (boundp '*t*)))
+                  (assert (boundp '*t*) () 'unbound-variable :name '*t*))
                 (if (unbound-slot-marker-p cached-value)
                     (return-value +unbound-slot-marker+)
                     (bind (((:values value covers-validity-range-p)
@@ -126,7 +127,7 @@
                           (unless persistent
                             (return-value +unbound-slot-marker+))))))
               (progn
-                (assert (boundp '*t*))
+                (assert (boundp '*t*) () 'unbound-variable :name '*t*)
                 (return-value cached-value))))
         (bind ((value (restore-slot class instance slot)))
           (when (or (not persistent)
