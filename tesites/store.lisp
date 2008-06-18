@@ -103,29 +103,30 @@
                                   +unbound-slot-marker+))
                 (for h-class = (class-of h-instance))
 
-                (unless (and (local-time= validity-start validity-start2)
-                             (local-time= validity-end validity-end2)
-                             (or (null t-value2) (local-time= t-value t-value2)))
+                (unless (and (timestamp= validity-start validity-start2)
+                             (timestamp= validity-end validity-end2)
+                             (or (null t-value2)
+                                 (timestamp= t-value t-value2)))
                   ;; TODO optimize the case when value = value2
                   (cond
-                    ((and (local-time< validity-start2 validity-start)
-                          (local-time<= validity-end2 validity-end))
+                    ((and (timestamp< validity-start2 validity-start)
+                          (timestamp<= validity-end2 validity-end))
                      ;; update
                      (if (all-slots-unused-p h-instance :except h-slot-name)
                          (store-slot h-class h-instance (validity-end-slot-of t-class) validity-start)
                          (progn
                            (store-slot h-class h-instance h-slot +h-unused-slot-marker+)
                            (insert-h-instance t-class t-instance t-slot value2 t-value2 validity-start2 validity-start))))
-                    ((and (local-time<= validity-start validity-start2)
-                          (local-time< validity-end validity-end2))
+                    ((and (timestamp<= validity-start validity-start2)
+                          (timestamp< validity-end validity-end2))
                      ;; update
                      (if (all-slots-unused-p h-instance :except h-slot-name)
                          (store-slot h-class h-instance (validity-start-slot-of t-class) validity-end)
                          (progn
                            (store-slot h-class h-instance h-slot +h-unused-slot-marker+)
                            (insert-h-instance t-class t-instance t-slot value2 t-value2 validity-end validity-end2))))
-                    ((and (local-time< validity-start2 validity-start)
-                          (local-time< validity-end validity-end2))
+                    ((and (timestamp< validity-start2 validity-start)
+                          (timestamp< validity-end validity-end2))
                      ;; update + insert
                      (if (all-slots-unused-p h-instance :except h-slot-name)
                          (store-slot h-class h-instance (validity-end-slot-of t-class) validity-start)
@@ -342,10 +343,9 @@
               ;; insert record that clear the other ends too
               ;; see test/tesites/association/1-1/integrity
               (when (and temporal-p time-dependent-p)
-                (bind ((start (local-time-max validity-start validity-start2))
-                       (end (local-time-min validity-end validity-end2)))
-                  (assert (local-time< start end))
-                  
+                (bind ((start (timestamp-maximum validity-start validity-start2))
+                       (end (timestamp-minimum validity-end validity-end2)))
+                  (assert (timestamp< start end))
                   (cond
                     ((and (p-eq instance instance2) other-instance2)
 
@@ -363,20 +363,20 @@
                 ;; |----|      old
                 ;;    |----|   new       ->  shrink old
                 ((and time-dependent-p
-                      (local-time< validity-start2 validity-start)
-                      (local-time<= validity-end2 validity-end))
+                      (timestamp< validity-start2 validity-start)
+                      (timestamp<= validity-end2 validity-end))
                  (store-slot h-class h-instance (validity-end-slot-of t-association-end) validity-start))
                 ;;   |----|  old
                 ;; |----|    new         ->  shrink old
                 ((and time-dependent-p
-                      (local-time<= validity-start validity-start2)
-                      (local-time< validity-end validity-end2))
+                      (timestamp<= validity-start validity-start2)
+                      (timestamp< validity-end validity-end2))
                  (store-slot h-class h-instance (validity-start-slot-of t-association-end) validity-end))
                 ;; |---------|  old
                 ;;    |---|     new      -> split old
                 ((and time-dependent-p
-                      (local-time< validity-start2 validity-start)
-                      (local-time< validity-end validity-end2))
+                      (timestamp< validity-start2 validity-start)
+                      (timestamp< validity-end validity-end2))
                  (store-slot h-class h-instance (validity-end-slot-of t-association-end) validity-start)
                  (insert-h-association-instance t-association-end instance2 other-instance2
                                                 t-value2 validity-end validity-end2))
@@ -480,20 +480,20 @@
               ;; |----|      old
               ;;    |----|   new       ->  shrink old
               ((and time-dependent-p
-                    (local-time< validity-start2 validity-start)
-                    (local-time<= validity-end2 validity-end))
+                    (timestamp< validity-start2 validity-start)
+                    (timestamp<= validity-end2 validity-end))
                (store-slot h-class h-instance (validity-end-slot-of t-association-end) validity-start))
               ;;   |----|  old
               ;; |----|    new         ->  shrink old
               ((and time-dependent-p
-                    (local-time<= validity-start validity-start2)
-                    (local-time< validity-end validity-end2))
+                    (timestamp<= validity-start validity-start2)
+                    (timestamp< validity-end validity-end2))
                (store-slot h-class h-instance (validity-start-slot-of t-association-end) validity-end))
               ;; |---------|  old
               ;;    |---|     new      -> split old
               ((and time-dependent-p
-                    (local-time< validity-start2 validity-start)
-                    (local-time< validity-end validity-end2))
+                    (timestamp< validity-start2 validity-start)
+                    (timestamp< validity-end validity-end2))
                (store-slot h-class h-instance (validity-end-slot-of t-association-end) validity-start)
                (insert-h-association-instance t-association-end instance2 other-instance2
                                               t-value2 validity-end validity-end2 :action action2))
@@ -674,10 +674,10 @@
                                        (or
                                         (not (slot-boundp h-instance ',h-slot-name))
                                         (not (eq (,h-slot-reader-name h-instance) ,+h-unused-slot-marker+)))
-                                       (local-time< (validity-start-of h-instance) validity-end)
-                                       (local-time< validity-start (validity-end-of h-instance))
+                                       (timestamp< (validity-start-of h-instance) validity-end)
+                                       (timestamp< validity-start (validity-end-of h-instance))
                                        ,@(when (temporal-p t-slot)
-                                               `((local-time= (t-value-of h-instance) t-value))))))
+                                               `((timestamp= (t-value-of h-instance) t-value))))))
                             '(t-instance validity-start validity-end t-value))))
     (execute-query query t-instance validity-start validity-end (when (temporal-p t-slot) *t*))))
 
@@ -700,10 +700,10 @@
                                         (not (slot-boundp h-instance ',h-slot-name))
                                         (not (eq (,h-slot-reader-name h-instance) ,+h-unused-slot-marker+)))
                                        ,@(when (time-dependent-p t-slot)
-                                               `((local-time< (validity-start-of h-instance) validity-end)
-                                                 (local-time< validity-start (validity-end-of h-instance))))
+                                               `((timestamp< (validity-start-of h-instance) validity-end)
+                                                 (timestamp< validity-start (validity-end-of h-instance))))
                                        ,@(when (temporal-p t-slot)
-                                               `((local-time<= (t-value-of h-instance) t-value)))))
+                                               `((timestamp<= (t-value-of h-instance) t-value)))))
                                ,@(when (temporal-p t-slot)
                                        `((order-by :descending (t-value-of h-instance))))
                                ,@(unless (time-dependent-p t-slot)
@@ -755,10 +755,10 @@
                                (where (and
                                        (eq (,h-association-end-reader-name h-instance) instance)
                                        ,@(when (time-dependent-p t-association-end)
-                                               `((local-time< (validity-start-of h-instance) validity-end)
-                                                 (local-time< validity-start (validity-end-of h-instance))))
+                                               `((timestamp< (validity-start-of h-instance) validity-end)
+                                                 (timestamp< validity-start (validity-end-of h-instance))))
                                        ,@(when (temporal-p t-association-end)
-                                               `((local-time<= (t-value-of h-instance) t-value)))))
+                                               `((timestamp<= (t-value-of h-instance) t-value)))))
                                (order-by ,@(when (temporal-p t-association-end)
                                                  `(:descending (t-value-of h-instance)))
                                          ,@(unless (eq association-kind :1-1)
@@ -800,10 +800,10 @@
                                (where (and
                                        ,instance-criteria
                                        ,@(when (time-dependent-p t-association-end)
-                                               `((local-time< (validity-start-of h-instance) validity-end)
-                                                 (local-time< validity-start (validity-end-of h-instance))))
+                                               `((timestamp< (validity-start-of h-instance) validity-end)
+                                                 (timestamp< validity-start (validity-end-of h-instance))))
                                        ,@(when (temporal-p t-association-end)
-                                               `((local-time= (t-value-of h-instance) t-value))))))
+                                               `((timestamp= (t-value-of h-instance) t-value))))))
                             '(instance value validity-start validity-end t-value))))
     (execute-query query instance value validity-start validity-end (when (temporal-p t-association-end) *t*))))
 

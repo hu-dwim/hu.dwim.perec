@@ -52,9 +52,9 @@
              (setf (closer-mop:standard-instance-access copy (closer-mop:slot-definition-location slot))
                    (closer-mop:standard-instance-access instance (closer-mop:slot-definition-location slot))))))))
 
-(define-copy-method (copy-self copy-into-transaction-cache) ((instance local-time))
+(define-copy-method (copy-self copy-into-transaction-cache) ((instance timestamp))
   ;; TODO: shouldn't we treat non-transient local-time instances as immutable instead?
-  (local-time::clone-local-time instance))
+  (local-time::clone-timestamp instance))
 
 (define-copy-method (copy-inner-class copy-into-transaction-cache) progn
-  ((instance local-time) (copy local-time) hash-table))
+  ((instance timestamp) (copy timestamp) hash-table))

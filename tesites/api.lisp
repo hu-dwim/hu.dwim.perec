@@ -36,7 +36,6 @@
 (def (function e) call-with-t (t-value thunk)
   (assert (not (boundp '*t*)) nil "Changing the time machine parameter *t* is not allowed within a single transaction.")
   (bind ((*t* t-value))
-    (assert (eq +utc-zone+ (timezone-of t-value)))
     (funcall thunk)))
 
 (def (macro e) with-t (timestamp &body forms)
@@ -54,9 +53,7 @@
 (def (function e) call-with-validity-range (start end thunk)
   (bind ((*validity-start* start)
          (*validity-end* end))
-    (assert (and (eq +utc-zone+ (timezone-of start))
-                 (eq +utc-zone+ (timezone-of end))
-                 (local-time< start end)))
+    (assert (timestamp< start end))
     (funcall thunk)))
 
 (def (macro e) with-validity (validity &body forms)
@@ -64,18 +61,18 @@
           "Evaluating the atom ~S in the body of with-validity doesn't make too much sense, you probably would like to use with-validity-range instead"
           (first forms))
   `(call-with-validity-range
-    (load-time-value (parse-timestring ,(first-moment-for-partial-timestamp validity)))
-    (load-time-value (parse-timestring ,(last-moment-for-partial-timestamp validity)))
+    ,(first-moment-for-partial-timestamp validity)
+    ,(last-moment-for-partial-timestamp validity)
     (lambda ()
       ,@forms)))
 
 (def (macro e) with-validity-range (start end &body forms)
   `(call-with-validity-range
     ,(if (stringp start)
-         `(load-time-value (parse-timestring ,(first-moment-for-partial-timestamp start)))
+         (first-moment-for-partial-timestamp start)
          start)
     ,(if (stringp end)
-         `(load-time-value (parse-timestring ,(first-moment-for-partial-timestamp end)))
+         (first-moment-for-partial-timestamp end)
          end)
     (lambda ()
       ,@forms)))

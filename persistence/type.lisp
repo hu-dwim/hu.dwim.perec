@@ -312,9 +312,9 @@
       number
       text
       string
-      timestamp
       date
       time
+      timestamp
       ip-address
       unsigned-byte-vector
       member

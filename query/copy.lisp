@@ -14,7 +14,7 @@
 (define-copy-method (copy-one copy-query) ((object persistent-object) htable)
   object)
 
-(define-copy-method (copy-one copy-query) ((local-time local-time) htable)
+(define-copy-method (copy-one copy-query) ((local-time timestamp) htable)
   local-time)
 
 (define-copy-method (copy-one copy-query) ((slot persistent-slot-definition) htable)
@@ -31,7 +31,7 @@
 (define-copy-method (copy-one copy-shallow) ((object persistent-object) htable)
   object)
 
-(define-copy-method (copy-one copy-shallow) ((local-time local-time) htable)
+(define-copy-method (copy-one copy-shallow) ((local-time timestamp) htable)
   local-time)
 
 (define-copy-method (copy-one copy-shallow) ((slot persistent-slot-definition) htable)

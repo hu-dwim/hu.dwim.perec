@@ -285,35 +285,29 @@
 ;;;;;;;;;;;;;;;;;
 ;;; Date and time
 
-(def (function io) local-time-to-utc-zone (local-time)
-  (if (eq (timezone-of local-time) +utc-zone+)
-      local-time
-      (adjust-local-time local-time (set :timezone +utc-zone+))))
-
-(def function string->local-time-reader (rdbms-values index)
-  ;; NOTE: assumes that the database server is configured to return UTC timezone
-  (bind ((*default-timezone* +utc-zone+))
-    (parse-timestring (elt rdbms-values index) :date-time-separator #\Space)))
-
-(def function integer->local-time-reader (rdbms-values index)
-  ;; NOTE: assumes that the database server is configured to return UTC timezone
-  (local-time :universal (elt rdbms-values index) :timezone +utc-zone+))
+;;; NOTE: the following code assumes that the database server is configured to return times in the UTC timezone
+(def function string->timestamp-reader (rdbms-values index)
+  (parse-timestring (elt rdbms-values index) :date-time-separator #\Space :offset 0))
 
 (def function date->string-writer (slot-value rdbms-values index)
   (setf (elt rdbms-values index)
-        (format-timestring (local-time-to-utc-zone slot-value) :omit-time-part-p #t)))
+        (format-timestring nil slot-value
+                           :format '((:year 4) #\- (:month 2) #\- (:day 2))
+                           :timezone +utc-zone+)))
 
 (def function time->string-writer (slot-value rdbms-values index)
   (setf (elt rdbms-values index)
-        (format-timestring (local-time-to-utc-zone slot-value) :omit-date-part-p #t :omit-timezone-part-p #t)))
+        (format-timestring nil slot-value
+                           :format '((:hour 2) #\: (:min 2) #\: (:sec 2) #\. (:usec 6))
+                           :timezone +utc-zone+)))
 
 (def function timestamp->string-writer (slot-value rdbms-values index)
   (setf (elt rdbms-values index)
-        (format-timestring (local-time-to-utc-zone slot-value) :date-time-separator #\Space :use-zulu-p #f)))
-
-(def function local-time->integer-writer (slot-value rdbms-values index)
-  (setf (elt rdbms-values index)
-        (universal-time (local-time-to-utc-zone slot-value))))
+        (format-timestring nil slot-value
+                           :format '((:year 4) #\- (:month 2) #\- (:day 2) #\Space
+                                     (:hour 2) #\: (:min 2) #\: (:sec 2) #\.
+                                     (:usec 6) :gmt-offset)
+                           :timezone +utc-zone+)))
 
 ;;;;;;;;;;;;;;
 ;;; IP address

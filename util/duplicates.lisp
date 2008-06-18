@@ -193,28 +193,28 @@
     (real (< obj1 obj2))
     (string (string< obj1 obj2))
     (character (char< obj1 obj2))
-    (local-time (local-time< obj1 obj2))))
+    (timestamp (timestamp< obj1 obj2))))
 
 (def function less-or-equal-p (obj1 obj2)
   (typecase obj1
     (real (<= obj1 obj2))
     (string (string<= obj1 obj2))
     (character (char<= obj1 obj2))
-    (local-time (local-time<= obj1 obj2))))
+    (timestamp (timestamp<= obj1 obj2))))
 
 (def function greaterp (obj1 obj2)
   (typecase obj1
     (real (> obj1 obj2))
     (string (string> obj1 obj2))
     (character (char> obj1 obj2))
-    (local-time (local-time> obj1 obj2))))
+    (timestamp (timestamp> obj1 obj2))))
 
 (def function greater-or-equal-p (obj1 obj2)
   (typecase obj1
     (real (>= obj1 obj2))
     (string (string>= obj1 obj2))
     (character (char>= obj1 obj2))
-    (local-time (local-time>= obj1 obj2))))
+    (timestamp (timestamp>= obj1 obj2))))
 
 (def function combine-with (op list-or-item item)
   (cond

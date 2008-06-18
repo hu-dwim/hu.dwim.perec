@@ -370,8 +370,8 @@
   (declare (ignore date))
   t)
 
-(defptype date ()
-  '(and local-time
+(def persistent-type date ()
+  '(and timestamp
         (satisfies date-p)))
 
 (defmapping date (sql-date-type)
@@ -388,8 +388,8 @@
   (declare (ignore time))
   t)
 
-(defptype time ()
-  '(and local-time
+(def persistent-type time ()
+  '(and timestamp
         (satisfies time-p)))
 
 (defmapping time (sql-time-type)
@@ -401,10 +401,8 @@
 ;;;
 ;;; non date -> (type-error)
 
-(defptype timestamp ()
-  '(and local-time
-        (satisfies date-p)
-        (satisfies time-p)))
+(def persistent-type timestamp ()
+  'timestamp)
 
 (defmapping timestamp (sql-timestamp-type :with-timezone #t)
   'identity-reader
