@@ -74,8 +74,8 @@
                           (from (o aggregate-test))))))
     (is
      (and (= (first result) 3)
-          (local-time= (second result) (parse-datestring "2001-01-01"))
-          (local-time= (third result) (parse-datestring "2001-01-03"))))))
+          (timestamp= (second result) (parse-datestring "2001-01-01"))
+          (timestamp= (third result) (parse-datestring "2001-01-03"))))))
 
 (def-aggregate-test test/query/aggregate/empty ()
   (is

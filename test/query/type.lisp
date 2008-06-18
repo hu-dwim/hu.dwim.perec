@@ -24,8 +24,8 @@
                  (test-object ()
                    (declare #+sbcl(sb-ext:muffle-conditions sb-ext:compiler-note))
                    ,(if test-value-p
-                        `(bind ((test-fn (if (typep ,value 'local-time)
-                                             'local-time=
+                        `(bind ((test-fn (if (typep ,value 'timestamp)
+                                             'timestamp=
                                              'equal))
                                 (,result (execute-query
                                             (make-query
@@ -45,10 +45,10 @@
                         (execute-query
                          (make-query
                           ,(if test-value-p
-                               `(if (typep ,value 'local-time)
+                               `(if (typep ,value 'timestamp)
                                     `(select (o)
                                        (from (o query-type-test))
-                                       (where (local-time= (,,accessor o) ',,value)))
+                                       (where (timestamp= (,,accessor o) ',,value)))
                                     `(select (o)
                                        (from (o query-type-test))
                                        (where (equal (,,accessor o) ',,value))))
@@ -142,8 +142,8 @@
 (def-query-type-test timestamp/1 timestamp (parse-timestring "2006-06-06T06:06:06Z"))
 (def-query-type-test timestamp/2 timestamp (parse-timestring "2006-06-06T06:06:06.123456Z"))
 
-(def-query-type-test duration/1 duration (parse-duration "06:06:06"))
-(def-query-type-test duration/2 duration (parse-duration "01-01T06:06:06.123456"))
+(def-query-type-test duration/1 duration (+ (* 5 60 60) (* 5 60) 5))
+(def-query-type-test duration/2 duration (+ (* 1 (* +seconds-per-day+ 30)) (* 1 +seconds-per-day+) (* 5 +seconds-per-hour+) (* 5 +seconds-per-minute+) 5))
 
 (def-query-type-test member/1 (member one two three) 'one)
 (def-query-type-test member/2 (member one two three) 'two)

@@ -43,12 +43,12 @@
     (purge-instances 'message-test)
     (bind ((user1 (make-instance 'user-test
                                  :name "user1"
-                                 :birthday (encode-local-time 0 0 0 0 22 4 1984 :timezone +utc-zone+)
+                                 :birthday (parse-timestring "1984-04-22T00:00:00Z")
                                  :password "secret"))
            (topic1 (make-instance 'topic-test :title "topic1" :owner user1)))
       (make-instance 'user-test
                      :name "user2"
-                     :birthday (encode-local-time 0 0 0 0 2 7 1975 :timezone +utc-zone+)
+                     :birthday (parse-timestring "1975-07-02T00:00:00Z")
                      :password "sglF$%3D")
       (make-instance 'topic-test :title "topic2" :owner user1)
       (make-instance 'message-test :subject "subject1" :content "content1" :topic topic1)

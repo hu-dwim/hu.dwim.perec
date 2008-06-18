@@ -18,13 +18,13 @@
                    :string-attr "String2"
                    :date-attr (parse-datestring "2007-07-15"))))
 
-(deftest test/query/expression/local-time<= ()
+(deftest test/query/expression/timestamp<= ()
   (test-query (:select-count 1 :record-count 1 :fixture expression-data)
     (select (o)
       (from (o expression-test))
-      (where (local-time<= (parse-datestring "2007-07-10")
-                           (date-attr-of o)
-                           (parse-datestring "2007-07-12"))))))
+      (where (timestamp<= (parse-datestring "2007-07-10")
+                          (date-attr-of o)
+                          (parse-datestring "2007-07-12"))))))
 
 (deftest test/query/expression/like-1 ()
   (test-query (:select-count 1 :record-count 1 :fixture expression-data)

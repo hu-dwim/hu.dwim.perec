@@ -68,14 +68,14 @@
           (for index from 0)
           (ecase index
             (0 (is (= value 1000))
-               (is (local-time= validity-start (parse-timestring "2006-06-06TZ")))
-               (is (local-time= validity-end (parse-timestring "2007-01-01TZ"))))
+               (is (timestamp= validity-start (parse-timestring "2006-06-06TZ")))
+               (is (timestamp= validity-end (parse-timestring "2007-01-01TZ"))))
             (1 (is (= value 2000))
-               (is (local-time= validity-start (parse-timestring "2007-01-01TZ")))
-               (is (local-time= validity-end (parse-timestring "2008-01-01TZ"))))
+               (is (timestamp= validity-start (parse-timestring "2007-01-01TZ")))
+               (is (timestamp= validity-end (parse-timestring "2008-01-01TZ"))))
             (2 (is (= value 3000))
-               (is (local-time= validity-start (parse-timestring "2008-01-01TZ")))
-               (is (local-time= validity-end (parse-timestring "2008-07-07TZ"))))))
+               (is (timestamp= validity-start (parse-timestring "2008-01-01TZ")))
+               (is (timestamp= validity-end (parse-timestring "2008-07-07TZ"))))))
 
     (iter (for (validity-start validity-end value) :in-values-having-validity
                (values-having-validity-value values-having-validity
@@ -84,11 +84,11 @@
           (for index from 0)
           (ecase index
             (0 (is (= value 1000))
-               (is (local-time= validity-start (parse-timestring "2006-06-06TZ")))
-               (is (local-time= validity-end (parse-timestring "2007-01-01TZ"))))
+               (is (timestamp= validity-start (parse-timestring "2006-06-06TZ")))
+               (is (timestamp= validity-end (parse-timestring "2007-01-01TZ"))))
             (1 (is (= value 2000))
-               (is (local-time= validity-start (parse-timestring "2007-01-01TZ")))
-               (is (local-time= validity-end (parse-timestring "2008-01-01TZ"))))))))
+               (is (timestamp= validity-start (parse-timestring "2007-01-01TZ")))
+               (is (timestamp= validity-end (parse-timestring "2008-01-01TZ"))))))))
 
 
 

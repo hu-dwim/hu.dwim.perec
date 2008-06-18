@@ -33,8 +33,8 @@
                             (slot-value-using-class class-2 object-2 slot)))
                          (class-slots class-1)))))
 
-  (:method ((object-1 local-time) (object-2 local-time))
-           (local-time= object-1 object-2))
+  (:method ((object-1 timestamp) (object-2 timestamp))
+    (timestamp= object-1 object-2))
 
   (:method ((object-1 standard-object) (object-2 standard-object))
            (let ((class-1 (class-of object-1))
@@ -205,8 +205,8 @@
 (def-type-test ip-address/1 ip-address (coerce #(127 0 0 1) '(vector (unsigned-byte 8))))
 (def-type-test ip-address/2 ip-address (coerce #(0 0 0 0 0 65535 32512 1) '(vector (unsigned-byte 16))))
 
-(def-type-test duration/1 duration (parse-duration "06:06:06"))
-(def-type-test duration/2 duration (parse-duration "01-01T06:06:06.123456"))
+(def-type-test duration/1 duration (+ (* 5 60 60) (* 5 60) 5))
+(def-type-test duration/2 duration (+ (* 1 (* +seconds-per-day+ 30)) (* 1 +seconds-per-day+) (* 5 +seconds-per-hour+) (* 5 +seconds-per-minute+) 5))
 
 (def-type-test member/1 (member one two three) 'one)
 (def-type-test member/2 (member one two three) 'two)

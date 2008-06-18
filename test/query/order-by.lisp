@@ -43,9 +43,7 @@
     (bind ((count 10)
            (int-values (iter (for i from 0 below count) (collect i)))
            (str-values (iter (for i from 0 below count) (collect (string (digit-char i)))))
-           (date-values (iter (for i from 0 below count) (collect (make-local-time
-                                                                   :day i
-                                                                   :timezone +utc-zone+)))))
+           (date-values (iter (for i from 0 below count) (collect (make-timestamp :day i)))))
       (macrolet ((random-element (list)
                    (with-unique-names (element)
                      `(let ((,element (nth (random (length ,list)) ,list)))

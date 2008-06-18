@@ -139,11 +139,11 @@
             (for (validity-start validity-end value) :in-values-having-validity (population-of -instance-))
             (ecase index
               (0 (is (= 2006 value))
-                 (is (local-time= (parse-datestring "2006-01-01") validity-start))
-                 (is (local-time= (parse-datestring "2007-01-01") validity-end)))
+                 (is (timestamp= (parse-datestring "2006-01-01") validity-start))
+                 (is (timestamp= (parse-datestring "2007-01-01") validity-end)))
               (1 (is (= 2007 value))
-                 (is (local-time= (parse-datestring "2007-01-01") validity-start))
-                 (is (local-time= (parse-datestring "2008-01-01") validity-end))))))))
+                 (is (timestamp= (parse-datestring "2007-01-01") validity-start))
+                 (is (timestamp= (parse-datestring "2008-01-01") validity-end))))))))
 
 (defpclass* time-dependent-complex-test ()
   ((slot :type (or null integer-32))

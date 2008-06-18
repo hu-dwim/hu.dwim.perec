@@ -136,7 +136,7 @@ GROUP BY _pib._basket_id"
                    (unit-price-of (product-of pib)))))
     (from (pib products-in-basket))
     (where (and (ordered-p (basket-of pib))
-                (local-time<= (created-at-of (basket-of pib)) created-before)))
+                (timestamp<= (created-at-of (basket-of pib)) created-before)))
     (group-by (basket-of pib))))
 
 (deftest test/shop/1 ()
