@@ -8,6 +8,20 @@
 
 ;;; THE CONTENT OF THIS FILE IS COPIED OVER FROM SOME OTHER LIBRARIES TO DECREASE THE NUMBER OF DEPENDENCIES
 
+(def (function io) handle-otherwise (otherwise)
+  (cond
+    ((eq otherwise :error)
+     (error "Otherwise assertion failed"))
+    ((and (consp otherwise)
+          (member (first otherwise) '(:error :warn)))
+     (case (first otherwise)
+       (:error (apply #'error (second otherwise) (nthcdr 2 otherwise)))
+       (:warn (apply #'warn (second otherwise) (nthcdr 2 otherwise)))))
+    ((functionp otherwise)
+     (funcall otherwise))
+    (t
+     otherwise)))
+
 (def (function o) canonical-symbol-name (symbol)
   "Returns the package name and symbol name concatenated."
   (declare (type symbol symbol))
