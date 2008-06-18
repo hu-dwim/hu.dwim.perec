@@ -122,8 +122,7 @@
     (is (equal "Hello" (name-of (make-instance 'initform-1-test))))))
 
 (deftest test/persistence/initform/2 ()
-  (let ((instance
-         (with-transaction
-           (stefil:signals error (make-instance 'initform-2-test)))))
-    (with-transaction
-      (finishes (revive-instance instance)))))
+  (with-transaction
+    (signals error
+      (make-instance 'initform-2-test))
+    (values)))
