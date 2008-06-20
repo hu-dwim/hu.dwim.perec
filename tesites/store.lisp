@@ -47,7 +47,7 @@
   ;; this lock ensures that
   ;; the insert/update operations on the h-table are serialized properly.
   (lock-t-slot t-instance t-slot)
-    
+
   (if (time-dependent-p t-slot)
       (if (typep value 'values-having-validity)
           (iter (for (start end v) :in-values-having-validity value) ;; TODO probably suboptimal
@@ -82,7 +82,6 @@
     (when (zerop update-count)
       (unless (and has-default-p (eq value t-slot-default-value) (not (temporal-p t-slot)))
           (insert-h-instance t-class t-instance t-slot value t-value validity-start validity-end)))
-    
 
     ;; ensure invariant: validity ranges are not overlapping for any given t
     (when (and (persistent-p t-instance) (time-dependent-p t-slot))
@@ -144,7 +143,7 @@
       (invalidate-all-cached-slots value)) ;; FIXME why?
     ;; TODO: if t-instance is cached either invalidate it or set the value on it
 
-    
+
     value))
 
 ;;;;;;;;;;;;;;;;
@@ -193,7 +192,7 @@
                  (:1 (iter (for (s e v) :in-values-having-validity result)
                            (collect-value-with-validity (if v (last-elt v) v) :from s :to e)))
                  (:n result))))
-           
+
            (unchecked-value (t-association-end instance &optional (validity-start *validity-start*)
                                                (validity-end *validity-end*))
              (bind ((records (select-association-end-values-with-validity t-association-end instance
@@ -221,7 +220,7 @@
                       (if time-dependent-p
                           (collect-time-dependent-value records :n validity-start validity-end)
                           (collect-value records :n)))))))
-           
+
            (check-result (instance result)
              (bind ((other-association-end (other-association-end-of t-association-end)))
                (cond
@@ -290,7 +289,7 @@
   ;; this lock ensures that
   ;; the insert/update operations on the h-table are serialized properly.
   (lock-t-slot instance t-slot)
-    
+
   (if (time-dependent-p t-slot)
       (if (typep value 'values-having-validity)
           (iter (for (start end v) :in-values-having-validity value) ;; TODO probably suboptimal
@@ -328,7 +327,7 @@
              (other-h-slot (other-end-h-slot-of t-association-end))
              (other-h-slot-name (slot-definition-name other-h-slot)))
 
-        
+
         (iter (for h-instance in-sequence overlapping-instances)
               (for validity-start2 = (when time-dependent-p (validity-start-of h-instance)))
               (for validity-end2 = (when time-dependent-p (validity-end-of h-instance)))
@@ -427,7 +426,7 @@
                                           validity-start validity-end)))
     (:n ;; set children
      (bind ((t-value (when (boundp '*t*) *t*)))
-        
+
        (bind ((overlapping-instances (select-overlapping-h-associations
                                       t-association-end instance nil validity-start validity-end
                                       :criteria :instance)))
@@ -437,7 +436,7 @@
          (consolidate-overlapping-instances t-association-end
                                             overlapping-instances
                                             validity-start validity-end))
-       
+
        (dolist (other-instance value)
          (bind ((overlapping-instances (select-overlapping-h-associations
                                         (other-association-end-of t-association-end) other-instance nil
@@ -463,7 +462,7 @@
            (h-slot-name (slot-definition-name h-slot))
            (other-h-slot (other-end-h-slot-of t-association-end))
            (other-h-slot-name (slot-definition-name other-h-slot)))
-        
+
       (iter (for h-instance in-sequence overlapping-instances)
             (for validity-start2 = (when time-dependent-p (validity-start-of h-instance)))
             (for validity-end2 = (when time-dependent-p (validity-end-of h-instance)))
@@ -610,7 +609,7 @@
               validity-end-column-name (rdbms::name-of validity-end-column)
               validity-start-literal (sql-literal :value validity-start :type (rdbms::type-of validity-start-column))
               validity-end-literal (sql-literal :value validity-end :type (rdbms::type-of validity-end-column)))))
-    
+
     (when (subtypep h-class 'temporal-object)
       (bind ((t-value-column (t-value-column-of t-class)))
         (pushnew (name-of (table-of (t-value-slot-of t-class))) tables)
@@ -661,7 +660,7 @@
 (defun select-current-h-instances-with-overlapping-validity (t-class t-instance t-slot validity-start validity-end)
   "Return h-instances of T-INSTANCE having value of T-SLOT and overlapping with [VALIDITY-START,VALIDITY-END)."
   (assert (subtypep (h-class-of t-class) 'time-dependent-object))
-  
+
   ;; TODO performance: compile only one query using h-class and h-slot as lexical variables
   (bind ((h-class-name (class-name (h-class-of t-class)))
          (h-slot (h-slot-of t-slot))
@@ -735,14 +734,14 @@
                                                     (validity-end *validity-end*))
   "Returns the values of the association-end (with validity if time-dependent) in descending t order (if temporal). When temporal, but not time-dependent then only the most recent queried."
   (check-type instance persistent-object)
-  
+
   (bind ((h-class-name (class-name (h-class-of t-association-end)))
          (h-association-end (h-slot-of t-association-end))
          (h-association-end-reader-name (reader-name-of h-association-end))
          (other-h-association-end (other-end-h-slot-of t-association-end))
          (other-h-association-end-reader-name (reader-name-of other-h-association-end))
          (association-kind (association-kind-of (association-of t-association-end)))
-         
+
          ;; TODO performance: compile only one query
          (query (make-query `(select
                                ((,other-h-association-end-reader-name h-instance)
@@ -779,7 +778,7 @@
            (type (member :instance :both :either) criteria))
 
   (assert (implies (time-dependent-p t-association-end) (and validity-start validity-end)))
-  
+
   ;; TODO performance: compile only one query using lexical variables
   (bind ((h-class-name (class-name (h-class-of t-association-end)))
          (h-slot-reader-name (reader-name-of (h-slot-of t-association-end)))
@@ -828,7 +827,7 @@
 (defun insert-h-association-instance (t-association-end instance other-instance t-value validity-start validity-end &key action)
   (assert (or (null (action-slot-of t-association-end))
               (integerp action)))
-  
+
   (bind ((h-class (h-class-of t-association-end))
          (h-init-arg (first (slot-definition-initargs (h-slot-of t-association-end))))
          (other-h-init-arg (first (slot-definition-initargs (other-end-h-slot-of t-association-end)))))
@@ -844,4 +843,3 @@
             (when (subtypep h-class 'time-dependent-object)
               (list :validity-start validity-start
                     :validity-end validity-end))))))
-
