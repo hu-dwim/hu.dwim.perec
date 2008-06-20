@@ -28,18 +28,23 @@
     :type function)))
 
 (def macro defptype (name args &body body)
-  (bind ((common-lisp-type-p (eq (symbol-package name) (find-package :common-lisp)))
+  `(def (persistent-type e) ,name ,args
+     ,@body))
+
+(def (definer e :available-flags "e") persistent-type (name args &body body)
+  (bind ((common-lisp-type-p (eq (symbol-package name) #.(find-package :common-lisp)))
          (allow-nil-args-p (or (null args)
                                (member (first args) '(&rest &optional))))
          (documentation (when (stringp (first body))
                           (pop body)))
          (type-class-name (type-class-name-for name)))
     `(progn
-      (eval-when (:compile-toplevel :load-toplevel :execute)
-        ;; this import is needed because the name of the type class for types named by cl symbols are interned into
-        ;; the cl-perec package and therefore cannot be exported from *package*. make sure it's imported.
-        (import ',type-class-name ,*package*)
-        (export '(,name ,type-class-name) ,*package*))
+      ,@(when (getf -options- :export)
+          `((eval-when (:compile-toplevel :load-toplevel :execute)
+              ;; this import is needed because the name of the type class for types named by cl symbols are interned into
+              ;; the cl-perec package and therefore cannot be exported from *package*. make sure it's imported.
+              (import ',type-class-name ,*package*)
+              (export '(,name ,type-class-name) ,*package*))))
       (defclass* ,type-class-name (persistent-type)
         ,(append
           `((name ',name)
@@ -73,7 +78,11 @@
                      (setf (body-of type) ',body)
                      (setf (documentation-of type) ',documentation)
                      (setf (find-type ',name) type))))))
-      ,(if common-lisp-type-p
+      ,(if (or common-lisp-type-p
+               (and (find-class name #f)
+                    (progn
+                      (simple-style-warning "Defining a persistent type named ~S, but it already names a class. Skipping the DEFTYPE form..." name)
+                      #t)))
            `',name
            `(deftype ,name ,args ,@body)))))
 
