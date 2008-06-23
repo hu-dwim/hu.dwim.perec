@@ -586,7 +586,7 @@
 
 (def function effective-slots-for-slot-name (slot-name)
   (iter (for (class-name class) in-hashtable *persistent-classes*)
-        (for slot = (find-slot (ensure-finalized class) slot-name))
+        (for slot = (find-slot (ensure-finalized class) slot-name :otherwise nil))
         (when slot (collect slot))))
 
 (def function make-oid-columns ()

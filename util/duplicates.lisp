@@ -65,14 +65,16 @@
 (def compiler-macro concatenate-string (&rest args)
   `(concatenate 'string ,@args))
 
-(def (function io) find-slot (class-or-name slot-name)
-  (find slot-name
-        (the list
-          (class-slots (if (symbolp class-or-name)
-                           (find-class class-or-name)
-                           class-or-name)))
-        :key 'slot-definition-name
-        :test 'eq))
+(def (function io) find-slot (class-or-name slot-name &key (otherwise :error))
+  (bind ((result (find slot-name
+                       (the list
+                         (class-slots (if (symbolp class-or-name)
+                                          (find-class class-or-name)
+                                          class-or-name)))
+                       :key 'slot-definition-name
+                       :test 'eq)))
+    (or result
+        (handle-otherwise otherwise))))
 
 (def macro if-bind (var test &body then/else)
   (assert (first then/else)
