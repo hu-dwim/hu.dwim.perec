@@ -22,25 +22,25 @@
     :type persistent-class
     :documentation "The history class generated for this t class.")
    (t-value-slot
-    (compute-as (find-slot (h-class-of -self-) 't-value))
+    (compute-as (find-slot (h-class-of -self-) 't-value :otherwise nil))
     :type persistent-effective-slot-definition)
    (t-value-column
     (compute-as (first (columns-of (t-value-slot-of -self-))))
     :type column)
    (validity-start-slot
-    (compute-as (find-slot (h-class-of -self-) 'validity-start))
+    (compute-as (find-slot (h-class-of -self-) 'validity-start :otherwise nil))
     :type persistent-effective-slot-definition)
    (validity-start-column
     (compute-as (first (columns-of (validity-start-slot-of -self-))))
     :type column)
    (validity-end-slot
-    (compute-as (find-slot (h-class-of -self-) 'validity-end))
+    (compute-as (find-slot (h-class-of -self-) 'validity-end :otherwise nil))
     :type persistent-effective-slot-definition)
    (validity-end-column
     (compute-as (first (columns-of (validity-end-slot-of -self-))))
     :type column)
    (parent-slot
-    (compute-as (find-slot (h-class-of -self-) 't-object))
+    (compute-as (find-slot (h-class-of -self-) 't-object :otherwise nil))
     :type column)
    (parent-id-column
     (compute-as (id-column-of (parent-slot-of -self-)))
@@ -65,7 +65,7 @@
 
 (defcclass* persistent-effective-slot-definition-t (persistent-slot-definition-t persistent-effective-slot-definition)
   ((h-slot
-    (compute-as (find-slot (h-class-of (slot-definition-class -self-)) (slot-definition-name -self-)))
+    (compute-as (find-slot (h-class-of (slot-definition-class -self-)) (slot-definition-name -self-) :otherwise nil))
     :type persistent-effective-slot-definition)))
 
 (eval-always
