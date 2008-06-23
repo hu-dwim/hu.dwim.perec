@@ -370,7 +370,7 @@
   (declare (ignore date))
   t)
 
-(def persistent-type date ()
+(def (persistent-type e) date ()
   '(and timestamp
         (satisfies date-p)))
 
@@ -388,7 +388,7 @@
   (declare (ignore time))
   t)
 
-(def persistent-type time ()
+(def (persistent-type e) time ()
   '(and timestamp
         (satisfies time-p)))
 
@@ -401,7 +401,7 @@
 ;;;
 ;;; non date -> (type-error)
 
-(def persistent-type timestamp ()
+(def (persistent-type e) timestamp ()
   'timestamp)
 
 (defmapping timestamp (sql-timestamp-type :with-timezone #t)
