@@ -189,23 +189,24 @@
       #t)))
 
 (defgeneric lock-class (class &key wait)
-  (:documentation "Lock all instances in the current transaction. If wait is false and the class cannot be locked then an error will be thrown.")
+  (:documentation "Lock all instances in the current transaction. If wait is false and the class cannot be locked then returns #f otherwise returns #t.")
 
   (:method ((class persistent-class) &key (wait #t))
     (with-waiting-for-rdbms-lock wait
       (execute (sql-select :columns (list (sql-all-columns))
                            :tables (list (name-of (primary-relation-of class)))
                            :for :update
-                           :wait wait)))))
+                           :wait wait))
+      #t)))
 
 (defgeneric lock-instance (instance &key wait)
-  (:documentation "Lock instance in the current transaction. If wait is false and the instance cannot be locked then an error will be thrown.")
+  (:documentation "Lock instance in the current transaction. If wait is false and the instance cannot be locked then returns #f otherwise returns #t.")
 
   (:method ((instance persistent-object) &key (wait #t))
     (lock-columns instance (list (sql-all-columns)) wait)))
 
 (defgeneric lock-slot (instance slot &key wait)
-  (:documentation "Lock a slot for an instance in the current transaction. If wait is false and the slot cannot be locked then an error will be thrown.")
+  (:documentation "Lock a slot for an instance in the current transaction. If wait is false and the slot cannot be locked then returns #f otherwise returns #t.")
 
   (:method ((instance persistent-object) (slot symbol) &key (wait t))
     (lock-slot instance (find-slot (class-of instance) slot) :wait wait))

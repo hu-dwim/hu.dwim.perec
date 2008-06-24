@@ -46,7 +46,7 @@
 
   ;; this lock ensures that
   ;; the insert/update operations on the h-table are serialized properly.
-  (lock-t-slot t-instance t-slot)
+  (lock-slot t-instance t-slot)
 
   (if (time-dependent-p t-slot)
       (if (typep value 'values-having-validity)
@@ -54,6 +54,14 @@
                 (store-slot-t* t-class t-instance t-slot v start end))
           (store-slot-t* t-class t-instance t-slot value *validity-start* *validity-end*))
       (store-slot-t* t-class t-instance t-slot value +beginning-of-time+ +end-of-time+)))
+
+(defmethod lock-slot ((t-instance persistent-object) (t-slot persistent-effective-slot-definition-t) &key (wait t))
+  (bind ((h-slot (h-slot-of t-slot))
+         (table (name-of (table-of h-slot))))
+    (sql-lock-table :table table
+                    :mode :exclusive
+                    :wait wait)))
+
 
 (defun store-slot-t* (t-class t-instance t-slot value validity-start validity-end)
   (assert (or (not (time-dependent-p t-slot))
@@ -288,7 +296,7 @@
 
   ;; this lock ensures that
   ;; the insert/update operations on the h-table are serialized properly.
-  (lock-t-slot instance t-slot)
+  (lock-slot instance t-slot)
 
   (if (time-dependent-p t-slot)
       (if (typep value 'values-having-validity)
@@ -296,6 +304,14 @@
                 (store-t-association-end t-slot instance v start end))
           (store-t-association-end t-slot instance value *validity-start* *validity-end*))
       (store-t-association-end t-slot instance value +beginning-of-time+ +end-of-time+)))
+
+(defmethod lock-slot ((instance persistent-object) (slot persistent-association-end-effective-slot-definition-t) &key (wait t))
+  (bind ((h-class (h-class-of slot))
+         (table (name-of (primary-table-of h-class))))
+    (execute
+     (sql-lock-table :table table
+                     :mode :exclusive
+                     :wait wait))))
 
 (def function store-t-association-end (t-association-end instance value validity-start validity-end)
   (ecase (association-kind-of (association-of t-association-end))
@@ -535,6 +551,8 @@
 
 (def function insert/delete-association-end-set-t (t-association-end instance item action validity-start validity-end)
 
+  (lock-slot instance t-association-end)
+
   (bind ((t-value (when (boundp '*t*) *t*)))
     (when (and (eq (association-kind-of (association-of t-association-end)) :1-n)
                (eq action +t-insert+))
@@ -569,16 +587,6 @@
 ;;;
 ;;; RDBMS access
 ;;;
-
-;; TODO: use lock-slot
-(defun lock-t-slot (t-instance t-slot)
-  (declare (ignore t-instance t-slot))
-  #+nil
-  (execute (make-instance 'sql-select
-                          :columns (list (lock-column-of t-slot))
-                          :tables (list (lock-table-of t-slot))
-                          :where (id-column-matcher-where-clause t-instance)
-                          :for :update)))
 
 ;;; TODO ensure-exported
 (defun update-h-instance-slot-value (t-class t-instance t-slot value &optional validity-start validity-end)
