@@ -53,7 +53,8 @@
 
 (deftest test/tesites/time-dependent/initial-value/null/1 ()
   (with-transaction
-    (is (null (population-of (make-instance 'time-dependent-null-test))))))
+    (is (null (single-values-having-validity-value
+               (population-of (make-instance 'time-dependent-null-test)))))))
 
 (deftest test/tesites/time-dependent/initial-value/null/2 ()
   (with-transaction
@@ -63,7 +64,7 @@
       (with-validity-range "2008-01-01" +end-of-time+
         (setf (population-of instance) 2000))
       (with-validity-range "2007-01-01" "2008-01-01"
-        (is (null (population-of instance))))
+        (is (null (single-values-having-validity-value (population-of instance)))))
       (with-validity-range "2006-01-01" "2008-01-01"
         (is (values-having-validity=
              (make-values-having-validity (list 1000 nil)
@@ -82,7 +83,7 @@
     (with-validity "2007-01-01"
       (with-one-and-two-transactions
           (make-instance *time-dependent-class-name* :population 1000)
-        (is (= 1000 (population-of -instance-)))))))
+        (is (= 1000 (single-values-having-validity-value (population-of -instance-))))))))
 
 (deftest test/tesites/time-dependent/store-value/1 ()
   (with-time-dependent-test-classes
@@ -91,7 +92,7 @@
           (bind ((instance (make-instance *time-dependent-class-name*)))
             (setf (population-of instance) 1000)
             instance)
-        (is (= 1000 (population-of -instance-)))))))
+        (is (= 1000 (single-values-having-validity-value (population-of -instance-))))))))
 
 (deftest test/tesites/time-dependent/store-value/2 ()
   (with-time-dependent-test-classes
@@ -118,13 +119,13 @@
       (with-validity "2007-07"
         (setf (population-of -instance-) 2000))
       (with-validity "2007-07"
-        (is (= 2000 (population-of -instance-))))
+        (is (= 2000 (single-values-having-validity-value (population-of -instance-)))))
       (with-validity "2007-07-01"
-        (is (= 2000 (population-of -instance-))))
+        (is (= 2000 (single-values-having-validity-value (population-of -instance-)))))
       (with-validity "2007-06"
-        (is (= 1000 (population-of -instance-))))
+        (is (= 1000 (single-values-having-validity-value (population-of -instance-)))))
       (with-validity "2007-08"
-        (is (= 1000 (population-of -instance-)))))))
+        (is (= 1000 (single-values-having-validity-value (population-of -instance-))))))))
 
 (deftest test/tesites/time-dependent/values-having-validity/1 ()
   (with-one-and-two-transactions
@@ -159,8 +160,8 @@
           instance))
     (with-validity "2007"
       (is (= 0 (slot-of -instance-)))
-      (is (= 1000 (slot-1-of -instance-)))
-      (is (= 2000 (slot-2-of -instance-)))
+      (is (= 1000 (single-values-having-validity-value (slot-1-of -instance-))))
+      (is (= 2000 (single-values-having-validity-value (slot-2-of -instance-))))
       (is (= 1 (length (h-objects-of -instance-)))))))
 
 (deftest test/tesites/time-dependent/complex/different-validity ()
@@ -172,13 +173,13 @@
       (with-validity "2007-02"
         (with-revived-instance instance
           (is (= 0 (slot-of instance)))
-          (is (null (slot-1-of instance)))
-          (is (null (slot-2-of instance)))
+          (is (null (single-values-having-validity-value (slot-1-of instance))))
+          (is (null (single-values-having-validity-value (slot-2-of instance))))
           (setf (slot-2-of instance) 2000)
           (is (= 2 (length (h-objects-of instance)))))))
     (with-transaction
       (with-validity "2007-01"
         (with-revived-instance instance
           (is (= 0 (slot-of instance)))
-          (is (= 1000 (slot-1-of instance)))
-          (is (is (null (slot-2-of instance)))))))))
+          (is (= 1000 (single-values-having-validity-value (slot-1-of instance))))
+          (is (is (null (single-values-having-validity-value (slot-2-of instance))))))))))

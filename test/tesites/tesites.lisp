@@ -47,13 +47,16 @@
 (deftest test/tesites/temporal-time-dependent/initial-value/null ()
   (with-transaction
     (with-default-t
-      (is (null (population-of (make-instance 'temporal-time-dependent-null-test)))))))
+      (is (null (single-values-having-validity-value
+                 (population-of (make-instance 'temporal-time-dependent-null-test))))))))
 
 (deftest test/tesites/temporal-time-dependent/initial-value/integer ()
   (with-transaction
     (with-default-t
       (with-temporal-time-dependent-test-classes
-        (is (= 1000 (population-of (make-instance *temporal-time-dependent-class-name* :population 1000))))))))
+        (is (= 1000
+               (single-values-having-validity-value
+                (population-of (make-instance *temporal-time-dependent-class-name* :population 1000)))))))))
 
 (deftest test/tesites/temporal-time-dependent/store-value/1 ()
   (with-temporal-time-dependent-test-classes
@@ -64,5 +67,5 @@
               (setf (population-of instance) 1000)
               instance))
         (with-default-t
-          (is (= 1000 (population-of -instance-)))
+          (is (= 1000 (single-values-having-validity-value (population-of -instance-))))
           (is (= 1 (length (h-objects-of -instance-)))))))))

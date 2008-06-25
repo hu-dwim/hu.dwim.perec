@@ -98,14 +98,16 @@
 
 ;; I modified this method to return +unbound-slot-marker+ instead of signalling unbound-slot-t.
 ;; The special value was checked in slot-value-using-class and slot-boundp-using-class anyway. (tomi)
-(def (function io) slot-boundp-or-value-using-class-t (class instance slot return-with)
+(def (function io) slot-boundp-or-value-using-class-t (class instance slot)
   (assert-instance-slot-correspondence)
+  (assert (implies (time-dependent-p slot) (boundp '*validity-start*))
+          () 'unbound-variable :name '*validity-start*)
+  (assert (implies (time-dependent-p slot) (boundp '*validity-end*))
+          () 'unbound-variable :name '*validity-end*)
+  (assert (implies (temporal-p slot) (boundp '*t*))  () 'unbound-variable :name '*t*)
+  
   (flet ((return-value (value)
-           (return-from slot-boundp-or-value-using-class-t
-             (funcall return-with
-                      (if (single-values-having-validity-p value)
-                          (single-values-having-validity-value value)
-                          value)))))
+           (return-from slot-boundp-or-value-using-class-t value)))
     (bind ((persistent (persistent-p instance))
            (cache-p (and *cache-slot-values* (cache-p slot))))
       (assert-instance-access instance persistent)
@@ -113,30 +115,18 @@
         (when (or (not persistent)
                   (and cache-p slot-value-cached))
           (if (time-dependent-p slot)
-              (progn
-                (assert (boundp '*validity-start*) () 'unbound-variable :name '*validity-start*)
-                (assert (boundp '*validity-end*) () 'unbound-variable :name '*validity-end*)
-                (when (temporal-p slot)
-                  (assert (boundp '*t*) () 'unbound-variable :name '*t*))
-                (if (unbound-slot-marker-p cached-value)
-                    (return-value +unbound-slot-marker+)
-                    (bind (((:values value covers-validity-range-p)
-                            (values-having-validity-value cached-value *validity-start* *validity-end*)))
-                      (if covers-validity-range-p
-                          (return-value value)
-                          (unless persistent
-                            (return-value +unbound-slot-marker+))))))
-              (progn
-                (assert (boundp '*t*) () 'unbound-variable :name '*t*)
-                (return-value cached-value))))
-        (bind ((value (restore-slot class instance slot)))
-          (when (or (not persistent)
-                    cache-p)
-            (setf (underlying-slot-value-using-class class instance slot)
-                  (if (values-having-validity-p value)
-                      value
-                      (make-single-values-having-validity value *validity-start* *validity-end*))))
-          (return-value value))))))
+              (if (unbound-slot-marker-p cached-value)
+                  (return-value +unbound-slot-marker+)
+                  (bind (((:values value covers-validity-range-p)
+                          (values-having-validity-value cached-value *validity-start* *validity-end*)))
+                    (if covers-validity-range-p
+                        (return-value value)
+                        (unless persistent
+                          (return-value +unbound-slot-marker+)))))
+              (return-value cached-value)))
+        (aprog1 (restore-slot class instance slot)
+          (when (or (not persistent) cache-p)
+            (setf (underlying-slot-value-using-class class instance slot) it)))))))
 
 (def (function io) (setf slot-boundp-or-value-using-class-t) (new-value class instance slot)
   (assert-instance-slot-correspondence)
@@ -160,16 +150,15 @@
                                    (instance persistent-object)
                                    (slot persistent-effective-slot-definition-t))
   "Reads the slot value from the database or the cache."
-  (slot-boundp-or-value-using-class-t class instance slot
-                                      (lambda (value)
-                                        (flet ((check-value (value)
-                                                 (when (unbound-slot-marker-p value)
-                                                   (slot-unbound-t instance slot))))
-                                          (if (values-having-validity-p value)
-                                              (iter (for (s e v) :in-values-having-validity value)
-                                                    (check-value v))
-                                              (check-value value))
-                                          value))))
+  (bind ((value (slot-boundp-or-value-using-class-t class instance slot)))
+    (flet ((check-value (value)
+             (when (unbound-slot-marker-p value)
+               (slot-unbound-t instance slot))))
+      (if (values-having-validity-p value)
+          (iter (for (s e v) :in-values-having-validity value)
+                (check-value v))
+          (check-value value))
+      value)))
 
 (defmethod (setf slot-value-using-class) (new-value
                                           (class persistent-class)
@@ -182,12 +171,11 @@
                                     (instance persistent-object)
                                     (slot persistent-effective-slot-definition-t))
   "Reads boundness from the database or the cache."
-  (slot-boundp-or-value-using-class-t class instance slot
-                                      (lambda (value)
-                                        (if (values-having-validity-p value)
-                                            (iter (for (s e v) :in-values-having-validity value)
-                                                  (always (not (unbound-slot-marker-p v))))
-                                            (not (unbound-slot-marker-p value))))))
+  (bind ((value (slot-boundp-or-value-using-class-t class instance slot)))
+    (if (values-having-validity-p value)
+        (iter (for (s e v) :in-values-having-validity value)
+              (always (not (unbound-slot-marker-p v))))
+        (not (unbound-slot-marker-p value)))))
 
 (defmethod slot-makunbound-using-class ((class persistent-class)
                                         (instance persistent-object)
