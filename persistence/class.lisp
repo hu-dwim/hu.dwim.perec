@@ -409,9 +409,12 @@
       (when-bind primary-tables (primary-tables-of class)
         (bind ((columns (append +oid-column-names+
                                 (mappend (lambda (slot)
-                                           (columns-of
-                                            (find-slot (persistent-class-of (first (cdr primary-tables)))
-                                                       (slot-definition-name slot))))
+                                           (bind ((first-table (first (cdr primary-tables))) ; skip UNION/APPEND
+                                                  (slot (find-slot (persistent-class-of first-table)
+                                                                   (slot-definition-name slot))))
+                                             (if (eq (table-of slot) first-table)
+                                                 (columns-of slot)
+                                                 nil))) ;; inherited slot
                                          (collect-if (lambda (slot)
                                                        (bind ((canonical-type (canonical-type-of slot)))
                                                          (or (primitive-type-p* canonical-type)
