@@ -539,7 +539,8 @@
 
 (def function unit-type-p (type)
   (and (symbolp type)
-       (eq :null (first (compute-rdbms-types* type type)))))
+       (bind ((mapped-type (mapped-type-for type)))
+         (eq :null (first (compute-rdbms-types* mapped-type mapped-type))))))
 
 (def function unit-subtypes-for (type)
   (collect-if (lambda (subtype)
