@@ -72,7 +72,14 @@
          (first-moment-for-partial-timestamp start)
          start)
     ,(if (stringp end)
-         (first-moment-for-partial-timestamp end)
+         (last-moment-for-partial-timestamp end)
          end)
     (lambda ()
       ,@forms)))
+
+(def (macro e) with-validity-from (start &body forms)
+  `(with-validity-range ,start +end-of-time+ ,@forms))
+
+(def (macro e) with-validity-to (end &body forms)
+  `(with-validity-range +beginning-of-time+ ,end ,@forms))
+

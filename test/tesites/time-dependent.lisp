@@ -40,15 +40,15 @@
 (deftest test/tesites/time-dependent/initial-value/unbound/2 ()
   (with-transaction
     (bind ((instance (make-instance 'time-dependent-unbound-test)))
-      (with-validity-range +beginning-of-time+ "2007-01-01"
+      (with-validity-to "2006"
         (setf (population-of instance) 1000))
-      (with-validity-range "2008-01-01" +end-of-time+
+      (with-validity-from "2008"
         (setf (population-of instance) 2000))
-      (with-validity-range "2007-01-01" "2008-01-01"
+      (with-validity "2007"
         (signals unbound-slot-t (population-of instance)))
-      (with-validity-range "2006-01-01" "2008-01-01"
+      (with-validity-range "2006" "2007"
         (signals unbound-slot-t (population-of instance)))
-      (with-validity-range "2007-01-01" "2009-01-01"
+      (with-validity-range "2007" "2008"
         (signals unbound-slot-t (population-of instance))))))
 
 (deftest test/tesites/time-dependent/initial-value/null/1 ()
@@ -59,19 +59,19 @@
 (deftest test/tesites/time-dependent/initial-value/null/2 ()
   (with-transaction
     (bind ((instance (make-instance 'time-dependent-null-test)))
-      (with-validity-range +beginning-of-time+ "2007-01-01"
+      (with-validity-to "2006"
         (setf (population-of instance) 1000))
-      (with-validity-range "2008-01-01" +end-of-time+
+      (with-validity-from "2008"
         (setf (population-of instance) 2000))
-      (with-validity-range "2007-01-01" "2008-01-01"
+      (with-validity "2007"
         (is (null (single-values-having-validity-value (population-of instance)))))
-      (with-validity-range "2006-01-01" "2008-01-01"
+      (with-validity-range "2006" "2007"
         (is (values-having-validity=
              (make-values-having-validity (list 1000 nil)
                                           (list (parse-timestring "2006-01-01TZ") (parse-timestring "2007-01-01TZ"))
                                           (list (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ")))
              (population-of instance))))
-      (with-validity-range "2007-01-01" "2009-01-01"
+      (with-validity-range "2007" "2008"
         (is (values-having-validity=
              (make-values-having-validity (list nil 2000)
                                           (list (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ"))
@@ -135,7 +135,7 @@
         instance)
     (with-validity "2007"
       (setf (population-of -instance-) 2007))
-    (with-validity-range "2006" "2008"
+    (with-validity-range "2006" "2007"
       (iter (for index :from 0)
             (for (validity-start validity-end value) :in-values-having-validity (population-of -instance-))
             (ecase index

@@ -540,3 +540,12 @@
              (when end (vector-push-extend end validity-ends))
              (return (make-values-having-validity values validity-starts validity-ends))))))
 
+(def (function e) vhv+ (vhv-1 vhv-2)
+  (iter (for (start end (v1 :default 0) (v2 :default 0)) :in-values-having-validity (vhv-1 vhv-2))
+        (collect-value-with-validity (+ v1 v2) :from start :to end)))
+
+(def (macro e) vhv-incf (place delta)
+  `(setf ,place (vhv+ ,place ,delta)))
+
+(def (function e) vhv-sum (&rest vhvs)
+  (reduce #'vhv+ vhvs))
