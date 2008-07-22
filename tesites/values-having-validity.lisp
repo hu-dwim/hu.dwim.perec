@@ -542,7 +542,9 @@
 
 (def (function e) vhv+ (vhv-1 vhv-2)
   (iter (for (start end (v1 :default 0) (v2 :default 0)) :in-values-having-validity (vhv-1 vhv-2))
-        (collect-value-with-validity (+ v1 v2) :from start :to end)))
+        (collect-value-with-validity (+ (if (numberp v1) v1 0)
+                                        (if (numberp v2) v2 0))
+                                     :from start :to end)))
 
 (def (macro e) vhv-incf (place delta)
   `(setf ,place (vhv+ ,place ,delta)))
