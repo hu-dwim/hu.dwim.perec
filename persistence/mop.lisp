@@ -158,7 +158,7 @@
   (mapc #L(ensure-slot-reader* class !1)
         (collect-if #L(set-type-p* (canonical-type-of !1))
                     (persistent-effective-slots-of class)))
-  (setf (slot-value (class-prototype class) 'persistent) #f))
+  (setf (standard-instance-access (class-prototype class) (slot-definition-location (find-slot class 'persistent))) #f))
 
 (defmethod compute-slots :after ((class persistent-class))
   "Invalidates the cached slot values whenever the effective slots are recomputed, so that all dependent computed state will be invalidated and recomputed when requested."
