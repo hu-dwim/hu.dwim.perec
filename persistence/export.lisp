@@ -72,3 +72,24 @@
                       (serializer::deserialize-element context)))))
     (make-persistent instance)
     instance))
+
+(def (function e) dump-persistent-object-slot-values (prototype-or-class-name context)
+  (bind ((class (etypecase prototype-or-class-name
+                  (symbol (find-class prototype-or-class-name))
+                  (persistent-object (class-of prototype-or-class-name))))
+         (class-name (class-name class))
+         (oid (revive-oid (cl-serializer::read-integer context)
+                          (cl-serializer::read-integer context)))
+         (id (when oid (oid-id oid)))
+         (instance (list :object class-name id)))
+    (serializer::announce-identity (list :reference class-name id) context)
+    (iter (repeat (the fixnum (serializer::read-variable-length-positive-integer context)))
+          (for slot-name = (serializer::deserialize-symbol context))
+          (nconcf instance
+                  (list (intern (symbol-name slot-name) :keyword)
+                        (if (eq serializer::+unbound-slot-code+ (serializer::read-unsigned-byte-8 context))
+                            :unbound
+                            (progn
+                              (serializer::unread-unsigned-byte-8 context)
+                              (serializer::deserialize-element context))))))
+    instance))
