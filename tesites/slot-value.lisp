@@ -50,20 +50,17 @@
 ;;; Integrated
 
 (def function integrated-time-dependent-slot-value (instance slot-name &optional (ignore-nil #f))
-  (bind ((slot-values (slot-value instance slot-name)))
-    (if (typep slot-values 'values-having-validity)
-        (iter (for (validity-start validity-end value) :in-values-having-validity slot-values)
-              (unless (and ignore-nil
-                           (not value))
-                (summing (* value (timestamp-difference validity-end validity-start)))))
-        (if (and ignore-nil
-                 (not slot-values))
-            0
-            (* slot-values (timestamp-difference *validity-end* *validity-start*))))))
+  (iter (for (validity-start validity-end value) :in-values-having-validity (slot-value instance slot-name))
+        (unless (and ignore-nil
+                     (not value))
+          (summing (* value (timestamp-difference validity-end validity-start))))))
 
 (def function (setf integrated-time-dependent-slot-value) (new-value instance slot-name)
-  (setf (slot-value instance slot-name)
-        (/ new-value (timestamp-difference *validity-end* *validity-start*))))
+  (bind ((class (class-of instance))
+         (slot (find-slot class slot-name)))
+    (assert (time-dependent-p slot))
+    (setf (slot-value-using-class class instance slot)
+          (/ new-value (timestamp-difference *validity-end* *validity-start*)))))
 
 (def (definer e :available-flags "e") slot-integrator (integrated-slot-name slot-name)
   (bind ((integrated-slot-name (concatenate-symbol integrated-slot-name "-of")))
