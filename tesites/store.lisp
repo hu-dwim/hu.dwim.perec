@@ -157,13 +157,12 @@
 ;;;;;;;;;;;;;;;;
 ;;; Associations
 (defmethod restore-slot ((t-class persistent-class-t) (t-instance t-object) (t-association-end persistent-association-end-effective-slot-definition-t))
-  (restore-slot-FIXME t-instance t-association-end))
+  (restore-t-association-end t-instance t-association-end))
 
 (defmethod restore-slot ((class persistent-class) (instance persistent-object) (t-association-end persistent-association-end-effective-slot-definition-t))
-  (restore-slot-FIXME instance t-association-end))
+  (restore-t-association-end instance t-association-end))
 
-;; TODO: FIXME: rename
-(defun restore-slot-FIXME (instance t-association-end)
+(defun restore-t-association-end (instance t-association-end)
   (labels ((no-value-function (&optional validity-start validity-end)
              (bind ((slot-type (canonical-type-of t-association-end)))
                (cond
@@ -294,30 +293,34 @@
         (check-result instance (unchecked-value t-association-end instance)))))
 
 (defmethod store-slot ((t-class persistent-class-t) (t-instance t-object) (t-slot persistent-association-end-effective-slot-definition-t) value)
-  (store-slot-FIXME t-instance t-slot value))
+  (store-t-association-end t-instance t-slot value))
 
 (defmethod store-slot ((class persistent-class) (instance persistent-object) (t-slot persistent-association-end-effective-slot-definition-t) value)
-  (store-slot-FIXME instance t-slot value))
+  (store-t-association-end instance t-slot value))
 
-;; TODO: FIXME: rename
-(defun store-slot-FIXME (instance t-slot value)
+(def function store-t-association-end (instance t-association-end value)
   ;; FIXME nil is not accepted as (set ...) type ?
   #+nil
   (if (values-having-validity-p value)
       (iter (for (start end v) :in-values-having-validity value)
-            (check-slot-value-type instance t-slot v))
-      (check-slot-value-type instance t-slot value))
+            (check-slot-value-type instance t-association-end v))
+      (check-slot-value-type instance t-association-end value))
 
   ;; this lock ensures that
   ;; the insert/update operations on the h-table are serialized properly.
-  (lock-slot instance t-slot)
+  (lock-slot instance t-association-end)
 
-  (if (time-dependent-p t-slot)
-      (if (typep value 'values-having-validity)
-          (iter (for (start end v) :in-values-having-validity value) ;; TODO probably suboptimal
-                (store-t-association-end t-slot instance v start end))
-          (store-t-association-end t-slot instance value *validity-start* *validity-end*))
-      (store-t-association-end t-slot instance value +beginning-of-time+ +end-of-time+)))
+  (flet ((store-one-value (value validity-start validity-end)
+           (ecase (association-kind-of (association-of t-association-end))
+             (:1-1 (store-1-1-t-association-end t-association-end instance value validity-start validity-end))
+             (:1-n (store-1-n-t-association-end t-association-end instance value validity-start validity-end))
+             (:m-n (store-m-n-t-association-end t-association-end instance value validity-start validity-end)))))
+    (if (time-dependent-p t-association-end)
+        (if (typep value 'values-having-validity)
+            (iter (for (start end v) :in-values-having-validity value) ;; TODO probably suboptimal
+                  (store-one-value v start end))
+            (store-one-value value *validity-start* *validity-end*))
+        (store-one-value value +beginning-of-time+ +end-of-time+))))
 
 (defmethod lock-slot ((instance persistent-object) (slot persistent-association-end-effective-slot-definition-t) &key (wait t))
   (bind ((h-class (h-class-of slot))
@@ -327,11 +330,6 @@
                      :mode :exclusive
                      :wait wait))))
 
-(def function store-t-association-end (t-association-end instance value validity-start validity-end)
-  (ecase (association-kind-of (association-of t-association-end))
-    (:1-1 (store-1-1-t-association-end t-association-end instance value validity-start validity-end))
-    (:1-n (store-1-n-t-association-end t-association-end instance value validity-start validity-end))
-    (:m-n (store-m-n-t-association-end t-association-end instance value validity-start validity-end))))
 
 (def function store-1-1-t-association-end (t-association-end instance value validity-start validity-end)
   (assert (or (not (time-dependent-p t-association-end))
