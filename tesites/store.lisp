@@ -156,7 +156,14 @@
 
 ;;;;;;;;;;;;;;;;
 ;;; Associations
+(defmethod restore-slot ((t-class persistent-class-t) (t-instance t-object) (t-association-end persistent-association-end-effective-slot-definition-t))
+  (restore-slot-FIXME t-instance t-association-end))
+
 (defmethod restore-slot ((class persistent-class) (instance persistent-object) (t-association-end persistent-association-end-effective-slot-definition-t))
+  (restore-slot-FIXME instance t-association-end))
+
+;; TODO: FIXME: rename
+(defun restore-slot-FIXME (instance t-association-end)
   (labels ((no-value-function (&optional validity-start validity-end)
              (bind ((slot-type (canonical-type-of t-association-end)))
                (cond
@@ -286,7 +293,14 @@
                        :instance instance :slot t-association-end)
         (check-result instance (unchecked-value t-association-end instance)))))
 
+(defmethod store-slot ((t-class persistent-class-t) (t-instance t-object) (t-slot persistent-association-end-effective-slot-definition-t) value)
+  (store-slot-FIXME t-instance t-slot value))
+
 (defmethod store-slot ((class persistent-class) (instance persistent-object) (t-slot persistent-association-end-effective-slot-definition-t) value)
+  (store-slot-FIXME instance t-slot value))
+
+;; TODO: FIXME: rename
+(defun store-slot-FIXME (instance t-slot value)
   ;; FIXME nil is not accepted as (set ...) type ?
   #+nil
   (if (values-having-validity-p value)
