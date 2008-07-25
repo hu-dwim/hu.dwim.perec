@@ -57,7 +57,7 @@
     (compute-as (first (columns-of (action-slot-of -self-))))
     :type column)
    (h-slot-name
-    (compute-as (concatenate-symbol "t-" (slot-definition-name (other-association-end-of -self-)) *package*))
+    (compute-as (concatenate-symbol "t-" (slot-definition-name (other-association-end-of -self-))))
     :type symbol)
    (h-slot
     (compute-as (find-slot (h-class-of -self-) (h-slot-name-of -self-) :otherwise nil)))
