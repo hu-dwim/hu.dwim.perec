@@ -108,11 +108,11 @@
 ;;;;;;;;;;;;;;
 ;;; Serialized
 
-(defvar +persistent-object-oid-code+ #x60)
+(defvar +persistent-object-by-oid-code+ #x60)
 
 (def (function o) deserializer-mapper (code context)
-  (if (eq code +persistent-object-oid-code+)
-      #'read-persistent-object-oid
+  (if (eq code +persistent-object-by-oid-code+)
+      #'read-persistent-object-by-oid
       (cl-serializer::default-deserializer-mapper code context)))
 
 (def (function o) serializer-mapper (object context)
@@ -120,18 +120,20 @@
           (cl-serializer::default-serializer-mapper object context)))
     (if (and (eq code serializer::+standard-object-code+)
              (typep object 'persistent-object))
-        (values +persistent-object-oid-code+ #t #'write-persistent-object-oid)
+        (values +persistent-object-by-oid-code+ #t #'write-persistent-object-by-oid)
         (values code has-identity writer-function))))
 
-(def serializer::serializer-deserializer persistent-object-oid +persistent-object-oid-code+ persistent-object
-  (let ((oid (oid-of serializer::object)))
-    (serializer::write-integer (oid-class-id oid) serializer::context)
-    (serializer::write-integer (oid-instance-id oid) serializer::context))
-  (serializer::announce-identity
-   (load-instance (revive-oid (serializer::read-integer serializer::context)
-                              (serializer::read-integer serializer::context))
-                  :skip-existence-check #t)
-   serializer::context))
+(def (function o) write-persistent-object-oid (oid context)
+  (serializer::write-integer (oid-class-id oid) context)
+  (serializer::write-integer (oid-instance-id oid) context))
+
+(def (function o) read-persistent-object-oid (context)
+  (revive-oid (serializer::read-integer context)
+              (serializer::read-integer context)))
+
+(def serializer::serializer-deserializer persistent-object-by-oid +persistent-object-by-oid-code+ persistent-object
+  (write-persistent-object-oid (oid-of serializer::object) serializer::context)
+  (serializer::announce-identity (load-instance (read-persistent-object-oid serializer::context) :skip-existence-check #t) serializer::context))
 
 (def function byte-vector->object-reader (rdbms-values index)
   (deserialize (elt rdbms-values index) :deserializer-mapper #'deserializer-mapper))

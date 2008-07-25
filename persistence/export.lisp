@@ -3,15 +3,10 @@
 (def constant +persistent-object-code+ #x61)
 
 (def (function e) export-persistent-instances (instance stream persistent-object-serializer)
-  (serializer:serialize instance
-                        :output stream
-                        :serializer-mapper (make-export-serializer-mapper
-                                            persistent-object-serializer)))
+  (serializer:serialize instance :output stream :serializer-mapper (make-export-serializer-mapper persistent-object-serializer)))
 
 (def (function e) import-persistent-instances (stream persistent-object-deserializer)
-  (serializer:deserialize stream
-                          :deserializer-mapper (make-export-deserializer-mapper
-                                                persistent-object-deserializer)))
+  (serializer:deserialize stream :deserializer-mapper (make-export-deserializer-mapper persistent-object-deserializer)))
 
 (def (function o) make-export-serializer-mapper (persistent-object-serializer)
   (lambda (instance context)
@@ -46,7 +41,7 @@
                         (not (eq (closer-mop:slot-definition-allocation slot) :class))
                         (not (member (closer-mop:slot-definition-name slot) exclude-slots))))
                  (class-slots class))))
-    (write-persistent-object-oid instance context)
+    (write-persistent-object-oid (oid-of instance) context)
     (serializer::write-variable-length-positive-integer (length slots) context)
     (dolist (slot slots)
         (serializer::serialize-symbol (closer-mop:slot-definition-name slot) context)
@@ -60,6 +55,8 @@
                   (persistent-object (class-of prototype-or-class-name))))
          (oid (make-class-oid (class-name class)))
          (instance (allocate-instance class)))
+    ;; throw away oid
+    (read-persistent-object-oid context)
     (initialize-revived-instance instance :persistent #f :oid oid)
     (serializer::announce-identity instance context)
     (iter (repeat (the fixnum (serializer::read-variable-length-positive-integer context)))
@@ -78,8 +75,7 @@
                   (symbol (find-class prototype-or-class-name))
                   (persistent-object (class-of prototype-or-class-name))))
          (class-name (class-name class))
-         (oid (revive-oid (cl-serializer::read-integer context)
-                          (cl-serializer::read-integer context)))
+         (oid (read-persistent-object-oid context))
          (id (when oid (oid-id oid)))
          (instance (list :object class-name id)))
     (serializer::announce-identity (list :reference class-name id) context)

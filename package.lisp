@@ -332,8 +332,8 @@
            #:without-storing-equal-slot-values
 
            ;; export,import
-           #:write-persistent-object-oid
-           #:read-persistent-object-oid
+           #:write-persistent-object-by-oid
+           #:read-persistent-object-by-oid
            ))
 
 (in-package :cl-perec)
