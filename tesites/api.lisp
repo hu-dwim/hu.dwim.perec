@@ -18,8 +18,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Temporal and time dependent
 
-(def (special-variable :documentation "The time machine parameter, modifications made in the database after *t* will not be visible when accessing temporal values. This parameter can be set only once for a transaction.")
-    *t*)
+(def symbol-macro *t* (%transaction-t-value)
+  "The time machine parameter. Modifications made in the database after *t* will not be visible when accessing temporal values. This parameter is read-only, see the WITH-T macro.")
 
 (def (special-variable :documentation "When dealing with time dependent slots this is the start timestamp of the value's validity. The time dependent approximation uses constant values for time intervals.")
     *validity-start* +beginning-of-time+)
@@ -30,13 +30,24 @@
 ;;;;;;;;;;;;;
 ;;; Arguments
 
+(def function %transaction-t-value ()
+  (or (t-value-of *transaction*)
+      (setf (t-value-of *transaction*) (default-t))))
+
 (def function default-t ()
   (transaction-timestamp))
 
 (def (function e) call-with-t (t-value thunk)
-  (assert (not (boundp '*t*)) nil "Changing the time machine parameter *t* is not allowed within a single transaction.")
-  (bind ((*t* t-value))
-    (funcall thunk)))
+  (assert (null (t-value-of *transaction*)) nil "Changing the time machine parameter *t* is not allowed within a single transaction (yet).")
+  (assert t-value)
+  (bind ((previous-t-value (t-value-of *transaction*)))
+    (unwind-protect
+         (progn
+           (setf (t-value-of *transaction*) t-value)
+           (invalidate-all-cached-instances)
+           (funcall thunk))
+      (setf (t-value-of *transaction*) previous-t-value)
+      (invalidate-all-cached-instances))))
 
 (def (macro e) with-t (timestamp &body forms)
   `(call-with-t

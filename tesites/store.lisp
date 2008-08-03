@@ -69,7 +69,6 @@
 
   (bind ((h-slot (h-slot-of t-slot))
          (h-slot-name (slot-definition-name h-slot))
-         (t-value (when (boundp '*t*) *t*))
          (t-value-slot (t-value-slot-of t-class))
          ((:values t-slot-default-value has-default-p) (default-value-for-type (slot-definition-type t-slot)))
          (update-count))
@@ -89,7 +88,7 @@
     ;; is the default value of a non-temporal slot
     (when (zerop update-count)
       (unless (and has-default-p (eq value t-slot-default-value) (not (temporal-p t-slot)))
-          (insert-h-instance t-class t-instance t-slot value t-value validity-start validity-end)))
+          (insert-h-instance t-class t-instance t-slot value *t* validity-start validity-end)))
 
     ;; ensure invariant: validity ranges are not overlapping for any given t
     (when (and (persistent-p t-instance) (time-dependent-p t-slot))
@@ -101,7 +100,8 @@
                                 (and (slot-boundp h-instance slot-name)
                                      (eq (slot-value h-instance slot-name) +h-unused-slot-marker+))))
                         (persistent-effective-slot-ts-of t-class))))
-          (iter (for h-instance in-sequence overlapping-instances)
+          (iter (with t-value = *t*)
+                (for h-instance in-sequence overlapping-instances)
                 (for validity-start2 = (validity-start-of h-instance))
                 (for validity-end2 = (validity-end-of h-instance))
                 (for t-value2 = (when t-value-slot (t-value-of h-instance)))

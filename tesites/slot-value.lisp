@@ -101,8 +101,8 @@
           () 'unbound-variable :name '*validity-start*)
   (assert (implies (time-dependent-p slot) (boundp '*validity-end*))
           () 'unbound-variable :name '*validity-end*)
-  (assert (implies (temporal-p slot) (boundp '*t*))  () 'unbound-variable :name '*t*)
-  
+  (assert (implies (temporal-p slot) (not (null *t*))))
+
   (flet ((return-value (value)
            (return-from slot-boundp-or-value-using-class-t value)))
     (bind ((persistent (persistent-p instance))
