@@ -251,7 +251,7 @@
     :type (list sql-column)
     :documentation "The list of RDBMS columns corresponding to the oid of this table.")
    (id-column
-    (compute-as (find +oid-id-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
+    (compute-as (find +oid-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
     :type sql-column
     :documentation "The RDBMS column of the corresponding oid slot."))
   (:documentation "This is a special table related to a persistent class."))
@@ -370,7 +370,7 @@
                            :persistent-class class
                            :columns (compute-as
                                       (append
-                                       (make-oid-columns)
+                                       (list (make-oid-column))
                                        (primary-table-columns-for-class class)))))))))
 
 (defgeneric compute-primary-tables (class)
@@ -484,12 +484,12 @@
                  (rdbms-types (column-types-of slot)))
             (when type
               (cond ((set-type-p* type)
-                     (make-columns-for-reference-slot class-name (concatenate-string (symbol-name name) "-for-" (symbol-name class-name))))
+                     (list (make-column-for-reference-slot class-name (concatenate-string (symbol-name name) "-for-" (symbol-name class-name)))))
                     ((persistent-class-type-p* type)
                      (append
                       (when (tagged-p mapping)
                         (list (make-tag-column mapping name)))
-                      (make-columns-for-reference-slot class-name name)))
+                      (list (make-column-for-reference-slot class-name name))))
                     ((primitive-type-p* type)
                      (append
                       (when (tagged-p mapping)
@@ -578,21 +578,21 @@
         (for slot = (find-slot (ensure-finalized class) slot-name :otherwise nil))
         (when slot (collect slot))))
 
-(def function make-oid-columns ()
-  "Creates a list of RDBMS columns that will be used to store the oid data of the instances in this table."
-  (list (make-instance 'column
-                       :name +oid-id-column-name+
-                       :type +oid-id-sql-type+
-                       :constraints (list (sql-not-null-constraint)
-                                          (sql-primary-key-constraint)))))
+(def function make-oid-column ()
+  "Creates an RDBMS column that will be used to store the oid of the instances in this table."
+  (make-instance 'column
+                 :name +oid-column-name+
+                 :type +oid-sql-type+
+                 :constraints (list (sql-not-null-constraint)
+                                    (sql-primary-key-constraint))))
 
-(def function make-columns-for-reference-slot (class-name column-name)
+(def function make-column-for-reference-slot (class-name column-name)
   (bind ((id-column-name (rdbms-name-for (concatenate-symbol column-name "-id")) :column)
          (id-index-name (rdbms-name-for (concatenate-symbol column-name "-id-on-" class-name "-idx") :index)))
-    (list (make-instance 'column
-                         :name id-column-name
-                         :type +oid-id-sql-type+
-                         :index (sql-index :name id-index-name)))))
+    (make-instance 'column
+                   :name id-column-name
+                   :type +oid-sql-type+
+                   :index (sql-index :name id-index-name))))
 
 (def function make-tag-column (mapping name)
   (bind ((type (first (rdbms-types-of mapping)))

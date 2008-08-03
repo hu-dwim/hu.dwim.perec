@@ -6,56 +6,53 @@
 
 (in-package :cl-perec)
 
-(defstruct oid
-  "The oid holds sufficient information to access the same persistent instance at any time in the database unless it has been deleted. The instance id of an instance is constant and unique for the whole lifetime of the instance and cannot be changed. It is assigned when the persistent instance is first time stored in the database."
-  (id ;; stored in the id columns; either the instance id or the merged value of the instance and the class id
-   nil
-   :type (or null integer))
-  (instance-id ;; a life time constant and unique identifier
-   nil
-   :type (or null integer))
-  (class-id ;; a constant and unique class identifier kept between sessions
-   nil
-   :type (or null fixnum))
-  (class-name ;; the name of the class
-   nil
-   :type (or null symbol)))
+(def type oid ()
+  'integer)
 
 (def constant +oid-class-id-bit-size+ 16
-  "Size of the class id in bits.")
+  "Size of the class id in bits. These are the lower bits in the oid.")
 
-(def (constant :test '=) +oid-maximum-class-id+ (expt 2 +oid-class-id-bit-size+)
+(def (constant :test '=) +oid-maximum-class-id+ (1- (expt 2 +oid-class-id-bit-size+))
   "Maximum class id available.")
 
 (def constant +oid-instance-id-bit-size+ 48
-  "Size of the life time unique identifier called instance id in bits.")
+  "Size of the life time unique identifier called instance id in bits. These are the higher bits in the oid. As long as there are not too many instances the oid will be a fixnum.")
 
 (def (constant :test '=) +oid-maximum-instance-id+ (1- (expt 2 +oid-instance-id-bit-size+))
   "Maximum instance id available.")
 
-(def constant +oid-id-bit-size+ (+ +oid-class-id-bit-size+ +oid-instance-id-bit-size+)
-  "Size of the oid id in bits.")
+(def constant +oid-bit-size+ (+ +oid-class-id-bit-size+ +oid-instance-id-bit-size+)
+  "Size of the oid in bits.")
 
 (def constant +oid-instance-id-sequence-name+ '_instance_id
   "The name of the instance id sequence in the relational database used to generate life time unique identifiers for all persistent instances.")
 
-(def constant +oid-id-column-name+ '_id
-  "The RDBMS table column name for the oid id of the instance.")
+(def constant +oid-column-name+ '_oid
+  "The RDBMS column name for the oid of the instance.")
 
-(def (constant :test 'equal) +oid-column-names+ (list +oid-id-column-name+)
-  "All RDBMS table column names for an oid. The order of columns does matter.")
+(def (constant :test 'equal) +oid-column-names+ (list +oid-column-name+)
+  "List of RDBMS column names for the oid.")
 
 (def constant +oid-column-count+ (length +oid-column-names+)
-  "The number of oid columns")
+  "The number of oid columns.")
 
 (def special-variable *oid-instance-id-sequence-exists* #f
-  "Tells if the instance id sequence exists in the relational database or not. This flag is initially false but will be set to true as soon as the sequence is created or first time seen in the database when a persistent instance is restored or stored.")
+  "Tells if the instance id sequence exists in the relational database or not. This flag is initially false, but will be set to true as soon as the sequence is created or first time seen in the database when a persistent instance is restored or stored.")
 
 (def special-variable *oid-class-id->class-name-map* (make-hash-table)
   "This map is used to cache class names by class ids. It gets filled when ensure-class is called for the first time and kept up to date.")
 
-(def (constant :test (lambda (type-1 type-2) (rdbms::equal-type-p type-1 type-2 nil))) +oid-id-sql-type+ (sql-integer-type :bit-size +oid-id-bit-size+)
-  "The RDBMS type for the oid's id slot.")
+(def (constant :test (lambda (type-1 type-2) (rdbms::equal-type-p type-1 type-2 nil))) +oid-sql-type+ (sql-integer-type :bit-size +oid-bit-size+)
+  "The RDBMS type for the oid column.")
+
+(def (function io) oid-class-id (oid)
+  (logand oid +oid-maximum-class-id+))
+
+(def (function io) oid-instance-id (oid)
+  (ash oid (- +oid-class-id-bit-size+)))
+
+(def (function io) oid-class-name (oid)
+  (class-id->class-name (oid-class-id oid)))
 
 (def (function o) class-id->class-name (class-id)
   (aprog1
@@ -80,18 +77,11 @@
   "Creates a fresh and unique oid which was never used before in the relational database."
   (or *oid-instance-id-sequence-exists* (ensure-instance-id-sequence))
   (bind ((class-id (class-name->class-id class-name))
-         (instance-id (next-instance-id))
-         (id (class-id-and-instance-id->id class-id instance-id)))
-    (make-oid :id id
-              :instance-id instance-id
-              :class-id class-id
-              :class-name class-name)))
+         (instance-id (next-instance-id)))
+    (class-id-and-instance-id->id class-id instance-id)))
 
 (def (function io) revive-oid (class-id instance-id)
-  (make-oid :id (class-id-and-instance-id->id class-id instance-id)
-            :class-id class-id
-            :instance-id instance-id
-            :class-name (class-id->class-name class-id)))
+  (class-id-and-instance-id->id class-id instance-id))
 
 (def (function o) ensure-instance-id-sequence ()
   "Makes sure the instance id sequence exists in the database."
@@ -109,9 +99,7 @@
     (oid->rdbms-values* oid it 0)))
 
 (def (function io) oid->rdbms-values* (oid rdbms-values index)
-  "Returns a sufficient list representation for relational database operations of the instance's oid in the order of the corresponding RDBMS columns."
-  (bind ((id (oid-id oid)))
-    (setf (elt rdbms-values index) id)))
+  (setf (elt rdbms-values index) oid))
 
 (def (function io) rdbms-values->oid (rdbms-values)
   (rdbms-values->oid* rdbms-values 0))
@@ -126,7 +114,4 @@
     (setf class-name (class-id->class-name class-id))
     (debug-only
       (assert (and id instance-id class-name)))
-    (make-oid :id id
-              :instance-id instance-id
-              :class-id class-id
-              :class-name class-name)))
+    id))

@@ -32,7 +32,7 @@
       (rdbms::expand-sql-ast-into-lambda-form
         (create-temporary-table temp-table
                                 (list
-                                 (sql-column :name +oid-id-column-name+ :type +oid-id-sql-type+))
+                                 (sql-column :name +oid-column-name+ :type +oid-sql-type+))
                                 (sql-select
                                   :columns (list (sql-id-column-reference-for qualifier))
                                   :tables  joined-tables
@@ -44,7 +44,7 @@
                                            (sql-subquery
                                              :query
                                              (sql-select
-                                               :columns (list +oid-id-column-name+)
+                                               :columns (list +oid-column-name+)
                                                :tables (list temp-table))))))
               data-tables)
       (drop-temporary-table temp-table *database*))))
@@ -82,7 +82,7 @@
     (values
      (rdbms::expand-sql-ast-into-lambda-form
       (create-temporary-table temp-table
-                              (list (sql-column :name +oid-id-column-name+ :type +oid-id-sql-type+))
+                              (list (sql-column :name +oid-column-name+ :type +oid-sql-type+))
                               (sql-select
                                 :columns (list (sql-id-column-reference-for qualifier))
                                 :tables  table-refs
@@ -96,7 +96,7 @@
                                            (sql-subquery
                                              :query
                                              (sql-select
-                                               :columns (list +oid-id-column-name+)
+                                               :columns (list +oid-column-name+)
                                                :tables (list temp-table))))))
               table->column-value-pairs)
      (drop-temporary-table temp-table *database*))))
@@ -318,7 +318,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
                                               :kind :inner
                                               :left !1
                                               :right !2
-                                              :using (list +oid-id-column-name+))
+                                              :using (list +oid-column-name+))
                                           joined-table-refs
                                           :initial-value primary-table-ref)))))))
                  (case (car combined-type)
@@ -356,7 +356,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (sql-column-reference-for (rdbms::column-of column-alias) qualifier)))
 
 (defun sql-id-column-reference-for (qualifier)
-  (sql-column-reference-for +oid-id-column-name+ qualifier))
+  (sql-column-reference-for +oid-column-name+ qualifier))
 
 (defun sql-tag-column-reference-for (slot qualifier)
   (sql-column-reference-for (tag-column-of slot) qualifier))

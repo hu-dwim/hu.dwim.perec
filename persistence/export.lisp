@@ -76,9 +76,8 @@
                   (persistent-object (class-of prototype-or-class-name))))
          (class-name (class-name class))
          (oid (read-persistent-object-oid context))
-         (id (when oid (oid-id oid)))
-         (instance (list :object class-name id)))
-    (serializer::announce-identity (list :reference class-name id) context)
+         (instance (list :object class-name oid)))
+    (serializer::announce-identity (list :reference class-name oid) context)
     (iter (repeat (the fixnum (serializer::read-variable-length-positive-integer context)))
           (for slot-name = (serializer::deserialize-symbol context))
           (nconcf instance

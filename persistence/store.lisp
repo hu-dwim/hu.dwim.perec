@@ -15,18 +15,18 @@
 (def (function io) object-writer (slot-value rdbms-values index)
   (oid->rdbms-values* (oid-of slot-value) rdbms-values index))
 
-(def (function io) id-column-matcher-where-clause (instance-or-oid &optional (id-name +oid-id-column-name+))
+(def (function io) id-column-matcher-where-clause (instance-or-oid &optional (id-name +oid-column-name+))
   (sql-binary-operator :name '=
                        :left (sql-identifier :name id-name)
-                       :right (sql-literal :type +oid-id-sql-type+ :value (typecase instance-or-oid
-                                                                            (oid (oid-id instance-or-oid))
-                                                                            (t (id-of instance-or-oid))))))
+                       :right (sql-literal :type +oid-sql-type+ :value (if (integerp instance-or-oid)
+                                                                           instance-or-oid
+                                                                           (oid-of instance-or-oid)))))
 
-(def (function io) id-column-list-matcher-where-clause (values &optional (id-name +oid-id-column-name+))
+(def (function io) id-column-list-matcher-where-clause (values &optional (id-name +oid-column-name+))
   (sql-binary-operator :name 'in
                        :left (sql-identifier :name id-name)
                        :right (mapcar (lambda (value)
-                                        (sql-literal :type +oid-id-sql-type+ :value (id-of value)))
+                                        (sql-literal :type +oid-sql-type+ :value (oid-of value)))
                                       values)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -86,7 +86,7 @@
             (bind ((records
                     (select-records +oid-column-names+
                                     (list (name-of (table-of slot)))
-                                    :where (sql-= (sql-literal :type +oid-id-sql-type+ :value (id-of instance))
+                                    :where (sql-= (sql-literal :type +oid-sql-type+ :value (oid-of instance))
                                                   (sql-identifier :name (id-column-of slot))))))
               (declare (type vector records))
               (unless (zerop (length records))

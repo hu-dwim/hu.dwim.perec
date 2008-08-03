@@ -6,6 +6,7 @@
 
 (in-package :cl-perec)
 
+;; TODO: consider merging the created, modified, and deleted hash-tables
 (defclass* transaction-instance-cache-mixin ()
   ((instances
     (make-hash-table :test #'eql)

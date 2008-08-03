@@ -402,7 +402,7 @@
 
   (:method ((mapped-type symbol) normalized-type)
     (if (persistent-class-type-p normalized-type)
-        (list +oid-id-sql-type+)
+        (list +oid-sql-type+)
         (call-next-method))))
 
 (def function compute-reader (type)

@@ -15,18 +15,20 @@
 (defpclass* persistent-object ()
   ((oid
     nil
-    :type (or null oid)
+    :type (or null integer)
     :persistent #f
-    :documentation "Life time unique identifier of the instance which can be remembered and may be used the load the instance later.")
+    :documentation "Life time unique identifier of the instance which can be remembered and may be used to load the instance later.")
+   ;; TODO: consider moving this flag into the oid
    (persistent
     :type boolean
     :persistent #f
     :documentation "True means the instance is known to be persistent, false means the instance is known to be transient, unbound means the state is not yet determined. Actually, in the latter case slot-value-using-class will automatically determine whether the instance is in the database or not. Therefore reading the persistent slot will always return either true or false.")
    (transaction
     nil
-    :type t
+    :type transaction-mixin
     :persistent #f
     :documentation "A reference to the transaction to which this instance is currently attached to or nil.")
+   ;; TODO: kill this slot and use the hash-tables in the transaction cache
    (transaction-event
     nil
     :type (member nil :created :modified :deleted)
@@ -77,8 +79,8 @@
   (or (eq instance-1 instance-2)
       (and (not (null instance-1))
            (not (null instance-2))
-           (= (id-of instance-1)
-              (id-of instance-2)))))
+           (= (oid-of instance-1)
+              (oid-of instance-2)))))
 
 (def function print-persistent-instance (instance)
   (declare (type persistent-object instance))
@@ -111,7 +113,3 @@
   "Makes sure that the instance has a valid oid."
   (unless (oid-of instance)
     (setf (oid-of instance) (make-class-oid (class-name (class-of instance))))))
-
-(def (function e) id-of (instance)
-  "Shortcut for the unique identifier number of the instance."
-  (oid-id (oid-of instance)))

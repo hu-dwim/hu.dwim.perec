@@ -658,11 +658,11 @@
               (update-records (name-of (table-of value-slot))
                               value-columns
                               rdbms-values
-                              (sql-in (sql-identifier :name +oid-id-column-name+)
+                              (sql-in (sql-identifier :name +oid-column-name+)
                                       (sql-subquery
                                         :query
                                         (sql-select
-                                          :columns (list +oid-id-column-name+)
+                                          :columns (list +oid-column-name+)
                                           :tables (list
                                                    (reduce #L(sql-joined-table
                                                                :kind :inner

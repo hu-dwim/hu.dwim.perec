@@ -438,8 +438,8 @@
                  ((and (listp persistent-value)
                        (listp test-value))
                   (every #'p-eq
-                         (sort (copy-seq persistent-value) #'< :key #'prc::id-of)
-                         (sort (copy-seq test-value) #'< :key #'prc::id-of)))
+                         (sort (copy-seq persistent-value) #'< :key #'oid-of)
+                         (sort (copy-seq test-value) #'< :key #'oid-of)))
                  (t (eql persistent-value test-value)))))
 
     ;; TODO slot-value should consolidate
@@ -574,7 +574,7 @@
         ((print-test
           (lambda ()
             (flet ((instance-variable-name (instance)
-                     (concatenate-symbol "instance-" (prc::id-of instance))))
+                     (concatenate-symbol "instance-" (oid-of instance))))
               (bind ((*print-level* nil)
                      (*print-length* nil)
                      (*print-lines* nil)

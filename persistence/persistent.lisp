@@ -55,7 +55,7 @@
   (:method ((rdbms-values sequence))
     (cache-instance (rdbms-values->oid rdbms-values)))
 
-  (:method ((oid oid))
+  (:method ((oid integer))
     (aif (cached-instance-of oid)
          (prog1 it
            (setf (persistent-p it) #t))
@@ -76,7 +76,7 @@
   (:method ((instance persistent-object) &rest args)
     (apply #'load-instance (oid-of instance) args))
 
-  (:method ((oid oid) &key (otherwise nil otherwise-provided-p) (prefetch #f) (skip-existence-check #f))
+  (:method ((oid integer) &key (otherwise nil otherwise-provided-p) (prefetch #f) (skip-existence-check #f))
     (declare (ignore prefetch))
     (flet ((instance-not-found ()
              (cond ((not otherwise-provided-p)
@@ -135,8 +135,8 @@
                                            (mappend #'data-tables-of sub-classes)))))
           (when table
             (delete-records (name-of table)
-                            (sql-in (sql-identifier :name +oid-id-column-name+)
-                                    (sql-subquery :query (sql-select :columns (list +oid-id-column-name+)
+                            (sql-in (sql-identifier :name +oid-column-name+)
+                                    (sql-subquery :query (sql-select :columns (list +oid-column-name+)
                                                                      :tables (list (name-of (primary-relation-of class)))))))))
         ;; delete instances from the primary tables of sub classes
         (dolist (table (list* class-primary-table sub-primary-tables))
@@ -365,7 +365,6 @@
           (for records = (select-records +oid-column-names+ (list (name-of it))))
           (iter (for record :in-sequence records)
                 (for oid = (rdbms-values->oid record))
-                (for id = (oid-id oid))
                 (dolist (table (data-tables-of class))
                   (when (zerop (length (select-records '(1) (list (name-of table)) :where (id-column-matcher-where-clause oid))))
                     (cerror "Let's see if there's more" "Insance ~A is broken because no matching record can be found in ~A"

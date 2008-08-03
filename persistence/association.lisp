@@ -258,10 +258,10 @@
       (:1-n (if (eq :1 (cardinality-kind-of slot))
                 (call-next-method)
                 (columns-of (other-association-end-of slot))))
-      (:m-n (make-columns-for-reference-slot (class-name (slot-definition-class slot))
-                                             (concatenate-string (symbol-name (slot-definition-name slot))
-                                                                 "-for-"
-                                                                 (symbol-name (set-type-class-for (canonical-type-of slot)))))))))
+      (:m-n (list (make-column-for-reference-slot (class-name (slot-definition-class slot))
+                                                  (concatenate-string (symbol-name (slot-definition-name slot))
+                                                                      "-for-"
+                                                                      (symbol-name (set-type-class-for (canonical-type-of slot))))))))))
 
 (defmethod compute-data-table-slot-p ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))

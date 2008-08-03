@@ -283,6 +283,7 @@
          (current-class (class-of current-instance))
          (current-oid (oid-of current-instance))
          (at-current-instance (id-column-matcher-where-clause current-instance)))
+    #+nil ;; TODO: change oid
     (setf (oid-class-name current-oid) (name-of current-class))
     (dolist (table (data-tables-of current-class))
       (if (member table (data-tables-of previous-class))
