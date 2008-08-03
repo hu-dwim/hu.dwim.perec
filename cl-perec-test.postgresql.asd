@@ -34,16 +34,18 @@
   :description "Tests for cl-perec with Postgresql backend."
   :depends-on (:cl-perec-test))
 
-(defmethod perform ((o load-op) (c (eql (find-system :cl-perec-test.postgresql))))
-  (eval (read-from-string
-         "(progn
-            (setf *database*
-                  (make-instance 'postgresql-postmodern
-                                 :generated-transaction-class-name 'transaction
-                                 :default-result-type 'vector
-                                 :muffle-warnings t
-                                 :transaction-mixin 'transaction-mixin
-                                 :connection-specification cl-perec-system::*test-database-connection-specification*)))")))
+(defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test.postgresql))))
+  (let ((*package* (find-package :cl-perec-test)))
+    (eval (read-from-string
+           "(progn
+              (setf *database*
+                    (make-instance 'postgresql-postmodern
+                                   :generated-transaction-class-name 'transaction
+                                   :default-result-type 'vector
+                                   :muffle-warnings t
+                                   :transaction-mixin 'cl-perec-test::test-transaction-mixin
+                                   :connection-specification cl-perec-system::*test-database-connection-specification*)))"))
+    (warn "The global binding of *database* was set according to the test setup.")))
 
 (defmethod perform ((o test-op) (c (eql (find-system :cl-perec-test.postgresql))))
   (asdf:operate 'asdf:load-op :cl-perec-test.postgresql)

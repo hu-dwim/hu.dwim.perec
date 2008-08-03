@@ -101,9 +101,9 @@
   (in-package :cl-perec-test)
   (pushnew :debug *features*)
   (declaim (optimize (debug 3)))
-  (warn "Pushed :debug in *features*, set (declaim (optimize (debug 3))), set *database* and *compiled-query-cache*.")
   (eval (let ((*package* (find-package :cl-perec)))
-          (read-from-string "(setf *compiled-query-cache* (make-compiled-query-cache))"))))
+          (read-from-string "(setf *compiled-query-cache* (make-compiled-query-cache))")))
+  (warn "Pushed :debug in *features*, set (declaim (optimize (debug 3))), the global value of *compiled-query-cache* was initialized."))
 
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :cl-perec-test))))
   nil)
