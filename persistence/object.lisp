@@ -52,12 +52,16 @@
 ;;;;;;;;;;;;;;;
 ;;; MOP methods
 
+(def method allocate-instance ((class persistent-class) &rest args)
+  (declare (ignore args))
+  (prog1-bind instance (call-next-method)
+    (iter (for slot :in (effective-slots-with-underlying-slot-access-of class))
+          (underlying-slot-makunbound-using-class class instance slot))))
+
 (def method initialize-instance :around ((instance persistent-object) &rest args &key persistent)
   (bind ((class (class-of instance)))
     (when persistent
       (ensure-exported class))
-    (iter (for slot :in (effective-slots-with-underlying-slot-access-of class))
-          (underlying-slot-makunbound-using-class class instance slot))
     (prog1 (apply #'call-next-method instance :persistent #f args)
       (when (eq persistent #t)
         (make-persistent instance)))))
