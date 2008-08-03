@@ -19,6 +19,7 @@
         :computed-class
         :local-time
         :stefil
+        :cl-def
         :cl-rdbms
         :cl-perec
         :cl-ppcre
@@ -45,7 +46,7 @@
                                 validity-start validity-end t-value unbound-slot-t
                                 find-slot collect-if concatenate-symbol
                                 unbound-subtype-p null-subtype-p set-type-p set-type-p*
-                                invalidate-all-cached-slots persistent
+                                invalidate-cached-instance invalidate-all-cached-instances persistent
                                 clear-compiled-query-cache reset-compile-query-counter
                                 ensure-exported primary-table-slot-p data-table-slot-p
                                 primary-table-of primary-tables-of data-tables-of

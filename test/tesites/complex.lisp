@@ -512,9 +512,9 @@
                         (when (zerop (mod count 100))
                           (format t "~&At: ~d/~d" count total))
                         (incf count)
-                        (with-t t-value
-                          (with-validity-range validity-start validity-end
-                            (with-transaction
+                        (with-transaction
+                          (with-t t-value
+                            (with-validity-range validity-start validity-end
                               (compare-history instances :slot-names slot-names))))))))))
 
 (defun random-universal-time ()
@@ -568,8 +568,7 @@
          (error nil)
          (instances
           (with-transaction
-            (with-default-t
-              (generate-instances class-names instance-count :slot-names slot-names)))))
+            (generate-instances class-names instance-count :slot-names slot-names))))
     (format t "Starting operations with ~A number of history entries...~%" (length *history-entries*))
     (restart-bind
         ((print-test
@@ -595,8 +594,7 @@
                                   ,@(iter (for instance :in instances)
                                           (collect `(,(instance-variable-name instance)
                                                       (with-transaction
-                                                        (with-default-t
-                                                          (make-instance ',(class-name (class-of instance)))))))))
+                                                        (make-instance ',(class-name (class-of instance))))))))
                              ,@(iter (for transaction-counter :from 0 :to *transaction-counter*)
                                      (for history-entries = (collect-if #L(= transaction-counter (he-transaction-index !1)) *history-entries*))
                                      (when history-entries
@@ -668,14 +666,12 @@
                  (full-compare-history instances :slot-names slot-names :add-epsilon-timestamps test-epsilon-timestamps))
                ;; default x default
                (with-transaction
-                 (with-default-t
-                   (compare-history instances :slot-names slot-names)))
+                 (compare-history instances :slot-names slot-names))
                (iter (repeat random-test-count)
                      ;; default x random
                      (with-transaction
-                       (with-default-t
-                         (with-random-validity-range
-                           (compare-history instances :slot-names slot-names))))
+                       (with-random-validity-range
+                         (compare-history instances :slot-names slot-names)))
                      ;; random x default
                      (with-transaction
                        (with-random-t

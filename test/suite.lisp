@@ -48,8 +48,12 @@
             (awhen (data-view-of elememnt)
               (invalidate-computed-slot it 'ensure-exported))))
         (append (hash-table-values *persistent-classes*)
+
                 (hash-table-values *persistent-associations*)))
   (test))
+
+(def class* test-transaction-mixin (transaction-mixin transaction-t-mixin)
+  ())
 
 (in-root-suite)
 

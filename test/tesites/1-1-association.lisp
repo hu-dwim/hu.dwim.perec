@@ -58,23 +58,21 @@
 
 (deftest test/tesites/association/1-1/store-value/2 ()
   (with-transaction
-    (with-default-t
-      (bind ((brother (make-instance 'tesites-brother-test))
-             (sister1 (make-instance 'tesites-sister-test))
-             (sister2 (make-instance 'tesites-sister-test)))
-        (setf (sister-of brother) sister1)
-        (setf (brother-of sister2) brother)
-        (is (eq sister2 (sister-of brother)))
-        (is (eq brother (brother-of sister2)))
-        (is (null (brother-of sister1)))))))
+    (bind ((brother (make-instance 'tesites-brother-test))
+           (sister1 (make-instance 'tesites-sister-test))
+           (sister2 (make-instance 'tesites-sister-test)))
+      (setf (sister-of brother) sister1)
+      (setf (brother-of sister2) brother)
+      (is (eq sister2 (sister-of brother)))
+      (is (eq brother (brother-of sister2)))
+      (is (null (brother-of sister1))))))
 
 (deftest test/tesites/association/1-1/integrity () 
-  (bind ((brother-1 (with-transaction (with-default-t (make-instance 'tesites-brother-test))))
-         (sister-1 (with-transaction (with-default-t (make-instance 'tesites-sister-test))))
-         (sister-2 (with-transaction (with-default-t (make-instance 'tesites-sister-test))))
-         (brother-2 (with-transaction (with-default-t (make-instance 'tesites-brother-test)))))
+  (bind ((brother-1 (with-transaction (make-instance 'tesites-brother-test)))
+         (sister-1 (with-transaction (make-instance 'tesites-sister-test)))
+         (sister-2 (with-transaction (make-instance 'tesites-sister-test)))
+         (brother-2 (with-transaction (make-instance 'tesites-brother-test))))
 
-          
     (with-transaction
       (with-revived-instances (brother-1 sister-1 sister-2 brother-2)
         (with-t "2002-01-01T00:00:00Z"
@@ -86,7 +84,7 @@
         (with-t "1000-01-01T00:00:00Z"
           (with-validity-range "2000-01-01T00:00:00Z" "2003-01-01T00:00:00Z"
             (setf (slot-value sister-1 'temporal-and-time-dependent-brother) brother-2)))))
-    
+
     (with-transaction
       (with-revived-instances (sister-1 brother-1 brother-2)
         (with-t "2002-01-01T00:00:00Z"

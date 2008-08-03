@@ -46,14 +46,14 @@
       (name-of object)
       (is (= (counter+ select-counter 1) (current-select-counter))))))
 
-(deftest test/persistence/cache/invalidate-slots ()
+(deftest test/persistence/cache/invalidate ()
   (let ((instance (with-transaction (make-instance 'persistence-test :name "the one"))))
     (with-transaction
       (with-revived-instance instance
         (with-transaction
           (with-reloaded-instance instance
             (setf (name-of instance) "the other")))
-        (invalidate-all-cached-slots instance)
+        (invalidate-cached-instance instance)
         (is (equal "the other" (name-of instance)))))))
 
 (deftest test/persistence/cache/reference/read-initial-value ()
