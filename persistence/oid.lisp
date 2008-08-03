@@ -21,53 +21,28 @@
    nil
    :type (or null symbol)))
 
-(def constant +oid-mode+ :merge
-  "Specifies the mode oids are stored in the database.
-     :class-name - _ID and _CLASS_NAME columns where id stores instance id
-     :class-id   - _ID and _CLASS_ID columns where id stores instance id
-     :merge      - _ID column where id stores instance id and class id merged into one integer where class id are the lower bits")
+(def constant +oid-class-id-bit-size+ 16
+  "Size of the class id in bits.")
 
-(def macro oid-mode-ecase (&body cases)
-  `(locally (declare #+sbcl(sb-ext:muffle-conditions sb-ext:compiler-note))
-    (ecase +oid-mode+
-      ,@cases)))
+(def (constant :test '=) +oid-maximum-class-id+ (expt 2 +oid-class-id-bit-size+)
+  "Maximum class id available.")
 
-(def constant +oid-instance-id-bit-size+ (if (eq :merge +oid-mode+)
-                                            48
-                                            64)
-  "Size of the life time unique identifier instance id in bits.")
+(def constant +oid-instance-id-bit-size+ 48
+  "Size of the life time unique identifier called instance id in bits.")
 
 (def (constant :test '=) +oid-maximum-instance-id+ (1- (expt 2 +oid-instance-id-bit-size+))
   "Maximum instance id available.")
 
-(def constant +oid-class-id-bit-size+ 16
-  "Size of the life time unique identifier class id in bits.")
-
-(def constant +oid-maximum-class-id+ (expt 2 +oid-class-id-bit-size+)
-  "Maximum class id available.")
-
-(def constant +oid-class-name-character-size+ 128
-  "Maximum length of class names.")
-
-(def constant +oid-id-bit-size+ 64
-  "Size of the id in bits.")
+(def constant +oid-id-bit-size+ (+ +oid-class-id-bit-size+ +oid-instance-id-bit-size+)
+  "Size of the oid id in bits.")
 
 (def constant +oid-instance-id-sequence-name+ '_instance_id
   "The name of the instance id sequence in the relational database used to generate life time unique identifiers for all persistent instances.")
 
 (def constant +oid-id-column-name+ '_id
-  "The RDBMS table column name for the oid's id slot.")
+  "The RDBMS table column name for the oid id of the instance.")
 
-(def constant +oid-class-id-column-name+ '_class_id
-  "The RDBMS table column name for the oid's class id slot.")
-
-(def constant +oid-class-name-column-name+ '_class_name
-  "The RDBMS table column name for the oid's class name slot.")
-
-(def (constant :test 'equal) +oid-column-names+ (oid-mode-ecase
-                                                  (:class-name (list +oid-id-column-name+ +oid-class-name-column-name+))
-                                                  (:class-id (list +oid-id-column-name+ +oid-class-id-column-name+))
-                                                  (:merge (list +oid-id-column-name+)))
+(def (constant :test 'equal) +oid-column-names+ (list +oid-id-column-name+)
   "All RDBMS table column names for an oid. The order of columns does matter.")
 
 (def constant +oid-column-count+ (length +oid-column-names+)
@@ -78,6 +53,9 @@
 
 (def special-variable *oid-class-id->class-name-map* (make-hash-table)
   "This map is used to cache class names by class ids. It gets filled when ensure-class is called for the first time and kept up to date.")
+
+(def (constant :test (lambda (type-1 type-2) (rdbms::equal-type-p type-1 type-2 nil))) +oid-id-sql-type+ (sql-integer-type :bit-size +oid-id-bit-size+)
+  "The RDBMS type for the oid's id slot.")
 
 (def (function o) class-id->class-name (class-id)
   (aprog1
@@ -96,10 +74,7 @@
        +oid-maximum-class-id+))
 
 (def (function io) class-id-and-instance-id->id (class-id instance-id)
-  (oid-mode-ecase
-    (:class-name instance-id)
-    (:class-id instance-id)
-    (:merge (logior (ash instance-id +oid-class-id-bit-size+) class-id))))
+  (logior (ash instance-id +oid-class-id-bit-size+) class-id))
 
 (def (function o) make-class-oid (class-name)
   "Creates a fresh and unique oid which was never used before in the relational database."
@@ -136,13 +111,7 @@
 (def (function io) oid->rdbms-values* (oid rdbms-values index)
   "Returns a sufficient list representation for relational database operations of the instance's oid in the order of the corresponding RDBMS columns."
   (bind ((id (oid-id oid)))
-    (setf (elt rdbms-values index) id)
-    (oid-mode-ecase
-      (:class-name
-       (setf (elt rdbms-values (1+ index)) (oid-class-name oid)))
-      (:class-id
-       (setf (elt rdbms-values (1+ index)) (oid-class-id oid)))
-      (:merge))))
+    (setf (elt rdbms-values index) id)))
 
 (def (function io) rdbms-values->oid (rdbms-values)
   (rdbms-values->oid* rdbms-values 0))
@@ -152,18 +121,9 @@
          instance-id
          class-id
          class-name)
-    (oid-mode-ecase
-      (:class-name
-       (setf instance-id id)
-       (setf class-name (symbol-from-canonical-name (elt rdbms-values (1+ index)))))
-      (:class-id
-       (setf instance-id id)
-       (setf class-id (elt rdbms-values (1+ index)))
-       (setf class-name (class-id->class-name class-id)))
-      (:merge
-       (setf instance-id (ldb (byte +oid-instance-id-bit-size+ +oid-class-id-bit-size+) id))
-       (setf class-id (ldb (byte +oid-class-id-bit-size+ 0) id))
-       (setf class-name (class-id->class-name class-id))))
+    (setf instance-id (ldb (byte +oid-instance-id-bit-size+ +oid-class-id-bit-size+) id))
+    (setf class-id (ldb (byte +oid-class-id-bit-size+ 0) id))
+    (setf class-name (class-id->class-name class-id))
     (debug-only
       (assert (and id instance-id class-name)))
     (make-oid :id id

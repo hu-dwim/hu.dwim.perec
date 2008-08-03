@@ -247,22 +247,11 @@
     :type persistent-class
     :documentation "The persistent class for which this table is the primary table.")
    (oid-columns
-    (compute-as (oid-mode-ecase
-                  (:class-name (list (id-column-of -self-) (class-name-column-of -self-)))
-                  (:class-id (list (id-column-of -self-) (class-id-column-of -self-)))
-                  (:merge (list (id-column-of -self-)))))
+    (compute-as (list (id-column-of -self-)))
     :type (list sql-column)
     :documentation "The list of RDBMS columns corresponding to the oid of this table.")
    (id-column
     (compute-as (find +oid-id-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
-    :type sql-column
-    :documentation "The RDBMS column of the corresponding oid slot.")
-   (class-name-column
-    (compute-as (find +oid-class-name-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
-    :type sql-column
-    :documentation "The RDBMS column of the corresponding oid slot.")
-   (class-id-column
-    (compute-as (find +oid-class-id-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
     :type sql-column
     :documentation "The RDBMS column of the corresponding oid slot."))
   (:documentation "This is a special table related to a persistent class."))
@@ -288,11 +277,8 @@
 ;;; Export
 
 (defmethod export-to-rdbms ((class persistent-class))
-  (oid-mode-ecase
-    (:class-name)
-    ((:class-id :merge)
-     (let ((class-name (class-name class)))
-       (setf (class-id->class-name (class-name->class-id class-name)) class-name))))
+  (bind ((class-name (class-name class)))
+    (setf (class-id->class-name (class-name->class-id class-name)) class-name))
   (ensure-finalized class)
   (mapc #'ensure-exported
         (persistent-effective-super-classes-of class))
@@ -594,41 +580,19 @@
 
 (def function make-oid-columns ()
   "Creates a list of RDBMS columns that will be used to store the oid data of the instances in this table."
-  (append
-   (list (make-instance 'column
-                        :name +oid-id-column-name+
-                        :type +oid-id-sql-type+
-                        :constraints (list (sql-not-null-constraint)
-                                           (sql-primary-key-constraint))))
-   (oid-mode-ecase
-    (:class-name
-     (list (make-instance 'column
-                          :name +oid-class-name-column-name+
-                          :type +oid-class-name-sql-type+)))
-    (:class-id
-     (list (make-instance 'column
-                          :name +oid-class-id-column-name+
-                          :type +oid-class-id-sql-type+)))
-    (:merge))))
+  (list (make-instance 'column
+                       :name +oid-id-column-name+
+                       :type +oid-id-sql-type+
+                       :constraints (list (sql-not-null-constraint)
+                                          (sql-primary-key-constraint)))))
 
 (def function make-columns-for-reference-slot (class-name column-name)
   (bind ((id-column-name (rdbms-name-for (concatenate-symbol column-name "-id")) :column)
          (id-index-name (rdbms-name-for (concatenate-symbol column-name "-id-on-" class-name "-idx") :index)))
-    (append
-     (list (make-instance 'column
-                          :name id-column-name
-                          :type +oid-id-sql-type+
-                          :index (sql-index :name id-index-name)))
-     (oid-mode-ecase
-      (:class-name
-       (list (make-instance 'column
-                            :name (rdbms-name-for (concatenate-symbol column-name "-class-name") :column)
-                            :type +oid-class-name-sql-type+)))
-      (:class-id
-       (list (make-instance 'column
-                            :name (rdbms-name-for (concatenate-symbol column-name "-class-id") :column)
-                            :type +oid-class-id-sql-type+)))
-      (:merge)))))
+    (list (make-instance 'column
+                         :name id-column-name
+                         :type +oid-id-sql-type+
+                         :index (sql-index :name id-index-name)))))
 
 (def function make-tag-column (mapping name)
   (bind ((type (first (rdbms-types-of mapping)))

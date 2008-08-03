@@ -402,14 +402,7 @@
 
   (:method ((mapped-type symbol) normalized-type)
     (if (persistent-class-type-p normalized-type)
-        (append
-         (list +oid-id-sql-type+)
-         (oid-mode-ecase
-           (:class-name
-            (list +oid-class-name-sql-type+))
-           (:class-id
-            (list +oid-class-id-sql-type+))
-           (:merge)))
+        (list +oid-id-sql-type+)
         (call-next-method))))
 
 (def function compute-reader (type)

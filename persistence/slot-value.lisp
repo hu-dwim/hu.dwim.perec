@@ -276,6 +276,8 @@
                                                        (current-instance persistent-object)
                                                        &rest initargs &key &allow-other-keys)
   (declare (ignore initargs))
+  ;; TODO: add tests
+  (not-yet-implemented)
   ;; TODO: update foreign key references according to class name
   (bind ((previous-class (class-of previous-instance))
          (current-class (class-of current-instance))
@@ -284,8 +286,9 @@
     (setf (oid-class-name current-oid) (name-of current-class))
     (dolist (table (data-tables-of current-class))
       (if (member table (data-tables-of previous-class))
+          ;; TODO: update class id in the oid columns
           (update-records (name-of table)
-                          (list (class-name-column-of table))
+                          (list #+nil (class-name-column-of table))
                           (list (oid-class-name current-oid))
                           at-current-instance)
           ;; TODO: handle initargs
