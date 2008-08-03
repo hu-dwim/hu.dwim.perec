@@ -148,7 +148,7 @@
                          (store-slot h-class h-instance h-slot +h-unused-slot-marker+)))))))))
 
     (when (typep value 'persistent-object)
-      (invalidate-all-cached-slots value)) ;; FIXME why?
+      (invalidate-cached-instance value)) ;; FIXME why?
     ;; TODO: if t-instance is cached either invalidate it or set the value on it
 
 

@@ -36,13 +36,23 @@
   (:method ((class persistent-class) (instance persistent-object) (slot persistent-effective-slot-definition) new-value)
            (values)))
 
-(def (function o) invalidate-all-cached-slots (instance)
+(def (function eo) invalidate-cached-instance (instance)
   "Invalidates all cached slot values in the instance."
   (bind ((class (class-of instance)))
     (assert-instance-access instance (persistent-p instance))
     (iter (for slot in (persistent-effective-slots-of class))
           (when (cache-p slot)
             (invalidate-cached-slot instance slot)))))
+
+;; TODO delme
+(def compiler-macro invalidate-all-cached-slots (instance)
+  "Obsolete, use INVALIDATE-CACHED-INSTANCE"
+  (simple-warning "Do not use INVALIDATE-ALL-CACHED-SLOTS, it's been replaced with INVALIDATE-CACHED-INSTANCE!")
+  `(invalidate-cached-instance instance))
+
+(def (function o) invalidate-all-cached-instances ()
+  "Invalidates all cached slot values in the instance."
+  (map-cached-instances #'invalidate-cached-instance))
 
 (def (function io) invalidate-cached-slot (instance slot)
   "Invalidates the given cached slot value in the instance."
