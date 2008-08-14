@@ -137,7 +137,14 @@
     :initarg nil
     :documentation "The slot type as it was specified.")
    (canonical-type
-    (compute-as (canonical-type-for (specified-type-of -self-)))
+    (compute-as (bind (((:values canonical-type error) (ignore-errors
+                                                         (canonical-type-for (specified-type-of -self-)))))
+                  (or canonical-type
+                      (progn
+                        ;; due to the MOP we must not fail when this is called, otherwise the entire (sblc) image breaks
+                        (warn "Could not process type ~S specified for slot ~S, falling back to type T. The error was: ~A"
+                              (specified-type-of -self-) (slot-definition-name -self-) error)
+                        (canonical-type-for t)))))
     :type (or symbol cons)
     :documentation "The canonical form of the specified type. See canonical-type-for for more details.")
    (normalized-type
