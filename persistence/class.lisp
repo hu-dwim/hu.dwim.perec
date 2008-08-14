@@ -284,6 +284,8 @@
 ;;; Export
 
 (defmethod export-to-rdbms ((class persistent-class))
+  ;; TODO the view should be first dropped, then the alter statements executed, and after that the view recreated
+  ;; because the view will prevent some alter tables to execute.
   (bind ((class-name (class-name class)))
     (setf (class-id->class-name (class-name->class-id class-name)) class-name))
   (ensure-finalized class)
