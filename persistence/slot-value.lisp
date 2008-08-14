@@ -47,8 +47,8 @@
 ;; TODO delme
 (def compiler-macro invalidate-all-cached-slots (instance)
   "Obsolete, use INVALIDATE-CACHED-INSTANCE"
-  (simple-warning "Do not use INVALIDATE-ALL-CACHED-SLOTS, it's been replaced with INVALIDATE-CACHED-INSTANCE!")
-  `(invalidate-cached-instance instance))
+  (simple-style-warning "Do not use INVALIDATE-ALL-CACHED-SLOTS, it's been replaced with INVALIDATE-CACHED-INSTANCE!")
+  `(invalidate-cached-instance ,instance))
 
 (def (function o) invalidate-all-cached-instances ()
   "Invalidates all cached slot values in the instance."
