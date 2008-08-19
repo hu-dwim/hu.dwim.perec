@@ -37,22 +37,22 @@
     (compute-as (primary-table-of (h-class-of -self-)))
     :type table)
    (t-value-slot
-    (compute-as (find-slot (h-class-of -self-) 't-value :otherwise nil)))
+    (compute-as (find-persistent-slot (h-class-of -self-) 't-value :otherwise nil)))
    (t-value-column
     (compute-as (first (columns-of (t-value-slot-of -self-))))
     :type column)
    (validity-start-slot
-    (compute-as (find-slot (h-class-of -self-) 'validity-start :otherwise nil)))
+    (compute-as (find-persistent-slot (h-class-of -self-) 'validity-start :otherwise nil)))
    (validity-start-column
     (compute-as (first (columns-of (validity-start-slot-of -self-))))
     :type column)
    (validity-end-slot
-    (compute-as (find-slot (h-class-of -self-) 'validity-end :otherwise nil)))
+    (compute-as (find-persistent-slot (h-class-of -self-) 'validity-end :otherwise nil)))
    (validity-end-column
     (compute-as (first (columns-of (validity-end-slot-of -self-))))
     :type column)
    (action-slot
-    (compute-as (find-slot (h-class-of -self-) 'action :otherwise nil)))
+    (compute-as (find-persistent-slot (h-class-of -self-) 'action :otherwise nil)))
    (action-column
     (compute-as (first (columns-of (action-slot-of -self-))))
     :type column)
@@ -60,7 +60,7 @@
     (compute-as (concatenate-symbol "t-" (slot-definition-name (other-association-end-of -self-))))
     :type symbol)
    (h-slot
-    (compute-as (find-slot (h-class-of -self-) (h-slot-name-of -self-) :otherwise nil)))
+    (compute-as (find-persistent-slot (h-class-of -self-) (h-slot-name-of -self-) :otherwise nil)))
    (h-oid-columns
     (compute-as (columns-of (h-slot-of -self-)))
     :type list)

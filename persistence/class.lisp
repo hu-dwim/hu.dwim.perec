@@ -560,6 +560,17 @@
   #+sbcl(slot-value slot 'sb-pcl::%class)
   #-sbcl(not-yet-implemented))
 
+(def function find-persistent-slot (class-or-name slot-name &key (otherwise :error))
+  (bind ((result (find slot-name
+                       (the list
+                         (persistent-effective-slots-of (if (symbolp class-or-name)
+                                                            (find-class class-or-name)
+                                                            class-or-name)))
+                       :key 'slot-definition-name
+                       :test 'eq)))
+    (or result
+        (handle-otherwise otherwise))))
+
 (def function persistent-effective-super-slot-precedence-list-of (slot)
   (bind ((slot-name (slot-definition-name slot))
          (slot-class (slot-definition-class slot)))
