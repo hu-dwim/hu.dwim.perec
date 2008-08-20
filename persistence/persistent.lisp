@@ -6,7 +6,7 @@
 
 (in-package :cl-perec)
 
-;;;;;;;;;;;;;;;;;;
+;;;;;;
 ;;; Load and cache
 
 (def function instance-exists-in-database-p (instance)
@@ -26,7 +26,7 @@
           (decf (select-counter-of (command-counter-of *transaction*))))
         (setf (persistent-p instance) (instance-exists-in-database-p instance)))))
 
-(defgeneric initialize-revived-instance (instance &key &allow-other-keys)
+(def generic initialize-revived-instance (instance &key &allow-other-keys)
   (:documentation "When a revived instance is initialized slots marked with initialize-revived-slot-p will be passed down to be initialized by shared-initialize.")
 
   (:method ((instance persistent-object) &rest args &key oid &allow-other-keys)
@@ -43,13 +43,13 @@
         (invalidate-cached-slot instance slot))
       (apply #'shared-initialize instance slot-names args))))
 
-(defgeneric make-revived-instance (class &key &allow-other-keys)
+(def generic make-revived-instance (class &key &allow-other-keys)
   (:documentation "Creates a new instance representing the given oid as its identity. The instance will not be associated with the current transaction nor will it be stored in the database. The instance may or may not be known to be either persistent or transient. This generic function should not be called outside of cl-perec but methods may be defined on it.")
 
   (:method ((class persistent-class) &rest args &key &allow-other-keys)
     (apply #'initialize-revived-instance (allocate-instance class) args)))
 
-(defgeneric cache-instance (thing)
+(def generic cache-instance (thing)
   (:documentation "Attaches an instance to the current transaction. The instance must be already present in the database, so load-instance would return an instance for it. The purpose of this method is to cache instances returned by a query or when the existence may be guaranteed by some other means.")
 
   (:method ((rdbms-values sequence))
@@ -70,13 +70,17 @@
   (:report (lambda (c stream)
              (format stream "Instance not found for oid ~A" (oid-of c)))))
 
-(defgeneric load-instance (thing &key otherwise prefetch skip-existence-check)
+(def generic load-instance (thing &key otherwise prefetch skip-existence-check copy-cached-slot-values)
   (:documentation "Loads an instance with the given oid and attaches it with the current transaction if not yet attached. If no such instance exists in the database then one of two things may happen. If the value of otherwise is a lambda function with one parameter then it is called with the given instance. Otherwise the value of otherwise is returned. If prefetch is false then only the identity of the instance is loaded, otherwise all slots are loaded. Note that the instance may not yet be committed into the database and therefore may not be seen by other transactions. Also instances not yet committed by other transactions are not returned according to transaction isolation rules. The instance returned will be kept for the duration of the transaction and any subsequent calls to load, select, etc. will return the exact same instance for which eq is required to return #t.")
 
-  (:method ((instance persistent-object) &rest args)
-    (apply #'load-instance (oid-of instance) args))
+  (:method ((instance persistent-object) &rest args &key (skip-existence-check #f) (copy-cached-slot-values #f) &allow-other-keys)
+    (prog1-bind new-instance (apply #'load-instance (oid-of instance) args)
+      (when copy-cached-slot-values
+        (assert skip-existence-check)
+        (setf (persistent-p new-instance) (persistent-p instance))
+        (copy-cached-slot-values instance new-instance))))
 
-  (:method ((oid integer) &key (otherwise nil otherwise-provided-p) (prefetch #f) (skip-existence-check #f))
+  (:method ((oid integer) &key (otherwise nil otherwise-provided-p) (prefetch #f) (skip-existence-check #f) &allow-other-keys)
     (declare (ignore prefetch))
     (flet ((instance-not-found ()
              (cond ((not otherwise-provided-p)
@@ -92,15 +96,15 @@
              ;; even tough we are unsure if the instance is persistent or not
              ;; because prefetching slots may recursively call load-instance from persistent-p
              ;; we also want to have non persistent instances in the cache anyway
-             (setf (cached-instance-of (oid-of new-instance)) new-instance)
+             (setf (cached-instance-of oid) new-instance)
              (if (or skip-existence-check (persistent-p new-instance))
                  new-instance
                  (instance-not-found)))))))
 
-;;;;;;;;;
+;;;;;;
 ;;; Purge
 
-(defgeneric purge-instance (instance)
+(def generic purge-instance (instance)
   (:documentation "Purges the given instance without respect to associations and references to it.")
   
   (:method ((instance persistent-object))
@@ -111,7 +115,7 @@
     (update-instance-cache-for-deleted-instance instance)))
 
 ;; TODO: what about invalidating cache instances, references?
-(defgeneric purge-instances (class)
+(def generic purge-instances (class)
   (:documentation "Purges all instances of the given class without respect to associations and references.")
 
   (:method ((class-name symbol))
@@ -146,7 +150,7 @@
 (def function purge-all-instances ()
   (purge-instances 'persistent-object))
 
-;;;;;;;;
+;;;;;;
 ;;; Drop
 
 (def function drop-persistent-classes ()
@@ -161,10 +165,10 @@
           (awhen (primary-table-of association)
             (drop-table* it)))))
 
-;;;;;;;;
+;;;;;;
 ;;; Lock
 
-(defmacro with-waiting-for-rdbms-lock (wait &body forms)
+(def macro with-waiting-for-rdbms-lock (wait &body forms)
   (with-unique-names (body)
     `(block with-waiting-for-rdbms-lock
        (flet ((,body ()
@@ -176,7 +180,7 @@
                (unable-to-obtain-lock-error ()
                  (return-from with-waiting-for-rdbms-lock #f))))))))
 
-(defun lock-columns (instance columns wait)
+(def function lock-columns (instance columns wait)
   (with-waiting-for-rdbms-lock wait
     (bind ((class (class-of instance))
            (records
@@ -188,7 +192,7 @@
       (assert (= 1 (length records)))
       #t)))
 
-(defgeneric lock-class (class &key wait)
+(def generic lock-class (class &key wait)
   (:documentation "Lock all instances in the current transaction. If wait is false and the class cannot be locked then returns #f otherwise returns #t.")
 
   (:method ((class persistent-class) &key (wait #t))
@@ -199,13 +203,13 @@
                            :wait wait))
       #t)))
 
-(defgeneric lock-instance (instance &key wait)
+(def generic lock-instance (instance &key wait)
   (:documentation "Lock instance in the current transaction. If wait is false and the instance cannot be locked then returns #f otherwise returns #t.")
 
   (:method ((instance persistent-object) &key (wait #t))
     (lock-columns instance (list (sql-all-columns)) wait)))
 
-(defgeneric lock-slot (instance slot &key wait)
+(def generic lock-slot (instance slot &key wait)
   (:documentation "Lock a slot for an instance in the current transaction. If wait is false and the slot cannot be locked then returns #f otherwise returns #t.")
 
   (:method ((instance persistent-object) (slot symbol) &key (wait t))
@@ -214,10 +218,10 @@
   (:method ((instance persistent-object) (slot persistent-effective-slot-definition) &key (wait t))
     (lock-columns instance (columns-of slot) wait)))
 
-;;;;;;;;;
+;;;;;;
 ;;; Count
 
-(defgeneric count-instances (class)
+(def generic count-instances (class)
   (:documentation "Counts all instances of the given class")
 
   (:method ((class-name symbol))
@@ -227,8 +231,8 @@
     (first-elt (first-elt (execute (sql-select :columns (list (sql-count (sql-all-columns)))
                                                :tables (list (name-of (primary-table-of class)))))))))
 
-;;;;;;;;;;;;;;;;;;;;;
-;;; Revive and reload
+;;;;;;
+;;; Revive
 
 (def macro revive-instance (place &rest args)
   "Load instance found in PLACE into the current transaction, update PLACE if needed. The instance being revived cannot be part of another ongoing transaction. Use load-instance if that is needed."
@@ -261,6 +265,9 @@
   `(with-revived-instances (,instance)
      ,@body))
 
+;;;;;;
+;;; Reload
+
 (def macro with-reloaded-instances (instances &body body)
   "Rebind the variables specified in INSTANCES, reload them in the current transaction and execute BODY in this lexical environment. If an entry is a list then bind with the first form and reload the second form."
   `(bind ,(iter (for entry :in instances)
@@ -277,6 +284,9 @@
   "See WITH-RELOADED-INSTANCES."
   `(with-reloaded-instances (,instance)
      ,@body))
+
+;;;;;
+;;; Singleton persistent instance
 
 (def function singleton-variable-name-for (name)
   (bind ((name-string (symbol-name name)))
@@ -301,10 +311,10 @@
                             (progn
                               ,@forms))))))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;
 ;;; Making instances persistent and transient
 
-(defmethod make-persistent-using-class (class (instance persistent-object))
+(def method make-persistent-using-class (class (instance persistent-object))
   (ensure-oid instance)
   (update-instance-cache-for-created-instance instance)
   (store-all-slots instance)
@@ -314,7 +324,7 @@
         (when (set-type-p* (canonical-type-of slot))
           (invalidate-cached-slot instance slot))))
 
-(defmethod make-transient-using-class (class (instance persistent-object))
+(def method make-transient-using-class (class (instance persistent-object))
   (with-caching-slot-values
     (bind (((:values restored-slot-values restored-slots) (restore-all-slots instance)))
       (iter (for restored-slot-value in restored-slot-values)

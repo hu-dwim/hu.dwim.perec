@@ -59,6 +59,32 @@
   (assert-instance-slot-correspondence)
   (setf (standard-instance-access instance (slot-definition-location slot)) +not-cached-slot-marker+))
 
+(def (function o) copy-cached-slot-values (old-instance new-instance)
+  "Copies slot values from OLD-INSTANCE to NEW-INSTANCE."
+  (bind ((class (class-of old-instance)))
+    (dolist (slot (persistent-effective-slots-of class))
+      (bind (((:values cached-p old-value) (slot-value-cached-p old-instance slot)))
+        (when (and cached-p
+                   (not (slot-value-cached-p new-instance slot)))
+          (bind ((association-end-p (typep slot 'persistent-association-end-effective-slot-definition))
+                 (to-one-association-end-p (and association-end-p
+                                                (to-one-association-end-p slot)))
+                 (persistent-object-old-value-p (and old-value
+                                                     (not (unbound-slot-marker-p old-value))))
+                 (new-value (cond (to-one-association-end-p
+                                   (when persistent-object-old-value-p
+                                     (load-instance old-value :skip-existence-check #t)))
+                                  ((not association-end-p)
+                                   old-value))))
+            (when (or (not association-end-p)
+                      to-one-association-end-p)
+              (setf (underlying-slot-boundp-or-value-using-class class new-instance slot) new-value))
+            ;; recurse after new-value is already cached
+            (when to-one-association-end-p
+              (when persistent-object-old-value-p
+                (setf (persistent-p new-value) (persistent-p old-value))
+                (copy-cached-slot-values old-value new-value)))))))))
+
 (def (function io) slot-value-cached-p (instance slot)
   "Tells whether the given slot is cached in the instance or not."
   (assert-instance-slot-correspondence)
