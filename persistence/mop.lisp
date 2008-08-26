@@ -31,7 +31,7 @@
        (call-next-method)))
 
 (defmethod initialize-instance :around ((class persistent-class) &rest args)
-  (apply #'shared-ininitialize-around-persistent-class class #'call-next-method args))
+  (apply #'shared-initialize-around-persistent-class class #'call-next-method args))
 
 (defmethod reinitialize-instance :around ((class persistent-class) &rest args)
   ;; update type dependencies first
@@ -39,7 +39,7 @@
         (depends-on-me-of class))
   (setf (depends-on-me-of class) nil)
   ;; emulate shared initialize which is not allowed to be overridden
-  (apply #'shared-ininitialize-around-persistent-class class #'call-next-method :name (class-name class) args))
+  (apply #'shared-initialize-around-persistent-class class #'call-next-method :name (class-name class) args))
 
 (defmethod reinitialize-instance :before ((association persistent-association) &key &allow-other-keys)
   (mapc #L(deletef (depends-on-of !1) association)
@@ -223,7 +223,7 @@
 
 ;; this is not the real shared-initialize because portable programs are not allowed to override that
 ;; so we are somewhat emulating it by calling this function from both initialize-instance and reinitialize-instance
-(def function shared-ininitialize-around-persistent-class (class call-next-method &rest args
+(def function shared-initialize-around-persistent-class (class call-next-method &rest args
                                                     &key name direct-slots direct-superclasses &allow-other-keys)
   ;; call initialize-instance or reinitialize-instance next method
   (prog1
