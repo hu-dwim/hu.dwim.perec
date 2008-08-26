@@ -74,6 +74,7 @@
   (:documentation "Loads an instance with the given oid and attaches it with the current transaction if not yet attached. If no such instance exists in the database then one of two things may happen. If the value of otherwise is a lambda function with one parameter then it is called with the given instance. Otherwise the value of otherwise is returned. If prefetch is false then only the identity of the instance is loaded, otherwise all slots are loaded. Note that the instance may not yet be committed into the database and therefore may not be seen by other transactions. Also instances not yet committed by other transactions are not returned according to transaction isolation rules. The instance returned will be kept for the duration of the transaction and any subsequent calls to load, select, etc. will return the exact same instance for which eq is required to return #t.")
 
   (:method ((instance persistent-object) &rest args &key (skip-existence-check #f) (copy-cached-slot-values #f) &allow-other-keys)
+    (ensure-exported (class-of instance))
     (prog1-bind new-instance (apply #'load-instance (oid-of instance) args)
       (when copy-cached-slot-values
         (assert skip-existence-check)
