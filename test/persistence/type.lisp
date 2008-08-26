@@ -60,7 +60,7 @@
              object)
          (declare (ignorable ,value))
          (with-transaction
-           (with-confirmed-descructive-changes
+           (with-confirmed-destructive-changes
              (ensure-exported
               (defpclass* type-test ()
                 ((,name :type ,type))))))

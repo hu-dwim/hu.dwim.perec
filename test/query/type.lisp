@@ -8,7 +8,7 @@
       (let ((,value ,(when test-value-p `(with-transaction ,test-value))))
         (declare (ignorable ,value))
         (with-transaction
-          (with-confirmed-descructive-changes
+          (with-confirmed-destructive-changes
             (ensure-exported
              (defpclass* query-type-test ()
                ((,name :type ,type)))))
