@@ -8,7 +8,16 @@
 
 ;;; with-database, open-database, close-database, with-transaction, with-transaction*, begin, commit, rollback are all inherited from cl-rdbms
 
-(defclass* transaction-mixin (transaction-instance-cache-mixin)
+(def (class* e) database-mixin ()
+  ((oid-instance-id-sequence-exists #f :type boolean)))
+
+(def method oid-instance-id-sequence-exists-p ((self standard-object))
+  (error "The required cl-perec:database-mixin is missing from *database* (~A) which is of class ~S" *database* (class-of *database*)))
+
+(def method transaction-mixin-class list ((self database-mixin))
+  'transaction-mixin)
+
+(def (class* e) transaction-mixin (transaction-instance-cache-mixin)
   ())
 
 (defmethod rdbms::cleanup-transaction ((transaction transaction-mixin))

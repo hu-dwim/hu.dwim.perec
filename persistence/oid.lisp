@@ -36,9 +36,6 @@
 (def constant +oid-column-count+ (length +oid-column-names+)
   "The number of oid columns.")
 
-(def special-variable *oid-instance-id-sequence-exists* #f
-  "Tells if the instance id sequence exists in the relational database or not. This flag is initially false, but will be set to true as soon as the sequence is created or first time seen in the database when a persistent instance is restored or stored.")
-
 (def special-variable *oid-class-id->class-name-map* (make-hash-table)
   "This map is used to cache class names by class ids. It gets filled when ensure-class is called for the first time and kept up to date.")
 
@@ -75,7 +72,8 @@
 
 (def (function o) make-class-oid (class-name)
   "Creates a fresh and unique oid which was never used before in the relational database."
-  (or *oid-instance-id-sequence-exists* (ensure-instance-id-sequence))
+  (or (oid-instance-id-sequence-exists-p *database*)
+      (ensure-instance-id-sequence))
   (bind ((class-id (class-name->class-id class-name))
          (instance-id (next-instance-id)))
     (class-id-and-instance-id->id class-id instance-id)))
@@ -87,7 +85,7 @@
   "Makes sure the instance id sequence exists in the database."
   (unless (sequence-exists-p +oid-instance-id-sequence-name+)
     (create-sequence +oid-instance-id-sequence-name+))
-  (setf *oid-instance-id-sequence-exists* #t))
+  (setf (oid-instance-id-sequence-exists-p *database*) #t))
 
 (def (function o) next-instance-id ()
   (aprog1 (sequence-next +oid-instance-id-sequence-name+)
