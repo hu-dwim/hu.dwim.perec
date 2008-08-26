@@ -65,3 +65,16 @@
 (def-purge-test test/persistence/purge/f purge-f-test 4)
 
 (def-purge-test test/persistence/purge/g purge-g-test 3)
+
+(def test test/persistence/purge/sequence-of-instances ()
+  (bind ((instances (with-transaction
+                      (purge-instances 'purge-a-test)
+                      (vector (make-instance 'purge-a-test)
+                              (make-instance 'purge-b-test)
+                              (make-instance 'purge-c-test)))))
+    (with-transaction
+      (is (length= 3 (select-instances purge-a-test)))
+      (purge-instances instances))
+    (with-transaction
+      (is (length= 0 (select-instances purge-a-test)))
+      (finishes (purge-instances (list))))))

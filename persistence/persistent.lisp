@@ -119,8 +119,11 @@
 (def generic purge-instances (class)
   (:documentation "Purges all instances of the given class without respect to associations and references.")
 
-  (:method ((class-name symbol))
-    (purge-instances (find-class class-name)))
+  (:method ((thing t))
+    ;; can't use dispatch because null is both a symbol and an empty list (bah...)
+    (etypecase thing
+      ((or null sequence) (map nil 'purge-instance thing))
+      (symbol (purge-instances (find-class thing)))))
 
   (:method ((class persistent-class))
     (ensure-exported class)
