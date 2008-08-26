@@ -52,8 +52,15 @@
                 (hash-table-values *persistent-associations*)))
   (test))
 
-(def class* test-transaction-mixin (transaction-mixin transaction-t-mixin)
+;; use some unnecessary explicit package prefixing for clarity
+(def class* transaction-mixin/test (cl-perec:transaction-mixin cl-perec:transaction-t-mixin)
   ())
+
+(def class* postgresql-postmodern/test (cl-perec:database-mixin cl-rdbms:postgresql-postmodern)
+  ())
+
+(def method transaction-mixin-class list ((self postgresql-postmodern/test))
+  'transaction-mixin/test)
 
 (in-root-suite)
 

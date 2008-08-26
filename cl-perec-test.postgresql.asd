@@ -39,11 +39,10 @@
     (eval (read-from-string
            "(progn
               (setf *database*
-                    (make-instance 'postgresql-postmodern
+                    (make-instance 'postgresql-postmodern/test
                                    :generated-transaction-class-name 'transaction
                                    :default-result-type 'vector
                                    :muffle-warnings t
-                                   :transaction-mixin 'cl-perec-test::test-transaction-mixin
                                    :connection-specification cl-perec-system::*test-database-connection-specification*)))"))
     (warn "The global binding of *database* was set according to the test setup.")))
 
