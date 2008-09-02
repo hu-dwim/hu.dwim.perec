@@ -306,3 +306,10 @@
   (test-query (:record-count 1 :fixture forum-data)
     (select ((max (score-of s)))
       (from (s spam-test)))))
+
+(deftest test/query/select/clash-with-lexical-variable ()
+  (test-query (:record-count 4 :fixture forum-data)
+    (let ((o "this should not make any headaches"))
+      (select (o)
+        (from o)
+        (where (typep o 'message-test))))))
