@@ -160,7 +160,8 @@
              (:file "type")
              (:file "slot-value" :depends-on ("store" "association"))
              (:file "transformer" :depends-on ("type"))
-             (:file "association-end-set")))))
+             (:file "association-end-set")
+             (:file "instance-cache" :depends-on ("slot-value"))))))
 
 (defsystem-connection cl-perec-and-swank
   :requires (:cl-perec :swank #:cl-syntax-sugar-and-swank)
