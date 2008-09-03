@@ -110,7 +110,7 @@
       (assert-instance-access instance persistent)
       (bind (((:values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
         (when (or (not persistent)
-                  (and cache-p slot-value-cached))
+                  slot-value-cached)
           (if (time-dependent-p slot)
               (if (unbound-slot-marker-p cached-value)
                   (return-value +unbound-slot-marker+)
