@@ -125,7 +125,7 @@
   (push variable (query-variables-of query)))
 
 (defun get-variables (query)
-  (append (lexical-variables-of query) (query-variables-of query)))
+  (append (query-variables-of query) (lexical-variables-of query)))
 
 (defgeneric select-form-of (query)
   (:method ((query query))
