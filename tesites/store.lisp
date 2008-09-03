@@ -337,7 +337,7 @@
 
   (bind ((temporal-p (temporal-p t-association-end))
          (time-dependent-p (time-dependent-p t-association-end))
-         (t-value (when (boundp '*t*) *t*))
+         (t-value (when temporal-p *t*))
          ((:values t-slot-default-value has-default-p) (default-value-for-type (slot-definition-type t-association-end)))
          (default-value-p (and has-default-p (eq value t-slot-default-value)))
          (overlapping-instances (select-overlapping-h-associations
@@ -437,7 +437,7 @@
 
   (ecase (cardinality-kind-of t-association-end)
     (:1 ;; set parent
-     (bind ((t-value (when (boundp '*t*) *t*))
+     (bind ((t-value (when (temporal-p t-association-end) *t*))
             (overlapping-instances (select-overlapping-h-associations
                                     t-association-end instance nil validity-start validity-end
                                     :criteria :instance)))
@@ -453,7 +453,7 @@
                                           overlapping-instances
                                           validity-start validity-end)))
     (:n ;; set children
-     (bind ((t-value (when (boundp '*t*) *t*)))
+     (bind ((t-value (when (temporal-p t-association-end) *t*)))
 
        (bind ((overlapping-instances (select-overlapping-h-associations
                                       t-association-end instance nil validity-start validity-end
@@ -530,7 +530,7 @@
                (purge-instance h-instance)))))))
 
 (def function store-m-n-t-association-end (t-association-end instance value validity-start validity-end)
-  (bind ((t-value (when (boundp '*t*) *t*))
+  (bind ((t-value (when (temporal-p t-association-end) *t*))
          (overlapping-instances (select-overlapping-h-associations
                                  t-association-end instance nil validity-start validity-end
                                  :criteria :instance)))
@@ -565,7 +565,7 @@
 
   (lock-slot instance t-association-end)
 
-  (bind ((t-value (when (boundp '*t*) *t*)))
+  (bind ((t-value (when (temporal-p t-association-end) *t*)))
     (when (and (eq (association-kind-of (association-of t-association-end)) :1-n)
                (eq action +t-insert+))
       (bind ((overlapping-instances (select-overlapping-h-associations

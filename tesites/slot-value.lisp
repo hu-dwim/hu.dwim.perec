@@ -34,7 +34,7 @@
          :instance instance
          (append
           (when (or t-value-p
-                    (boundp '*t*))
+                    (temporal-p slot))
             (list :t-value (or t-value
                          *t*)))
           (when (or validity-start-p
