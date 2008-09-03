@@ -309,8 +309,7 @@
                     (load-instance it)
                     (progn
                       (register-transaction-hook :before :rollback
-                                                 (lambda ()
-                                                   (setf ,singleton-variable-name nil)))
+                        (setf ,singleton-variable-name nil))
                       (setf ,singleton-variable-name
                             (progn
                               ,@forms))))))))))
