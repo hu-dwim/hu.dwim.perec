@@ -49,14 +49,13 @@
             (serializer::serialize-element (closer-mop:slot-value-using-class class instance slot) context)
             (serializer::write-unsigned-byte-8 serializer::+unbound-slot-code+ context)))))
 
-(def (function e) read-persistent-object-slot-values (prototype-or-class-name context)
+(def (function e) read-persistent-object-slot-values (prototype-or-class-name context &optional (persistp #t))
   (bind ((class (etypecase prototype-or-class-name
                   (symbol (find-class prototype-or-class-name))
                   (persistent-object (class-of prototype-or-class-name))))
          (oid (make-class-oid (class-name class)))
-         (instance (allocate-instance class)))
-    ;; throw away oid
-    (read-persistent-object-oid context)
+         (instance (allocate-instance class))
+         (old-oid (read-persistent-object-oid context)))
     (initialize-revived-instance instance :persistent #f :oid oid)
     (serializer::announce-identity instance context)
     (iter (repeat (the fixnum (serializer::read-variable-length-positive-integer context)))
@@ -67,8 +66,9 @@
                     (progn
                       (serializer::unread-unsigned-byte-8 context)
                       (serializer::deserialize-element context)))))
-    (make-persistent instance)
-    instance))
+    (when persistp
+      (make-persistent instance))
+    (values instance old-oid)))
 
 (def (function e) dump-persistent-object-slot-values (prototype-or-class-name context)
   (bind ((class (etypecase prototype-or-class-name
