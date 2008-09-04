@@ -20,41 +20,47 @@
 (def (class* e) transaction-mixin (transaction-instance-cache-mixin)
   ())
 
-(defmethod rdbms::cleanup-transaction ((transaction transaction-mixin))
+(def method cleanup-transaction ((transaction transaction-mixin))
   (unwind-protect
        (call-next-method)
-    (map-cached-instances
-     #L(setf (transaction-of !1) nil))))
+    (map-cached-instances (lambda (instance)
+                            (setf (transaction-of instance) nil)))))
 
-(defun instance-in-transaction-p (instance)
+(def function instance-in-transaction-p (instance)
   "Returns true iff the instance is attached to a transaction which is in progress."
   (not (null (aprog1 (transaction-of instance)
                (debug-only
                  (assert (or (not it) (transaction-in-progress-p it))))))))
 
-(defun instance-in-current-transaction-p (instance)
+(def function instance-in-current-transaction-p (instance)
   "Returns true iff the instance is attached to the current transaction which is in progress."
   (and (in-transaction-p)
        (eq (transaction-of instance) *transaction*)))
 
-(defgeneric before-committing-instance (instance transaction-event)
-  (:method (instance transaction-event)
-           (bind ((class (class-of instance)))
-             (dolist (slot (persistent-effective-slots-of class))
-               (when (eq :on-commit (type-check-of slot))
-                 (bind (((:values cached-p slot-value) (slot-value-cached-p instance slot)))
-                   (when cached-p
-                     (check-slot-value-type instance slot slot-value #t))))))))
+(def generic before-committing-instance (transaction instance transaction-event)
+  (:method ((transaction transaction-mixin) (instance persistent-object) transaction-event)
+    (bind ((class (class-of instance)))
+      (dolist (slot (persistent-effective-slots-of class))
+        (when (eq :on-commit (type-check-of slot))
+          (bind (((:values cached-p slot-value) (slot-value-cached-p instance slot)))
+            (when cached-p
+              (check-slot-value-type instance slot slot-value #t))))))))
 
-(defgeneric after-instance-committed (instance transaction-event)
-  (:method (instance transaction-event)
-           (values)))
+(def generic after-instance-committed (transaction instance transaction-event)
+  (:method ((transaction transaction-mixin) (instance persistent-object) transaction-event)
+    (values)))
 
-(defmethod commit-transaction :around (database (transaction transaction-mixin))
-  (map-created-instances (rcurry #'before-committing-instance :created))
-  (map-modified-instances (rcurry #'before-committing-instance :modified))
-  (map-deleted-instances (rcurry #'before-committing-instance :deleted))
+(def method commit-transaction :around (database (transaction transaction-mixin))
+  (map-created-instances (lambda (instance)
+                           (before-committing-instance transaction instance :created)))
+  (map-modified-instances (lambda (instance)
+                            (before-committing-instance transaction instance :modified)))
+  (map-deleted-instances (lambda (instance)
+                           (before-committing-instance transaction instance :deleted)))
   (call-next-method)
-  (map-created-instances (rcurry #'after-instance-committed :created))
-  (map-modified-instances (rcurry #'after-instance-committed :modified))
-  (map-deleted-instances (rcurry #'after-instance-committed :deleted)))
+  (map-created-instances (lambda (instance)
+                           (after-instance-committed transaction instance :created)))
+  (map-modified-instances (lambda (instance)
+                            (after-instance-committed transaction instance :modified)))
+  (map-deleted-instances (lambda (instance)
+                           (after-instance-committed transaction instance :deleted))))
