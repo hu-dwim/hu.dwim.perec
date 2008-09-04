@@ -70,6 +70,17 @@
   (when (abstract-p class)
     (error "Cannot make instances of abstract class ~A" class)))
 
+(def method before-committing-instance ((transaction transaction-mixin) (instance persistent-object) transaction-event)
+  (bind ((class (class-of instance)))
+    (dolist (slot (persistent-effective-slots-of class))
+      (when (eq :on-commit (type-check-of slot))
+        (bind (((:values cached-p slot-value) (slot-value-cached-p instance slot)))
+          (when cached-p
+            (check-slot-value-type instance slot slot-value #t)))))))
+
+(def method after-instance-committed ((transaction transaction-mixin) (instance persistent-object) transaction-event)
+  (values))
+
 ;;;;;;;;;;;
 ;;; Utility
 
