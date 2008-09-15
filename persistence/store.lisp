@@ -36,7 +36,7 @@
   "Provides convenient access to the arguments in the debugger."
   (prog1-bind slot-value (funcall (the function (reader-of slot)) rdbms-values index)
     (when (eq +type-error-marker+ slot-value)
-      (error 'slot-type-error :instance instance :slot slot :expected-type (specified-type-of slot) :datum rdbms-values))))
+      (error 'slot-type-error :instance instance :slot slot :expected-type (specified-type-of slot) :datum (subseq rdbms-values index (+ index (length (columns-of slot))))))))
 
 (def (function o) restore-slot-set (instance slot)
   "Restores the non lazy list without local side effects from the database."
