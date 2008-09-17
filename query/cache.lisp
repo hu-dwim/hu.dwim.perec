@@ -29,7 +29,7 @@
           ;; TODO: the query is copied here because the caller can change it
           ;;       the change should remove the query from the cache instead
           (setf query (copy-query query))
-          (setf compiled-query (compute-as* (:kind computed-class::standalone) (eval (compile-query query))))
+          (setf compiled-query (compute-as* (:kind cc::standalone) (eval (compile-query query))))
           (setf (gethash (query-hash-key-for query) *compiled-query-cache*) compiled-query))
         (computed-state-value compiled-query))
       (progn
