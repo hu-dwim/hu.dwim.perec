@@ -595,7 +595,9 @@ value is equal, when they represent the NIL lisp value)."
            (cond
              ((and null-check-1 null-check-2)
               (sql-if (sql-or null-check-1 null-check-2)
-                      (sql-= null-tag-1 null-tag-2)
+                      (sql-if (sql-and null-check-1 null-check-2)
+                              (sql-= null-tag-1 null-tag-2)
+                              (sql-false-literal))
                       eq-check))
              (null-check-1
               (sql-and (sql-not null-check-1) eq-check))

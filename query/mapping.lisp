@@ -360,10 +360,11 @@
       
       (bind ((mapping (compute-mapping (canonical-type-for type)))
              (unit-types (remove 'unbound (unit-types-of mapping))))
-        (if unit-types
-             ; FIXME does not work for (or null h-unused ...)
-            (sql-literal :value (compute-type-tag (first unit-types)))
-            (sql-literal :value 0)))))
+        ;; FIXME does not work for (or null h-unused ...)
+        (cond
+          ((null unit-types) (sql-literal :value 0))
+          ((member 'null unit-types) (sql-literal :value (compute-type-tag 'null)))
+          (t (sql-literal :value (compute-type-tag (first unit-types))))))))
 
   (:method ((access slot-access))
     (bind ((type (persistent-type-of access))
