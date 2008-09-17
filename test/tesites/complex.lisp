@@ -137,7 +137,7 @@
          (error "Bug"))))))
 
 (defun default-value-for-slot (slot)
-  (bind (((:values slot-default-value has-default-p) (prc::default-value-for-type (prc::canonical-type-of slot)))
+  (bind (((slot-default-value . has-default-p) (prc::default-value-for-type-of slot))
          (default-value (if has-default-p slot-default-value +unbound-slot-marker+)))
     (if (and (typep slot 'prc::persistent-slot-definition-t)
              (prc::time-dependent-p slot))

@@ -243,7 +243,10 @@
     (compute-as (if (persistent-class-type-p* (canonical-type-of -self-))
                     :on-commit
                     :always))
-    :documentation "The type check option is inherited among direct slots according to the class precedence list with defaulting to :always. for primitive types and :on-commit for class types."))
+    :documentation "The type check option is inherited among direct slots according to the class precedence list with defaulting to :always. for primitive types and :on-commit for class types.")
+   (default-value-for-type
+       (compute-as (default-value-for-type (canonical-type-of -self-)))
+     :documentation "Computes the default value from the type of the slot. Returns the (DEFAULT-VALUE . HAS-DEFAULT-P) pair."))
   (:documentation "Class for persistent effective slot definitions."))
 
 (eval-always

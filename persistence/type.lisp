@@ -547,15 +547,15 @@
 
 (def function default-value-for-type (type)
   (aif (first (unit-subtypes-for type))
-       (values (bind ((expanded-type (substitute-type-arguments it nil)))
-                 (cond ((eq expanded-type 'null)
-                        nil)
-                       ((eq (first expanded-type) 'eql)
-                        (second expanded-type))
-                       (t
-                        (error "Unknown type ~A" type))))
-               #t)
-       (values nil #f)))
+       (cons (bind ((expanded-type (substitute-type-arguments it nil)))
+               (cond ((eq expanded-type 'null)
+                      nil)
+                     ((eq (first expanded-type) 'eql)
+                      (second expanded-type))
+                     (t
+                      (error "Unknown type ~A" type))))
+             #t)
+       (cons nil #f)))
 
 (def function primitive-type-p (type)
   "Accepts types such as boolean, integer, string, double, etc. which are directly mapped to RDBMS."

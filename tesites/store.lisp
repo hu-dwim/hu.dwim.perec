@@ -14,8 +14,7 @@
 (defmethod restore-slot ((t-class persistent-class-t) (t-instance t-object) (t-slot persistent-effective-slot-definition-t))
   (flet ((no-value-function (&optional validity-start validity-end)
            (declare (ignorable validity-start validity-end))
-           (bind ((slot-type (canonical-type-of t-slot))
-                  ((:values t-slot-default-value has-default-p) (default-value-for-type slot-type)))
+           (bind (((t-slot-default-value . has-default-p) (default-value-for-type-of t-slot)))
              (if has-default-p
                  t-slot-default-value
                  ;; There is no record for temporal slots before the time of creation.
@@ -70,7 +69,7 @@
   (bind ((h-slot (h-slot-of t-slot))
          (h-slot-name (slot-definition-name h-slot))
          (t-value-slot (t-value-slot-of t-class))
-         ((:values t-slot-default-value has-default-p) (default-value-for-type (slot-definition-type t-slot)))
+         ((t-slot-default-value . has-default-p) (default-value-for-type-of t-slot))
          (update-count))
 
     ;; do not store the default value of the slot in a transient instance except if temporal.
@@ -338,7 +337,7 @@
   (bind ((temporal-p (temporal-p t-association-end))
          (time-dependent-p (time-dependent-p t-association-end))
          (t-value (when temporal-p *t*))
-         ((:values t-slot-default-value has-default-p) (default-value-for-type (slot-definition-type t-association-end)))
+         ((t-slot-default-value . has-default-p) (default-value-for-type-of t-association-end))
          (default-value-p (and has-default-p (eq value t-slot-default-value)))
          (overlapping-instances (select-overlapping-h-associations
                                  t-association-end instance value validity-start validity-end
