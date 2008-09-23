@@ -40,6 +40,28 @@
 ;;;;   operator
 ;;;;   args
 
+;; define a ghost of the cl-walker ast class hierarchy so that each walked ast node has 'syntax-object as its superclass
+#.(iter (for node-class :in (cl-walker:collect-standard-walked-form-subclasses))
+        (for node-class-name = (class-name node-class))
+        (for local-name = (progn
+                            (shadow node-class-name :cl-perec)
+                            (intern (symbol-name node-class-name) :cl-perec)))
+        (assert (not (eq node-class-name local-name)))
+        (collect `(defclass ,local-name (syntax-object ,node-class-name)
+                    ())
+          :into class-definitions)
+        (collect (cons node-class-name local-name)
+          :into ast-node-type-mappings)
+        (finally
+         (return
+           `(progn
+              (defparameter *query-walker-ast-node-type-mapping* (alexandria:alist-hash-table ',ast-node-type-mappings :test 'eq))
+              ,@class-definitions))))
+
+(defmacro with-query-walker-configuration (&body body)
+  `(with-walker-configuration (:ast-node-type-mapping *query-walker-ast-node-type-mapping*)
+     ,@body))
+
 (defmacro define-syntax-node (name (&rest supers) slots)
   `(progn
      ;; syntax-node class
