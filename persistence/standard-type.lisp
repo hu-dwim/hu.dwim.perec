@@ -328,6 +328,7 @@
 (defmapping text (if (consp normalized-type)
                      (sql-character-varying-type :size (maximum-length-of (parse-type normalized-type)))
                      (sql-character-large-object-type))
+  ;; TODO do some sanity check for maximum-length when provided
   'identity-reader
   'identity-writer)
 
