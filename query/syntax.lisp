@@ -150,7 +150,6 @@ Be careful when using in different situations, because it modifies *readtable*."
 (defmethod make-load-form ((object syntax-object) &optional env)
   (make-load-form-saving-slots
    object
-   :slot-names (mapcar 'slot-definition-name (class-slots (class-of object)))
    :environment env))
 
 (defgeneric arg-of (slot-access)
@@ -254,21 +253,21 @@ Be careful when using in different situations, because it modifies *readtable*."
                `(,(if (volatilep syntax) 'volatile 'static) ,(call-next-method))
                (call-next-method)))
   (:method ((unparsed unparsed-form))
-           (form-of unparsed))
+    (form-of unparsed))
   (:method ((variable variable))
-           (name-of variable))
+    (name-of variable))
   (:method ((literal literal-value))
-           (if (self-evaluating-p (value-of literal))
-               (value-of literal)
-               `(quote ,(value-of literal))))
+    (if (self-evaluating-p (value-of literal))
+        (value-of literal)
+        `(quote ,(value-of literal))))
   (:method ((form compound-form))
-           (cons (operator-of form) (mapcar 'unparse-query-syntax (operands-of form))))
+    (cons (operator-of form) (mapcar 'unparse-query-syntax (operands-of form))))
   (:method ((pair cons)) ;; legacy
-            (rcons (unparse-query-syntax (car pair))
-                   (unparse-query-syntax (cdr pair))
-                   pair))
+    (rcons (unparse-query-syntax (car pair))
+           (unparse-query-syntax (cdr pair))
+           pair))
   (:method (object) ;; legacy
-           object))
+    object))
 
 (defun self-evaluating-p (val)
   (and (atom val)
