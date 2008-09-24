@@ -357,3 +357,8 @@
                      (find-package :cl-rdbms)
                      it))
          (make-symbol name-as-string))))
+
+(dolist (node-class (cl-walker:collect-standard-walked-form-subclasses))
+  (bind ((node-class-name (class-name node-class)))
+    (shadow node-class-name :cl-perec)
+    (intern (symbol-name node-class-name) :cl-perec)))
