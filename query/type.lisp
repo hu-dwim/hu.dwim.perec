@@ -228,6 +228,7 @@
                 (when (has-default-type-p operand)
                   (setf (persistent-type-of operand)
                         (if (or (lexical-variable-p operand)
+                                (dynamic-variable-p operand)
                                 (and (literal-value-p operand)
                                      (null (value-of operand))
                                      (not (typep nil type))))

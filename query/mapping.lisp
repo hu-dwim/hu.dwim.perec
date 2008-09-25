@@ -38,6 +38,9 @@
   (:method ((variable lexical-variable))
     (emit-sql-literal variable))
 
+  (:method ((variable dynamic-variable))
+    (emit-sql-literal variable))
+
   (:method ((variable query-variable))
     (sql-id-column-reference-for variable))
 
@@ -311,6 +314,17 @@
         (t
          nil))))
 
+  (:method ((variable dynamic-variable))
+    (bind ((type (persistent-type-of variable)))
+      (debug-only (assert (not (contains-syntax-p type))))
+      (cond
+        ((eq type +unknown-type+)
+         (sql-map-failed))
+        ((maybe-null-subtype-p type)
+         (sql-is-null (syntax-to-sql variable))) ; FIXME
+        (t
+         nil))))
+
   (:method ((access slot-access))
     (bind ((type (persistent-type-of access))
            (slot (slot-of access))
@@ -353,6 +367,20 @@
            (sql-literal :value 0))))))
 
   (:method ((variable lexical-variable))
+    (bind ((type (persistent-type-of variable)))
+      (debug-only (assert (not (contains-syntax-p type))))
+      (when (eq type +unknown-type+)
+        (sql-map-failed))
+      
+      (bind ((mapping (compute-mapping (canonical-type-for type)))
+             (unit-types (remove 'unbound (unit-types-of mapping))))
+        ;; FIXME does not work for (or null h-unused ...)
+        (cond
+          ((null unit-types) (sql-literal :value 0))
+          ((member 'null unit-types) (sql-literal :value (compute-type-tag 'null)))
+          (t (sql-literal :value (compute-type-tag (first unit-types))))))))
+
+  (:method ((variable dynamic-variable))
     (bind ((type (persistent-type-of variable)))
       (debug-only (assert (not (contains-syntax-p type))))
       (when (eq type +unknown-type+)
