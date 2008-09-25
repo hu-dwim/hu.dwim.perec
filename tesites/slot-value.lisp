@@ -135,7 +135,11 @@
     (assert-instance-access instance persistent)
     (if persistent
         (store-slot class instance slot new-value)
-        (assert (not (underlying-slot-boundp-using-class class instance slot))))
+        (assert (or (not (slot-value-cached-p instance slot)) ; FIXME? when the instance created with
+                                                              ; allocate-instance (importing), then
+                                                              ; the slots contain +not-cached-slot-marker+
+                                                              ; initially
+                    (not (underlying-slot-boundp-using-class class instance slot)))))
     (when (or (not persistent)
               (and *cache-slot-values*
                    (cache-p slot)))
