@@ -66,6 +66,7 @@
 
   (:method ((class persistent-class) (instance persistent-object) (slot persistent-effective-slot-definition))
     (values
+     ;; TODO this set-type-p* calls subtypep, which is expensive. search tnis file for other occurrances, too.
      (if (set-type-p* (canonical-type-of slot))
          (if *lazy-slot-value-collections*
              (make-instance 'persistent-slot-set-container :instance instance :slot slot)
@@ -229,6 +230,7 @@
   (:documentation "Stores a single slot without local side effects into the database.")
 
   (:method ((class persistent-class) (instance persistent-object) (slot persistent-effective-slot-definition) value)
+    ;; TODO this set-type-p* calls subtypep, which is expensive. search tnis file for other occurrances, too.
     (if (set-type-p* (canonical-type-of slot))
         (store-slot-set instance slot value)
         (progn
