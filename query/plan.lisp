@@ -613,7 +613,6 @@
          (bind ((sql-query input)
                 (variable (variable-of update))
                 (table->column-value-pairs (column-value-pairs-of update)))
-
            (cond
              ((null table->column-value-pairs)
               ;; some place is not a slot access => execute in lisp
@@ -903,7 +902,9 @@ If true then all query variables must be under some aggregate call."
               (for lisp-value in lisp-values)
               (for table = (table-of (slot-of slot-access)))
               (for columns = (sql-column-references-for (slot-of slot-access) nil))
-              (for sql-values = (transform-to-sql* lisp-value))
+              (for sql-values = (reverse (transform-to-sql* lisp-value))) ; FIXME tag is the first column
+                                                                          ; but transform-to-sql* returns
+                                                                          ; the tag as the second value
               (if (= (length columns) (length sql-values))
                   (appendf (gethash table result) (mapcar #'list columns sql-values))
                   (return-from compute-columns-and-sql-values)))))))

@@ -601,78 +601,20 @@
 
 ;;; TODO ensure-exported
 (defun update-h-instance-slot-value (t-class t-instance t-slot value &optional validity-start validity-end)
+
   (bind ((h-class (h-class-of t-class))
-         (value-slot (h-slot-of t-slot))
-         (value-columns (columns-of value-slot))
-         (parent-id-column (parent-id-column-of t-class))
-         (rdbms-values (make-array (length value-columns)))
-         validity-start-column-name
-         validity-end-column-name
-         t-value-column-name
-         validity-start-literal
-         validity-end-literal
-         t-literal
-         tables
-         where-clause
-         count)
-
-    (pushnew (name-of (table-of value-slot)) tables)
-    (pushnew (name-of (table-of (parent-slot-of t-class))) tables)
-
-    (when (subtypep h-class 'time-dependent-object)
-      (bind ((validity-start-column (validity-start-column-of t-class))
-             (validity-end-column (validity-end-column-of t-class)))
-        (pushnew (name-of (table-of (validity-start-slot-of t-class))) tables)
-        (pushnew (name-of (table-of (validity-end-slot-of t-class))) tables)
-        (setf validity-start-column-name (rdbms::name-of validity-start-column)
-              validity-end-column-name (rdbms::name-of validity-end-column)
-              validity-start-literal (sql-literal :value validity-start :type (rdbms::type-of validity-start-column))
-              validity-end-literal (sql-literal :value validity-end :type (rdbms::type-of validity-end-column)))))
-
-    (when (subtypep h-class 'temporal-object)
-      (bind ((t-value-column (t-value-column-of t-class)))
-        (pushnew (name-of (table-of (t-value-slot-of t-class))) tables)
-        (setf t-value-column-name (rdbms::name-of t-value-column)
-              t-literal (sql-literal :value *t* :type (rdbms::type-of t-value-column)))))
-
-    (store-slot-value nil value-slot value rdbms-values 0)
-    (setf where-clause
-          (apply 'sql-and
-                 (id-column-matcher-where-clause t-instance (rdbms::name-of parent-id-column))
-                 (append
-                  (when (and validity-start-column-name validity-end-column-name)
-                    (list
-                     (sql-= (sql-identifier :name validity-start-column-name) validity-start-literal)
-                     (sql-= (sql-identifier :name validity-end-column-name) validity-end-literal)))
-                  (when t-value-column-name
-                    (list
-                     (sql-= (sql-identifier :name t-value-column-name) t-literal))))))
-
-    (setf count
-          (if (length= 1 tables)
-              (update-records (name-of (table-of value-slot))
-                              value-columns
-                              rdbms-values
-                              where-clause)
-              (update-records (name-of (table-of value-slot))
-                              value-columns
-                              rdbms-values
-                              (sql-in (sql-identifier :name +oid-column-name+)
-                                      (sql-subquery
-                                        :query
-                                        (sql-select
-                                          :columns (list +oid-column-name+)
-                                          :tables (list
-                                                   (reduce #L(sql-joined-table
-                                                               :kind :inner
-                                                               :left !1
-                                                               :right !2
-                                                               :using +oid-column-names+)
-                                                           (mapcar
-                                                            #L(sql-identifier :name !1)
-                                                            (remove (name-of (table-of value-slot))
-                                                                    tables))))
-                                          :where where-clause))))))
+         (reader (reader-name-of (h-slot-of t-slot)))
+         (query (make-query
+                 `(update (h-instance ,h-class)
+                    (set (,reader h-instance) value)
+                    (where (and (eq (t-object-of h-instance) t-instance)
+                                ,@(when (subtypep h-class 'temporal-object)
+                                        (list `(eq (t-value-of h-instance) t-value)))
+                                ,@(when (subtypep h-class 'time-dependent-object)
+                                        (list `(and (eq (validity-start-of h-instance) validity-start)
+                                                    (eq (validity-end-of h-instance) validity-end)))))))
+                 '(t-instance value t-value validity-start validity-end)))
+         (count (execute-query query t-instance value *t* validity-start validity-end)))
     (assert (<= count 1) nil "Inconsistent database")
     count))
 
