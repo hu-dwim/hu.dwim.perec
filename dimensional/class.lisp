@@ -50,11 +50,11 @@
   (first (h-columns-of dimension)))
 
 (def function h-begin-column-of (class dimension)
-  (assert (and (orderedp dimension) (not (inheritp dimension))))
+  (assert (and (ordered-p dimension) (null (inherit-of dimension))))
   (first (h-columns-of class dimension)))
 
 (def function h-end-column-of (class dimension)
-  (assert (and (orderedp dimension) (not (inheritp dimension))))
+  (assert (and (ordered-p dimension) (null (inherit-of dimension))))
   (second (h-columns-of class dimension)))
 
 (defcclass* persistent-slot-definition-d (persistent-slot-definition)
@@ -72,7 +72,7 @@
     :type persistent-effective-slot-definition)))
 
 (eval-always
-  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:dimensions)))
+  (pushnew :dimensions *allowed-slot-definition-properties*))
 
 ;;;;;;;;;;;;;
 ;;; defpclass
@@ -139,7 +139,9 @@
   nil)
 
 (def function compute-dimensional-h-slots-of (class)
-  ;TODO)
+  (declare (ignore class))
+  ;TODO
+  )
 
 ;;;;;;;;;;;
 ;;; Utility
