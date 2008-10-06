@@ -33,4 +33,5 @@
 
 (defun setup-readtable ()
   (enable-sharp-boolean-syntax)
-  (enable-sharp-l-syntax))
+  (enable-sharp-l-syntax)
+  (enable-lambda-with-bang-args-syntax :start-character #\[ :end-character #\]))
