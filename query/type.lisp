@@ -185,10 +185,19 @@
 ;;; Type inference
 ;;;
 
-(defun infer-types (query)
+(defun infer-types (query) ; TODO clean up
   "Annotates types to the SYNTAX nodes of the query."
   (process-toplevel-typep-asserts query)
   (mapc-query #L(%infer-types !1 query) query)
+  (when (eq (action-of query) :update)
+    (iter (for (place value) :on (action-args-of query) :by 'cddr)
+          (cond
+            ((and (not (has-default-type-p place))
+                  (has-default-type-p value))
+             (setf (persistent-type-of value) (persistent-type-of place)))
+            ((and (not (has-default-type-p value))
+                  (has-default-type-p place))
+             (setf (persistent-type-of place) (persistent-type-of value))))))
   (mapc-query #'check-types query)
   (when (offset-of query)
     (setf (persistent-type-of (offset-of query)) 'integer))
