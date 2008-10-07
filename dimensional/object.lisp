@@ -12,6 +12,5 @@
   (:abstract #t))
 
 (defassociation*
-  ((:class h-object :slot d-object :type d-object)
-   (:class d-object :slot h-objects :type (set h-object))))
-
+  ((:class h-object :slot d-instance :type d-object)
+   (:class d-object :slot h-instances :type (set h-object))))

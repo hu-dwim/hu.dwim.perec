@@ -6,14 +6,17 @@
 
 (in-package :cl-perec)
 
-(defmethod validate-superclass ((class persistent-class) (superclass persistent-class-d))
+;;;;;;;;;;;;;;;
+;;; MOP methods 
+
+(def method validate-superclass ((class persistent-class) (superclass persistent-class-d))
   t)
 
-(defmethod validate-superclass ((class persistent-class-d) (superclass persistent-class))
+(def method validate-superclass ((class persistent-class-d) (superclass persistent-class))
   t)
 
-(defmethod direct-slot-definition-class ((class persistent-class-d)
-                                         &key instance persistent association dimension &allow-other-keys)
+(def method direct-slot-definition-class ((class persistent-class-d)
+                                         &key instance persistent association dimensions &allow-other-keys)
   (cond (instance
          (class-of instance))
         ((and persistent
@@ -23,12 +26,12 @@
         (t
          (call-next-method))))
 
-(defmethod direct-slot-definition-class ((class persistent-association-d) &key dimensions &allow-other-keys)
+(def method direct-slot-definition-class ((class persistent-association-d) &key dimensions &allow-other-keys)
   (if dimensions
       (find-class 'persistent-association-end-direct-slot-definition-d)
       (call-next-method)))
 
-(defmethod effective-slot-definition-class ((class persistent-class-d)
+(def method effective-slot-definition-class ((class persistent-class-d)
                                             &key instance persistent association dimensions &allow-other-keys)
   (cond (instance
          (class-of instance))
@@ -39,35 +42,35 @@
         (t
          (call-next-method))))
 
-(defmethod effective-slot-definition-class ((class persistent-association-d) &key dimensions &allow-other-keys)
+(def method effective-slot-definition-class ((class persistent-association-d) &key dimensions &allow-other-keys)
   (if dimensions
       (find-class 'persistent-association-end-effective-slot-definition-d)
       (call-next-method)))
 
-(defmethod compute-persistent-effective-slot-definition-option ((class persistent-class-d)
-                                                                (direct-slot persistent-direct-slot-definition-d)
-                                                                slot-option-name
-                                                                direct-slot-definitions)
+(def method compute-persistent-effective-slot-definition-option ((class persistent-class-d) (direct-slot persistent-direct-slot-definition-d)
+                                                                 slot-option-name
+                                                                 direct-slot-definitions)
   (if (eq slot-option-name 'dimensions)
-      (merge-dimensions [second (slot-initarg-and-value !1 slot-option-name)] direct-slot-definitions)
+      (list :dimensions (merge-dimensions #'dimensions-of direct-slot-definitions))
       (call-next-method)))
 
-(defmethod compute-persistent-effective-slot-definition-option ((class persistent-class)
-                                                                (direct-slot persistent-association-end-direct-slot-definition-d)
-                                                                slot-option-name
-                                                                direct-slot-definitions)
-  (if (member slot-option-name '(temporal time-dependent))
-      (merge-dimensions [second (slot-initarg-and-value !1 slot-option-name)] direct-slot-definitions)
-      (call-next-method)))
-
-(defmethod initialize-instance :after ((instance persistent-effective-slot-definition-d) &key &allow-other-keys)
+(def method initialize-instance :after ((instance persistent-effective-slot-definition-d) &key &allow-other-keys)
   (assert (dimensions-of instance)))
 
-(defmethod persistent-class-default-superclass ((class persistent-class-d))
-  (find-class 'd-object nil))
+(def method persistent-class-default-superclasses ((class persistent-class-d) class-name)
+  (unless (eq class-name 'd-object)
+    (list (find-class 'd-object))))
 
 (def function merge-dimensions (dimensions-list)
-  (bind ((dimensions (find-if identity dimensions-list)))
+  (bind ((dimensions (first dimensions-list)))
     (assert (every [or (null !1) (equal dimensions !1)] dimensions-list)
-            () "Dimensions cannot be overridden. Received: ~S" dimensions-list)
+            nil "Dimensions cannot be overridden. Received: ~S" dimensions-list)
     dimensions))
+
+(def method persistent-class-default-superclasses ((class persistent-class-h) h-class-name)
+  (bind ((d-class-name (h-class-name->d-class-name h-class-name)))
+    (append (mapcar (lambda (d-class-name)
+                      (find-class (d-class-name->h-class-name d-class-name)))
+                    (remove-if-not (of-type 'persistent-class-d) 
+                                   (class-direct-superclasses (find-class d-class-name))))
+            (call-next-method))))

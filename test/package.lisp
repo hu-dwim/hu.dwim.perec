@@ -43,7 +43,7 @@
                                 canonical-type-for normalized-type-for mapped-type-for 
                                 first-moment-for-partial-timestamp last-moment-for-partial-timestamp
                                 less-or-equal-p greater-or-equal-p
-                                validity-start validity-end t-value unbound-slot-t
+                                validity-begin validity-end t-value unbound-slot-t
                                 find-slot collect-if concatenate-symbol
                                 unbound-subtype-p null-subtype-p set-type-p set-type-p*
                                 invalidate-cached-instance invalidate-all-cached-instances persistent

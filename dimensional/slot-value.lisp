@@ -5,7 +5,3 @@
 ;;; See LICENCE for details.
 
 (in-package :cl-perec)
-
-(defclass* transaction-t-mixin ()
-  ((t-value nil :initarg :t)))
-

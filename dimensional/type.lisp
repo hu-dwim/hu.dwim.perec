@@ -6,12 +6,15 @@
 
 (in-package :cl-perec)
 
+;;;;;;
+;;; Special slot value marker constant
+
 (eval-always
   (def load-time-constant +h-unused-slot-marker+
       (progn
         (defstruct h-unused-slot-marker
           "This structure is used to mark unused slot values for persistent slots. The type for that marker must be a subtype of t and cannot be a subtype of any other type.")
-        (defmethod make-load-form ((self h-unused-slot-marker) &optional environment)
+        (def method make-load-form ((self h-unused-slot-marker) &optional environment)
           (declare (ignore environment))
           '%%%+h-unused-slot-marker+)
         (make-h-unused-slot-marker))))
@@ -33,7 +36,7 @@
   'h-unused-reader
   'h-unused-writer)
 
-(defmethod compute-type-tag ((type (eql 'h-unused)))
+(def method compute-type-tag ((type (eql 'h-unused)))
   3)
 
 (eval-always

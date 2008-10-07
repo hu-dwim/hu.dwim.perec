@@ -9,9 +9,9 @@
 ;;;;;;;;;;;;;;;;;;;;;
 ;;; Partial timestamp
 
-(defsuite* (test/tesites/partial-timestamp :in test/tesites))
+(defsuite* (test/dimensional/partial-timestamp :in test/dimensional))
 
-(deftest test/tesites/partial-timestamp/first-moment ()
+(def test test/dimensional/partial-timestamp/first-moment ()
   (iter (for (expected actual)
           :on (list "2006-01-01T00:00:00Z" (first-moment-for-partial-timestamp "2006")
                     "2006-06-01T00:00:00Z" (first-moment-for-partial-timestamp "2006-06")
@@ -22,7 +22,7 @@
           :by #'cddr)
         (is (timestamp= (parse-timestring expected) actual))))
 
-(deftest test/tesites/partial-timestamp/last-moment ()
+(def test test/dimensional/partial-timestamp/last-moment ()
   (iter (for (expected actual)
           :on (list "2007-01-01T00:00:00Z" (last-moment-for-partial-timestamp "2006")
                     "2006-07-01T00:00:00Z" (last-moment-for-partial-timestamp "2006-06")
@@ -34,7 +34,7 @@
           :by #'cddr)
         (is (timestamp= (parse-timestring expected) actual))))
 
-(deftest test/tesites/partial-timestamp/overflow ()
+(def test test/dimensional/partial-timestamp/overflow ()
   (iter (for (expected actual)
           :on (list "2007-01-01T00:00:00Z" (last-moment-for-partial-timestamp "2006-12")
                     "2004-03-01T00:00:00Z" (last-moment-for-partial-timestamp "2004-02-29")

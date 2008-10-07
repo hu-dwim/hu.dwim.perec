@@ -9,36 +9,36 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Values having validity
 
-(defsuite* (test/tesites/values-having-validity :in test/tesites))
+(defsuite* (test/dimensional/values-having-validity :in test/dimensional))
 
-(defun make-values-having-validity* (values-and-validities)
+(def function make-values-having-validity* (values-and-validities)
   (make-values-having-validity
    (mapcar #'first values-and-validities)
    (mapcar #L(parse-timestring (second !1)) values-and-validities)
    (mapcar #L(parse-timestring (third !1)) values-and-validities)))
 
-(deftest test/tesites/values-having-validity/collect/single-value ()
+(def test test/dimensional/values-having-validity/collect/single-value ()
   (is (values-having-validity=
        (make-values-having-validity* '((1000 "2007-01-01TZ" "2007-01-02TZ")))
        (collect-values-having-validity
         `((1000 ,(parse-timestring "2007-01-01TZ") ,(parse-timestring "2007-01-02TZ")))
         'first 'second 'third
-        (lambda (validity-start validity-end)
-          (error "No value for validity range: ~A - ~A" validity-start validity-end))
+        (lambda (validity-begin validity-end)
+          (error "No value for validity range: ~A - ~A" validity-begin validity-end))
         (parse-timestring "2007-01-01TZ") (parse-timestring "2007-01-02TZ")))))
 
-(deftest test/tesites/values-having-validity/collect/no-value ()
+(def test test/dimensional/values-having-validity/collect/no-value ()
   (is (values-having-validity=
-       (make-single-values-having-validity 1 (parse-timestring "2007-01-01TZ") (parse-timestring "2007-01-02TZ"))
+       (make-single-d-value 1 (parse-timestring "2007-01-01TZ") (parse-timestring "2007-01-02TZ"))
        (collect-values-having-validity
         nil
         'first 'second 'third
-        (lambda (validity-start validity-end)
-          (declare (ignore validity-start validity-end))
+        (lambda (validity-begin validity-end)
+          (declare (ignore validity-begin validity-end))
           1)
         (parse-timestring "2007-01-01TZ") (parse-timestring "2007-01-02TZ")))))
 
-(deftest test/tesites/values-having-validity/collect/multiple-value ()
+(def test test/dimensional/values-having-validity/collect/multiple-value ()
   (is (values-having-validity=
        (make-values-having-validity*
         '((2000 "2007-01-01TZ" "2007-01-10TZ")
@@ -50,58 +50,58 @@
           (2000 ,(parse-timestring "2007-01-01TZ") ,(parse-timestring "2007-01-15TZ"))
           (3000 ,(parse-timestring "2007-01-05TZ") ,(parse-timestring "2007-01-30TZ")))
         'first 'second 'third
-        (lambda (validity-start validity-end)
-          (declare (ignore validity-start validity-end))
+        (lambda (validity-begin validity-end)
+          (declare (ignore validity-begin validity-end))
           nil)
         (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ")))))
 
-(deftest test/tesites/values-having-validity/extract ()
+(def test test/dimensional/values-having-validity/extract ()
   (bind ((values-having-validity (make-values-having-validity*
                                   `((1000 "2006-01-01TZ" "2007-01-01TZ")
                                     (2000 "2007-01-01TZ" "2008-01-01TZ")
                                     (3000 "2008-01-01TZ" "2009-01-01TZ")))))
     
-    (iter (for (validity-start validity-end value) :in-values-having-validity
-               (values-having-validity-value values-having-validity
-                                             (parse-timestring "2006-06-06TZ")
-                                             (parse-timestring "2008-07-07TZ")))
+    (iter (for (validity-begin validity-end value) :in-values-having-validity
+               (value-at-coordinates values-having-validity
+                                     (parse-timestring "2006-06-06TZ")
+                                     (parse-timestring "2008-07-07TZ")))
           (for index from 0)
           (ecase index
             (0 (is (= value 1000))
-               (is (timestamp= validity-start (parse-timestring "2006-06-06TZ")))
+               (is (timestamp= validity-begin (parse-timestring "2006-06-06TZ")))
                (is (timestamp= validity-end (parse-timestring "2007-01-01TZ"))))
             (1 (is (= value 2000))
-               (is (timestamp= validity-start (parse-timestring "2007-01-01TZ")))
+               (is (timestamp= validity-begin (parse-timestring "2007-01-01TZ")))
                (is (timestamp= validity-end (parse-timestring "2008-01-01TZ"))))
             (2 (is (= value 3000))
-               (is (timestamp= validity-start (parse-timestring "2008-01-01TZ")))
+               (is (timestamp= validity-begin (parse-timestring "2008-01-01TZ")))
                (is (timestamp= validity-end (parse-timestring "2008-07-07TZ"))))))
 
-    (iter (for (validity-start validity-end value) :in-values-having-validity
-               (values-having-validity-value values-having-validity
-                                             (parse-timestring "2006-06-06TZ")
-                                             (parse-timestring "2008-01-01TZ")))
+    (iter (for (validity-begin validity-end value) :in-values-having-validity
+               (value-at-coordinates values-having-validity
+                                     (parse-timestring "2006-06-06TZ")
+                                     (parse-timestring "2008-01-01TZ")))
           (for index from 0)
           (ecase index
             (0 (is (= value 1000))
-               (is (timestamp= validity-start (parse-timestring "2006-06-06TZ")))
+               (is (timestamp= validity-begin (parse-timestring "2006-06-06TZ")))
                (is (timestamp= validity-end (parse-timestring "2007-01-01TZ"))))
             (1 (is (= value 2000))
-               (is (timestamp= validity-start (parse-timestring "2007-01-01TZ")))
+               (is (timestamp= validity-begin (parse-timestring "2007-01-01TZ")))
                (is (timestamp= validity-end (parse-timestring "2008-01-01TZ"))))))))
 
 
 
-(deftest test/tesites/values-having-validity/setf ()
+(def test test/dimensional/values-having-validity/setf ()
   (labels ((test-value () (make-values-having-validity*
                            '((1000 "2006-01-01TZ" "2007-01-01TZ")
                              (2000 "2007-01-01TZ" "2008-01-01TZ")
                              (3000 "2008-01-01TZ" "2009-01-01TZ"))))
-           (set-on-test-value (value validity-start validity-end)
+           (set-on-test-value (value validity-begin validity-end)
              (aprog1 (test-value)
-               (setf (values-having-validity-value it
-                                                   (parse-timestring validity-start)
-                                                   (parse-timestring validity-end))
+               (setf (value-at-coordinates it
+                                           (parse-timestring validity-begin)
+                                           (parse-timestring validity-end))
                      value))))
     (is (values-having-validity=
          (set-on-test-value 4000 "2005-01-01TZ" "2010-01-01TZ")
@@ -129,7 +129,7 @@
                                          (2000 "2007-01-01TZ" "2008-01-01TZ")
                                          (3000 "2008-01-01TZ" "2009-01-01TZ")))))))
 
-(deftest test/tesites/values-having-validity/collect ()
+(def test test/dimensional/values-having-validity/collect ()
   (is (values-having-validity=
        (iter (for value in '(1 2 3))
              (for start in '("2005-01-01TZ" "2006-01-01TZ" "2007-01-01TZ"))
@@ -167,7 +167,7 @@
        (make-values-having-validity* '((1 "2005-01-01TZ" "2006-01-01TZ")
                                        (3 "2007-01-01TZ" "2008-01-01TZ"))))))
 
-(deftest test/tesites/values-having-validity/iterate-1 ()
+(def test test/dimensional/values-having-validity/iterate-1 ()
   (is (values-having-validity=
        (iter (for (s e (v1 :skip-if-missing) (v2 :skip-if-missing))
                   :in-values-having-validity ((make-values-having-validity*
@@ -185,7 +185,7 @@
                                        (55 "2007-01-01TZ" "2007-06-01TZ")
                                        (65 "2007-06-01TZ" "2008-01-01TZ"))))))
 
-(deftest test/tesites/values-having-validity/iterate-2 ()
+(def test test/dimensional/values-having-validity/iterate-2 ()
   (is (values-having-validity=
        (iter (for (s e (v1 :default 1) (v2 :default 1))
                   :in-values-having-validity ((make-values-having-validity*
@@ -205,7 +205,7 @@
                                        (65 "2007-06-01TZ" "2008-01-01TZ")
                                        (13 "2008-01-01TZ" "2008-06-01TZ"))))))
 
-(deftest test/tesites/values-having-validity/iterate-3 ()
+(def test test/dimensional/values-having-validity/iterate-3 ()
   (signals error
     (iter (for (s e v1 v2)
                :in-values-having-validity ((make-values-having-validity*
@@ -222,9 +222,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Children having validity
 
-(defsuite* (test/tesites/children-having-validity :in test/tesites))
+(defsuite* (test/dimensional/children-having-validity :in test/dimensional))
 
-(deftest test/tesites/children-having-validity/collect/single-value ()
+(def test test/dimensional/children-having-validity/collect/single-value ()
   (is (values-having-validity=
        (make-values-having-validity*
         '(((1000) "2007-01-01TZ" "2008-01-01TZ")))
@@ -240,7 +240,7 @@
           (elt e 3))
         (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ")))))
 
-(deftest test/tesites/children-having-validity/collect/no-value ()
+(def test test/dimensional/children-having-validity/collect/no-value ()
   (is (values-having-validity=
        (make-values-having-validity*
         '((nil "2006-01-01TZ" "2008-01-01TZ")))
@@ -256,7 +256,7 @@
           (elt e 3))
         (parse-timestring "2006-01-01TZ") (parse-timestring "2008-01-01TZ")))))
 
-(deftest test/tesites/children-having-validity/collect/multiple-value ()
+(def test test/dimensional/children-having-validity/collect/multiple-value ()
   (is (values-having-validity=
        (make-values-having-validity*
         `((() "2006-01-01TZ" "2007-01-01TZ")

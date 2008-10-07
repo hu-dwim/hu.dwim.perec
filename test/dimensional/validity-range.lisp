@@ -1,0 +1,185 @@
+;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;;
+;;; Copyright (c) 2006 by the authors.
+;;;
+;;; See LICENCE for details.
+
+(in-package :cl-perec-test)
+
+;;;;;;;;;;;;;;;;;;
+;;; Time dependent
+
+(def special-variable *validity-dependent-class-name*)
+
+(defsuite* (test/dimensional/validity-dependent :in test/dimensional))
+
+(defpclass* validity-dependent-unbound-test ()
+  ((population :type (or unbound integer-32) :dimensions (validity))))
+
+(defpclass* validity-dependent-null-test ()
+  ((population :type (or null integer-32) :dimensions (validity))))
+
+(def macro with-validity-dependent-test-classes (&body forms)
+  (with-unique-names (body)
+    `(flet ((,body ()
+              ,@forms))
+       (bind ((*validity-dependent-class-name* 'validity-dependent-unbound-test))
+         (,body))
+       (bind ((*validity-dependent-class-name* 'validity-dependent-null-test))
+         (,body)))))
+
+(def test test/dimensional/validity-dependent/table ()
+  (with-validity-dependent-test-classes
+    (ensure-finalized (find-class *validity-dependent-class-name*))
+    (is (null (columns-of (find-slot *validity-dependent-class-name* 'population))))))
+
+(def test test/dimensional/validity-dependent/initial-value/unbound/1 ()
+  (with-transaction
+    (signals unbound-slot-d (population-of (make-instance 'validity-dependent-unbound-test)))))
+
+(def test test/dimensional/validity-dependent/initial-value/unbound/2 ()
+  (with-transaction
+    (bind ((instance (make-instance 'validity-dependent-unbound-test)))
+      (with-validity-to "2006"
+        (setf (population-of instance) 1000))
+      (with-validity-from "2008"
+        (setf (population-of instance) 2000))
+      (with-validity "2007"
+        (signals unbound-slot-d (population-of instance)))
+      (with-validity-range "2006" "2007"
+        (signals unbound-slot-d (population-of instance)))
+      (with-validity-range "2007" "2008"
+        (signals unbound-slot-d (population-of instance))))))
+
+(def test test/dimensional/validity-dependent/initial-value/null/1 ()
+  (with-transaction
+    (is (null (single-d-value
+               (population-of (make-instance 'validity-dependent-null-test)))))))
+
+(def test test/dimensional/validity-dependent/initial-value/null/2 ()
+  (with-transaction
+    (bind ((instance (make-instance 'validity-dependent-null-test)))
+      (with-validity-to "2006"
+        (setf (population-of instance) 1000))
+      (with-validity-from "2008"
+        (setf (population-of instance) 2000))
+      (with-validity "2007"
+        (is (null (single-d-value (population-of instance)))))
+      (with-validity-range "2006" "2007"
+        (is (values-having-validity=
+             (make-values-having-validity (list 1000 nil)
+                                          (list (parse-timestring "2006-01-01TZ") (parse-timestring "2007-01-01TZ"))
+                                          (list (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ")))
+             (population-of instance))))
+      (with-validity-range "2007" "2008"
+        (is (values-having-validity=
+             (make-values-having-validity (list nil 2000)
+                                          (list (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ"))
+                                          (list (parse-timestring "2008-01-01TZ") (parse-timestring "2009-01-01TZ")))
+             (population-of instance)))))))
+
+(def test test/dimensional/validity-dependent/initial-value/integer/1 ()
+  (with-validity-dependent-test-classes
+    (with-validity "2007-01-01"
+      (with-one-and-two-transactions
+          (make-instance *validity-dependent-class-name* :population 1000)
+        (is (= 1000 (single-d-value (population-of -instance-))))))))
+
+(def test test/dimensional/validity-dependent/store-value/1 ()
+  (with-validity-dependent-test-classes
+    (with-validity "2007-01-01"
+      (with-one-and-two-transactions
+          (bind ((instance (make-instance *validity-dependent-class-name*)))
+            (setf (population-of instance) 1000)
+            instance)
+        (is (= 1000 (single-d-value (population-of -instance-))))))))
+
+(def test test/dimensional/validity-dependent/store-value/2 ()
+  (with-validity-dependent-test-classes
+    (with-validity "2007-01-01"
+      (with-one-and-two-transactions
+          (bind ((instance (make-instance *validity-dependent-class-name*)))
+            (setf (population-of instance) 1000)
+            (is (= (update-counter-of (command-counter-of *transaction*)) 1))
+            (is (= (insert-counter-of (command-counter-of *transaction*)) (+ 1 3)))
+            instance)
+        (let ((update-counter (update-counter-of (command-counter-of *transaction*)))
+              (insert-counter (insert-counter-of (command-counter-of *transaction*))))
+          (setf (population-of -instance-) 1000)
+          (is (= (update-counter-of (command-counter-of *transaction*)) (1+ update-counter)))
+          (is (= (insert-counter-of (command-counter-of *transaction*)) insert-counter)))))))
+
+(def test test/dimensional/validity-dependent/store-value/3 ()
+  (with-validity-dependent-test-classes
+    (with-one-and-two-transactions
+        (bind ((instance (make-instance *validity-dependent-class-name*)))
+          (with-validity "2007"
+            (setf (population-of instance) 1000))
+          instance)
+      (with-validity "2007-07"
+        (setf (population-of -instance-) 2000))
+      (with-validity "2007-07"
+        (is (= 2000 (single-d-value (population-of -instance-)))))
+      (with-validity "2007-07-01"
+        (is (= 2000 (single-d-value (population-of -instance-)))))
+      (with-validity "2007-06"
+        (is (= 1000 (single-d-value (population-of -instance-)))))
+      (with-validity "2007-08"
+        (is (= 1000 (single-d-value (population-of -instance-))))))))
+
+(def test test/dimensional/validity-dependent/values-having-validity/1 ()
+  (with-one-and-two-transactions
+      (bind ((instance (make-instance 'validity-dependent-unbound-test)))
+        (with-validity "2006"
+          (setf (population-of instance) 2006))
+        instance)
+    (with-validity "2007"
+      (setf (population-of -instance-) 2007))
+    (with-validity-range "2006" "2007"
+      (iter (for index :from 0)
+            (for (validity-begin validity-end value) :in-values-having-validity (population-of -instance-))
+            (ecase index
+              (0 (is (= 2006 value))
+                 (is (timestamp= (parse-datestring "2006-01-01") validity-begin))
+                 (is (timestamp= (parse-datestring "2007-01-01") validity-end)))
+              (1 (is (= 2007 value))
+                 (is (timestamp= (parse-datestring "2007-01-01") validity-begin))
+                 (is (timestamp= (parse-datestring "2008-01-01") validity-end))))))))
+
+(defpclass* validity-dependent-complex-test ()
+  ((slot :type (or null integer-32))
+   (slot-1 :type (or null integer-32) :dimensions (validity))
+   (slot-2 :type (or null integer-32) :dimensions (validity))))
+
+(def test test/dimensional/validity-dependent/complex/same-validity ()
+  (with-one-and-two-transactions
+      (with-validity "2007"
+        (bind ((instance
+                (make-instance 'validity-dependent-complex-test :slot 0 :slot-1 1000)))
+          (setf (slot-2-of instance) 2000)
+          instance))
+    (with-validity "2007"
+      (is (= 0 (slot-of -instance-)))
+      (is (= 1000 (single-d-value (slot-1-of -instance-))))
+      (is (= 2000 (single-d-value (slot-2-of -instance-))))
+      (is (= 1 (length (h-instances-of -instance-)))))))
+
+(def test test/dimensional/validity-dependent/complex/different-validity ()
+  (bind ((instance
+          (with-transaction
+            (with-validity "2007-01"
+              (make-instance 'validity-dependent-complex-test :slot 0 :slot-1 1000)))))
+    (with-transaction
+      (with-validity "2007-02"
+        (with-revived-instance instance
+          (is (= 0 (slot-of instance)))
+          (is (null (single-d-value (slot-1-of instance))))
+          (is (null (single-d-value (slot-2-of instance))))
+          (setf (slot-2-of instance) 2000)
+          (is (= 2 (length (h-s-of instance)))))))
+    (with-transaction
+      (with-validity "2007-01"
+        (with-revived-instance instance
+          (is (= 0 (slot-of instance)))
+          (is (= 1000 (single-d-value (slot-1-of instance))))
+          (is (is (null (single-d-value (slot-2-of instance))))))))))

@@ -145,18 +145,17 @@
              (:file "mapping" :depends-on ("query" "sql" "partial-eval" "runtime"))
              (:file "plan" :depends-on ("mapping" "result-set" "runtime"))
              (:file "compiler" :depends-on ("type" "copy" "plan" "macro"))))
-   (:module "tesites"
+   (:module "dimensional"
             :depends-on ("persistence" "query")
             :components
             ((:file "common")
-             (:file "api" :depends-on ("common"))
-             (:file "class" :depends-on ("type"))
+             (:file "dimension")
+             (:file "class" :depends-on ("type" "dimension"))
              (:file "association" :depends-on ("class"))
              (:file "mop" :depends-on ("class" "association"))
              (:file "object" :depends-on ("class"))
-             (:file "transaction")
-             (:file "values-having-validity" :depends-on ("api"))
-             (:file "store" :depends-on ("values-having-validity" "class" "association" "object" "association-end-set"))
+             (:file "value" :depends-on ("dimension"))
+             (:file "store" :depends-on ("value" "class" "association" "object" "association-end-set"))
              (:file "type")
              (:file "slot-value" :depends-on ("store" "association"))
              (:file "transformer" :depends-on ("type"))

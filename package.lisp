@@ -277,41 +277,42 @@
            #:fixed-size-scroll
            #:simple-scroll
 
-           ;; temporal and time-dependent
-           #:persistent-class-t
-           #:persistent-association-t
-           #:persistent-slot-definition-t
-           #:persistent-direct-slot-definition-t
-           #:persistent-effective-slot-definition-t
-           #:persistent-association-end-slot-definition-t
-           #:persistent-association-end-direct-slot-definition-t
-           #:persistent-association-end-effective-slot-definition-t
-           #:with-t
-           #:with-default-t
+           ;; dimensional
+           #:persistent-class-d
+           #:persistent-association-d
+           #:persistent-slot-definition-d
+           #:persistent-direct-slot-definition-d
+           #:persistent-effective-slot-definition-d
+           #:persistent-association-end-slot-definition-d
+           #:persistent-association-end-direct-slot-definition-d
+           #:persistent-association-end-effective-slot-definition-d
+           #:time
+           #:with-time
+           #:with-default-time
+           #:validity
            #:with-validity
            #:with-validity-range
-           #:transaction-t-mixin
-           #:*t*
-           #:*validity-start*
+           #:*time-begin*
+           #:*time-end*
+           #:*validity-begin*
            #:*validity-end*
-           #:values-having-validity
-           #:values-having-validity-p
-           #:make-single-values-having-validity
-           #:single-values-having-validity-p
-           #:elt-values-having-validity
-           #:values-having-validity=
-           #:t-value-of
-           #:validity-start-of
+           #:d-value
+           #:d-value-p
+           #:make-single-d-value
+           #:single-d-value-p
+           #:d-value=
+           #:time-of
+           #:validity-begin-of
            #:validity-end-of
            #:+beginning-of-time+
            #:+end-of-time+
-           #:t-object
+           #:d-object
            #:h-object
-           #:temporal-object
            #:time-dependent-object
-           #:t-object-of
-           #:h-objects
-           #:h-objects-of
+           #:validity-dependent-object
+           #:d-instance-of
+           #:h-instances
+           #:h-instances-of
            #:integrated-time-dependent-slot-value
            #:averaged-time-dependent-slot-value
 

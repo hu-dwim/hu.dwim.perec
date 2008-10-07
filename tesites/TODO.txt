@@ -1,3 +1,0 @@
-use standard perec persistent types for slots: e.g. integer (or unbound integer) (or null integer) ...
-computed-class caches slot value without storing t, validity-range... what if a non t slot depends on a t slot?
-change class name postfix from _t to _h (as history)

@@ -53,7 +53,7 @@
   (test))
 
 ;; use some unnecessary explicit package prefixing for clarity
-(def class* transaction-mixin/test (cl-perec:transaction-mixin cl-perec:transaction-t-mixin)
+(def class* transaction-mixin/test (cl-perec:transaction-mixin)
   ())
 
 (def class* postgresql-postmodern/test (cl-perec:database-mixin cl-rdbms:postgresql-postmodern)
@@ -70,4 +70,4 @@
 
 (defsuite* (test/query :in test))
 
-(defsuite* (test/tesites :in test))
+(defsuite* (test/dimensional :in test))

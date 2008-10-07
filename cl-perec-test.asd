@@ -58,19 +58,6 @@
                        (:file "cache")
                        (:file "instance")
                        (:file "purge")))
-             (:module "tesites"
-                      :depends-on ("suite")
-                      :components
-                      ((:file "partial-timestamp")
-                       (:file "values-having-validity")
-                       (:file "temporal")
-                       (:file "time-dependent")
-                       (:file "tesites")
-                       (:file "complex")
-                       (:file "slot" :depends-on ("complex"))
-                       (:file "1-1-association" :depends-on ("complex"))
-                       (:file "1-n-association" :depends-on ("complex"))
-                       (:file "m-n-association" :depends-on ("complex"))))
              (:module "query"
                       :depends-on ("suite")
                       :components
@@ -95,7 +82,21 @@
                        (:file "subselect" :depends-on ("suite"))
                        (:file "embedded-sql" :depends-on ("suite"))
                        (:file "limit" :depends-on ("suite"))
-                       (:file "update" :depends-on ("suite"))))))))
+                       (:file "update" :depends-on ("suite"))))
+             #+nil
+             (:module "dimensional"
+                      :depends-on ("suite")
+                      :components
+                      ((:file "partial-timestamp")
+                       (:file "value")
+                       (:file "time")
+                       (:file "validity-range")
+                       (:file "dimensional")
+                       (:file "complex")
+                       (:file "slot" :depends-on ("complex"))
+                       (:file "1-1-association" :depends-on ("complex"))
+                       (:file "1-n-association" :depends-on ("complex"))
+                       (:file "m-n-association" :depends-on ("complex"))))))))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
   (in-package :cl-perec-test)

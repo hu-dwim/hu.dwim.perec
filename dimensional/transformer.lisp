@@ -6,6 +6,9 @@
 
 (in-package :cl-perec)
 
+;;;;;;
+;;; Unused reader and writer
+
 (def function h-unused-reader (rdbms-values index)
   (if (eq :null (elt rdbms-values index))
       +h-unused-slot-marker+

@@ -266,7 +266,7 @@
     :documentation "The RDBMS column of the corresponding oid slot."))
   (:documentation "This is a special table related to a persistent class."))
 
-(defmethod describe-object ((instance persistent-class) stream)
+(def method describe-object ((instance persistent-class) stream)
   (call-next-method)
   (aif (primary-table-of instance)
        (progn
@@ -280,13 +280,13 @@
 ;;;;;;;;;;;;;
 ;;; defpclass
 
-(defmethod expand-defpclass-form ((metaclass persistent-class) defclass-macro name superclasses slots options)
+(def method expand-defpclass-form ((metaclass persistent-class) defclass-macro name superclasses slots options)
   `(,defclass-macro ,name ,superclasses ,slots ,@options))
 
 ;;;;;;;;;;
 ;;; Export
 
-(defmethod export-to-rdbms ((class persistent-class))
+(def method export-to-rdbms ((class persistent-class))
   ;; TODO the view should be first dropped, then the alter statements executed, and after that the view recreated
   ;; because the view will prevent some alter tables to execute.
   (bind ((class-name (class-name class)))
@@ -308,21 +308,21 @@
 ;;;;;;;;;;;
 ;;; Mapping
 
-(defmethod compute-rdbms-types* ((mapped-type persistent-class) normalized-type)
+(def method compute-rdbms-types* ((mapped-type persistent-class) normalized-type)
   (compute-rdbms-types* (class-name mapped-type) normalized-type))
 
-(defmethod compute-reader* ((mapped-type persistent-class) normalized-type)
+(def method compute-reader* ((mapped-type persistent-class) normalized-type)
   (compute-reader* (class-name mapped-type) normalized-type))
 
 
-(defmethod compute-writer* ((mapped-type persistent-class) normalized-type)
+(def method compute-writer* ((mapped-type persistent-class) normalized-type)
   (compute-writer* (class-name mapped-type) normalized-type))
 
 
 ;;;;;;;;;;;;
 ;;; Computed
 
-(defgeneric compute-always-checked-type (slot)
+(def generic compute-always-checked-type (slot)
   (:method ((slot persistent-slot-definition))
            (bind ((type (canonical-type-of slot)))
              (if (and (eq :on-commit (type-check-of slot))
@@ -330,33 +330,33 @@
                  `(or unbound ,type)
                  type))))
 
-(defgeneric compute-persistent-effective-super-classes (class)
+(def generic compute-persistent-effective-super-classes (class)
   (:method ((class persistent-class))
            (delete-duplicates
             (append (persistent-direct-super-classes-of class)
                     (iter (for super-class in (persistent-direct-super-classes-of class))
                           (appending (persistent-effective-super-classes-of super-class)))))))
 
-(defgeneric compute-persistent-effective-sub-classes (class)
+(def generic compute-persistent-effective-sub-classes (class)
   (:method ((class persistent-class))
            (delete-duplicates
             (append (persistent-direct-sub-classes-of class)
                     (iter (for sub-class in (persistent-direct-sub-classes-of class))
                           (appending (persistent-effective-sub-classes-of sub-class)))))))
 
-(defgeneric compute-slot-mapping (slot)
+(def generic compute-slot-mapping (slot)
   (:method ((slot persistent-effective-slot-definition))
     (compute-mapping (always-checked-type-of slot))))
 
-(defgeneric compute-slot-reader (slot)
+(def generic compute-slot-reader (slot)
   (:method ((slot persistent-effective-slot-definition))
     (coerce (reader-of (mapping-of slot)) 'function)) )
 
-(defgeneric compute-slot-writer (slot)
+(def generic compute-slot-writer (slot)
   (:method ((slot persistent-effective-slot-definition))
     (coerce (writer-of (mapping-of slot)) 'function)))
 
-(defgeneric compute-primary-table (class current-table)
+(def generic compute-primary-table (class current-table)
   (:method ((class persistent-class) current-table)
     (ensure-finalized class)
     (flet ((primary-table-columns-for-class (class)
@@ -385,7 +385,7 @@
                                        (list (make-oid-column))
                                        (primary-table-columns-for-class class)))))))))
 
-(defgeneric compute-primary-tables (class)
+(def generic compute-primary-tables (class)
   (:method ((class persistent-class))
     (labels ((primary-classes-of (class)
                (if (primary-table-of class)
@@ -401,7 +401,7 @@
               (cons :append primary-tables)
               (cons :union primary-tables)))))))
 
-(defgeneric compute-primary-view (class)
+(def generic compute-primary-view (class)
   (:method ((class persistent-class))
     (unless (primary-table-of class)
       (when-bind primary-tables (primary-tables-of class)
@@ -429,13 +429,13 @@
                                                                                                   :tables (list (name-of table)))))
                                                                       (cdr primary-tables)))))))))
 
-(defgeneric compute-data-tables (class)
+(def generic compute-data-tables (class)
   (:method ((class persistent-class))
     (delete-if #'null
                (mapcar #'primary-table-of
                        (list* class (persistent-effective-super-classes-of class))))))
 
-(defgeneric compute-data-view (class)
+(def generic compute-data-view (class)
   (:method ((class persistent-class))
     (when (> (length (data-tables-of class)) 1)
       (make-instance 'view
@@ -448,20 +448,20 @@
                                                                                   :right !2)
                                                               (mapcar #L(sql-identifier :name (name-of !1)) (data-tables-of class)))))))))
 
-(defgeneric compute-primary-table-slot-p (slot)
+(def generic compute-primary-table-slot-p (slot)
   (:method ((slot persistent-effective-slot-definition))
     (and (not (some #'primary-table-slot-p (persistent-effective-super-slot-precedence-list-of slot)))
          (data-table-slot-p slot)
          (eq (primary-class-of slot) (slot-definition-class slot)))))
 
-(defgeneric compute-data-table-slot-p (slot)
+(def generic compute-data-table-slot-p (slot)
   (:method ((slot persistent-effective-slot-definition))
     (bind ((type (canonical-type-of slot)))
       (and (subtypep (slot-definition-class slot) (primary-class-of slot))
            (or (primitive-type-p* type)
                (persistent-class-type-p* type))))))
 
-(defgeneric compute-primary-class (slot)
+(def generic compute-primary-class (slot)
   (:method ((slot persistent-effective-slot-definition))
     (or (some #'primary-class-of (persistent-effective-super-slot-precedence-list-of slot))
         (bind ((class (slot-definition-class slot))
@@ -474,15 +474,15 @@
                 (t
                  (error "Unknown type ~A in slot ~A" (specified-type-of slot) slot)))))))
 
-(defgeneric compute-table (slot)
+(def generic compute-table (slot)
   (:method ((slot persistent-effective-slot-definition))
     (primary-table-of (primary-class-of slot))))
 
-(defgeneric compute-column-names (slot)
+(def generic compute-column-names (slot)
   (:method ((slot persistent-effective-slot-definition))
     (mapcar 'rdbms::name-of (columns-of slot))))
 
-(defgeneric compute-columns (slot)
+(def generic compute-columns (slot)
   (:method ((slot persistent-effective-slot-definition))
     (bind ((precedence-list (persistent-effective-super-slot-precedence-list-of slot)))
       ;; TODO: multiple inheritance with slot storage location merging is not yet supported
@@ -633,7 +633,7 @@
   (when (tagged-p (mapping-of slot))
     (first (columns-of slot))))
 
-(defmethod matches-type* (value (type symbol))
+(def method matches-type* (value (type symbol))
   (and (typep value type)
        (or (not (persistent-class-type-p type))
            (every (lambda (slot)

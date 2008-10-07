@@ -9,24 +9,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Persistent association t and slot meta objects
 
-(defcclass* persistent-association-t (persistent-association)
+(defcclass* persistent-association-d (persistent-association)
   ((h-class
     (compute-as (find-class (name-of -self-)))
     :type persistent-class)))
 
-(defmethod compute-primary-table ((association persistent-association-t) current-table)
+(def method compute-primary-table ((association persistent-association-d) current-table)
   nil)
 
-(defcclass* persistent-association-end-slot-definition-t (persistent-slot-definition-t persistent-association-end-slot-definition)
+(defcclass* persistent-association-end-slot-definition-d (persistent-slot-definition-d persistent-association-end-slot-definition)
   ())
 
-(defcclass* persistent-association-end-direct-slot-definition-t
-    (persistent-association-end-slot-definition-t persistent-direct-slot-definition-t persistent-association-end-direct-slot-definition)
+(defcclass* persistent-association-end-direct-slot-definition-d
+    (persistent-association-end-slot-definition-d persistent-direct-slot-definition-d persistent-association-end-direct-slot-definition)
   ()
   (:metaclass identity-preserving-class))
 
-(defcclass* persistent-association-end-effective-slot-definition-t
-    (persistent-association-end-slot-definition-t persistent-effective-slot-definition-t persistent-association-end-effective-slot-definition)
+(defcclass* persistent-association-end-effective-slot-definition-d
+    (persistent-association-end-slot-definition-d persistent-effective-slot-definition-d persistent-association-end-effective-slot-definition)
   ((prefetch #f)          ;; TODO temporarily
    (type-check :always)
    (cache #f)             ;; TODO temporarily
@@ -36,21 +36,6 @@
    (table
     (compute-as (primary-table-of (h-class-of -self-)))
     :type table)
-   (t-value-slot
-    (compute-as (find-persistent-slot (h-class-of -self-) 't-value :otherwise nil)))
-   (t-value-column
-    (compute-as (first (columns-of (t-value-slot-of -self-))))
-    :type column)
-   (validity-start-slot
-    (compute-as (find-persistent-slot (h-class-of -self-) 'validity-start :otherwise nil)))
-   (validity-start-column
-    (compute-as (first (columns-of (validity-start-slot-of -self-))))
-    :type column)
-   (validity-end-slot
-    (compute-as (find-persistent-slot (h-class-of -self-) 'validity-end :otherwise nil)))
-   (validity-end-column
-    (compute-as (first (columns-of (validity-end-slot-of -self-))))
-    :type column)
    (action-slot
     (compute-as (find-persistent-slot (h-class-of -self-) 'action :otherwise nil)))
    (action-column
@@ -74,39 +59,34 @@
 ;;;;;;;;;;;;;;;;;;
 ;;; defassociation
 
-(defmethod expand-defassociation-form :around ((metaclass null) association-ends options)
+(def method expand-defassociation-form :around ((metaclass null) association-ends options)
   (bind ((specified-metaclass (second (find :metaclass options :key #'first)))
          (processed-options
+          #+nil ;; TODO:
           (if (and (not specified-metaclass)
                    (or (find :temporal options :key #'first)
                        (find :time-dependent options :key #'first)))
-              (append options '((:metaclass persistent-association-t)))
+              (append options '((:metaclass persistent-association-d)))
               options)))
     (call-next-method metaclass association-ends processed-options)))
 
-(defmethod expand-defassociation-form ((metaclass persistent-association-t) association-ends options)
+(def method expand-defassociation-form ((metaclass persistent-association-d) association-ends options)
   (with-decoded-association-ends association-ends
-    (bind ((temporal-p (find :temporal options :key #'first))
-           (time-dependent-p (find :time-dependent options :key #'first))
+    (bind ((dimensions (find :dimensions options :key #'first))
            (superclasses
-            (append (when temporal-p
-                      (list 'temporal-object))
-                    (when time-dependent-p
-                      (list 'time-dependent-object))))
+            ;; TODO:
+            )
            (processed-options (remove-if #L(member (first !1) '(:temporal :time-dependent)) options))
            (processed-association-ends
-            (mapcar #L(append (when temporal-p
-                                (list :temporal #t))
-                              (when time-dependent-p
-                                (list :time-dependent #t))
+            (mapcar #L(append (when dimensions
+                                (list :dimensions dimensions))
                               !1)
                     association-ends))
            (primary-slot-type (getf primary-association-end :type))
            (secondary-slot-type (getf secondary-association-end :type))
-           (slot-definitions (if (or (set-type-p* primary-slot-type)
-                                     (set-type-p* secondary-slot-type))
-                                 '((action :accessor action-of :type integer-8))
-                                 '())))
+           (slot-definitions (when (or (set-type-p* primary-slot-type)
+                                       (set-type-p* secondary-slot-type))
+                               '((action :accessor action-of :type integer-8)))))
       `(progn
          ,(call-next-method metaclass processed-association-ends processed-options)
          (defpclass* ,association-name ,superclasses
