@@ -24,7 +24,7 @@
      nil
     :type function)))
 
-(def class* ordered-dimension (abstract-dimension)
+(def class* ordering-dimension (abstract-dimension)
   ((begin-coordinate-name
     :type symbol)
    (end-coordinate-name
@@ -36,7 +36,7 @@
      nil
     :type function)))
 
-(def class* inherited-dimension (ordered-dimension)
+(def class* inheriting-dimension (ordering-dimension)
   ((direction
     :type (member :ascending :descending))))
 
@@ -63,8 +63,8 @@
                                                     (maximum-coordinate nil maximum-coordinate?))
   (when inherit
     (setf ordered #t))
-  (bind ((dimension-class-name (cond (inherit 'inherited-dimension)
-                                     (ordered 'ordered-dimension)
+  (bind ((dimension-class-name (cond (inherit 'inheriting-dimension)
+                                     (ordered 'ordering-dimension)
                                      (t 'dimension)))
          (dependent-object-name (format-symbol *package* "~A-DEPENDENT-OBJECT" name))
          (begin-variable-name (format-symbol *package* "~A-BEGIN" name))
@@ -173,7 +173,7 @@
   (:method ((dimension dimension))
     (lookup-coordinate dimension #'coordinate-name-of #'default-coordinate-of))
 
-  (:method ((dimension ordered-dimension))
+  (:method ((dimension ordering-dimension))
     (bind ((begin-coordinate (begin-coordinate dimension))
            (end-coordinate (end-coordinate dimension)))
       (unless (equal begin-coordinate end-coordinate)

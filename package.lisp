@@ -290,8 +290,8 @@
            #:begin-coordinate
            #:end-coordinate
            #:dimension
-           #:ordered-dimension
-           #:inherited-dimension
+           #:ordering-dimension
+           #:inheriting-dimension
            #:time
            #:with-time
            #:with-default-time
