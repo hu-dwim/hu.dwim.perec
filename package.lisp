@@ -286,6 +286,12 @@
            #:persistent-association-end-slot-definition-d
            #:persistent-association-end-direct-slot-definition-d
            #:persistent-association-end-effective-slot-definition-d
+           #:coordinate
+           #:begin-coordinate
+           #:end-coordinate
+           #:dimension
+           #:ordered-dimension
+           #:inherited-dimension
            #:time
            #:with-time
            #:with-default-time
