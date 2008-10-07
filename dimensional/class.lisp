@@ -92,7 +92,7 @@
                                   `(or h-unused ,@(cdr type))
                                   `(or h-unused ,type)))
                         (list* slot-name
-                               +h-unused-slot-marker+
+                               :initform +h-unused-slot-marker+
                                slot-options)))
                     (collect-if [getf (slot-options-of !1) :dimensions] slots))
            (:metaclass ,h-metaclass-name)

@@ -57,7 +57,7 @@
                                                                  slot-option-name
                                                                  direct-slot-definitions)
   (if (eq slot-option-name 'dimensions)
-      (list :dimensions (merge-dimensions (mapcar #'dimensions-of direct-slot-definitions)))
+      (list :dimensions (mapcar 'lookup-dimension (merge-dimensions (mapcar #'dimensions-of direct-slot-definitions))))
       (call-next-method)))
 
 (def method initialize-instance :after ((instance persistent-effective-slot-definition-d) &key &allow-other-keys)
