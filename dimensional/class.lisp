@@ -70,7 +70,7 @@
            (if (oddp (length slot-definition))
                (cdr slot-definition)   ; no init-form
                (cddr slot-definition))))
-    (bind ((h-metaclass-name (d-class-name->h-class-name (class-name metaclass)))
+    (bind ((h-metaclass-name (d-class-name->h-class-name (class-name (class-of metaclass))))
            (d-class-name name)
            (h-class-name (d-class-name->h-class-name d-class-name))
            (processed-options (remove-if [member (first !1) '(:metaclass :slot-definition-transformer)] options))
@@ -117,11 +117,15 @@
 ;;; Utility
 
 (def function d-class-name->h-class-name (d-class-name)
-  (concatenate-symbol d-class-name "-h"))
+  (bind ((name (symbol-name d-class-name))
+         (base-name (if (ends-with-subseq "-d" (string-downcase name))
+                        (but-last-elt name 2)
+                        d-class-name)))
+    (concatenate-symbol (symbol-package d-class-name) base-name "-h")))
 
 (def function h-class-name->d-class-name (h-class-name)
   (bind ((name (symbol-name h-class-name)))
-    (intern (subseq name 0 (- (length name) 2)) (symbol-package h-class-name))))
+    (intern (but-last-elt name 2) (symbol-package h-class-name))))
 
 (def method export-to-rdbms ((class persistent-class-d))
   (call-next-method)

@@ -335,3 +335,5 @@
   `(or ,(negate-boolean-form premise)
        ,conclusion))
 
+(defun but-last-elt (sequence &optional (n 1))
+  (subseq sequence 0 (- (length sequence) n)))

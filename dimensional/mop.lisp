@@ -15,6 +15,12 @@
 (def method validate-superclass ((class persistent-class-d) (superclass persistent-class))
   t)
 
+(def method validate-superclass ((class persistent-class) (superclass persistent-class-h))
+  t)
+
+(def method validate-superclass ((class persistent-class-h) (superclass persistent-class))
+  t)
+
 (def method direct-slot-definition-class ((class persistent-class-d)
                                          &key instance persistent association dimensions &allow-other-keys)
   (cond (instance
@@ -51,7 +57,7 @@
                                                                  slot-option-name
                                                                  direct-slot-definitions)
   (if (eq slot-option-name 'dimensions)
-      (list :dimensions (merge-dimensions #'dimensions-of direct-slot-definitions))
+      (list :dimensions (merge-dimensions (mapcar #'dimensions-of direct-slot-definitions)))
       (call-next-method)))
 
 (def method initialize-instance :after ((instance persistent-effective-slot-definition-d) &key &allow-other-keys)
