@@ -23,9 +23,9 @@
     :documentation "The history class generated for this t class.")
    (dimensional-h-slots
     (compute-as (compute-dimensional-h-slots-of -self-))
-    :type (list (cons dimension slot-definition)))
+    :type (list (cons dimension (list slot-definition))))
    (dimensional-h-columns
-    (compute-as (mapcar [cons !1 (columns-of !2)] (dimensional-h-slots-of -self-)))
+    (compute-as (mapcar [cons !1 (mapcan #'columns-of !2)] (dimensional-h-slots-of -self-)))
     :type (list (cons dimension column)))
    (parent-slot
     (compute-as (find-persistent-slot (h-class-of -self-) 'd-object :otherwise nil))
@@ -39,23 +39,32 @@
                             (persistent-effective-slots-of -self-)))))
   (:documentation "A temporal slot value is cached in the underlying slot. A time dependent slot value is cached as a values-having-validity object."))
 
-(def function h-slot-of (class dimension)
+(def function h-slots-of (class dimension)
   (cdr (assoc dimension (dimensional-h-slots-of class))))
 
-(def function h-columns-of (class dimension)
-  (cdr (assoc dimension (dimensional-h-columns-of class))))
+(def function h-slot-of (class dimension)
+  (bind ((h-slots (h-slots-of class dimension)))
+    (assert (length= 1 h-slots))
+    (first h-slots)))
 
-(def funcion h-column-of (class dimension)
-  (assert (or (not (orderedp dimension)) (inheritp dimension)))
-  (first (h-columns-of dimension)))
+(def function h-readers-of (class dimension)
+  (mapcar
+   (lambda (slot)
+     (aprog1 (first (slot-definition-readers slot))
+       (assert it)))
+   (h-slots-of class dimension)))
 
-(def function h-begin-column-of (class dimension)
+(def function h-reader-of (class dimension)
+  (aprog1 (first (slot-definition-readers (h-slot-of class dimension)))
+    (assert it)))
+
+(def function h-begin-reader-of (class dimension)
   (assert (and (ordered-p dimension) (null (inherit-of dimension))))
-  (first (h-columns-of class dimension)))
+  (first (h-readers-of class dimension)))
 
-(def function h-end-column-of (class dimension)
+(def function h-end-reader-of (class dimension)
   (assert (and (ordered-p dimension) (null (inherit-of dimension))))
-  (second (h-columns-of class dimension)))
+  (second (h-readers-of class dimension)))
 
 (defcclass* persistent-slot-definition-d (persistent-slot-definition)
   ((dimensions
