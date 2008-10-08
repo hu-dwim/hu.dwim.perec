@@ -4,12 +4,12 @@
 
 (defmacro run-cache-test (&body body)
   `(progn
-    (fill-data-3)
-    (with-transaction
-      (clear-compiled-query-cache)
-      (reset-compile-query-counter)
-      (symbol-macrolet ((counter *compile-query-counter*))
-        ,@body))))
+     (fill-data-3)
+     (with-transaction
+       (with-new-compiled-query-cache
+         (reset-compile-query-counter)
+         (symbol-macrolet ((counter *compile-query-counter*))
+           ,@body)))))
 
 (defpclass* query-cache-test ()
   ((attr-1 :type integer-32)))
@@ -54,21 +54,21 @@
     (fill-data-3)
     (bind ((class (find-class 'query-cache-2-test))
            (query (make-query '(select (o) (from (o query-cache-2-test))))))
-      (clear-compiled-query-cache)
       (reset-compile-query-counter)
-      (symbol-macrolet ((counter *compile-query-counter*))
-        (with-transaction
-          (is (= counter 0))
-          (execute-query query)
-          (is (= counter 1)))
-        (ensure-class-using-class class
-                                  (class-name class)
-                                  :metaclass (class-of class)
-                                  :direct-superclasses (class-direct-superclasses class)
-                                  :direct-slots nil)
-        (with-confirmed-destructive-changes (ensure-exported class))
-        (with-transaction
-          (execute-query query)
-          (is (= counter 2)))))))
+      (with-new-compiled-query-cache
+        (symbol-macrolet ((counter *compile-query-counter*))
+          (with-transaction
+            (is (= counter 0))
+            (execute-query query)
+            (is (= counter 1)))
+          (ensure-class-using-class class
+                                    (class-name class)
+                                    :metaclass (class-of class)
+                                    :direct-superclasses (class-direct-superclasses class)
+                                    :direct-slots nil)
+          (with-confirmed-destructive-changes (ensure-exported class))
+          (with-transaction
+            (execute-query query)
+            (is (= counter 2))))))))
 
 

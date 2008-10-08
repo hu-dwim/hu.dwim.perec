@@ -78,6 +78,12 @@
       (from (s spam-test))
       (where (eq (spam-type-of s) 'viagra)))))
 
+(deftest test/query/select/slot-value ()
+  (test-query (:select-count 1 :record-count 1 :fixture forum-data)
+    (select (m)
+      (from (m message-test))
+      (where (string= (subject-of m) "subject1")))))
+
 (deftest test/query/select/nested-ands ()
   (test-query (:record-count 4 :fixture forum-data)
     (select (object)

@@ -193,16 +193,7 @@ with the result of the naively compiled query.")
 
 (defun parse-query (query)
   (bind ((variables (get-variables query)))
-    (flet ((parse (form)
-             (parse-query-form form variables)))
-      (setf (asserts-of query) (mapcar #'parse (asserts-of query)))
-      (setf (action-args-of query) (mapcar #'parse (action-args-of query)))
-      (setf (group-by-of query) (mapcar #'parse (group-by-of query)))
-      (setf (having-of query) (mapcar #'parse (having-of query)))
-      (setf (order-by-of query) (iter (for (dir expr) on (order-by-of query) by 'cddr)
-                                    (nconcing (list dir (parse expr)))))
-      (setf (offset-of query) (when (offset-of query) (parse (offset-of query))))
-      (setf (limit-of query) (when (limit-of query) (parse (limit-of query)))))))
+    (map-query [parse-query-form !2 variables] query)))
 
 (defun normalize-query (query)
     (setf (asserts-of query)
@@ -256,8 +247,12 @@ with the result of the naively compiled query.")
 (defun normalize-association-end-access (query)
   "If the assoc is 1-1
   (eq (<secondary-assoc-end-accessor> <obj1>) <obj2>) -> (eq (primary-assoc-end-accessor <obj2>) <obj1>)"
-  (setf (asserts-of query) (mapcar #'%normalize-association-end-access (asserts-of query))
-        (having-of query) (%normalize-association-end-access (having-of query))))
+  (map-query
+   (lambda (slot expr)
+     (case slot
+       ((:assert :having) (%normalize-association-end-access expr))
+       (t expr)))
+   query))
 
 (defgeneric %normalize-association-end-access (syntax)
   (:method (syntax)

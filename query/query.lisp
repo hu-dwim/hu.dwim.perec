@@ -102,6 +102,18 @@
   (mapc fn (having-of query))
   (mapc #L(when (syntax-object-p !1) (funcall fn !1)) (order-by-of query)))
 
+(defun map-query (f query)
+  (setf (action-args-of query) (mapcar [funcall f :action-arg !1] (action-args-of query))
+        (asserts-of query) (mapcar [funcall f :assert !1] (asserts-of query))
+        (group-by-of query) (mapcar [funcall f :group-by !1] (group-by-of query))
+        (having-of query) (mapcar [funcall f :having !1] (having-of query))
+        (order-by-of query) (iter (for (dir expr) :on (order-by-of query) :by 'cddr)
+                                  (collect dir)
+                                  (collect (funcall f :order-by expr)))
+        (offset-of query) (when (offset-of query) (funcall f :offset (offset-of query)))
+        (limit-of query) (when (limit-of query) (funcall f :limit (limit-of query))))
+  query)
+
 (defmethod flatp :around ((query query))
   (if (slot-boundp query 'flatp)
       (call-next-method)
