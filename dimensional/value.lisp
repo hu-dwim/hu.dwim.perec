@@ -366,7 +366,7 @@
 
 (def (function e) single-d-value (d-value)
   (assert (single-d-value-p d-value))
-  (first (c-values-of d-value)))
+  (value-of (first (c-values-of d-value))))
 
 (def (function e) single-d-value-p (d-value)
   (length= 1 (c-values-of d-value)))

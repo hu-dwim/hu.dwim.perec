@@ -75,8 +75,8 @@
 
 (def method persistent-class-default-superclasses ((class persistent-class-h) h-class-name)
   (bind ((d-class-name (h-class-name->d-class-name h-class-name)))
-    (append (mapcar (lambda (d-class-name)
-                      (find-class (d-class-name->h-class-name d-class-name)))
+    (append (mapcar (lambda (d-class)
+                      (find-class (d-class-name->h-class-name (class-name d-class))))
                     (remove-if-not (of-type 'persistent-class-d) 
                                    (class-direct-superclasses (find-class d-class-name))))
             (call-next-method))))

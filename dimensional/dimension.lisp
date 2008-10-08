@@ -66,6 +66,7 @@
   (bind ((dimension-class-name (cond (inherit 'inheriting-dimension)
                                      (ordered 'ordering-dimension)
                                      (t 'dimension)))
+         (dimension-variable-name (format-symbol *package* "*~A-DIMENSION*" name))
          (dependent-object-name (format-symbol *package* "~A-DEPENDENT-OBJECT" name))
          (dependent-instances-name (format-symbol *package* "~A-DEPENDENT-INSTANCES" name))
          (begin-variable-name (format-symbol *package* "~A-BEGIN" name))
@@ -98,11 +99,13 @@
     `(progn
        ,(when (getf -options- :export)
               `(export ',name))
-       (setf (find-dimension ',name) (make-instance ',dimension-class-name
-                                                    :name ',name
-                                                    :dependent-object-name ',dependent-object-name
-                                                    :type ',type
-                                                    ,@dimension-args))
+       (def (special-variable e) ,dimension-variable-name
+           (make-instance ',dimension-class-name
+                          :name ',name
+                          :dependent-object-name ',dependent-object-name
+                          :type ',type
+                          ,@dimension-args))
+       (setf (find-dimension ',name) ,dimension-variable-name)
        (defpclass* ,dependent-object-name ()
          ,slots
          (:abstract #t))
@@ -110,12 +113,13 @@
                `((defassociation*
                    ((:class ,dependent-object-name :slot ,name :type ,type)
                     (:class ,type :slot ,dependent-instances-name :type (set ,dependent-object-name))))))
-       (def (macro e) ,with-macro-name (,name &body forms)
-         `(,',call-with-fn-name
-           ,(coerce-to-coordinate ,name ',type)
-           (lambda () ,@forms)))
        ,@(if ordered
-             `((def (special-variable e) ,begin-special-name)
+             `((def (macro e) ,with-macro-name (,name &body forms)
+                 `(,',call-with-range-fn-name
+                   ,(coerce-to-coordinate-begin ,name ',type)
+                   ,(coerce-to-coordinate-end ,name ',type)
+                   (lambda () ,@forms)))
+               (def (special-variable e) ,begin-special-name)
                (def (special-variable e) ,end-special-name)
                (def (symbol-macro e) ,coordinate-name
                    (coordinate (find-dimension ',name)))
@@ -138,7 +142,11 @@
                  (bind ((,begin-special-name ,begin-variable-name)
                         (,end-special-name ,end-variable-name))
                    (funcall thunk))))
-             `((def (special-variable e) ,coordinate-name)
+             `((def (macro e) ,with-macro-name (,name &body forms)
+                 `(,',call-with-fn-name
+                   ,(coerce-to-coordinate ,name ',type)
+                   (lambda () ,@forms)))
+               (def (special-variable e) ,coordinate-name)
                (def (function e) ,call-with-fn-name (,name thunk)
                  (bind ((,coordinate-name (ensure-list ,name)))
                    (funcall thunk))))))))

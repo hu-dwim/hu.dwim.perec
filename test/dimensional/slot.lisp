@@ -50,7 +50,7 @@
 (defpclass* dimensional-complex-inheritance-test
     (dimensional-complex-slot-test dimensional-complex-time-dependent-slot-test dimensional-complex-validity-dependent-slot-test dimensional-complex-time-and-validity-dependent-slot-test)
   ()
-  (:metaclass persistent-class-t))
+  (:metaclass persistent-class-d))
 
 (def test test/dimensional/slot/normal ()
   (run-complex-tests :class-name 'dimensional-complex-test

@@ -66,16 +66,18 @@
       (with-validity "2007"
         (is (null (single-d-value (population-of instance)))))
       (with-validity-range "2006" "2007"
-        (is (values-having-validity=
-             (make-values-having-validity (list 1000 nil)
-                                          (list (parse-timestring "2006-01-01TZ") (parse-timestring "2007-01-01TZ"))
-                                          (list (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ")))
+        (is (d-value-equal
+             (make-instance 'd-value
+                            :dimensions (list *time-dimension*)
+                            :c-values (list (make-c-value `((,(parse-timestring "2006-01-01TZ") ,(parse-timestring "2007-01-01TZ"))) 1000)
+                                            (make-c-value `((,(parse-timestring "2007-01-01TZ") ,(parse-timestring "2008-01-01TZ"))) nil)))
              (population-of instance))))
       (with-validity-range "2007" "2008"
-        (is (values-having-validity=
-             (make-values-having-validity (list nil 2000)
-                                          (list (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ"))
-                                          (list (parse-timestring "2008-01-01TZ") (parse-timestring "2009-01-01TZ")))
+        (is (d-value-equal
+             (make-instance 'd-value
+                            :dimensions (list *time-dimension*)
+                            :c-values (list (make-c-value `((,(parse-timestring "2007-01-01TZ") ,(parse-timestring "2008-01-01TZ"))) nil)
+                                            (make-c-value `((,(parse-timestring "2008-01-01TZ") ,(parse-timestring "2009-01-01TZ"))) 2000)))
              (population-of instance)))))))
 
 (def test test/dimensional/validity-dependent/initial-value/integer/1 ()
@@ -127,7 +129,7 @@
       (with-validity "2007-08"
         (is (= 1000 (single-d-value (population-of -instance-))))))))
 
-(def test test/dimensional/validity-dependent/values-having-validity/1 ()
+(def test test/dimensional/validity-dependent/d-value ()
   (with-one-and-two-transactions
       (bind ((instance (make-instance 'validity-dependent-unbound-test)))
         (with-validity "2006"
@@ -137,7 +139,7 @@
       (setf (population-of -instance-) 2007))
     (with-validity-range "2006" "2007"
       (iter (for index :from 0)
-            (for (validity-begin validity-end value) :in-values-having-validity (population-of -instance-))
+            (for (validity-begin validity-end value) :in-d-values (population-of -instance-))
             (ecase index
               (0 (is (= 2006 value))
                  (is (timestamp= (parse-datestring "2006-01-01") validity-begin))

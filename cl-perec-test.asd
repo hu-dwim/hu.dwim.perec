@@ -88,11 +88,11 @@
                       :components
                       ((:file "partial-timestamp")
                        (:file "value")
+                       (:file "time")
+                       (:file "validity")
+                       (:file "dimensional")
                        #+nil
-                       ((:file "time")
-                        (:file "validity-range")
-                        (:file "dimensional")
-                        (:file "complex")
+                       ((:file "complex")
                         (:file "slot" :depends-on ("complex"))
                         (:file "1-1-association" :depends-on ("complex"))
                         (:file "1-n-association" :depends-on ("complex"))
