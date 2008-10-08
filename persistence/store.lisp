@@ -61,10 +61,10 @@
                          (list (name-of (table-of slot)))
                          :where (id-column-matcher-where-clause instance (id-column-of other-slot))))))
 
-(defgeneric restore-slot (class instance persistent-effective-slot-definition)
+(defgeneric restore-slot (class instance persistent-effective-slot-definition &key &allow-other-keys)
   (:documentation "Restores a single slot without local side effects from the database.")
 
-  (:method ((class persistent-class) (instance persistent-object) (slot persistent-effective-slot-definition))
+  (:method ((class persistent-class) (instance persistent-object) (slot persistent-effective-slot-definition) &key)
     (values
      ;; TODO this set-type-p* calls subtypep, which is expensive. search tnis file for other occurrances, too.
      (if (set-type-p* (canonical-type-of slot))
@@ -79,7 +79,7 @@
            (restore-slot-value instance slot record 0)))
      slot))
 
-  (:method ((class persistent-class) (instance persistent-object) (slot persistent-association-end-effective-slot-definition))
+  (:method ((class persistent-class) (instance persistent-object) (slot persistent-association-end-effective-slot-definition) &key)
     (values
      (ecase (association-kind-of (association-of slot))
        (:1-1
