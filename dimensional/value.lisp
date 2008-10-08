@@ -480,36 +480,54 @@
 ;;;;;;
 ;;; Iteration support
 
-(defmacro-clause (for dimensions-and-value :in-d-values d-values)
-  ;; TODO:
-  )
+(defmacro-clause (for variables :in-d-value d-value)
+  (assert (length= 2 variables))
+  (with-unique-names (d-value-variable dimensions-variable one-dimensional-variable? c-value-variable coordinates-variable)
+    `(progn
+       (with ,d-value-variable = ,d-value)
+       (with ,dimensions-variable = (dimensions-of ,d-value-variable))
+       (with ,one-dimensional-variable? = (length= 1 ,dimensions-variable))
+       (for ,c-value-variable :in (c-values-of ,d-value-variable))
+       (for ,coordinates-variable = (coordinates-of ,c-value-variable))
+       (for ,(first variables) = (if ,one-dimensional-variable?
+                                     (first ,coordinates-variable)
+                                     ,coordinates-variable))
+       (for ,(second variables) = (value-of ,c-value-variable)))))
 
-;; use it like (iter (for (x y value) :in-d-values ((x-of z) (y-of u))))
+(defmacro-clause (for variables :in-d-values d-values)
+  (with-unique-names (d-values-variable dimensions-variable one-dimensional-variable? coordinates-variable)
+    `(progn
+       (with ,d-values-variable = (list ,@d-values))
+       (with ,dimensions-variable = (dimensions-of (first ,d-values-variable)))
+       (with ,one-dimensional-variable? = (length= 1 ,dimensions-variable))
+       (for ,coordinates-variable :in (split-d-values-coordinates-lists ,d-values-variable))
+       (for ,(first variables) = (if ,one-dimensional-variable?
+                                     (first ,coordinates-variable)
+                                     ,coordinates-variable))
+       (for ,(cdr variables) = (mapcar (lambda (d-value)
+                                         (single-value-at-coordinates d-value ,coordinates-variable :otherwise :unspecified-value))
+                                       ,d-values-variable)))))
 
-(iter::defclause (collect-d-value expr
-                                  &optional
-                                  coordinates coordinates
-                                  into variable)
-  ;; TODO:
-  )
+(iter::defclause (collect-d-value expr &optional dimensions dimensions coordinates coordinates into variable)
+  (bind ((collect-variable-spec (or variable iter::*result-var*))
+         (collect-variable (iter::extract-var collect-variable-spec)))
+    (iter::make-accum-var-binding collect-variable-spec nil :collect-d-value)
+    (iter::return-code
+     :initial `((setf ,collect-variable (make-empty-d-value ,dimensions)))
+     :body `((progn
+               (setf (value-at-coordinates ,collect-variable ,coordinates) ,expr))))))
 
-;;(for x = (make-d-value dimensions))
-;;(collect-d-value (+ a b) :coordinates coordinates :into x)
+(export 'collect-d-value)
 
 (def (function e) map-d-values (function d-values &key unspecified-value)
   (assert (d-values-have-same-dimensions-p d-values))
-  (bind ((dimensions (dimensions-of (first d-values))))
-    (mapc (lambda (coordinates)
-            (apply function
-                   coordinates
-                   (mapcar (lambda (d-value)
-                             (single-value-at-coordinates d-value coordinates :otherwise unspecified-value))
-                           d-values)))
-          (reduce (lambda (coordinates-list-1 coordinates-list-2)
-                    (split-coordinates-lists dimensions coordinates-list-1 coordinates-list-2))
-                  d-values
-                  :key (lambda (d-value)
-                         (mapcar #'coordinates-of (c-values-of d-value)))))))
+  (mapc (lambda (coordinates)
+          (apply function
+                 coordinates
+                 (mapcar (lambda (d-value)
+                           (single-value-at-coordinates d-value coordinates :otherwise unspecified-value))
+                         d-values)))
+        (split-d-values-coordinates-lists d-values)))
 
 (def function coordinates-list-difference (dimensions coordinates-list-1 coordinates-list-2)
   (iter outer
@@ -527,6 +545,14 @@
         (iter (for coordinates-2 :in coordinates-list-2)
               (awhen (coordinates-intersection dimensions coordinates-1 coordinates-2)
                 (in outer (collect it))))))
+
+(def function split-d-values-coordinates-lists (d-values)
+  (bind ((dimensions (dimensions-of (first d-values))))
+    (reduce (lambda (coordinates-list-1 coordinates-list-2)
+              (split-coordinates-lists dimensions coordinates-list-1 coordinates-list-2))
+            d-values
+            :key (lambda (d-value)
+                   (mapcar #'coordinates-of (c-values-of d-value))))))
 
 (def function split-coordinates-lists (dimensions coordinates-list-1 coordinates-list-2)
   (bind ((intersections (coordinates-list-intersection dimensions coordinates-list-1 coordinates-list-2)))

@@ -139,7 +139,7 @@
       (setf (population-of -instance-) 2007))
     (with-validity-range "2006" "2007"
       (iter (for index :from 0)
-            (for (validity-begin validity-end value) :in-d-values (population-of -instance-))
+            (for ((validity-begin . validity-end) value) :in-d-value (population-of -instance-))
             (ecase index
               (0 (is (= 2006 value))
                  (is (timestamp= (parse-datestring "2006-01-01") validity-begin))
@@ -178,7 +178,7 @@
           (is (null (single-d-value (slot-1-of instance))))
           (is (null (single-d-value (slot-2-of instance))))
           (setf (slot-2-of instance) 2000)
-          (is (= 2 (length (h-s-of instance)))))))
+          (is (= 2 (length (h-instances-of instance)))))))
     (with-transaction
       (with-validity "2007-01"
         (with-revived-instance instance
