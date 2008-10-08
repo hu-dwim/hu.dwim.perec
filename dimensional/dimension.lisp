@@ -45,7 +45,7 @@
 
 (def special-variable *dimensions* (make-hash-table) "The list of defined dimensions")
 
-(def function find-dimension (name &key (otherwise :error))
+(def (function e) find-dimension (name &key (otherwise :error))
   (or (gethash name *dimensions*)
       (handle-otherwise otherwise)))
 
@@ -229,4 +229,6 @@
 ;;;;;;
 ;;; Enumerated
 
-(def (dimension e) enumerated :type symbol)
+(def (dimension e) enumerated
+  :type symbol
+  :default-coordinate t)

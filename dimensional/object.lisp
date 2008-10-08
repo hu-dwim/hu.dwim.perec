@@ -4,11 +4,11 @@
 ;;; Base classes
 
 (defpclass* d-object ()
-  ()
+  (#+nil(last-consolidated-version :type integer-64))
   (:abstract #t))
 
 (defpclass* h-object ()
-  ()
+  (#+nil(version :type integer-64))
   (:abstract #t))
 
 (defassociation*
