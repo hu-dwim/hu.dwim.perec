@@ -67,6 +67,7 @@
                                      (ordered 'ordering-dimension)
                                      (t 'dimension)))
          (dependent-object-name (format-symbol *package* "~A-DEPENDENT-OBJECT" name))
+         (dependent-instances-name (format-symbol *package* "~A-DEPENDENT-INSTANCES" name))
          (begin-variable-name (format-symbol *package* "~A-BEGIN" name))
          (begin-special-name (format-symbol *package* "*~A*" begin-variable-name))
          (end-variable-name (format-symbol *package* "~A-END" name))
@@ -89,10 +90,11 @@
                              `(:coordinate-name ',coordinate-name
                                                 ,@(when default-coordinate?
                                                         `(:default-coordinate (lambda () ,default-coordinate))))))
-         (slots (if (and ordered (not inherit))
-                    `((,begin-variable-name :type ,type)
-                      (,end-variable-name :type ,type))
-                    `((,name :type ,type)))))
+         (slots (when (primitive-type-p type)
+                  (if (and ordered (not inherit))
+                      `((,begin-variable-name :type ,type)
+                        (,end-variable-name :type ,type))
+                      `((,name :type ,type))))))
     `(progn
        ,(when (getf -options- :export)
               `(export ',name))
@@ -104,6 +106,10 @@
        (defpclass* ,dependent-object-name ()
          ,slots
          (:abstract #t))
+       ,@(when (persistent-class-name-p type)
+               `((defassociation*
+                   ((:class ,dependent-object-name :slot ,name :type ,type)
+                    (:class ,type :slot ,dependent-instances-name :type (set ,dependent-object-name))))))
        (def (macro e) ,with-macro-name (,name &body forms)
          `(,',call-with-fn-name
            ,(coerce-to-coordinate ,name ',type)

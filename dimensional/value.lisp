@@ -97,7 +97,8 @@
   (cdr range))
 
 (def (function io) coordinate-range-empty-p (range)
-  (coordinate= (coordinate-range-begin range) (coordinate-range-end range)))
+  (coordinate= (coordinate-range-begin range)
+               (coordinate-range-end range)))
 
 (def function in-coordinate-range-p (coordinate range)
   (and (coordinate<= (coordinate-range-begin range) coordinate)
@@ -114,12 +115,20 @@
   (assert (and (coordinate-range-p range-1)
                (coordinate-range-p range-2))))
 
-(def function overlapping-range-p (range-1 range-2)
+(def function overlapping-range-p (range-1 range-2 &optional strict)
   (debug-only (assert-ranges range-1 range-2))
-  (or (in-coordinate-range-p (coordinate-range-begin range-1) range-2)
-      (in-coordinate-range-p (coordinate-range-end range-1) range-2)
-      (in-coordinate-range-p (coordinate-range-begin range-2) range-1)
-      (in-coordinate-range-p (coordinate-range-end range-2) range-1)))
+  (and (funcall (if (or (not strict)
+                        (coordinate-range-empty-p range-2))
+                    #'coordinate<=
+                    #'coordinate<)
+                (coordinate-range-begin range-1)
+                (coordinate-range-end range-2))
+       (funcall (if (or (not strict)
+                        (coordinate-range-empty-p range-1))
+                    #'coordinate<=
+                    #'coordinate<)
+                (coordinate-range-begin range-2)
+                (coordinate-range-end range-1))))
 
 (def function covering-range-p (cover range)
   (and (coordinate<= (coordinate-range-begin cover)
@@ -129,7 +138,7 @@
 
 (def function range-intersection (range-1 range-2)
   (debug-only (assert-ranges range-1 range-2))
-  (when (overlapping-range-p range-1 range-2)
+  (when (overlapping-range-p range-1 range-2 #t)
     (make-coordinate-range (coordinate-max (coordinate-range-begin range-1)
                                            (coordinate-range-begin range-2))
                            (coordinate-min (coordinate-range-end range-1)
@@ -145,7 +154,7 @@
 
 (def function range-difference (range-1 range-2)
   (debug-only (assert-ranges range-1 range-2))
-  (if (overlapping-range-p range-1 range-2)
+  (if (overlapping-range-p range-1 range-2 #t)
       (bind ((intersection (range-intersection range-1 range-2))
              (difference-1 (make-coordinate-range (coordinate-range-begin range-1) (coordinate-range-begin intersection)))
              (difference-2 (make-coordinate-range (coordinate-range-end intersection) (coordinate-range-end range-1)))
@@ -263,21 +272,26 @@
                coordinates-1)))))
 
 (def (function e) coordinates-difference (dimensions coordinates-1 coordinates-2)
-  (iter outer
-        (with result-coordinates = coordinates-1)
-        (for index :from 0)
-        (for dimension :in dimensions)
-        (for coordinate-1 :in coordinates-1)
-        (for coordinate-2 :in coordinates-2)
-        (for differences = (coordinate-difference dimension coordinate-1 coordinate-2))
-        (iter (for difference :in differences)
-              (in outer (if difference
-                            (collect (aprog1 (copy-seq result-coordinates)
-                                       (setf (elt it index) difference)))
-                            (finish)))
-              (if coordinate-2
-                  (setf (elt result-coordinates index) coordinate-2)
-                  (in outer (finish))))))
+  (if (coordinates-intersection dimensions coordinates-1 coordinates-2)
+      (iter outer
+            (with result-coordinates = (copy-seq coordinates-1))
+            (for index :from 0)
+            (for dimension :in dimensions)
+            (for coordinate-1 :in coordinates-1)
+            (for coordinate-2 :in coordinates-2)
+            (for differences = (coordinate-difference dimension coordinate-1 coordinate-2))
+            (iter (for difference :in differences)
+                  (in outer (if difference
+                                (collect (aprog1 (copy-seq result-coordinates)
+                                           (setf (elt it index) difference)))
+                                (finish))))
+            (if coordinate-2
+                (bind ((intersection (coordinate-intersection dimension coordinate-1 coordinate-2)))
+                  (if intersection
+                      (setf (elt result-coordinates index) intersection)
+                      (finish)))
+                (finish)))
+      (list coordinates-1)))
 
 ;;;;;;
 ;;; C value
@@ -292,8 +306,8 @@
 (def print-object c-value ()
   (princ (value-of -self-)))
 
-(def (function e) print-c-value (c-value &optional stream)
-  (format stream "(~{~A~^, ~}) : ~A" (coordinates-of c-value) (value-of c-value)))
+(def (function e) print-c-value (c-value &optional (stream t))
+  (format stream "(~{~A~^ ~}) : ~A" (coordinates-of c-value) (value-of c-value)))
 
 (def (function e) make-c-value (coordinates value)
   (make-instance 'c-value
@@ -326,16 +340,19 @@
 (def print-object d-value ()
   (format t "(~{~A~^, ~})" (mapcar #'name-of (dimensions-of -self-))))
 
-(def (function e) print-d-value (d-value &optional stream)
-  ;; TODO: use iter
-  )
+(def (function e) print-d-value (d-value &optional (stream t))
+  (princ d-value stream)
+  (iter (for c-value :in (c-values-of d-value))
+        (terpri stream)
+        (print-c-value c-value stream)))
 
 (def function valid-d-value-p (d-value)
   (iter (with dimensions = (dimensions-of d-value))
         (for c-value-1-cell :on (c-values-of d-value))
         (for c-value-1 = (car c-value-1-cell))
-        (iter (for c-value-2 :in c-value-1-cell)
-              (assert (not (coordinates-intersection dimensions (coordinates-of c-value-1) (coordinates-of c-value-2)))))))
+        (iter (for c-value-2 :in (cdr c-value-1-cell))
+              (assert (not (coordinates-intersection dimensions (coordinates-of c-value-1) (coordinates-of c-value-2)))
+                      nil "Invalid d-value due to overlapping coordinates found in c-values of ~A" d-value))))
 
 (def (function e) make-empty-d-value (dimensions)
   (make-instance 'd-value
@@ -395,38 +412,42 @@
                       (appending (coordinates-difference dimensions remaining-coordinate (coordinates-of c-value))))))
     (null remaining-coordinates)))
 
-(def (function e) sort-d-value (d-value)
-  ;; TODO:
-  )
-
 (def (function e) consolidate-d-value (d-value &key (test #'eql))
   (debug-only (valid-d-value-p d-value))
   (tagbody
-     (sort-d-value d-value)
    :restart
      (iter outer
            (with dimensions = (dimensions-of d-value))
            (for c-value-1-cell :on (c-values-of d-value))
            (for c-value-1 = (car c-value-1-cell))
            (unless (iter inner
-                         (for c-value-2 :in c-value-1-cell)
+                         (for c-value-2 :in (cdr c-value-1-cell))
                          (when (funcall test
                                         (value-of c-value-1)
                                         (value-of c-value-2))
-                           (bind (((:values coordinates success?)
-                                   (coordinates-union dimensions c-value-1 c-value-2)))
-                             (when success?
-                               (in outer (collect (make-c-value coordinates (value-of c-value-1))))
-                               (go :restart)))))
-             (collect c-value-1)))))
+                           (when-bind coordinates (coordinates-union dimensions (coordinates-of c-value-1) (coordinates-of c-value-2))
+                             (setf (c-values-of d-value)
+                                   (list* (make-c-value coordinates (value-of c-value-1))
+                                          (remove-if (lambda (c-value)
+                                                       (or (eq c-value c-value-1)
+                                                           (eq c-value c-value-2)))
+                                                     (c-values-of d-value))))
+                             (go :restart))))
+             (collect c-value-1))))
+  (debug-only (valid-d-value-p d-value))
+  d-value)
 
-(def (function e) single-value-at-coordinates (d-value coordinates)
+(def (function e) single-value-at-coordinates (d-value coordinates &key (otherwise nil otherwise?))
   (debug-only (valid-d-value-p d-value))
   (iter (with dimensions = (dimensions-of d-value))
         (for c-value :in (c-values-of d-value))
         (when (covering-coordinates-p dimensions (coordinates-of c-value) coordinates)
           (return-from single-value-at-coordinates (value-of c-value)))
-        (finally (error "Covering c-value not found for ~A in ~A" coordinates d-value))))
+        (finally
+         (handle-otherwise
+          (if otherwise?
+              otherwise
+              (list :error "Covering c-value not found for ~A in ~A" coordinates d-value))))))
 
 (def (function e) value-at-coordinates (d-value coordinates)
   (debug-only (valid-d-value-p d-value))
@@ -444,9 +465,17 @@
         (list* (make-c-value coordinates new-value)
                (iter (with dimensions = (dimensions-of d-value))
                      (for c-value :in (c-values-of d-value))
-                     (appending (make-c-value (coordinates-difference dimensions (coordinates-of c-value) coordinates)
-                                              (value-of c-value))))))
+                     (mapc (lambda (coordinates)
+                             (collect (make-c-value coordinates (value-of c-value))))
+                           (coordinates-difference dimensions (coordinates-of c-value) coordinates)))))
   (consolidate-d-value d-value))
+
+(def function d-values-have-same-dimensions-p (d-values)
+  (bind ((dimensions (dimensions-of (first d-values))))
+    (every (lambda (d-value)
+             (equal dimensions
+                    (dimensions-of d-value)))
+           d-values)))
 
 ;;;;;;
 ;;; Iteration support
@@ -467,6 +496,40 @@
 ;;(for x = (make-d-value dimensions))
 ;;(collect-d-value (+ a b) :coordinates coordinates :into x)
 
-(def function map-d-values (function d-values)
-  ;; TODO: use iter
-  )
+(def (function e) map-d-values (function d-values &key unspecified-value)
+  (assert (d-values-have-same-dimensions-p d-values))
+  (bind ((dimensions (dimensions-of (first d-values))))
+    (mapc (lambda (coordinates)
+            (apply function
+                   coordinates
+                   (mapcar (lambda (d-value)
+                             (single-value-at-coordinates d-value coordinates :otherwise unspecified-value))
+                           d-values)))
+          (reduce (lambda (coordinates-list-1 coordinates-list-2)
+                    (split-coordinates-lists dimensions coordinates-list-1 coordinates-list-2))
+                  d-values
+                  :key (lambda (d-value)
+                         (mapcar #'coordinates-of (c-values-of d-value)))))))
+
+(def function coordinates-list-difference (dimensions coordinates-list-1 coordinates-list-2)
+  (iter outer
+        (for coordinates-1 :in coordinates-list-1)
+        (for differences = (iter (for coordinates-2 :in coordinates-list-2)
+                                 (collect (coordinates-difference dimensions coordinates-1 coordinates-2))))
+        (when differences
+          (appending (reduce (lambda (coordinates-list-1 coordinates-list-2)
+                               (coordinates-list-intersection dimensions coordinates-list-1 coordinates-list-2))
+                             differences)))))
+
+(def function coordinates-list-intersection (dimensions coordinates-list-1 coordinates-list-2)
+  (iter outer
+        (for coordinates-1 :in coordinates-list-1)
+        (iter (for coordinates-2 :in coordinates-list-2)
+              (awhen (coordinates-intersection dimensions coordinates-1 coordinates-2)
+                (in outer (collect it))))))
+
+(def function split-coordinates-lists (dimensions coordinates-list-1 coordinates-list-2)
+  (bind ((intersections (coordinates-list-intersection dimensions coordinates-list-1 coordinates-list-2)))
+    (append intersections
+            (coordinates-list-difference dimensions coordinates-list-1 intersections)
+            (coordinates-list-difference dimensions coordinates-list-2 intersections))))
