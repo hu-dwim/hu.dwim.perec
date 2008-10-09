@@ -313,8 +313,8 @@
            #:validity-end-of
            #:+beginning-of-time+
            #:+end-of-time+
-           #:d-object
-           #:h-object
+           #:persistent-object-d
+           #:persistent-object-h
            #:time-dependent-object
            #:validity-dependent-object
            #:d-instance-of

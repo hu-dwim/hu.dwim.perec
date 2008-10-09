@@ -38,7 +38,7 @@
 (defun retest ()
   (drop-all-test-tables)
   (clear-compiled-query-cache)
-  ;; TODO should take care of possible remaining h-object's
+  ;; TODO should take care of possible remaining persistent-object-hs
   (mapc (lambda (elememnt)
           (awhen (primary-table-of elememnt)
             (invalidate-computed-slot it 'ensure-exported))

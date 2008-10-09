@@ -3,14 +3,14 @@
 ;;;;;;;;;;;;;;;;
 ;;; Base classes
 
-(defpclass* d-object ()
+(defpclass* persistent-object-d ()
   ()
   (:abstract #t))
 
-(defpclass* h-object ()
+(defpclass* persistent-object-h ()
   ()
   (:abstract #t))
 
 (defassociation*
-  ((:class h-object :slot d-instance :type d-object)
-   (:class d-object :slot h-instances :type (set h-object))))
+  ((:class persistent-object-h :slot d-instance :type persistent-object-d)
+   (:class persistent-object-d :slot h-instances :type (set persistent-object-h))))

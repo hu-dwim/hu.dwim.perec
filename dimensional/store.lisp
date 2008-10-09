@@ -14,7 +14,7 @@
 ;;;
 ;;; Slot access
 ;;;
-(def method restore-slot ((d-class persistent-class-d) (d-instance d-object) (d-slot persistent-effective-slot-definition-d) &key coordinates)
+(def method restore-slot ((d-class persistent-class-d) (d-instance persistent-object-d) (d-slot persistent-effective-slot-definition-d) &key coordinates)
   (bind (((d-slot-default-value . has-default-p) (default-value-for-type-of d-slot))
          (default-value (if has-default-p d-slot-default-value +unbound-slot-marker+))
          (dimensions (dimensions-of d-slot))
@@ -86,7 +86,7 @@
     (add-query-variable query 'h-instance)
     (add-collect query `(slot-value h-instance ',h-slot-name))
     (add-assert query `(typep h-instance ,h-class-name))
-    (add-assert query `(eq (d-object-of h-instance) d-instance))
+    (add-assert query `(eq (d-instance-of h-instance) d-instance))
     (add-assert query `(or
                         (not (slot-boundp h-instance ',h-slot-name))
                         (not (eq (slot-value h-instance ',h-slot-name) ,+h-unused-slot-marker+))))

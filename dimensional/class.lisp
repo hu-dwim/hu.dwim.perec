@@ -22,7 +22,7 @@
     :type persistent-class
     :documentation "The history class generated for this t class.")
    (parent-slot
-    (compute-as (find-persistent-slot (h-class-of -self-) 'd-object :otherwise nil))
+    (compute-as (find-persistent-slot (h-class-of -self-) 'd-instance :otherwise nil))
     :type column)
    (parent-id-column
     (compute-as (id-column-of (parent-slot-of -self-)))
