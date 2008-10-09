@@ -19,21 +19,18 @@
          (default-value (if has-default-p d-slot-default-value +unbound-slot-marker+))
          (dimensions (dimensions-of d-slot))
          (records (select-slot-values-with-dimensions d-class d-instance d-slot coordinates)))
-    (collect-values-having-dimensions
-     records
-     default-value
-     dimensions
-     coordinates)))
+    (make-d-value-from-records records default-value dimensions coordinates)))
 
 ;;;
 ;;; d-value builders
 ;;;
-(def function collect-values-having-dimensions (records default-value dimensions coordinates)
-  (prog1-bind d-value (make-single-d-value dimensions coordinates default-value)
+(def function make-d-value-from-records (records default-value dimensions coordinates)
+  (bind ((d-value (make-single-d-value dimensions coordinates default-value)))
     (iter (for record :in records)
           (for value = (first records))
-          (for coords = (coordinates-intersection (rest records) coordinates))
-          (setf (value-at-coordinates d-value coords) value))))
+          (for coords = (rest records))
+          (setf (value-at-coordinates d-value coords) value))
+    (value-at-coordinates d-value coordinates))) ; FIXME add plane of inherited coord
 
 ;;;
 ;;; Queries
@@ -107,7 +104,7 @@
 
              (add-collect query `(cons
                                   (slot-value h-instance ',(slot-name-of dimension))
-                                  ,(cdr coordinate))) ;; FIXME should be inclusive if not interval-p
+                                  ,(maximum-coordinate-of dimension)))
 
              (add-assert query
                          `(,(if interval-p
