@@ -228,6 +228,12 @@
 (def (function e) make-empty-coordinates (dimensions)
   (mapcar (constantly nil) dimensions))
 
+(def (function e) collect-subcoordinates (dimensions sub-dimensions coordinates)
+  (iter (for dimension :in dimensions)
+        (for coordinate :in coordinates)
+        (when (member dimension sub-dimensions)
+          (collect coordinate))))
+
 (def (function e) covering-coordinates-p (dimensions cover-coordinates coordinates)
   (iter (for dimension :in dimensions)
         (for cover-coordinate :in cover-coordinates)
@@ -536,6 +542,16 @@
 
 (export 'collect-d-value)
 
+(def (function e) map-d-value (d-value function)
+  (mapc (lambda (c-value)
+          (funcall function (coordinates-of c-value) (value-of c-value)))
+        (c-values-of d-value)))
+
+(def (function e) mapcar-d-value (d-value function)
+  (mapcar (lambda (c-value)
+            (funcall function (coordinates-of c-value) (value-of c-value)))
+          (c-values-of d-value)))
+
 (def (function e) map-d-values (function d-values &key unspecified-value)
   (assert (d-values-have-same-dimensions-p d-values))
   (mapc (lambda (coordinates)
@@ -563,6 +579,12 @@
               (awhen (coordinates-intersection dimensions coordinates-1 coordinates-2)
                 (in outer (collect it))))))
 
+(def function split-coordinates-lists (dimensions coordinates-list-1 coordinates-list-2)
+  (bind ((intersections (coordinates-list-intersection dimensions coordinates-list-1 coordinates-list-2)))
+    (append intersections
+            (coordinates-list-difference dimensions coordinates-list-1 intersections)
+            (coordinates-list-difference dimensions coordinates-list-2 intersections))))
+
 (def function split-d-values-coordinates-lists (d-values)
   (bind ((dimensions (dimensions-of (first d-values))))
     (reduce (lambda (coordinates-list-1 coordinates-list-2)
@@ -570,12 +592,6 @@
             d-values
             :key (lambda (d-value)
                    (mapcar #'coordinates-of (c-values-of d-value))))))
-
-(def function split-coordinates-lists (dimensions coordinates-list-1 coordinates-list-2)
-  (bind ((intersections (coordinates-list-intersection dimensions coordinates-list-1 coordinates-list-2)))
-    (append intersections
-            (coordinates-list-difference dimensions coordinates-list-1 intersections)
-            (coordinates-list-difference dimensions coordinates-list-2 intersections))))
 
 ;;;;;;
 ;;; D operations
@@ -589,6 +605,34 @@
                          :coordinates (if (length= 1 dimensions)
                                           (list coordinates)
                                           coordinates))))
+
+(def (function e) d-project (function projection-dimensions d-value)
+  (bind ((dimensions (dimensions-of d-value))
+         (remaining-dimensions (set-difference dimensions projection-dimensions))
+         (projection-coordinates-list (remove-duplicates (mapcar-d-value d-value
+                                                                         (lambda (coordinates value)
+                                                                           (declare (ignorable value))
+                                                                           (collect-subcoordinates dimensions projection-dimensions coordinates)))
+                                                         :test #'coordinates=)))
+    (setf projection-coordinates-list
+          (coordinates-list-intersection projection-dimensions
+                                         projection-coordinates-list
+                                         projection-coordinates-list))
+    (iter (for projection-coordinates :in projection-coordinates-list)
+          (for coordinates = (iter (generate projection-coordinate :in projection-coordinates)
+                                   (for dimension :in dimensions)
+                                   (collect (if (member dimension projection-dimensions)
+                                                (next projection-coordinate)
+                                                (cons 0 100)))))
+          (for projected-d-value = (value-at-coordinates d-value coordinates))
+          (for projected-c-values = (c-values-of projected-d-value))
+          (for values = (mapcar #'value-of projected-c-values))
+          (for remaining-coordinates = (mapcar (lambda (c-value)
+                                                 (collect-subcoordinates dimensions remaining-dimensions (coordinates-of c-value)))
+                                               projected-c-values))
+          (collect-d-value (funcall function remaining-dimensions remaining-coordinates values)
+                           :dimensions projection-dimensions
+                           :coordinates projection-coordinates))))
 
 (def (function e) d-equal (d-value-1 d-value-2)
   (d-apply #'equal (list d-value-1 d-value-2)))
