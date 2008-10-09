@@ -30,7 +30,7 @@
        it
        (call-next-method)))
 
-(def method initialize-instance :around ((class persistent-class) &rest args)
+(def method initialize-instance :around ((class persistent-class) &rest args &key direct-superclasses &allow-other-keys)
   (apply #'shared-initialize-around-persistent-class class #'call-next-method args))
 
 (def method reinitialize-instance :around ((class persistent-class) &rest args)
@@ -39,7 +39,7 @@
         (depends-on-me-of class))
   (setf (depends-on-me-of class) nil)
   ;; emulate shared initialize which is not allowed to be overridden
-  (apply #'shared-initialize-around-persistent-class class #'call-next-method :name (class-name class) args))
+  (apply #'shared-initialize-around-persistent-class class #'call-next-method :reinitialize #t :name (class-name class) args))
 
 (def method reinitialize-instance :before ((association persistent-association) &key &allow-other-keys)
   (mapc #L(deletef (depends-on-of !1) association)
@@ -213,17 +213,19 @@
 ;; this is not the real shared-initialize because portable programs are not allowed to override that
 ;; so we are somewhat emulating it by calling this function from both initialize-instance and reinitialize-instance
 (def function shared-initialize-around-persistent-class (class call-next-method &rest args
-                                                    &key name direct-slots direct-superclasses &allow-other-keys)
+                                                         &key (reinitialize #f) name direct-slots (direct-superclasses nil direct-superclasses?) &allow-other-keys)
   ;; call initialize-instance or reinitialize-instance next method
   (prog1
       (apply call-next-method
              class
              :direct-slots (append (process-direct-slot-definitions direct-slots)
                                    (association-direct-slot-definitions class))
-             :direct-superclasses (append direct-superclasses
-                                          (persistent-class-default-superclasses class name direct-superclasses))
              :abstract (first (getf args :abstract))
-             (remove-from-plist args :direct-slots :direct-superclasses :abstract))
+             (append (when (or (not reinitialize)
+                               direct-superclasses?)
+                       (list :direct-superclasses (append direct-superclasses
+                                                          (persistent-class-default-superclasses class name direct-superclasses))))
+                     (remove-from-plist args :reinitialize :direct-slots :direct-superclasses :abstract)))
     (setf (find-persistent-class name) class)
     (invalidate-inheritance class)
     (invalidate-computed-slot class 'standard-direct-slots)

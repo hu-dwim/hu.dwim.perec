@@ -176,7 +176,6 @@
                                       :metaclass (class-of class)
                                       ;; TODO: what about killing other class options?
                                       :abstract (list (abstract-p class))
-                                      :direct-superclasses (class-direct-superclasses class)
                                       :direct-slots (mapcar
                                                      #L(list :instance !1)
                                                      (remove-if #L(typep !1 'persistent-association-end-direct-slot-definition)
