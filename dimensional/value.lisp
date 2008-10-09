@@ -378,6 +378,13 @@
 (def (function e) single-d-value-p (d-value)
   (length= 1 (c-values-of d-value)))
 
+(def (function e) d-values-have-same-dimensions-p (d-values)
+  (bind ((dimensions (dimensions-of (first d-values))))
+    (every (lambda (d-value)
+             (equal dimensions
+                    (dimensions-of d-value)))
+           d-values)))
+
 (def (function e) copy-d-value (d-value)
   (debug-only (valid-d-value-p d-value))
   (make-instance 'd-value
@@ -421,30 +428,33 @@
 
 (def (function e) consolidate-d-value (d-value &key (test #'eql))
   (debug-only (valid-d-value-p d-value))
-  (tagbody
-   :restart
-     (iter outer
-           (with dimensions = (dimensions-of d-value))
-           (for c-value-1-cell :on (c-values-of d-value))
-           (for c-value-1 = (car c-value-1-cell))
-           (unless (iter inner
-                         (for c-value-2 :in (cdr c-value-1-cell))
-                         (when (funcall test
-                                        (value-of c-value-1)
-                                        (value-of c-value-2))
-                           (when-bind coordinates (coordinates-union dimensions (coordinates-of c-value-1) (coordinates-of c-value-2))
-                             (setf (c-values-of d-value)
-                                   (list* (make-c-value coordinates (value-of c-value-1))
-                                          (remove-if (lambda (c-value)
-                                                       (or (eq c-value c-value-1)
-                                                           (eq c-value c-value-2)))
-                                                     (c-values-of d-value))))
-                             (go :restart))))
-             (collect c-value-1))))
-  (debug-only (valid-d-value-p d-value))
-  d-value)
+  (bind ((original-d-value (debug-only (copy-d-value d-value))))
+    (declare (ignorable original-d-value))
+    (tagbody
+     :restart
+       (iter outer
+             (with dimensions = (dimensions-of d-value))
+             (for c-value-1-cell :on (c-values-of d-value))
+             (for c-value-1 = (car c-value-1-cell))
+             (unless (iter inner
+                           (for c-value-2 :in (cdr c-value-1-cell))
+                           (when (funcall test
+                                          (value-of c-value-1)
+                                          (value-of c-value-2))
+                             (when-bind coordinates (coordinates-union dimensions (coordinates-of c-value-1) (coordinates-of c-value-2))
+                               (setf (c-values-of d-value)
+                                     (list* (make-c-value coordinates (value-of c-value-1))
+                                            (remove-if (lambda (c-value)
+                                                         (or (eq c-value c-value-1)
+                                                             (eq c-value c-value-2)))
+                                                       (c-values-of d-value))))
+                               (go :restart))))
+               (collect c-value-1))))
+    (debug-only (and (d-value-equal d-value original-d-value)
+                     (valid-d-value-p d-value)))
+    d-value))
 
-(def (function e) single-value-at-coordinates (d-value coordinates &key (otherwise nil otherwise?))
+(def (function e) single-value-at-coordinates (d-value coordinates &key (otherwise :signal-default-error))
   (debug-only (valid-d-value-p d-value))
   (iter (with dimensions = (dimensions-of d-value))
         (for c-value :in (c-values-of d-value))
@@ -452,9 +462,9 @@
           (return-from single-value-at-coordinates (value-of c-value)))
         (finally
          (handle-otherwise
-          (if otherwise?
-              otherwise
-              (list :error "Covering c-value not found for ~A in ~A" coordinates d-value))))))
+          (if (eq otherwise :signal-default-error)
+              (list :error "Covering c-value not found for ~A in ~A" coordinates d-value)
+              otherwise)))))
 
 (def (function e) value-at-coordinates (d-value coordinates)
   (debug-only (valid-d-value-p d-value))
@@ -477,12 +487,10 @@
                            (coordinates-difference dimensions (coordinates-of c-value) coordinates)))))
   (consolidate-d-value d-value))
 
-(def function d-values-have-same-dimensions-p (d-values)
-  (bind ((dimensions (dimensions-of (first d-values))))
-    (every (lambda (d-value)
-             (equal dimensions
-                    (dimensions-of d-value)))
-           d-values)))
+(def (function e) (setf into-d-value) (new-d-value d-value)
+  (iter (for c-value :in (c-values-of new-d-value))
+        (setf (value-at-coordinates d-value (coordinates-of c-value))
+              (value-of c-value))))
 
 ;;;;;;
 ;;; Iteration support
@@ -501,19 +509,21 @@
                                      ,coordinates-variable))
        (for ,(second variables) = (value-of ,c-value-variable)))))
 
-(defmacro-clause (for variables :in-d-values d-values)
+(defmacro-clause (for variables :in-d-values d-values :unspecified-value unspecified-value)
   (with-unique-names (d-values-variable dimensions-variable one-dimensional-variable? coordinates-variable)
     `(progn
-       (with ,d-values-variable = (list ,@d-values))
+       (with ,d-values-variable = ,(if (listp d-values)
+                                       `(list ,@d-values)
+                                       d-values))
        (with ,dimensions-variable = (dimensions-of (first ,d-values-variable)))
        (with ,one-dimensional-variable? = (length= 1 ,dimensions-variable))
        (for ,coordinates-variable :in (split-d-values-coordinates-lists ,d-values-variable))
        (for ,(first variables) = (if ,one-dimensional-variable?
                                      (first ,coordinates-variable)
                                      ,coordinates-variable))
-       (for ,(cdr variables) = (mapcar (lambda (d-value)
-                                         (single-value-at-coordinates d-value ,coordinates-variable :otherwise :unspecified-value))
-                                       ,d-values-variable)))))
+       (for ,(second variables) = (mapcar (lambda (d-value)
+                                            (single-value-at-coordinates d-value ,coordinates-variable :otherwise ,unspecified-value))
+                                          ,d-values-variable)))))
 
 (iter::defclause (collect-d-value expr &optional dimensions dimensions coordinates coordinates into variable)
   (bind ((collect-variable-spec (or variable iter::*result-var*))
@@ -566,3 +576,40 @@
     (append intersections
             (coordinates-list-difference dimensions coordinates-list-1 intersections)
             (coordinates-list-difference dimensions coordinates-list-2 intersections))))
+
+;;;;;;
+;;; D operations
+
+(def (function e) d-apply (function d-values &key (unspecified-value :signal-default-error))
+  (assert (d-values-have-same-dimensions-p d-values))
+  (iter (with dimensions = (dimensions-of (first d-values)))
+        (for (coordinates values) :in-d-values d-values :unspecified-value unspecified-value)
+        (collect-d-value (apply function values)
+                         :dimensions dimensions
+                         :coordinates (if (length= 1 dimensions)
+                                          (list coordinates)
+                                          coordinates))))
+
+(def (function e) d-equal (d-value-1 d-value-2)
+  (d-apply #'equal (list d-value-1 d-value-2)))
+
+(def (function e) d= (d-value &rest d-values)
+  (d-apply #'= (list* d-value d-values)))
+
+(def (function e) d+ (&rest d-values)
+  (d-apply #'+ d-values))
+
+(def (function e) d- (d-value &rest d-values)
+  (d-apply #'- (list* d-value d-values)))
+
+(def (function e) d* (&rest d-values)
+  (d-apply #'* d-values))
+
+(def (function e) d/ (d-value &rest d-values)
+  (d-apply #'/ (list* d-value d-values)))
+
+(def (macro e) d-incf (place delta)
+  `(setf ,place (d+ ,place ,delta)))
+
+(def (macro e) d-decf (place delta)
+  `(setf ,place (d+ ,place ,delta)))

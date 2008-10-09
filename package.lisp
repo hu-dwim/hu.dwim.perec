@@ -279,6 +279,7 @@
 
            ;; dimensional
            #:persistent-class-d
+           #:persistent-class-h
            #:persistent-association-d
            #:persistent-slot-definition-d
            #:persistent-direct-slot-definition-d
