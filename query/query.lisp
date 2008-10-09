@@ -121,7 +121,7 @@
 
 (defmethod add-lexical-variable ((query query) variable-name)
   (aprog1 (make-lexical-variable :name variable-name)
-    (push it (lexical-variables-of query))))
+    (nconcf (lexical-variables-of query) (list it))))
 
 (defmethod add-query-variable ((query query) variable-name)
   (aprog1 (make-query-variable :name variable-name)
