@@ -30,7 +30,7 @@
        it
        (call-next-method)))
 
-(def method initialize-instance :around ((class persistent-class) &rest args &key direct-superclasses &allow-other-keys)
+(def method initialize-instance :around ((class persistent-class) &rest args)
   (apply #'shared-initialize-around-persistent-class class #'call-next-method args))
 
 (def method reinitialize-instance :around ((class persistent-class) &rest args)
@@ -179,8 +179,9 @@
 (def generic persistent-class-default-superclasses (class class-name direct-superclasses)
   (:method ((class persistent-class) class-name direct-superclasses)
     (unless (or (eq class-name 'persistent-object)
-                (iter (for direct-superclass :in direct-superclasses)
-                      (thereis (ignore-errors (subtypep class (find-class 'persistent-object))))))
+                (find-if (lambda (direct-superclass)
+                           (ignore-errors (subtypep direct-superclass (find-class 'persistent-object))))
+                         direct-superclasses))
       (list (find-class 'persistent-object)))))
 
 (def function process-direct-slot-definitions (direct-slots)
