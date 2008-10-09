@@ -36,10 +36,10 @@
              (dynamic-extent args))
     (assert oid)
     (bind ((class (class-of instance))
-           (effective-slots-with-underlying-slot-access (effective-slots-with-underlying-slot-access-of class))
+           (persistent-effective-slots (persistent-effective-slots-of class))
            (slot-names (mapcar #'slot-definition-name
-                               (set-difference (class-slots class) effective-slots-with-underlying-slot-access))))
-      (dolist (slot effective-slots-with-underlying-slot-access)
+                               (set-difference (class-slots class) persistent-effective-slots))))
+      (dolist (slot persistent-effective-slots)
         (invalidate-cached-slot instance slot))
       (apply #'shared-initialize instance slot-names args))))
 

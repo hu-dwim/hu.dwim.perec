@@ -55,7 +55,7 @@
 (def method allocate-instance ((class persistent-class) &rest args)
   (declare (ignore args))
   (prog1-bind instance (call-next-method)
-    (iter (for slot :in (effective-slots-with-underlying-slot-access-of class))
+    (iter (for slot :in (persistent-effective-slots-of class))
           (underlying-slot-makunbound-using-class class instance slot))))
 
 (def method initialize-instance :around ((instance persistent-object) &rest args &key persistent)

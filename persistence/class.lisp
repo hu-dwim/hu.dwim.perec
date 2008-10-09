@@ -40,10 +40,6 @@
     (compute-as (collect-if #L(typep !1 'persistent-effective-slot-definition) (standard-effective-slots-of -self-)))
     :type (list persistent-effective-slot-definition)
     :documentation "The list of effective slots which are turned out to be persistent in this class.")
-   (effective-slots-with-underlying-slot-access
-    (compute-as (persistent-effective-slots-of -self-))
-    :type (list standard-effective-slot-definition)
-    :documentation "A list of slots that support the underlying-slot-value protocol.")
    (persistent-direct-super-classes
     (compute-as (collect-if #'persistent-class-p (class-direct-superclasses -self-)) )
     :type (list persistent-class)

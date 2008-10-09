@@ -13,10 +13,6 @@
   ((persistent-effective-slot-ds
     (compute-as (collect-if [typep !1 'persistent-effective-slot-definition-d] (standard-effective-slots-of -self-)))
     :type (list persistent-effective-slot-definition-d))
-   (effective-slots-with-underlying-slot-access
-    (compute-as (append (persistent-effective-slots-of -self-) (persistent-effective-slot-ds-of -self-)))
-    :type (list standard-effective-slot-definition)
-    :documentation "A list of slots that support the underlying-slot-value protocol.")
    (h-class
     (compute-as (find-class (d-class-name->h-class-name (class-name -self-))))
     :type persistent-class
