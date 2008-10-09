@@ -63,8 +63,10 @@
 (def method initialize-instance :after ((instance persistent-effective-slot-definition-d) &key &allow-other-keys)
   (assert (dimensions-of instance)))
 
-(def method persistent-class-default-superclasses ((class persistent-class-d) class-name)
-  (unless (eq class-name 'd-object)
+(def method persistent-class-default-superclasses ((class persistent-class-d) class-name direct-superclasses)
+  (unless (or (eq class-name 'd-object)
+              (iter (for direct-superclass :in direct-superclasses)
+                    (thereis (ignore-errors (subtypep class (find-class 'd-object))))))
     (list (find-class 'd-object))))
 
 (def function merge-dimensions (dimensions-list)
@@ -73,7 +75,7 @@
             nil "Dimensions cannot be overridden. Received: ~S" dimensions-list)
     dimensions))
 
-(def method persistent-class-default-superclasses ((class persistent-class-h) h-class-name)
+(def method persistent-class-default-superclasses ((class persistent-class-h) h-class-name direct-superclasses)
   (bind ((d-class-name (h-class-name->d-class-name h-class-name)))
     (append (mapcar (lambda (d-class)
                       (find-class (d-class-name->h-class-name (class-name d-class))))

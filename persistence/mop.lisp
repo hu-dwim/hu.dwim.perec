@@ -176,9 +176,11 @@
 ;;;;;;;;;;;
 ;;; Utility
 
-(def generic persistent-class-default-superclasses (class class-name)
-  (:method ((class persistent-class) class-name)
-    (unless (eq class-name 'persistent-object)
+(def generic persistent-class-default-superclasses (class class-name direct-superclasses)
+  (:method ((class persistent-class) class-name direct-superclasses)
+    (unless (or (eq class-name 'persistent-object)
+                (iter (for direct-superclass :in direct-superclasses)
+                      (thereis (ignore-errors (subtypep class (find-class 'persistent-object))))))
       (list (find-class 'persistent-object)))))
 
 (def function process-direct-slot-definitions (direct-slots)
@@ -218,9 +220,8 @@
              class
              :direct-slots (append (process-direct-slot-definitions direct-slots)
                                    (association-direct-slot-definitions class))
-             :direct-superclasses (remove-duplicates
-                                   (append direct-superclasses
-                                           (persistent-class-default-superclasses class name)))
+             :direct-superclasses (append direct-superclasses
+                                          (persistent-class-default-superclasses class name direct-superclasses))
              :abstract (first (getf args :abstract))
              (remove-from-plist args :direct-slots :direct-superclasses :abstract))
     (setf (find-persistent-class name) class)
