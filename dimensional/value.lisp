@@ -364,6 +364,13 @@
                  :dimensions (mapcar #'lookup-dimension dimensions)
                  :c-values (list (make-c-value coordinates value))))
 
+(def (function e) make-d-value (dimensions coordinates-list values)
+  (prog1-bind d-value
+      (make-empty-d-value dimensions)
+    (mapc (lambda (coordinates value)
+            (setf (value-at-coordinates d-value coordinates) value))
+          coordinates-list values)))
+
 (def (function e) single-d-value (d-value)
   (assert (single-d-value-p d-value))
   (value-of (first (c-values-of d-value))))
