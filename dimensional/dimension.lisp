@@ -34,7 +34,11 @@
     :type function)
    (default-end-coordinate
      nil
-    :type function)))
+    :type function)
+   (minimum-coordinate
+    nil)
+   (maximum-coordinate
+    nil)))
 
 (def class* inheriting-dimension (ordering-dimension)
   ((direction
@@ -87,6 +91,10 @@
                                                               `(:default-begin-coordinate (lambda () ,default-begin-coordinate)))
                                                       ,@(when default-end-coordinate?
                                                               `(:default-end-coordinate (lambda () ,default-end-coordinate)))
+                                                      ,@(when minimum-coordinate?
+                                                              `(:minimum-coordinate ,minimum-coordinate))
+                                                      ,@(when maximum-coordinate?
+                                                              `(:maximum-coordinate ,maximum-coordinate))
                                                       ,@(when inherit (list :direction inherit)))
                              `(:coordinate-name ',coordinate-name
                                                 ,@(when default-coordinate?
