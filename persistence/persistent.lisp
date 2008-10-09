@@ -341,13 +341,14 @@
 ;;; Broken references
 
 (def (function e) signal-broken-references ()
-  ;; cache all instances
-  ;; TODO: query compiler is loaded later
-  (funcall 'execute-query
-           (funcall 'make-query '(select (instance)
-                                  (from (instance persistent-object)))))
-  (bind ((tables nil)
+  (bind ((oids (select-records (list +oid-column-name+)
+                               (list (name-of (primary-relation-of (find-class 'persistent-object))))))
+         (oid-set (make-hash-table :test #'eql))
+         (tables nil)
          (table->referer-slots-map (make-hash-table)))
+    (iter (for oid-record :in-sequence oids)
+          (for oid = (first-elt oid-record))
+          (setf (gethash oid oid-set) oid))
     (iter (for (class-name class) :in-hashtable *persistent-classes*)
           (pushnew (primary-table-of class) tables)
           (dolist (slot (persistent-effective-slots-of class))
@@ -367,8 +368,8 @@
                           (unless (eq :null (elt record +oid-column-count+))
                             (rdbms-values->oid* record +oid-column-count+))))
                     (when (and referred-oid
-                               (not (cached-instance-of referred-oid)))
-                      (bind ((referer (cached-instance-of referer-oid)))
+                               (not (gethash referred-oid oid-set)))
+                      (bind ((referer (load-instance referer-oid)))
                         (cerror "Let's see if there's more" "Slot ~A in ~A has a broken reference to ~A"
                                 (slot-definition-name referer-slot) referer
                                 (make-instance (oid-class-name referred-oid) :persistent #f :oid referred-oid))))))))))
