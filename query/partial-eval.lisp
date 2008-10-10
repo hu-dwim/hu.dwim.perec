@@ -13,6 +13,11 @@
 ;;;
 ;;; Partial eval
 ;;;
+(defun partial-eval-query (query)
+  (setf (asserts-of query)
+        (mapcar #L(partial-eval !1 query) (asserts-of query))))
+
+
 (defun partial-eval (syntax query)
   "Returns the partially evaluated SYNTAX. The SYNTAX can be a SYNTAX-OBJECT or a lisp form
  containing syntax objects. The result is always a SYNTAX-OBJECT."
@@ -34,6 +39,10 @@ if it was fully evaluated.")
 
   (:method ((syntax syntax-object) query)
            (error "Unknown syntax: ~S~%" syntax))
+
+  (:method ((subselect subselect) query)
+    (partial-eval-query subselect)
+    subselect)
 
   (:method ((unparsed unparsed-form) query)
            unparsed)

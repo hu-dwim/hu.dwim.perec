@@ -85,6 +85,30 @@
   (print-object (input-of node) stream))
 
 ;;;
+;;; Interface for query compiler and mapping
+;;;
+(def function query-to-lisp-form (query)
+  (compile-plan (optimize-plan (generate-plan query))))
+
+(def method syntax-to-sql ((subselect subselect))
+  (bind ((plan (optimize-plan (generate-plan subselect))))
+    (unless (typep plan 'sql-query-node)
+      (error "Subselect cannot be mapped to lisp: ~S." subselect))
+    (with-slots (query result-type distinct columns tables where group-by having order-by offset limit) plan
+      (sql-subquery
+        :query
+        (sql-select
+          :distinct distinct
+          :columns columns
+          :tables  tables
+          :where where
+          :group-by group-by
+          :having having
+          :order-by order-by
+          :offset offset
+          :limit limit)))))
+
+;;;
 ;;; Generate initial plan for the query.
 ;;;
 
@@ -272,97 +296,102 @@
 (defgeneric %optimize-plan (plan)
 
   (:method (plan-node)
-           plan-node)
+    plan-node)
   
   (:method ((op unary-operation-node))
-           (setf (input-of op) (%optimize-plan (input-of op)))
-           op)
+    (setf (input-of op) (%optimize-plan (input-of op)))
+    op)
 
   (:method ((delete delete-operation))
-           (let ((*suppress-alias-names* #t)) ;FIXME
-             (call-next-method)))
+    (let ((*suppress-alias-names* #t))  ;FIXME
+      (call-next-method)))
+
+  (:method ((conversion conversion-operation))
+    (call-next-method)
+    (etypecase (query-of conversion)
+      (subselect
+       (when (eq (result-type-of conversion) 'scroll)
+         (error "Scrolls are not supported in subselects: ~S." (query-of conversion)))
+       (input-of conversion))
+      (query
+       conversion)))
 
   (:method ((filter filter-operation))
-           (call-next-method)
-           (typecase (input-of filter)
-               (sql-query-node
-                ;; Move filter conditions that can be mapped to sql into the
-                ;; sql select.
-                (bind ((sql-query (input-of filter))
-                       ((:values sql-conditions lisp-conditions)
-                        (to-sql (rest (condition-of filter)))))
-                  (if (null (group-by-of sql-query))
-                      (add-sql-where-conditions sql-query sql-conditions)
-                      (add-sql-having-conditions sql-query sql-conditions))
-                  (if lisp-conditions
-                      (progn
-                        (setf (condition-of filter) `(and ,@lisp-conditions))
-                        filter)
-                      sql-query)))
-               (t
-                filter)))
+    (call-next-method)
+    (typecase (input-of filter)
+      (sql-query-node
+       ;; Move filter conditions that can be mapped to sql into the
+       ;; sql select.
+       (bind ((sql-query (input-of filter))
+              ((:values sql-conditions lisp-conditions)
+               (to-sql (rest (condition-of filter)))))
+         (if (null (group-by-of sql-query))
+             (add-sql-where-conditions sql-query sql-conditions)
+             (add-sql-having-conditions sql-query sql-conditions))
+         (if lisp-conditions
+             (progn
+               (setf (condition-of filter) `(and ,@lisp-conditions))
+               filter)
+             sql-query)))
+      (t
+       filter)))
 
   (:method ((sort sort-operation))
-           (call-next-method)
-           (typecase (input-of sort)
-               (sql-query-node
-                (bind ((sql-query (input-of sort))
-                       (sql-order-by (order-by-to-sql (sort-spec-of sort))))
-                  (if sql-order-by
-                      (progn
-                        (setf (order-by-of sql-query) sql-order-by)
-                        sql-query)
-                      sort)))
-               (t
-                sort)))
+    (call-next-method)
+    (typecase (input-of sort)
+      (sql-query-node
+       (bind ((sql-query (input-of sort))
+              (sql-order-by (order-by-to-sql (sort-spec-of sort))))
+         (if sql-order-by
+             (progn
+               (setf (order-by-of sql-query) sql-order-by)
+               sql-query)
+             sort)))
+      (t
+       sort)))
 
   (:method ((grouping group-operation))
-           (call-next-method)
-           (typecase (input-of grouping)
-               (sql-query-node
-                ;; If we are grouping the result of an sql select,
-                ;; and each grouping expression is a column reference and
-                ;; each collected expression can be mapped to sql,
-                ;; then merge the grouping with the sql select.
-                (bind ((sql-query (input-of grouping))
-                       ((:values sql-exprs lisp-exprs) (to-sql (collected-expressions-of grouping)))
-                       ((:values sql-groupby lisp-groupby) (to-sql (group-by-of grouping))))
-                  (if (or lisp-exprs lisp-groupby) ;; TODO check each group-by is a column-ref
-                      grouping
-                      (progn
-                        (setf (binder-of sql-query) (binder-of grouping)
-                              (columns-of sql-query) sql-exprs
-                              (group-by-of sql-query) sql-groupby)
-                        sql-query))))
-               (t
-                grouping)))
+    (call-next-method)
+    (typecase (input-of grouping)
+      (sql-query-node
+       ;; If we are grouping the result of an sql select,
+       ;; and each grouping expression is a column reference and
+       ;; each collected expression can be mapped to sql,
+       ;; then merge the grouping with the sql select.
+       (bind ((sql-query (input-of grouping))
+              ((:values sql-exprs lisp-exprs) (to-sql (collected-expressions-of grouping)))
+              ((:values sql-groupby lisp-groupby) (to-sql (group-by-of grouping))))
+         (if (or lisp-exprs lisp-groupby) ;; TODO check each group-by is a column-ref
+             grouping
+             (progn
+               (setf (binder-of sql-query) (binder-of grouping)
+                     (columns-of sql-query) sql-exprs
+                     (group-by-of sql-query) sql-groupby)
+               sql-query))))
+      (t
+       grouping)))
 
   (:method ((projection projection-operation))
     ;; TODO eliminate projection if each rdbms value is mapped by identity-reader
-           (call-next-method)
-           (typecase (input-of projection)
-             (sql-query-node
-              ;; If no persistent object returned by the query, and the collects
-              ;; can be mapped to sql, then merge the projection with the sql select.
-              (bind ((sql-query (input-of projection))
-                     (collects (collects-of (query-of projection)))
-                     (persistent-object-query-p (some (lambda (expr)
-                                                        (bind ((type (persistent-type-of expr)))
-                                                          (and (not (sql-text-p expr))
-                                                               (or (eql type +unknown-type+)
-                                                                   (contains-syntax-p type)
-                                                                   (persistent-class-p type)
-                                                                   (set-type-p* type)))))
-                                                      collects))
-                     ((:values sql-exprs lisp-exprs) (to-sql* collects)))
-                (if (or lisp-exprs persistent-object-query-p) ;; TODO refine condition
-                    projection                                ;; all needed table is joined?
-                    (progn
-                      (setf (binder-of sql-query) (field-binder collects)
-                            (columns-of sql-query) sql-exprs)
-                      projection))))
-             (t
-              projection)))
+    (call-next-method)
+    (typecase (input-of projection)
+      (sql-query-node
+       ;; If no persistent object returned by the query, and the collects
+       ;; can be mapped to sql, then merge the projection with the sql select.
+       (bind ((sql-query (input-of projection))
+              (query (query-of projection))
+              (collects (collects-of query))
+              ((:values sql-exprs lisp-exprs) (to-sql* collects)))
+         (if (and (null lisp-exprs)
+                  (or (typep query 'subselect)
+                      (every [or (sql-text-p !1) (has-identity-reader-p (persistent-type-of !1))] collects)))
+             (progn
+               (setf (binder-of sql-query) (field-binder collects)
+                     (columns-of sql-query) sql-exprs)
+               sql-query)
+             projection))) ;; all needed table is joined?
+      (t
+       projection)))
 
   (:method ((limit-op limit-operation))
     (call-next-method)
@@ -708,30 +737,35 @@
        (substitute-syntax referenced-by substitutions)))))
 
 (defcfun (compute-column-reader-form :memoize-test-fn equalp :computed-in compute-as) (type)
-  (cond ((eq type +unknown-type+)
-         (values
-          (lambda (row index)
-            (bind ((element (elt row index)))
-              (if (eq element :null) nil element)))
-          1))
-        ((contains-syntax-p type)
-         (values ;; TODO optimize: do not call compute-column-reader-form twice
-          `(nth-value 0 (compute-column-reader-form ,(backquote-type-syntax type)))
-          `(nth-value 1 (compute-column-reader-form ,(backquote-type-syntax type)))))
-        ((~persistent-class-type-p type)
-         (values
-          '(quote object-reader)
-          +oid-column-count+))
-        (t (bind ((mapping (compute-mapping (canonical-type-for type)))
-                  (reader (reader-of mapping)))
-             (if (tagged-p mapping)
-                 (values ;; FIXME columns generated in reversed order for tagged types
-                  (lambda (row index)
-                    (funcall reader (nreverse (subseq row index (+ index 2))) 0))
-                  2)
-                 (values
-                  `(quote ,reader)
-                  (length (rdbms-types-of mapping))))))))
+  (cond
+    ((eq type +unknown-type+)
+     (values
+      (lambda (row index)
+        (bind ((element (elt row index)))
+          (if (eq element :null) nil element)))
+      1))
+    ((contains-syntax-p type)
+     (values ;; TODO optimize: do not call compute-column-reader-form twice
+      `(nth-value 0 (compute-column-reader-form ,(backquote-type-syntax type)))
+      `(nth-value 1 (compute-column-reader-form ,(backquote-type-syntax type)))))
+    ((~persistent-class-type-p type)
+     (values
+      '(quote object-reader)
+      +oid-column-count+))
+    (t (bind ((mapping (compute-mapping (canonical-type-for type)))
+              (reader (reader-of mapping)))
+         (if (tagged-p mapping)
+             (values ;; FIXME columns generated in reversed order for tagged types
+              (lambda (row index)
+                (funcall reader (nreverse (subseq row index (+ index 2))) 0))
+              2)
+             (values
+              `(quote ,reader)
+              (length (rdbms-types-of mapping))))))))
+
+(defun has-identity-reader-p (type)
+  (and (not (set-type-p* type))
+       (equal (compute-column-reader-form type) ''identity-reader)))
 
 (defun ~persistent-class-type-p (type)
   "KLUDGE because (subtypep '(and pclass-1 pclass-2) 'persistent-object) does not work."

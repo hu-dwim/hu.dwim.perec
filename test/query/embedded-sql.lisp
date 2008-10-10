@@ -29,10 +29,10 @@
 
 (def-embedded-sql-test test/query/embedded-sql/select-form ()
   (is (equal
-       (select ((int-attr-of o) (sql-text "(select max(_int_attr) from _embedded_sql_test)"))
+       (select ((string-attr-of o) (sql-text "(select max(_int_attr) from _embedded_sql_test)"))
          (from (o embedded-sql-test))
          (order-by :ascending (int-attr-of o)))
-       '((1 3) (2 3) (3 3)))))
+       '(("a" 3) ("a" 3) ("b" 3)))))
 
 (def-embedded-sql-test test/query/embedded-sql/order-by ()
   (is (equal

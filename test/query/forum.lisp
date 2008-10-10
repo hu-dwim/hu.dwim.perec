@@ -319,3 +319,12 @@
       (select (o)
         (from o)
         (where (typep o 'message-test))))))
+
+#+nil
+(deftest test/query/select/subselect ()
+  (test-query (:select-count 1 :record-count 4 :fixture forum-data)
+    (select (m)
+      (from (m message-test))
+      (where (eq (topic-of m) (select (topic)
+                                (from (topic topic-test))
+                                (where (equal (title-of topic) "topic1"))))))))

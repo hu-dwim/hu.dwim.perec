@@ -188,7 +188,7 @@ with the result of the naively compiled query.")
   (normalize-association-end-access query)
   (introduce-joined-variables query)
   (add-prefetched-types query)
-  (partial-eval-asserts query)
+  (partial-eval-query query)
   query)
 
 (defun normalize-query (query)
@@ -213,32 +213,38 @@ with the result of the naively compiled query.")
   (subtypep (class-of <obj>) <type>)         -> (typep <object> <type>)")
   
   (:method (syntax)
-           syntax)
+    syntax)
+  
+  (:method ((subselect subselect))
+    (normalize-query subselect)
+    subselect)
+  
   (:method ((form compound-form))
-           (setf (operands-of form)
-                 (mapcar 'normalize-syntax (operands-of form)))
-           form)
+    (setf (operands-of form)
+          (mapcar 'normalize-syntax (operands-of form)))
+    form)
+  
   (:method ((call function-call))
-           (call-next-method)
-           (pattern-case call
-             (#M(function-call :fn typep
-                               :args (?obj #M(literal-value :value (?is ?class persistent-class-p))))
-                call)
-             (#M(function-call :fn typep
-                               :args (?obj #M(literal-value :value (?is ?name persistent-class-name-p))))
-                (setf (second (args-of call)) (make-literal-value :value (find-class ?name)))
-                call)
-             (#M(function-call :fn subtypep
-                               :args (#M(function-call :fn class-of :args (?object))
-                                        #M(literal-value :value (?is ?name persistent-class-name-p))))
-                (make-function-call :fn 'typep
-                                    :args (list ?object
-                                                (make-literal-value :value (find-class ?name)))))
-             (#M(function-call :fn subtypep
-                               :args (#M(function-call :fn class-of :args (?object)) ?type))
-                (make-function-call :fn 'typep :args (list ?object ?type)))
-             (?otherwise
-              call))))
+    (call-next-method)
+    (pattern-case call
+      (#M(function-call :fn typep
+                        :args (?obj #M(literal-value :value (?is ?class persistent-class-p))))
+         call)
+      (#M(function-call :fn typep
+                        :args (?obj #M(literal-value :value (?is ?name persistent-class-name-p))))
+         (setf (second (args-of call)) (make-literal-value :value (find-class ?name)))
+         call)
+      (#M(function-call :fn subtypep
+                        :args (#M(function-call :fn class-of :args (?object))
+                                 #M(literal-value :value (?is ?name persistent-class-name-p))))
+         (make-function-call :fn 'typep
+                             :args (list ?object
+                                         (make-literal-value :value (find-class ?name)))))
+      (#M(function-call :fn subtypep
+                        :args (#M(function-call :fn class-of :args (?object)) ?type))
+         (make-function-call :fn 'typep :args (list ?object ?type)))
+      (?otherwise
+       call))))
 
 (defun normalize-association-end-access (query)
   "If the assoc is 1-1
@@ -252,41 +258,46 @@ with the result of the naively compiled query.")
 
 (defgeneric %normalize-association-end-access (syntax)
   (:method (syntax)
-           syntax)
+    syntax)
+  
   (:method ((form compound-form))
-           (setf (operands-of form)
-                 (mapcar '%normalize-association-end-access (operands-of form)))
-           form)
+    (setf (operands-of form)
+          (mapcar '%normalize-association-end-access (operands-of form)))
+    form)
+
+  (:method ((subselect subselect))
+    (normalize-association-end-access subselect))
+  
   (:method ((call function-call))
-           (pattern-case call
-             (#M(function-call :fn eq
-                               :args (?or ((?is ?access association-end-access-p) ?object)
-                                          (?object (?is ?access association-end-access-p))))
-                (if (association-end-of ?access)
-                    (bind ((association-end (association-end-of ?access))
-                           (association (association-of association-end))
-                           (other-end (other-association-end-of association-end)))
-                      (ecase (association-kind-of association)
-                        (:1-1
-                         (if (primary-association-end-p association-end)
-                             call
-                             (make-function-call ;; reverse, FIXME check NULL
-                              :persistent-type (persistent-type-of call)
-                              :fn 'eq
-                              :args (list
-                                     (make-association-end-access
-                                      :persistent-type (persistent-type-of (arg-of ?access))
-                                      :association-end other-end
-                                      :accessor (reader-name-of other-end)
-                                      :args (list ?object))
-                                     (arg-of ?access)))))
-                        (:1-n
-                         call)
-                        (:m-n
-                         call)))
-                    call))
-             (?otherwise
-              call))))
+    (pattern-case call
+      (#M(function-call :fn eq
+                        :args (?or ((?is ?access association-end-access-p) ?object)
+                                   (?object (?is ?access association-end-access-p))))
+         (if (association-end-of ?access)
+             (bind ((association-end (association-end-of ?access))
+                    (association (association-of association-end))
+                    (other-end (other-association-end-of association-end)))
+               (ecase (association-kind-of association)
+                 (:1-1
+                  (if (primary-association-end-p association-end)
+                      call
+                      (make-function-call ;; reverse, FIXME check NULL
+                       :persistent-type (persistent-type-of call)
+                       :fn 'eq
+                       :args (list
+                              (make-association-end-access
+                               :persistent-type (persistent-type-of (arg-of ?access))
+                               :association-end other-end
+                               :accessor (reader-name-of other-end)
+                               :args (list ?object))
+                              (arg-of ?access)))))
+                 (:1-n
+                  call)
+                 (:m-n
+                  call)))
+             call))
+      (?otherwise
+       call))))
 
 (defun introduce-joined-variables (query)
   (mapc-query (lambda (expr) (introduce-joined-variables-for expr query)) query))
@@ -295,25 +306,24 @@ with the result of the naively compiled query.")
   (:documentation "Substitutes the arguments of slot accessor forms with joined variables.")
   ;; atoms, unparsed
   (:method (syntax query)
-           (values))
+    (values))
+  ;; subselect
+  (:method ((subselect subselect) query)
+    (introduce-joined-variables subselect))
   ;; recurse on compound forms
   (:method ((syntax compound-form) query)
-           (mapc #L(introduce-joined-variables-for !1 query) (operands-of syntax)))  
+    (mapc #L(introduce-joined-variables-for !1 query) (operands-of syntax)))  
   ;; slot access -> ensure that arg is a query variable with the correct type
   (:method ((access slot-access) query)
-           (call-next-method)
-           (when (association-end-access-p (arg-of access)) ;; TODO check 1-ary end
-             (setf (arg-of access)
-                   (joined-variable-for-association-end-access query (arg-of access))))
-           (when (slot-of access)
-             (setf (arg-of access)
-                   (ensure-type query (arg-of access) (slot-definition-class (slot-of access)))))
-           ;;(debug-only (check-slot-access access))
-           (values)))
-
-(defun partial-eval-asserts (query)
-  (setf (asserts-of query)
-        (mapcar #L(partial-eval !1 query) (asserts-of query))))
+    (call-next-method)
+    (when (association-end-access-p (arg-of access)) ;; TODO check 1-ary end
+      (setf (arg-of access)
+            (joined-variable-for-association-end-access query (arg-of access))))
+    (when (slot-of access)
+      (setf (arg-of access)
+            (ensure-type query (arg-of access) (slot-definition-class (slot-of access)))))
+    ;;(debug-only (check-slot-access access))
+    (values)))
 
 (defun check-slot-access (access)
   (when (slot-of access)

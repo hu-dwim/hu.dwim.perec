@@ -160,22 +160,17 @@ Be careful when using in different situations, because it modifies *readtable*."
   (:method (value (access slot-access))
            (setf (args-of access) (list value))))
 
-(defmethod print-object ((variable variable) stream)
-  (print-unreadable-object (variable stream :type t)
-    (when (slot-boundp variable 'name)
-      (princ (name-of variable) stream))))
+(def print-object (variable :identity nil)
+    (princ (name-of -self-)))
 
-(defmethod print-object ((literal literal-value) stream)
-  (print-unreadable-object (literal stream :type t :identity t)
-    (when (slot-boundp literal 'value)
-      (princ (value-of literal) stream))))
+(def print-object literal-value
+    (princ (value-of -self-)))
 
-
-(defmethod print-object ((form compound-form) stream)
-  (print-unreadable-object (form stream :type t)
-    (princ (if (slot-boundp form 'operator) (operator-of form) "?") stream)
-    (princ " " stream)
-    (princ (if (slot-boundp form 'operands) (operands-of form) "?") stream)))
+(def print-object (compound-form :identity nil)
+  (progn
+    (princ (if (slot-boundp -self- 'operator) (operator-of -self-) "?"))
+    (princ " ")
+    (princ (if (slot-boundp -self- 'operands) (operands-of -self-) "?"))))
 
 (defun null-literal-p (syntax)
   (and (literal-value-p syntax)
@@ -184,6 +179,7 @@ Be careful when using in different situations, because it modifies *readtable*."
 ;;; Walker
 ;;;
 ;; define a ghost of the cl-walker ast class hierarchy so that each walked ast node has 'syntax-object as its superclass
+#|
 #.(iter (for node-class :in (cl-walker:collect-standard-walked-form-subclasses))
         (for node-class-name = (class-name node-class))
         (for local-name = (intern (symbol-name node-class-name) :cl-perec))
@@ -202,7 +198,7 @@ Be careful when using in different situations, because it modifies *readtable*."
 (defmacro with-query-walker-configuration (&body body)
   `(with-walker-configuration (:ast-node-type-mapping *query-walker-ast-node-type-mapping*)
      ,@body))
-
+|#
 
 
 ;;;;

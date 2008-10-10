@@ -224,6 +224,10 @@
     (declare (ignore query))
     (persistent-type-of syntax))
 
+  (:method ((subselect subselect) query)
+    (infer-types subselect)
+    (persistent-type-of subselect))
+
   (:method ((form compound-form) query)
     (mapc #L(%infer-types !1 query) (operands-of form))
     (bind ((operator (operator-of form))

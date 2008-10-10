@@ -238,6 +238,13 @@
 (define-syntax-node subselect (syntax-object query)
   ())
 
+(def method initialize-instance :after ((instance subselect) &key)
+     (setf (prefetch-mode-of instance) :none))
+
+(defmethod options-of ((subselect subselect))
+  (when (uniquep subselect)
+    (list :uniquep #t)))
+
 (def print-object subselect
     (write (select-form-of -self-)))
 

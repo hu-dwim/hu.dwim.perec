@@ -257,8 +257,7 @@
                                   ,(name-of dimension))))))
 
     ;; generate condition for version check
-    #+nil
-    (add-assert query `(eq h-instance (select ((max h-instance))
+    (add-assert query `(eq h-instance (select ((max (oid-of h-instance)))
                                         (from (h-instance ,(class-name h-class)))
                                         (where (and (eq (d-instance-of h-instance) d-instance))))))
 
