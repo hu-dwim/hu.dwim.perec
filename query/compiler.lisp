@@ -182,7 +182,7 @@ with the result of the naively compiled query.")
 ;;;;
 (defmethod transform-query ((compiler simple-query-compiler) (query query))
   "Transforms the QUERY by pushing down the asserts to the SQL query."
-  (parse-query query)
+  (parse-query-expressions query)
   (normalize-query query)
   (infer-types query)
   (normalize-association-end-access query)
@@ -190,10 +190,6 @@ with the result of the naively compiled query.")
   (add-prefetched-types query)
   (partial-eval-asserts query)
   query)
-
-(defun parse-query (query)
-  (bind ((variables (get-variables query)))
-    (map-query [parse-query-form !2 variables] query)))
 
 (defun normalize-query (query)
     (setf (asserts-of query)

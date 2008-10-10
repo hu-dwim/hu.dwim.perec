@@ -233,8 +233,21 @@
                  (combine-with 'sql-and (sql-where-of query) where-clause))))
 
 ;;;
+;;; Subselects
+;;;
+(define-syntax-node subselect (syntax-object query)
+  ())
+
+(def print-object subselect
+    (write (select-form-of -self-)))
+
+(def method unparse-query-syntax ((subselect subselect))
+  (select-form-of subselect))
+
+;;;
 ;;; Query builder
 ;;;
+;;; TODO remove it (move to dwim?)
 (defclass* query-builder (copyable-mixin)
   ((current-query-variable nil)))
 
@@ -263,15 +276,92 @@
   (call-next-method query (preprocess-query-expression query expression) direction))
 
 ;;;
-;;; Parse select forms
+;;; Parse
 ;;;
-(defmethod make-query ((select-form null) &optional lexical-variables)
-  (let ((query (make-instance 'simple-query-builder)))
-    (iter (for variable in lexical-variables)
-          (add-lexical-variable query variable))
-    query))
 
-(defmethod make-query ((form cons) &optional lexical-variables)
+(defun parse-query-form (form variables)
+  (acond
+    ((syntax-object-p form) form)
+    ((and (symbolp form) (find form variables :key 'name-of)) it)
+    ((and (atom form) (constantp form))
+     (make-literal-value :value form))
+    ((and (consp form) (eq (first form) 'quote))
+     (make-literal-value :value (second form)))
+    ((symbolp form)
+     (make-dynamic-variable :name form))
+    ((and (eq (first form) 'slot-value)
+          (consp (third form))
+          (eq (first (third form)) 'quote)
+          (symbolp (second (third form))))
+     (bind ((slot (first (effective-slots-for-slot-name (second (third form))))) ; KLUDGE bad, bad, bad...
+            (accessor (when slot (reader-name-of slot))))
+       (cond
+         ((null accessor)
+          (warn "No accessor found for slot access: ~S" form)
+          (make-function-call :fn (first form)
+                              :args (mapcar #L(parse-query-form !1 variables) (rest form))))
+         ((typep slot 'persistent-association-end-effective-slot-definition)
+          (make-association-end-access :accessor accessor
+                                       :args (list (parse-query-form (second form) variables))))
+         (t
+          (make-slot-access :accessor accessor
+                            :args (list (parse-query-form (second form) variables)))))))
+    ((eq 'select (first form))
+     (parse-subselect form variables))
+    ((and (symbolp (first form)) (association-end-accessor-p (first form)))
+     (make-association-end-access :accessor (first form)
+                                  :args (list (parse-query-form (second form) variables))))
+    ((and (symbolp (first form)) (slot-accessor-p (first form)))
+     (make-slot-access :accessor (first form)
+                       :args (list (parse-query-form (second form) variables))))
+    ((and (symbolp (first form)) (macro-function (first form)))
+     (if (expand-macro-call-p (first form))
+         (parse-query-form (macroexpand-1 form)
+                           variables)
+         (make-macro-call :macro (first form)
+                          :args (if (parse-args-p (first form))
+                                    (mapcar #L(parse-query-form !1 variables) (rest form))
+                                    (mapcar #L(make-unparsed-form :form !1) (rest form))))))
+    ((and (symbolp (first form)) (special-operator-p (first form)))
+     (make-special-form :operator (first form)
+                        :operands (mapcar #L(make-unparsed-form :form !1) (rest form))))
+    ((and (member (first form) '(static volatile)) (length= 1 (rest form)))
+     (bind ((syntax (parse-query-form (second form) variables)))
+       (setf (volatilep syntax) (eq (first form) 'volatile))
+       syntax))
+    ((member (first form) '(sum avg))
+     (make-function-call :fn (first form)
+                         :args (mapcar #L(parse-query-form !1 variables) (rest form))))
+    ((and (symbolp (first form)) (fboundp (first form)))
+     (make-function-call :fn (first form)
+                         :args (mapcar #L(parse-query-form !1 variables) (rest form))))
+    (t (error "Syntax error: ~S~%" form))))
+
+(def function parse-subselect (form &optional variables)
+  (bind ((lexical-variables (collect-if #'lexical-variable-p variables))
+         ((&key action action-args query-variables asserts group-by having order-by offset limit options)
+          (parse-query form)))
+    (assert (eq action :collect))
+    (assert (null options))
+    (aprog1 (make-instance 'subselect
+                           :lexical-variables lexical-variables
+                           :query-variables query-variables
+                           :asserts asserts
+                           :action :collect
+                           :action-args action-args
+                           :group-by group-by
+                           :having having
+                           :order-by order-by
+                           :offset offset
+                           :limit limit)
+      ;; Note: the outer query variables are unaccessible when parsing the subquery by will
+      (parse-query-expressions it))))
+
+(defun parse-query-expressions (query)
+  (bind ((variables (get-variables query)))
+    (map-query [parse-query-form !2 variables] query)))
+
+(def function parse-query (form)
 
   (labels ((query-macro-expand (form)
              (if (member (first form) '(select purge update))
@@ -280,9 +370,6 @@
                    (if expanded-p
                        (query-macro-expand form)
                        form))))
-           (make-lexical-variables (variable-names)
-             (iter (for variable-name in variable-names)
-                   (collect (make-lexical-variable :name variable-name))))
            (make-query-variables (variable-specs)
              (iter (for variable-spec in variable-specs)
                    (typecase variable-spec
@@ -345,10 +432,9 @@
                         :clause clause
                         :detail "OFFSET/LIMIT expect one integer argument.")))
              clause)
-           (make-select (options select-list clauses)
+           (parse-select (options select-list clauses)
              (remf options :compile-at-macroexpand)
-             (bind ((lexical-variables (make-lexical-variables lexical-variables))
-                    (from-clause (find-clause 'from clauses #f))
+             (bind ((from-clause (find-clause 'from clauses #f))
                     (where-clause (check-where-clause (find-clause 'where clauses)))
                     (group-by-clause (check-group-by-clause (find-clause 'group-by clauses)))
                     (having-clause (check-having-clause (find-clause 'having clauses)))
@@ -366,22 +452,19 @@
                         :form form
                         :clause (first (first extra-clauses))))
 
-               (apply 'make-instance 'query
-                      :lexical-variables lexical-variables
-                      :query-variables query-variables
-                      :asserts asserts
-                      :action :collect
-                      :action-args select-list
-                      :group-by (rest group-by-clause)
-                      :having (rest having-clause)
-                      :order-by (rest order-by-clause)
-                      :offset (second offset-clause)
-                      :limit (second limit-clause)
-                      options)))
-           (make-purge (options purge-list clauses)
+               `(:query-variables ,query-variables
+                                  :asserts ,asserts
+                                  :action :collect
+                                  :action-args ,select-list
+                                  :group-by ,(rest group-by-clause)
+                                  :having ,(rest having-clause)
+                                  :order-by ,(rest order-by-clause)
+                                  :offset ,(second offset-clause)
+                                  :limit ,(second limit-clause)
+                                  :options ,options)))
+           (parse-purge (options purge-list clauses)
              (remf options :compile-at-macroexpand)
-             (bind ((lexical-variables (make-lexical-variables lexical-variables))
-                    (from-clause (find-clause 'from clauses))
+             (bind ((from-clause (find-clause 'from clauses))
                     (where-clause (check-where-clause (find-clause 'where clauses)))
                     (query-variables (make-query-variables (rest from-clause)))
                     (asserts (make-asserts where-clause (rest from-clause)))
@@ -392,17 +475,14 @@
                         :form form
                         :clause (first (first extra-clauses))))
 
-               (apply 'make-instance 'query
-                      :lexical-variables lexical-variables
-                      :query-variables query-variables
-                      :asserts asserts
-                      :action :purge
-                      :action-args purge-list
-                      options)))
-           (make-update (options update-list clauses)
+               `(:query-variables ,query-variables
+                                  :asserts ,asserts
+                                  :action :purge
+                                  :action-args ,purge-list
+                                  :options ,options)))
+           (parse-update (options update-list clauses)
              (remf options :compile-at-macroexpand)
-             (bind ((lexical-variables (make-lexical-variables lexical-variables))
-                    (set-clause (find-clause 'set clauses))
+             (bind ((set-clause (find-clause 'set clauses))
                     (from-clause (find-clause 'from clauses))
                     (query-variables (make-query-variables (list* update-list (rest from-clause))))
                     (where-clause (check-where-clause (find-clause 'where clauses)))
@@ -413,30 +493,56 @@
                         :form form
                         :clause (first (first extra-clauses))))
 
-               (apply 'make-instance 'query
-                      :lexical-variables lexical-variables
-                      :query-variables query-variables
-                      :asserts asserts
-                      :action :update
-                      :action-args (rest set-clause)
-                      options))))
+               `(:query-variables ,query-variables
+                                  :asserts ,asserts
+                                  :action :update
+                                  :action-args ,(rest set-clause)
+                                  :options ,options))))
     
     (pattern-case (query-macro-expand form)
       ((select (?and (?or nil ((?is ?k keywordp) . ?rest)) ?options) (?is ?select-list listp) .
                ?clauses)
-       (make-select ?options ?select-list ?clauses))
+       (parse-select ?options ?select-list ?clauses))
       ((select (?is ?select-list listp) . ?clauses)
-       (make-select nil ?select-list ?clauses))
+       (parse-select nil ?select-list ?clauses))
       ((purge (?and (?or nil ((?is ?k keywordp) . ?rest)) ?options) (?is ?purge-list listp) .
               ?clauses)
-       (make-purge ?options ?purge-list ?clauses))
+       (parse-purge ?options ?purge-list ?clauses))
       ((purge  (?is ?purge-list listp) . ?clauses)
-       (make-purge nil ?purge-list ?clauses))
+       (parse-purge nil ?purge-list ?clauses))
       ((update (?and (?or nil ((?is ?k keywordp) . ?rest)) ?options) (?is ?update-list listp) .
                ?clauses)
-       (make-update ?options ?update-list ?clauses))
+       (parse-update ?options ?update-list ?clauses))
       ((update  (?is ?update-list listp) . ?clauses)
-       (make-update nil ?update-list ?clauses))
+       (parse-update nil ?update-list ?clauses))
       (?otherwise
        (error 'query-syntax-error
               :form form)))))
+
+
+
+
+;;;
+;;; Construct
+;;;
+(defmethod make-query ((select-form null) &optional lexical-variables)
+  (prog1-bind query (make-instance 'simple-query-builder)
+    (mapc [add-lexical-variable query !1] lexical-variables)))
+
+(defmethod make-query ((form cons) &optional lexical-variables)
+
+  (bind ((lexical-variables (mapcar [make-lexical-variable :name !1] lexical-variables))
+         ((&key action action-args query-variables asserts group-by having order-by offset limit options)
+          (parse-query form)))
+    (apply 'make-instance 'query
+           :lexical-variables lexical-variables
+           :query-variables query-variables
+           :asserts asserts
+           :action action
+           :action-args action-args
+           :group-by group-by
+           :having having
+           :order-by order-by
+           :offset offset
+           :limit limit
+           options)))
