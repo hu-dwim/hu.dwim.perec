@@ -623,14 +623,17 @@
                                    (for dimension :in dimensions)
                                    (collect (if (member dimension projection-dimensions)
                                                 (next projection-coordinate)
-                                                (cons 0 100)))))
+                                                (cons (minimum-coordinate-of dimension) (maximum-coordinate-of dimension))))))
           (for projected-d-value = (value-at-coordinates d-value coordinates))
-          (for projected-c-values = (c-values-of projected-d-value))
-          (for values = (mapcar #'value-of projected-c-values))
-          (for remaining-coordinates = (mapcar (lambda (c-value)
-                                                 (collect-subcoordinates dimensions remaining-dimensions (coordinates-of c-value)))
-                                               projected-c-values))
-          (collect-d-value (funcall function remaining-dimensions remaining-coordinates values)
+          (collect-d-value (apply function remaining-dimensions
+                                  (iter (for c-value :in (c-values-of projected-d-value))
+                                        (for value = (value-of c-value))
+                                        (for coordinates = (collect-subcoordinates dimensions remaining-dimensions (coordinates-of c-value)))
+                                        (when coordinates
+                                          (collect value :into values)
+                                          (collect coordinates :into remaining-coordinates-list))
+                                        (finally
+                                         (return (list remaining-coordinates-list values)))))
                            :dimensions projection-dimensions
                            :coordinates projection-coordinates))))
 
