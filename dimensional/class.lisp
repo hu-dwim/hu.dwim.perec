@@ -75,7 +75,7 @@
                                  (for slot-options = (slot-options-of slot-definition))
                                  (for dimensions = (getf slot-options :dimensions))
                                  (iter (for dimension :in dimensions)
-                                       (in outer (adjoining (dependent-object-name-of (find-dimension dimension))))))))
+                                       (in outer (adjoining (dependent-object-name dimension)))))))
       `(progn
          ,(call-next-method)
          (,defclass-macro ,h-class-name ,h-superclasses

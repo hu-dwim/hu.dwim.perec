@@ -159,6 +159,9 @@
                  (bind ((,coordinate-name (ensure-list ,name)))
                    (funcall thunk))))))))
 
+(def function dependent-object-name (dimension-name)
+  (format-symbol *package* "~A-DEPENDENT-OBJECT" dimension-name))
+
 (def function coerce-to-coordinate (form type)
   (case type
     (timestamp (if (stringp form)

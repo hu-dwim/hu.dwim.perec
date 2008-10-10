@@ -73,7 +73,7 @@
     (bind ((dimensions (second (find :dimensions options :key #'first)))
            (superclasses
             (iter (for dimension :in dimensions)
-                  (adjoining (dependent-object-name-of (find-dimension dimension)))))
+                  (adjoining (dependent-object-name dimension))))
            (processed-options (remove-if #L(member (first !1) '(:temporal :time-dependent)) options))
            (processed-association-ends
             (mapcar #L(append (when dimensions
