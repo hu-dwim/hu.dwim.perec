@@ -99,7 +99,7 @@
                              `(:coordinate-name ',coordinate-name
                                                 ,@(when default-coordinate?
                                                         `(:default-coordinate (lambda () ,default-coordinate))))))
-         (slots (when (primitive-type-p type)
+         (slots (unless (persistent-class-name-p type)
                   (if (and ordered (not inherit))
                       `((,begin-variable-name :type ,type)
                         (,end-variable-name :type ,type))
