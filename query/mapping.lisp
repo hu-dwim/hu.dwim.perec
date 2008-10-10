@@ -483,6 +483,14 @@
                          `(mapcar #'syntax-to-sql ,all-args))))))))))
 
 ;;;
+;;; Oid
+;;;
+(def query-function oid-of (instance)
+  ""
+  (declare (persistent-type (function (persistent-object) number)))
+  instance)
+
+;;;
 ;;; Logical functions
 ;;;
 (def query-function and (&rest values)
