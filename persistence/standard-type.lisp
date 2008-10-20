@@ -74,6 +74,9 @@
   `(defptype ,name ()
     `(member ,@',members)))
 
+(def (definer e) member-type (name &body members)
+  `(def-member-type ,name ,@members))
+
 ;;;;;;;;;;;
 ;;; Unbound
 ;;; 

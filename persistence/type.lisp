@@ -31,6 +31,9 @@
   `(def (persistent-type e) ,name ,args
      ,@body))
 
+(def (definer e :available-flags "e") ptype (name args &body body)
+  `(defptype ,name ,args ,@body))
+
 (def (definer e :available-flags "e") persistent-type (name args &body body)
   (bind ((common-lisp-type-p (eq (symbol-package name) #.(find-package :common-lisp)))
          (allow-nil-args-p (or (null args)
