@@ -131,6 +131,18 @@
                          secondary-association-end secondary-class secondary-slot secondary-reader lazy-secondary-reader secondary-writer association-name))
      ,@forms))
 
+(def function update-persistent-class-for-association-definition (name)
+  (bind ((class (find-class name)))
+    (ensure-finalized class)
+    (ensure-class name
+                  :metaclass (class-of class)
+                  ;; TODO: what about killing other class options?
+                  :abstract (list (abstract-p class))
+                  :direct-slots (mapcar
+                                 [list :instance !1 :name (slot-definition-name !1) :readers (slot-definition-readers !1) :writers (slot-definition-writers !1)]
+                                 (remove-if #L(typep !1 'persistent-association-end-direct-slot-definition)
+                                            (class-direct-slots class))))))
+
 (defmethod expand-defassociation-form ((metaclass persistent-association) association-ends options)
   (flet ((process-association-end (association-end)
            (bind ((initarg (getf association-end :initarg))
@@ -170,25 +182,15 @@
                        (ensure-writer-function ',primary-writer)
                        (ensure-writer-function ',secondary-writer))))
            (eval-when (:load-toplevel :execute)
-             (flet ((ensure-persistent-class (name)
-                      (bind ((class (find-class name)))
-                        (ensure-class name
-                                      :metaclass (class-of class)
-                                      ;; TODO: what about killing other class options?
-                                      :abstract (list (abstract-p class))
-                                      :direct-slots (mapcar
-                                                     #L(list :instance !1)
-                                                     (remove-if #L(typep !1 'persistent-association-end-direct-slot-definition)
-                                                                (class-direct-slots class)))))))
-               (prog1
-                   (aif (find-association ',association-name)
-                        (reinitialize-instance it :association-end-definitions ,final-association-ends)
-                        (setf (find-association ',association-name)
-                              (make-instance ',metaclass
-                                             :name ',association-name
-                                             :association-end-definitions ,final-association-ends)))
-                 (ensure-persistent-class ',primary-class)
-                 (ensure-persistent-class ',secondary-class))))
+             (prog1
+                 (aif (find-association ',association-name)
+                      (reinitialize-instance it :association-end-definitions ,final-association-ends)
+                      (setf (find-association ',association-name)
+                            (make-instance ',metaclass
+                                           :name ',association-name
+                                           :association-end-definitions ,final-association-ends)))
+               (update-persistent-class-for-association-definition ',primary-class)
+               (update-persistent-class-for-association-definition ',secondary-class)))
            ,(when export-accessors-names-p
                   `(export '(,primary-reader ,lazy-primary-reader ,secondary-reader ,lazy-secondary-reader)
                            ,*package*))
