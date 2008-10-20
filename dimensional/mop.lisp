@@ -64,14 +64,10 @@
   (assert (dimensions-of instance)))
 
 (def method persistent-class-default-superclasses ((class persistent-class-d) class-name direct-superclasses)
-  (cond ((eq class-name 'persistent-object-d)
-         (call-next-method))
-        ((find-if (lambda (direct-superclass)
-                    (ignore-errors (subtypep direct-superclass (find-class 'persistent-object-d))))
-                  direct-superclasses)
-         nil)
-        (t
-         (list (find-class 'persistent-object-d)))))
+  (unless (find-if (lambda (direct-superclass)
+                     (ignore-errors (subtypep direct-superclass (find-class 'persistent-object-d))))
+                   direct-superclasses)
+    (list (find-class 'persistent-object-d))))
 
 (def function merge-dimensions (dimensions-list)
   (bind ((dimensions (first dimensions-list)))
@@ -85,4 +81,7 @@
                       (find-class (d-class-name->h-class-name (class-name d-class))))
                     (remove-if-not (of-type 'persistent-class-d) 
                                    (class-direct-superclasses (find-class d-class-name))))
-            (call-next-method))))
+            (unless (find-if (lambda (direct-superclass)
+                               (ignore-errors (subtypep direct-superclass (find-class 'persistent-object-h))))
+                             direct-superclasses)
+              (list (find-class 'persistent-object-h))))))
