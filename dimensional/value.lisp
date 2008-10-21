@@ -466,10 +466,10 @@
         (when (covering-coordinates-p dimensions (coordinates-of c-value) coordinates)
           (return-from single-value-at-coordinates (value-of c-value)))
         (finally
-         (handle-otherwise
-          (if (eq otherwise :signal-default-error)
-              (list :error "Covering c-value not found for ~A in ~A" coordinates d-value)
-              otherwise)))))
+         (return (handle-otherwise
+                  (if (eq otherwise :signal-default-error)
+                      (list :error "Covering c-value not found for ~A in ~A" coordinates d-value)
+                      otherwise))))))
 
 (def (function e) value-at-coordinates (d-value coordinates)
   (debug-only (valid-d-value-p d-value))
