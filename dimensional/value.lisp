@@ -16,7 +16,7 @@
   (declare (ignore value))
   #t)
 
-(def generic coordinate= (coordinate-1 coordinate-2)
+(def (generic e) coordinate= (coordinate-1 coordinate-2)
   (:method (coordinate-1 coordinate-2)
     (eq coordinate-1 coordinate-2))
 
@@ -33,40 +33,40 @@
   (:method ((coordinate-1 timestamp) (coordinate-2 timestamp))
     (timestamp= coordinate-1 coordinate-2)))
 
-(def generic coordinate< (coordinate-1 coordinate-2)
+(def (generic e) coordinate< (coordinate-1 coordinate-2)
   (:method ((coordinate-1 number) (coordinate-2 number))
     (< coordinate-1 coordinate-2))
 
   (:method ((coordinate-1 timestamp) (coordinate-2 timestamp))
     (timestamp< coordinate-1 coordinate-2)))
 
-(def generic coordinate<= (coordinate-1 coordinate-2)
+(def (generic e) coordinate<= (coordinate-1 coordinate-2)
   (:method ((coordinate-1 number) (coordinate-2 number))
     (<= coordinate-1 coordinate-2))
 
   (:method ((coordinate-1 timestamp) (coordinate-2 timestamp))
     (timestamp<= coordinate-1 coordinate-2)))
 
-(def generic coordinate> (coordinate-1 coordinate-2)
+(def (generic e) coordinate> (coordinate-1 coordinate-2)
   (:method ((coordinate-1 number) (coordinate-2 number))
     (> coordinate-1 coordinate-2))
 
   (:method ((coordinate-1 timestamp) (coordinate-2 timestamp))
     (timestamp> coordinate-1 coordinate-2)))
 
-(def generic coordinate>= (coordinate-1 coordinate-2)
+(def (generic e) coordinate>= (coordinate-1 coordinate-2)
   (:method ((coordinate-1 number) (coordinate-2 number))
     (>= coordinate-1 coordinate-2))
 
   (:method ((coordinate-1 timestamp) (coordinate-2 timestamp))
     (timestamp>= coordinate-1 coordinate-2)))
 
-(def function coordinate-min (coordinate-1 coordinate-2)
+(def (function e) coordinate-min (coordinate-1 coordinate-2)
   (if (coordinate< coordinate-1 coordinate-2)
       coordinate-1
       coordinate-2))
 
-(def function coordinate-max (coordinate-1 coordinate-2)
+(def (function e) coordinate-max (coordinate-1 coordinate-2)
   (if (coordinate< coordinate-1 coordinate-2)
       coordinate-2
       coordinate-1))
@@ -90,10 +90,10 @@
   (debug-only (assert (coordinate<= begin end)))
   (cons begin end))
 
-(def (function io) coordinate-range-begin (range)
+(def (function ioe) coordinate-range-begin (range)
   (car range))
 
-(def (function io) coordinate-range-end (range)
+(def (function ioe) coordinate-range-end (range)
   (cdr range))
 
 (def (function io) coordinate-range-empty-p (range)
@@ -115,7 +115,7 @@
   (assert (and (coordinate-range-p range-1)
                (coordinate-range-p range-2))))
 
-(def function overlapping-range-p (range-1 range-2 &optional strict)
+(def (function e) overlapping-range-p (range-1 range-2 &optional strict)
   (debug-only (assert-ranges range-1 range-2))
   (and (funcall (if (or (not strict)
                         (coordinate-range-empty-p range-2))
