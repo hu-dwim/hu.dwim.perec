@@ -408,7 +408,7 @@
 
 (def (function e) d-value-equal (d-value-1 d-value-2 &key (test #'eql))
   (iter (with dimensions-1 = (dimensions-of d-value-1))
-        (with dimensions-2 = (dimensions-of d-value-1))
+        (with dimensions-2 = (dimensions-of d-value-2))
         (unless (equal dimensions-1 dimensions-2)
           (return-from d-value-equal #f))
         (for c-value-1 :in (c-values-of d-value-1))
