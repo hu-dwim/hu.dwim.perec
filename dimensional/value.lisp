@@ -329,9 +329,8 @@
   (and (funcall test
                 (value-of c-value-1)
                 (value-of c-value-2))
-       (every* #'coordinates=
-               (coordinates-of c-value-1)
-               (coordinates-of c-value-2))))
+       (coordinates= (coordinates-of c-value-1)
+                     (coordinates-of c-value-2))))
 
 ;;;;;;
 ;;; D value (multi dimensional value)
