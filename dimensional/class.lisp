@@ -69,16 +69,10 @@
     (bind ((h-metaclass-name (d-class-name->h-class-name (class-name (class-of metaclass))))
            (d-class-name name)
            (h-class-name (d-class-name->h-class-name d-class-name))
-           (processed-options (remove-if [member (first !1) '(:metaclass :slot-definition-transformer)] options))
-           (h-superclasses (iter outer
-                                 (for slot-definition :in slots)
-                                 (for slot-options = (slot-options-of slot-definition))
-                                 (for dimensions = (getf slot-options :dimensions))
-                                 (iter (for dimension :in dimensions)
-                                       (in outer (adjoining (dependent-object-name dimension)))))))
+           (processed-options (remove-if [member (first !1) '(:metaclass :slot-definition-transformer)] options)))
       `(progn
          ,(call-next-method)
-         (,defclass-macro ,h-class-name ,h-superclasses
+         (,defclass-macro ,h-class-name ()
            ,(mapcar (lambda (slot-definition)
                       (bind ((slot-name (car slot-definition))
                              (slot-options (remove-from-plist (slot-options-of slot-definition) :dimensions))
@@ -103,11 +97,6 @@
 
 (def method compute-columns ((slot persistent-effective-slot-definition-d))
   nil)
-
-(def function compute-dimensional-h-slots (class)
-  (declare (ignore class))
-  ;TODO
-  )
 
 ;;;;;;;;;;;
 ;;; Utility

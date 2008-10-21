@@ -176,9 +176,9 @@
 ;;;;;;;;;;;
 ;;; Utility
 
-(def generic persistent-class-default-superclasses (class class-name direct-superclasses)
-  (:method ((class persistent-class) class-name direct-superclasses)
-    (unless (or (eq class-name 'persistent-object)
+(def generic persistent-class-default-superclasses (class &key name direct-slots direct-superclasses &allow-other-keys)
+  (:method ((class persistent-class) &key name direct-superclasses &allow-other-keys)
+    (unless (or (eq name 'persistent-object)
                 (find-if (lambda (direct-superclass)
                            (ignore-errors (subtypep direct-superclass (find-class 'persistent-object))))
                          direct-superclasses))
@@ -225,7 +225,10 @@
              (append (when (or (not reinitialize)
                                direct-superclasses?)
                        (list :direct-superclasses (append direct-superclasses
-                                                          (persistent-class-default-superclasses class name direct-superclasses))))
+                                                          (persistent-class-default-superclasses class
+                                                                                                 :name name
+                                                                                                 :direct-slots direct-slots
+                                                                                                 :direct-superclasses direct-superclasses))))
                      (remove-from-plist args :reinitialize :direct-slots :direct-superclasses :abstract)))
     (setf (find-persistent-class name) class)
     (invalidate-inheritance class)
