@@ -502,30 +502,21 @@
 
 (defmacro-clause (for variables :in-d-value d-value)
   (assert (length= 2 variables))
-  (with-unique-names (d-value-variable dimensions-variable one-dimensional-variable? c-value-variable coordinates-variable)
+  (with-unique-names (d-value-variable c-value-variable)
     `(progn
        (with ,d-value-variable = ,d-value)
-       (with ,dimensions-variable = (dimensions-of ,d-value-variable))
-       (with ,one-dimensional-variable? = (length= 1 ,dimensions-variable))
        (for ,c-value-variable :in (c-values-of ,d-value-variable))
-       (for ,coordinates-variable = (coordinates-of ,c-value-variable))
-       (for ,(first variables) = (if ,one-dimensional-variable?
-                                     (first ,coordinates-variable)
-                                     ,coordinates-variable))
+       (for ,(first variables) = (coordinates-of ,c-value-variable))
        (for ,(second variables) = (value-of ,c-value-variable)))))
 
 (defmacro-clause (for variables :in-d-values d-values :unspecified-value unspecified-value)
-  (with-unique-names (d-values-variable dimensions-variable one-dimensional-variable? coordinates-variable)
+  (with-unique-names (d-values-variable coordinates-variable)
     `(progn
        (with ,d-values-variable = ,(if (listp d-values)
                                        `(list ,@d-values)
                                        d-values))
-       (with ,dimensions-variable = (dimensions-of (first ,d-values-variable)))
-       (with ,one-dimensional-variable? = (length= 1 ,dimensions-variable))
        (for ,coordinates-variable :in (split-d-values-coordinates-lists ,d-values-variable))
-       (for ,(first variables) = (if ,one-dimensional-variable?
-                                     (first ,coordinates-variable)
-                                     ,coordinates-variable))
+       (for ,(first variables) = ,coordinates-variable)
        (for ,(second variables) = (mapcar (lambda (d-value)
                                             (single-value-at-coordinates d-value ,coordinates-variable :otherwise ,unspecified-value))
                                           ,d-values-variable)))))
