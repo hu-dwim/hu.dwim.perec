@@ -59,7 +59,7 @@
 ;;;;;;
 ;;; Defining
 
-(def (definer :available-flags "e") dimension (name &key type ordered inherit
+(def (definer :available-flags "e") dimension (name &key type ordered inherit external
                                                     (default-coordinate nil default-coordinate?)
                                                     (default-begin-coordinate nil default-begin-coordinate?)
                                                     (default-end-coordinate nil default-end-coordinate?)
@@ -121,43 +121,44 @@
                `((defassociation*
                    ((:class ,dependent-object-name :slot ,name :type ,type)
                     (:class ,type :slot ,dependent-instances-name :type (set ,dependent-object-name))))))
-       ,@(if ordered
-             `((def (macro e) ,with-macro-name (,name &body forms)
-                 `(,',call-with-range-fn-name
-                   ,(coerce-to-coordinate-begin ,name ',type)
-                   ,(coerce-to-coordinate-end ,name ',type)
-                   (lambda () ,@forms)))
-               (def (special-variable e) ,begin-special-name)
-               (def (special-variable e) ,end-special-name)
-               (def (symbol-macro e) ,coordinate-name
-                   (coordinate (find-dimension ',name)))
-               (def (function e) ,call-with-fn-name (,name thunk)
-                 (bind ((,begin-special-name ,name)
-                        (,end-special-name ,name))
-                   (funcall thunk)))
-               (def macro ,with-range-macro-name (,begin-variable-name ,end-variable-name &body forms)
-                 `(,',call-with-range-fn-name
-                   ,(coerce-to-coordinate-begin ,begin-variable-name ',type)
-                   ,(coerce-to-coordinate-end ,end-variable-name ',type)
-                   (lambda () ,@forms)))
-               ,@(when maximum-coordinate?
-                       `((def (macro e) ,with-range-from-macro-name (begin &body forms)
-                           `(,',with-range-macro-name ,begin ,,maximum-coordinate ,@forms))))
-               ,@(when minimum-coordinate?
-                       `((def (macro e) ,with-range-to-macro-name (end &body forms)
-                           `(,',with-range-macro-name ,,minimum-coordinate ,end ,@forms))))
-               (def function ,call-with-range-fn-name (,begin-variable-name ,end-variable-name thunk)
-                 (bind ((,begin-special-name ,begin-variable-name)
-                        (,end-special-name ,end-variable-name))
-                   (funcall thunk))))
-             `((def (macro e) ,with-macro-name (,name &body forms)
-                 `(,',call-with-fn-name
-                   ,(coerce-to-coordinate ,name ',type)
-                   (lambda () ,@forms)))
-               (def (special-variable e) ,coordinate-name)
-               (def (function e) ,call-with-fn-name (,name thunk)
-                 (bind ((,coordinate-name (ensure-list ,name)))
-                   (funcall thunk))))))))
+       ,@(unless external
+           (if ordered
+               `((def (macro e) ,with-macro-name (,name &body forms)
+                   `(,',call-with-range-fn-name
+                     ,(coerce-to-coordinate-begin ,name ',type)
+                     ,(coerce-to-coordinate-end ,name ',type)
+                     (lambda () ,@forms)))
+                 (def (special-variable e) ,begin-special-name)
+                 (def (special-variable e) ,end-special-name)
+                 (def (symbol-macro e) ,coordinate-name
+                     (coordinate (find-dimension ',name)))
+                 (def (function e) ,call-with-fn-name (,name thunk)
+                   (bind ((,begin-special-name ,name)
+                          (,end-special-name ,name))
+                     (funcall thunk)))
+                 (def macro ,with-range-macro-name (,begin-variable-name ,end-variable-name &body forms)
+                   `(,',call-with-range-fn-name
+                     ,(coerce-to-coordinate-begin ,begin-variable-name ',type)
+                     ,(coerce-to-coordinate-end ,end-variable-name ',type)
+                     (lambda () ,@forms)))
+                 ,@(when maximum-coordinate?
+                         `((def (macro e) ,with-range-from-macro-name (begin &body forms)
+                             `(,',with-range-macro-name ,begin ,,maximum-coordinate ,@forms))))
+                 ,@(when minimum-coordinate?
+                         `((def (macro e) ,with-range-to-macro-name (end &body forms)
+                             `(,',with-range-macro-name ,,minimum-coordinate ,end ,@forms))))
+                 (def function ,call-with-range-fn-name (,begin-variable-name ,end-variable-name thunk)
+                   (bind ((,begin-special-name ,begin-variable-name)
+                          (,end-special-name ,end-variable-name))
+                     (funcall thunk))))
+               `((def (macro e) ,with-macro-name (,name &body forms)
+                   `(,',call-with-fn-name
+                     ,(coerce-to-coordinate ,name ',type)
+                     (lambda () ,@forms)))
+                 (def (special-variable e) ,coordinate-name)
+                 (def (function e) ,call-with-fn-name (,name thunk)
+                   (bind ((,coordinate-name (ensure-list ,name)))
+                     (funcall thunk)))))))))
 
 (def function dependent-object-name (dimension-name)
   (format-symbol *package* "~A-DEPENDENT-OBJECT" dimension-name))
