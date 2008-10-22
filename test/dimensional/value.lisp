@@ -157,3 +157,58 @@
 (def test test/dimensional/value/coordinates-difference-invariants ()
   (test/dimensional/value/coordinates-a-difference-empty-is-a *test-dimensions* '((10 . 20) (0 . 100) (a b)))
   (test/dimensional/value/coordinates-a-difference-a-is-empty *test-dimensions* '((10 . 20) (0 . 100) (a b))))
+
+(def test test/dimensional/value/d-value-equal ()
+  (is (not (d-value-equal
+            (make-single-d-value
+             (list *time-dimension* *validity-dimension*)
+             `((,+end-of-time+ . ,+end-of-time+) (,+beginning-of-time+ . ,+end-of-time+))
+             1)
+            (make-single-d-value
+             (list *time-dimension* *validity-dimension*)
+             `((,+end-of-time+ . ,+end-of-time+) (,+beginning-of-time+ . ,+end-of-time+))
+             2)))))
+
+(def test test/dimensional/value/iter-in-d-values (d-value-1 d-value-2 expected-d-values)
+  (iter (with dimensions = (prc::dimensions-of d-value-1))
+        (with test = [d-value= !1 !2 :test #'equal])
+        (for (coordinates values) :in-d-values (d-value-1 d-value-2) :unspecified-value nil)
+        (for d-value = (make-single-d-value dimensions coordinates values))
+        (is (member d-value expected-d-values :test test) "Unexpected: ~S" d-value)
+        (removef expected-d-values d-value :test test)
+        (finally (is (null expected-d-values) "Missing: ~S" expected-d-values))))
+
+(def test test/dimensional/value/iter-in-d-values/1 ()
+  (bind ((dimensions (list *time-dimension* *validity-dimension*)))
+    (test/dimensional/value/iter-in-d-values
+     (make-single-d-value
+      dimensions
+      (list (make-empty-coordinate-range +end-of-time+)
+            (make-coordinate-range +beginning-of-time+ (parse-datestring "2001-01-01")))
+      1)
+     (make-single-d-value
+      dimensions
+      (list (make-coordinate-range (parse-datestring "2000-01-01") +end-of-time+)
+            (make-coordinate-range (parse-datestring "2000-01-01") +end-of-time+))
+      2)
+     (list
+      (make-single-d-value
+       dimensions
+       (list (make-empty-coordinate-range +end-of-time+)
+             (make-coordinate-range +beginning-of-time+ (parse-datestring "2000-01-01")))
+       (list 1 nil))
+      (make-single-d-value
+       dimensions
+       (list (make-empty-coordinate-range +end-of-time+)
+             (make-coordinate-range (parse-datestring "2000-01-01") (parse-datestring "2001-01-01")))
+       (list 1 2))
+      (make-single-d-value
+       dimensions
+       (list (make-empty-coordinate-range +end-of-time+)
+             (make-coordinate-range (parse-datestring "2000-01-01") +end-of-time+))
+       (list nil 2))
+      (make-single-d-value
+       dimensions
+       (list (make-coordinate-range (parse-datestring "2000-01-01") +end-of-time+)
+             (make-coordinate-range (parse-datestring "2000-01-01") +end-of-time+))
+       (list nil 2))))))
