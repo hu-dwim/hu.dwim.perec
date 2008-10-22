@@ -555,6 +555,8 @@
         (split-d-values-coordinates-lists d-values)))
 
 (def function coordinates-list-difference (dimensions coordinates-list-1 coordinates-list-2)
+  (when (null coordinates-list-2)
+    (return-from coordinates-list-difference coordinates-list-1))
   (iter outer
         (for coordinates-1 :in coordinates-list-1)
         (for differences = (iter (for coordinates-2 :in coordinates-list-2)
