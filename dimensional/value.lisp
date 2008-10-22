@@ -356,8 +356,11 @@
 
 (def function valid-d-value-p (d-value)
   (iter (with dimensions = (dimensions-of d-value))
+        (with number-of-dimensions = (length dimensions))
         (for c-value-1-cell :on (c-values-of d-value))
         (for c-value-1 = (car c-value-1-cell))
+        (assert (length= number-of-dimensions (length (coordinates-of c-value-1)))
+                nil "Invalid number of coordinates in ~A" d-value)
         (iter (for c-value-2 :in (cdr c-value-1-cell))
               (assert (not (coordinates-intersection dimensions (coordinates-of c-value-1) (coordinates-of c-value-2)))
                       nil "Invalid d-value due to overlapping coordinates found in c-values of ~A" d-value))))
@@ -410,6 +413,9 @@
                (c-values-of d-value-2))))
 
 (def (function e) d-value-equal (d-value-1 d-value-2 &key (test #'eql))
+  (debug-only
+    (valid-d-value-p d-value-1)
+    (valid-d-value-p d-value-2))
   (iter (with dimensions-1 = (dimensions-of d-value-1))
         (with dimensions-2 = (dimensions-of d-value-2))
         (unless (equal dimensions-1 dimensions-2)
