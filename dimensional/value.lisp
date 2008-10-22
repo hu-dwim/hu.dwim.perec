@@ -86,9 +86,12 @@
          (not (consp begin))
          (not (consp end)))))
 
-(def (function io) make-coordinate-range (begin end)
+(def (function ioe) make-coordinate-range (begin end)
   (debug-only (assert (coordinate<= begin end)))
   (cons begin end))
+
+(def (function ioe) make-empty-coordinate-range (coordinate)
+  (cons coordinate coordinate))
 
 (def (function ioe) coordinate-range-begin (range)
   (car range))
