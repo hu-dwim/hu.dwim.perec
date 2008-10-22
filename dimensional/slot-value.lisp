@@ -31,14 +31,11 @@
   (iter (for dimension :in dimensions)
         (typecase dimension
           (ordering-dimension
-           (assert (and (boundp (begin-coordinate-name-of dimension))
-                         (boundp (end-coordinate-name-of dimension))))
            (collect (cons
-                     (symbol-value (begin-coordinate-name-of dimension))
-                     (symbol-value (end-coordinate-name-of dimension)))))
+                     (begin-coordinate dimension)
+                     (end-coordinate dimension))))
           (t
-           (assert (boundp (coordinate-name-of dimension)))
-           (collect (symbol-value (coordinate-name-of dimension)))))))
+           (collect (coordinate dimension))))))
 
 (def (function io) slot-boundp-or-value-using-class-d (class instance slot coordinates)
   (assert-instance-slot-correspondence)
