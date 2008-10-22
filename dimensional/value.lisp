@@ -429,9 +429,11 @@
         (always (or (d-value= d-value-1-part
                               d-value-2-part
                               :test test)
-                    (d-value-equal d-value-2-part
-                                   d-value-1-part
-                                   :test test)))))
+                    (and
+                     (not (single-d-value-p d-value-2-part))
+                     (d-value-equal d-value-2-part
+                                    d-value-1-part
+                                    :test test))))))
 
 (def (function e) covering-d-value-p (d-value coordinates)
   (debug-only (valid-d-value-p d-value))
