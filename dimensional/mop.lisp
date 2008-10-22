@@ -75,7 +75,7 @@
             nil "Dimensions cannot be overridden. Received: ~S" dimensions-list)
     dimensions))
 
-(def method persistent-class-default-superclasses ((class persistent-class-h) &key name direct-slots direct-superclasses &allow-other-keys)
+(def method persistent-class-default-superclasses ((class persistent-class-h) &key name direct-superclasses &allow-other-keys)
   (bind ((d-class-name (h-class-name->d-class-name name))
          (d-class (find-class d-class-name)))
     (append (mapcar (lambda (d-class)
@@ -83,8 +83,8 @@
                     (remove-if-not (of-type 'persistent-class-d)
                                    (class-direct-superclasses d-class)))
             (iter outer
-                  (for slot-definition :in direct-slots)
-                  (iter (for dimension :in (getf slot-definition :dimensions))
+                  (for slot :in (persistent-effective-slot-ds-of d-class))
+                  (iter (for dimension :in (dimensions-of slot))
                         (in outer (adjoining (find-class (dependent-object-name-of dimension))))))
             (unless (find-if (lambda (direct-superclass)
                                (ignore-errors (subtypep direct-superclass (find-class 'persistent-object-h))))
