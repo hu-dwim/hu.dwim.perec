@@ -478,8 +478,10 @@
      (setf (c-values-of result-d-value)
            (iter (with dimensions = (dimensions-of d-value))
                  (for c-value :in (c-values-of d-value))
-                 (collect (make-c-value (coordinates-intersection dimensions (coordinates-of c-value) coordinates)
-                                        (value-of c-value))))))))
+                 (for intersection = (coordinates-intersection dimensions (coordinates-of c-value) coordinates))
+                 (when intersection
+                   (collect (make-c-value intersection
+                                          (value-of c-value)))))))))
 
 (def (function e) (setf value-at-coordinates) (new-value d-value coordinates)
   (debug-only (valid-d-value-p d-value))
