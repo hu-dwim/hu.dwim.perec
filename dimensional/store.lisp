@@ -29,14 +29,14 @@
                         (d-slot persistent-effective-slot-definition-d)
                         value)
   (assert (d-value-p value))
-  (iter (for (v coordinates) :in-d-value value)
+  (iter (for (coordinates v) :in-d-value value)
         (check-slot-value-type d-instance d-slot v))
 
   ;; this lock ensures that
   ;; the insert/update operations on the h-table are serialized properly.
   (lock-slot d-instance d-slot)
 
-  (iter (for (v coordinates) :in-d-value value)
+  (iter (for (coordinates v) :in-d-value value)
         (store-slot-t* d-class d-instance d-slot v coordinates)))
 
 (def method lock-slot ((d-instance persistent-object) (d-slot persistent-effective-slot-definition-d) &key (wait t))
@@ -47,7 +47,6 @@
                     :wait wait)))
 
 (def function store-slot-t* (d-class d-instance d-slot value coordinates)
-
   (bind ((dimensions (dimensions-of d-slot))
          (inheriting-dimension (find-if [typep !1 'inheriting-dimension] dimensions))
          ((d-slot-default-value . has-default-p) (default-value-for-type-of d-slot))
@@ -93,11 +92,11 @@
 
 (def (function io) begin-slot-name-of (dimension)
   (assert (and (typep dimension 'ordering-dimension) (not (typep dimension 'inheriting-dimension))))
-  (format-symbol "~A-BEGIN" (symbol-package (name-of dimension)) (name-of dimension)))
+  (format-symbol (symbol-package (name-of dimension)) "~A-BEGIN" (name-of dimension)))
 
 (def (function io) end-slot-name-of (dimension)
   (assert (and (typep dimension 'ordering-dimension) (not (typep dimension 'inheriting-dimension))))
-  (format-symbol "~A-END" (symbol-package (name-of dimension)) (name-of dimension)))
+  (format-symbol (symbol-package (name-of dimension)) "~A-END" (name-of dimension)))
 
 (def (function io) dimension-equal (dimension)
   (case (the-type-of dimension)
@@ -231,9 +230,8 @@
          (h-slot (h-slot-of d-slot))
          (dimensions (dimensions-of d-slot))
          (query (make-query
-                 `(update (h-instance ,h-class)
+                 `(update (h-instance ,(class-name h-class))
                     (set (slot-value h-instance ',(slot-definition-name h-slot)) value)
-                    (from (h-instance ,(class-name h-class)))
                     (where (and (eq (d-instance-of h-instance) d-instance))))
                  '(d-instance value))))
 
@@ -257,11 +255,11 @@
                                   ,(name-of dimension))))))
 
     ;; generate condition for version check
-    (add-assert query `(eq h-instance (select ((max (oid-of h-instance)))
-                                        (from (h-instance ,(class-name h-class)))
-                                        (where (and (eq (d-instance-of h-instance) d-instance))))))
+    (add-assert query `(eq h-instance (select ((max (oid-of h-instance-2)))
+                                        (from (h-instance-2 ,(class-name h-class)))
+                                        (where (and (eq (d-instance-of h-instance-2) d-instance))))))
 
-    (prog1-bind count (execute-query query d-instance value coordinates)
+    (prog1-bind count (apply 'execute-query query d-instance value coordinates)
       (assert (<= count 1) nil "Inconsistent database"))))
 
 (def function insert-h-instance (d-class d-instance d-slot value coordinates)
@@ -278,9 +276,13 @@
                   (etypecase dimension
                     (inheriting-dimension
                      (assert (coordinate= (car coordinate) (cdr coordinate)))
-                     (collect (list (initarg-of (slot-name-of dimension)) (car coordinate))))
+                     (collect (initarg-of (slot-name-of dimension)))
+                     (collect (car coordinate)))
                     (ordering-dimension
-                     (collect (list (initarg-of (begin-slot-name-of dimension)) (car coordinate)))
-                     (collect (list (initarg-of (end-slot-name-of dimension)) (cdr coordinate))))
+                     (collect (initarg-of (begin-slot-name-of dimension)))
+                     (collect (car coordinate))
+                     (collect (initarg-of (end-slot-name-of dimension)))
+                     (collect (cdr coordinate)))
                     (dimension
-                     (collect (list (initarg-of (slot-name-of dimension)) coordinate)))))))))
+                     (collect (initarg-of (slot-name-of dimension)))
+                     (collect coordinate))))))))
