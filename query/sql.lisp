@@ -63,11 +63,11 @@
 
 (defun tables-for-delete (class)
   "Returns the tables where instances of CLASS are stored."
-  (bind ((super-classes (persistent-effective-super-classes-of class))
-         (sub-classes (persistent-effective-sub-classes-of class))
+  (bind ((superclasses (persistent-effective-superclasses-of class))
+         (subclasses (persistent-effective-subclasses-of class))
          (class-primary-table (primary-table-of class))
-         (super-primary-tables (mapcar 'primary-table-of super-classes))
-         (super-sub-primary-tables (mappend 'data-tables-of sub-classes)))
+         (super-primary-tables (mapcar 'primary-table-of superclasses))
+         (super-sub-primary-tables (mappend 'data-tables-of subclasses)))
     (delete nil
             (delete-duplicates
              (append
@@ -754,4 +754,4 @@ value is equal, when they represent the NIL lisp value)."
 ;;;
 (defun ensure-class-and-subclasses-exported (class)
   (ensure-exported class)
-  (mapc 'ensure-exported (persistent-effective-sub-classes-of class)))
+  (mapc 'ensure-exported (persistent-effective-subclasses-of class)))

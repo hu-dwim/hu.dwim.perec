@@ -166,12 +166,12 @@
   (invalidate-computed-slot class 'standard-effective-slots))
 
 (def function invalidate-inheritance (class)
-  (invalidate-computed-slot class 'persistent-direct-super-classes)
-  (invalidate-computed-slot class 'persistent-direct-sub-classes)
-  (mapc #L(invalidate-computed-slot !1 'persistent-direct-super-classes)
-        (persistent-direct-sub-classes-of class))
-  (mapc #L(invalidate-computed-slot !1 'persistent-direct-sub-classes)
-        (persistent-direct-super-classes-of class)))
+  (invalidate-computed-slot class 'persistent-direct-superclasses)
+  (invalidate-computed-slot class 'persistent-direct-subclasses)
+  (mapc #L(invalidate-computed-slot !1 'persistent-direct-superclasses)
+        (persistent-direct-subclasses-of class))
+  (mapc #L(invalidate-computed-slot !1 'persistent-direct-subclasses)
+        (persistent-direct-superclasses-of class)))
 
 ;;;;;;;;;;;
 ;;; Utility

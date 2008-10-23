@@ -95,8 +95,8 @@ if it was fully evaluated.")
   (:method ((fn (eql 'typep)) (n-args (eql 2)) (variable query-variable) (type persistent-class) args call)
            (let ((variable-type (persistent-type-of variable)))
              (if (and (persistent-class-p variable-type)
-                      (null (intersection (adjoin type (persistent-effective-sub-classes-of type))
-                                          (adjoin variable-type (persistent-effective-sub-classes-of variable-type)))))
+                      (null (intersection (adjoin type (persistent-effective-subclasses-of type))
+                                          (adjoin variable-type (persistent-effective-subclasses-of variable-type)))))
                  nil
                  (call-next-method))))
 

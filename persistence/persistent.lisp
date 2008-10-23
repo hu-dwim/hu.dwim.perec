@@ -128,25 +128,25 @@
   (:method ((class persistent-class))
     (ensure-exported class)
     (bind ((class-primary-table (primary-table-of class))
-           (super-classes (persistent-effective-super-classes-of class))
-           (sub-classes (persistent-effective-sub-classes-of class))
-           (super-primary-tables (mapcar #'primary-table-of super-classes))
-           (sub-primary-tables (mapcar #'primary-table-of sub-classes)))
-      (mapc #'ensure-exported super-classes)
-      (mapc #'ensure-exported sub-classes)
+           (superclasses (persistent-effective-superclasses-of class))
+           (subclasses (persistent-effective-subclasses-of class))
+           (super-primary-tables (mapcar #'primary-table-of superclasses))
+           (sub-primary-tables (mapcar #'primary-table-of subclasses)))
+      (mapc #'ensure-exported superclasses)
+      (mapc #'ensure-exported subclasses)
       (when (primary-tables-of class)
-        ;; delete instances from the primary tables of super classes and non primary data tables of sub classes 
+        ;; delete instances from the primary tables of superclasses and non primary data tables of subclasses 
         (dolist (table (delete-if #L(or (eq !1 class-primary-table)
                                         (member !1 sub-primary-tables))
                                   (delete-duplicates
                                    (append super-primary-tables
-                                           (mappend #'data-tables-of sub-classes)))))
+                                           (mappend #'data-tables-of subclasses)))))
           (when table
             (delete-records (name-of table)
                             (sql-in (sql-identifier :name +oid-column-name+)
                                     (sql-subquery :query (sql-select :columns (list +oid-column-name+)
                                                                      :tables (list (name-of (primary-relation-of class)))))))))
-        ;; delete instances from the primary tables of sub classes
+        ;; delete instances from the primary tables of subclasses
         (dolist (table (list* class-primary-table sub-primary-tables))
           (when table
             (delete-records (name-of table))))))))

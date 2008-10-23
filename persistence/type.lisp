@@ -72,7 +72,7 @@
                          (parser (parser-of prototype))
                          (substituted-type (funcall substituter)))
                    (ensure-class ',type-class-name :direct-superclasses
-                    (list (ensure-finalized (find-class (type-super-class-name-for ',name substituted-type)))))
+                    (list (ensure-finalized (find-class (type-superclass-name-for ',name substituted-type)))))
                    (bind ((type (if (symbolp substituted-type)
                                     (make-instance ',type-class-name)
                                     (change-class (parse-type substituted-type) ',type-class-name))))
@@ -107,7 +107,7 @@
                           (symbol-package type))
                       type "-type"))
 
-(def function type-super-class-name-for (name type)
+(def function type-superclass-name-for (name type)
   (cond ((and (symbolp type)
               (not (eq name type)))
          (if (find-class (type-class-name-for type) nil)
@@ -117,9 +117,9 @@
               (not (eq name (first type))))
          (let ((el (first type)))
            (cond ((eq 'and el)
-                  (let ((super-class-name (type-class-name-for (find-if #'symbolp (cdr type)))))
-                    (if (find-class super-class-name nil)
-                        super-class-name
+                  (let ((superclass-name (type-class-name-for (find-if #'symbolp (cdr type)))))
+                    (if (find-class superclass-name nil)
+                        superclass-name
                         (type-class-name-for el))))
                  ((member el '(or not))
                   'persistent-type)
@@ -265,8 +265,8 @@
     ((and (?* ?x) ?a (?* ?x) ?b (?* ?z)
           (?if (and (persistent-class-type-p ?a)
                     (persistent-class-type-p ?b)
-                    (not (intersection (list* (find-class* ?a) (persistent-effective-sub-classes-of (find-class* ?a)))
-                                       (list* (find-class* ?b) (persistent-effective-sub-classes-of (find-class* ?b))))))))
+                    (not (intersection (list* (find-class* ?a) (persistent-effective-subclasses-of (find-class* ?a)))
+                                       (list* (find-class* ?b) (persistent-effective-subclasses-of (find-class* ?b))))))))
      nil)
     ;; (disjunct-type-p a b) -> nil
     ((?or (and (?* ?x) ?a (?* ?y) ?b (?* ?z)

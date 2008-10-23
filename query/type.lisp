@@ -280,7 +280,7 @@
        (find-slot-by-slot-type (persistent-type-of access) slots))))
 
 (defun generalize-slot-access (slot)
-  (aif (and slot (persistent-effective-super-slot-precedence-list-of slot))
+  (aif (and slot (persistent-effective-slot-precedence-list-of slot))
        (first (last it))
        slot))
 
