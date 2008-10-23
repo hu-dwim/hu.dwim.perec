@@ -122,7 +122,7 @@
   (:method ((thing t))
     ;; can't use dispatch because null is both a symbol and an empty list (bah...)
     (etypecase thing
-      ((or null sequence) (map nil 'purge-instance thing))
+      ((or null sequence) (map nil #'purge-instance thing))
       (symbol (purge-instances (find-class thing)))))
 
   (:method ((class persistent-class))

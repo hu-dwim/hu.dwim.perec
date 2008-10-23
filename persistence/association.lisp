@@ -27,7 +27,7 @@
                       (find-class (getf (second (association-end-definitions-of -self-)) :class))))
     :type (list persistent-class))
    (association-kind
-    (compute-as (let ((cardinality-kinds (mapcar 'cardinality-kind-of (association-ends-of -self-))))
+    (compute-as (let ((cardinality-kinds (mapcar #'cardinality-kind-of (association-ends-of -self-))))
                   (cond ((equal cardinality-kinds '(:1 :1)) :1-1)
                         ((equal cardinality-kinds '(:n :n)) :m-n)
                         (t :1-n))))

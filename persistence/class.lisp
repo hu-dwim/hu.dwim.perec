@@ -230,7 +230,7 @@
     (compute-as #f)
     :documentation "The unique option is inherited among direct slots according to the class precedence list with defaulting to false.")
    (specified-type
-    (compute-as (cons 'and (mapcar 'specified-type-of (direct-slots-of -self-))))
+    (compute-as (cons 'and (mapcar #'specified-type-of (direct-slots-of -self-))))
     :documentation "The types of the direct slots combined with the compount type specifier 'and'.")
    (type-check
     (compute-as (if (persistent-class-type-p* (canonical-type-of -self-))
@@ -473,13 +473,13 @@
 
 (def generic compute-column-names (slot)
   (:method ((slot persistent-effective-slot-definition))
-    (mapcar 'rdbms::name-of (columns-of slot))))
+    (mapcar #'rdbms::name-of (columns-of slot))))
 
 (def generic compute-columns (slot)
   (:method ((slot persistent-effective-slot-definition))
     (bind ((precedence-list (persistent-effective-super-slot-precedence-list-of slot)))
       ;; TODO: multiple inheritance with slot storage location merging is not yet supported
-      (assert (<= (length (delete nil (delete-duplicates (mapcar 'columns-of precedence-list)))) 1) nil "There must be at most one storage location for ~A" slot)
+      (assert (<= (length (delete nil (delete-duplicates (mapcar #'columns-of precedence-list)))) 1) nil "There must be at most one storage location for ~A" slot)
       (or (some #'columns-of precedence-list)
           (bind ((class (slot-definition-class slot))
                  (name (slot-definition-name slot))
