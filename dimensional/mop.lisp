@@ -83,7 +83,7 @@
                     (remove-if-not (of-type 'persistent-class-d)
                                    (class-direct-superclasses d-class)))
             (iter outer
-                  (for slot :in (persistent-effective-slot-ds-of d-class))
+                  (for slot :in (collect-if [typep !1 'persistent-effective-slot-definition-d] (class-slots d-class)))
                   (iter (for dimension :in (dimensions-of slot))
                         (in outer (adjoining (find-class (dependent-object-name-of dimension))))))
             (unless (find-if (lambda (direct-superclass)
