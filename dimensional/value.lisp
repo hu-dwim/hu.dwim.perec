@@ -509,9 +509,26 @@
   (consolidate-d-value d-value))
 
 (def (function e) (setf into-d-value) (new-d-value d-value)
+  (debug-only (and (valid-d-value-p new-d-value)
+                   (valid-d-value-p d-value)))
   (iter (for c-value :in (c-values-of new-d-value))
         (setf (value-at-coordinates d-value (coordinates-of c-value))
               (value-of c-value))))
+
+(def (function e) insert-at-coordinates (d-value coordinates value)
+  (debug-only (valid-d-value-p d-value))
+  ;; TODO: this is suboptimal
+  (bind ((new-d-value (value-at-coordinates d-value coordinates)))
+    (iter (for c-value :in (c-values-of d-value))
+          (push value (value-of c-value)))
+    (setf (into-d-value d-value) new-d-value)))
+
+(def (function e) delete-at-coordinates (d-value coordinates value)
+  (debug-only (valid-d-value-p d-value))
+  (bind ((new-d-value (value-at-coordinates d-value coordinates)))
+    (iter (for c-value :in (c-values-of d-value))
+          (deletef (value-of c-value) value))
+    (setf (into-d-value d-value) new-d-value)))
 
 ;;;;;;
 ;;; Iteration support
