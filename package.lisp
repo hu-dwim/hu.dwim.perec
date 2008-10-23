@@ -41,7 +41,6 @@
            #:class-slots
            #:transaction
            #:create-temporary-table ; TODO resolve by renaming something. cl-rdbms exports this.
-           #:rdbms-name-for ;; TODO get rid of this
            #:float-type
            #:class-name-of)
 
@@ -355,16 +354,6 @@
   (if *load-as-production-p*
       options
       (remove-from-plist options :inline :optimize)))
-
-;; TODO get rid of this, use string names
-(defun rdbms-name-for (name &optional thing)
-  (let ((name-as-string (rdbms:rdbms-name-for name thing)))
-    (aif (symbol-package name)
-         (intern (string-upcase name-as-string)
-                 (if (eq it #.(find-package :common-lisp))
-                     (find-package :cl-rdbms)
-                     it))
-         (make-symbol name-as-string))))
 
 (dolist (node-class (cl-walker:collect-standard-walked-form-subclasses))
   (bind ((node-class-name (class-name node-class)))

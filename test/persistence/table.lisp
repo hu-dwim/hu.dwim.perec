@@ -12,8 +12,8 @@
   ((name)))
 
 (deftest test/persistence/table/inheritance ()
-  (is (not (null (find '_name (columns-of (primary-table-of (find-class 'table-t1-test))) :key #'rdbms::name-of))))
-  (is (null (find '_name (columns-of (primary-table-of (find-class 'table-t2-test))) :key #'rdbms::name-of))))
+  (is (not (null (find "_name" (columns-of (primary-table-of (find-class 'table-t1-test))) :key #'rdbms::name-of :test #'string=))))
+  (is (null (find "_name" (columns-of (primary-table-of (find-class 'table-t2-test))) :key #'rdbms::name-of :test #'string=))))
 
 (defpclass table-a1-test ()
   ()

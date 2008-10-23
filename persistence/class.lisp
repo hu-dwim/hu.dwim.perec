@@ -9,9 +9,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Persistent class and slot meta objects
 
-;; TODO: FIXME: maybe change those computed slots into simple defuns which are not required for instance level persistence operations (makes debugging harder?!)
-;; TODO: add oid-columns for persistent-class
-;; TODO: support flattenning abstract superclass slot columns into subclasses, so that abstract superclasses will not have tables
 ;; TODO: support flattenning subclasses into superclass and dispatch on type
 ;; TODO: support flattenning (1-1) associations and slots with persistent object subtype into referer's primary table
 
@@ -23,7 +20,7 @@
    (separate-primary-table
     (compute-as (not (abstract-p -self-)))
     :type boolean
-    :documentation "True if the slots of the abstract class must be stored in the non-abstract subclasses of it. This also means that the class will not have a primary table but a view instead.")
+    :documentation "False means the slots of the abstract class must be stored in the non-abstract subclasses of it. This also means that the class will not have a primary table but a view instead.")
    (standard-direct-slots
     (compute-as (class-direct-slots -self-))
     :type (list standard-effective-slot-definition)
@@ -257,7 +254,7 @@
     :type (list sql-column)
     :documentation "The list of RDBMS columns corresponding to the oid of this table.")
    (id-column
-    (compute-as (find +oid-column-name+ (columns-of -self-) :key 'cl-rdbms::name-of))
+    (compute-as (find +oid-column-name+ (columns-of -self-) :key #'cl-rdbms::name-of :test #'string=))
     :type sql-column
     :documentation "The RDBMS column of the corresponding oid slot."))
   (:documentation "This is a special table related to a persistent class."))
@@ -565,8 +562,8 @@
                          (persistent-effective-slots-of (if (symbolp class-or-name)
                                                             (find-class class-or-name)
                                                             class-or-name)))
-                       :key 'slot-definition-name
-                       :test 'eq)))
+                       :key #'slot-definition-name
+                       :test #'eq)))
     (or result
         (handle-otherwise otherwise))))
 

@@ -121,7 +121,7 @@
                                                                 (class-slots (class-of !1)))
                                                       direct-slot-definitions))))
         (bind ((specific-direct-slot-definitions
-                (collect-if #L(find slot-option-name (class-slots (class-of !1)) :key 'slot-definition-name)
+                (collect-if #L(find slot-option-name (class-slots (class-of !1)) :key #'slot-definition-name)
                             direct-slot-definitions)))
           (appending
            (compute-persistent-effective-slot-definition-option class

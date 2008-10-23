@@ -8,7 +8,7 @@
 
 (mapc #L(handler-case (drop-table !1)
           (error (e) (declare (ignore e))))
-      '(_c1 _c2 _c3 _c4))
+      '("_c1" "_c2" "_c3" "_c4"))
 
 (start-sql-recording)
 

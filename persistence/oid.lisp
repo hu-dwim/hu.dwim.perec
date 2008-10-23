@@ -24,10 +24,10 @@
 (def constant +oid-bit-size+ (+ +oid-class-id-bit-size+ +oid-instance-id-bit-size+)
   "Size of the oid in bits.")
 
-(def constant +oid-instance-id-sequence-name+ '_instance_id
+(def (constant :test #'string=) +oid-instance-id-sequence-name+ "_instance_id"
   "The name of the instance id sequence in the relational database used to generate life time unique identifiers for all persistent instances.")
 
-(def constant +oid-column-name+ '_oid
+(def (constant :test #'string=) +oid-column-name+ "_oid"
   "The RDBMS column name for the oid of the instance.")
 
 (def (constant :test 'equal) +oid-column-names+ (list +oid-column-name+)
