@@ -28,7 +28,14 @@
                          (d-instance persistent-object-d)
                         (d-slot persistent-effective-slot-definition-d)
                         value)
-  (assert (d-value-p value))
+  ;; store-all-slots may pass simple values here
+  #+nil(assert (d-value-p value))
+  (unless (d-value-p value)
+    (setf value (make-single-d-value
+                 (dimensions-of d-slot)
+                 (collect-coordinates-from-variables (dimensions-of d-slot))
+                 value)))
+  
   (iter (for (coordinates v) :in-d-value value)
         (check-slot-value-type d-instance d-slot v))
 
@@ -74,10 +81,22 @@
 (def function make-d-value-from-records (records default-value dimensions coordinates)
   (bind ((d-value (make-single-d-value dimensions coordinates default-value)))
     (iter (for record :in records)
-          (for value = (first records))
-          (for coords = (rest records))
+          (for value = (first record))
+          (for coords = (iter (for dimension :in dimensions)
+                              (generating coordinate :in (rest record))
+                              (collect (etypecase dimension
+                                         (inheriting-dimension
+                                          (make-coordinate-range
+                                           'ii
+                                           (next coordinate)
+                                           (maximum-coordinate-of dimension)))
+                                         (ordering-dimension
+                                          (make-coordinate-range
+                                           'ie (next coordinate) (next coordinate)))
+                                         (dimension
+                                          (next coordinate))))))
           (setf (value-at-coordinates d-value coords) value))
-    (value-at-coordinates d-value coordinates))) ; FIXME add plane of inherited coord
+    (value-at-coordinates d-value coordinates))) ; TODO refine cut in inheriting dimension
 
 ;;;
 ;;; Queries
@@ -121,7 +140,13 @@
          (h-slot (h-slot-of d-slot))
          (h-slot-name (slot-definition-name h-slot))
          (dimensions (dimensions-of d-slot))
-         (query (make-query `(select ((slot-value h-instance ',h-slot-name))
+         (query (make-query `(select (
+                                      ;;(if (slot-boundp h-instance ',h-slot-name) KLUDGE fix query compiler
+                                      ;;    (slot-value h-instance ',h-slot-name)
+                                      ;;    ,+unbound-slot-marker+)
+                                      (or (and (not (slot-boundp h-instance ',h-slot-name))
+                                               ,+unbound-slot-marker+)
+                                          (slot-value h-instance ',h-slot-name)))
                                (from (h-instance ,h-class-name))
                                (where (and (eq (d-instance-of h-instance) d-instance)
                                            (or
@@ -134,9 +159,10 @@
     (iter (for dimension :in dimensions)
           (for coordinate :in coordinates)
           (for interval-p = (when (typep dimension 'ordering-dimension)
-                              (assert (funcall (dimension-less-or-equal dimension)
-                                               (car coordinate) (cdr coordinate)))
-                              (funcall (dimension-less dimension) (car coordinate) (cdr coordinate))))
+                              (assert (coordinate<= (coordinate-range-begin coordinate)
+                                                    (coordinate-range-end coordinate)))
+                              (coordinate< (coordinate-range-begin coordinate)
+                                           (coordinate-range-end coordinate))))
 
           (add-lexical-variable query (name-of dimension))
 
@@ -144,16 +170,14 @@
 
             (inheriting-dimension
 
-             (add-collect query `(cons
-                                  (slot-value h-instance ',(slot-name-of dimension))
-                                  ,(maximum-coordinate-of dimension)))
+             (add-collect query `(slot-value h-instance ',(slot-name-of dimension)))
 
              (add-assert query
                          `(,(if interval-p
                                 (dimension-less dimension)
                                 (dimension-less-or-equal dimension))
                             (slot-value h-instance ',(name-of dimension))
-                            (cdr ,(name-of dimension))))
+                            (coordinate-range-end ,(name-of dimension))))
 
              (when (and (length= 1 dimensions) interval-p)
                (add-assert query
@@ -162,7 +186,7 @@
                               ;;  (select ((max (slot-value h-instance ',(name-of dimension))))
                               ;;     (from (h-instance ,h-class-name))
                               ;;     (where ...)))
-                              (car ,(name-of dimension))
+                              (coordinate-range-begin ,(name-of dimension))
                               (slot-value h-instance ',(name-of dimension)))))
 
              (if (and (length= 1 dimensions) (not interval-p))
@@ -177,16 +201,16 @@
                    (add-order-by query 'h-instance (direction-of dimension)))))
 
             (ordering-dimension
-             (add-collect query `(cons
-                                  (slot-value h-instance ',(begin-slot-name-of dimension))
-                                  (slot-value h-instance ',(end-slot-name-of dimension))))
+             (add-collect query `(slot-value h-instance ',(begin-slot-name-of dimension)))
+             (add-collect query `(slot-value h-instance ',(end-slot-name-of dimension)))
+             
              (add-assert query
                          `(,(if interval-p (dimension-less dimension) (dimension-less-or-equal dimension))
                             (slot-value h-instance ',(begin-slot-name-of dimension))
-                            (cdr ,(name-of dimension)))) ; end
+                            (coordinate-range-end ,(name-of dimension))))
              (add-assert query
                          `(,(dimension-less dimension)
-                            (car ,(name-of dimension)) ; start
+                            (coordinate-range-begin ,(name-of dimension))
                             (slot-value h-instance ',(end-slot-name-of dimension)))))
 
             (dimension
@@ -206,20 +230,19 @@
     ;; (adds the missing record that is the last before the beginning of the interval)
     (when (and (length= 1 dimensions)
                (typep (first dimensions) 'inheriting-dimension)
-               (funcall (dimension-less (first dimensions))
-                        (car (first coordinates))
-                        (cdr (first coordinates))))
-      (bind ((dimension (first dimensions))
-             (coordinate (first coordinates))
-             (last-coordinate (car (second (lastcar result)))))
+               (coordinate< (coordinate-range-begin (first coordinates))
+                            (coordinate-range-end (first coordinates))))
+      (bind ((coordinate (first coordinates))
+             (last-coordinate (second (lastcar result))))
         (when (and last-coordinate
-                   (not (funcall (dimension-equal dimension)
-                                 (car coordinate) last-coordinate)))
+                   (not (coordinate= (coordinate-range-begin coordinate)
+                                     last-coordinate)))
           (setf result
                 (append
                  ;; this select returns at most 1 record
                  (select-slot-values-with-dimensions d-class d-instance d-slot
-                                                     (cons (car coordinate) (car coordinate)))
+                                                     (list (make-empty-coordinate-range
+                                                            (coordinate-range-begin coordinate))))
                  result)))))
 
     result))
@@ -241,14 +264,14 @@
             (inheriting-dimension
              (add-assert query `(,(dimension-equal dimension)
                                   (slot-value h-instance ',(slot-name-of dimension))
-                                  (car ,(name-of dimension)))))
+                                  (coordinate-range-begin ,(name-of dimension)))))
             (ordering-dimension
              (add-assert query `(,(dimension-equal dimension)
                                   (slot-value h-instance ',(begin-slot-name-of dimension))
-                                  (car ,(name-of dimension))))
+                                  (coordinate-range-begin ,(name-of dimension))))
              (add-assert query `(,(dimension-equal dimension)
                                   (slot-value h-instance ',(end-slot-name-of dimension))
-                                  (cdr ,(name-of dimension)))))
+                                  (coordinate-range-end ,(name-of dimension)))))
             (dimension
              (add-assert query `(,(dimension-equal dimension)
                                   (slot-value h-instance ',(slot-name-of dimension))
@@ -275,14 +298,15 @@
                   (for coordinate :in coordinates)
                   (etypecase dimension
                     (inheriting-dimension
-                     (assert (coordinate= (car coordinate) (cdr coordinate)))
+                     (assert (coordinate= (coordinate-range-begin coordinate)
+                                          (coordinate-range-end coordinate)))
                      (collect (initarg-of (slot-name-of dimension)))
-                     (collect (car coordinate)))
+                     (collect (coordinate-range-begin coordinate)))
                     (ordering-dimension
                      (collect (initarg-of (begin-slot-name-of dimension)))
-                     (collect (car coordinate))
+                     (collect (coordinate-range-begin coordinate))
                      (collect (initarg-of (end-slot-name-of dimension)))
-                     (collect (cdr coordinate)))
+                     (collect (coordinate-range-end coordinate)))
                     (dimension
                      (collect (initarg-of (slot-name-of dimension)))
                      (collect coordinate))))))))

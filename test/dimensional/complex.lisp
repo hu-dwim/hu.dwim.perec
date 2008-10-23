@@ -21,26 +21,108 @@
   (action nil :type (member :set :insert :delete))
   (instance nil :type (or null persistent-object))
   (slot-name nil :type symbol)
-  (time nil :type (or null timestamp))
-  (validity-begin nil :type (or null timestamp))
-  (validity-end nil :type (or null timestamp))
-  (value nil :type t))
+  (d-value nil :type prc::d-value))
+
+(def (function io) he-dimensions (entry)
+  (prc::dimensions-of (he-d-value entry)))
+
+(def (function io) he-coordinates (entry)
+  (prc::coordinates-of (first (prc::c-values-of (he-d-value entry)))))
+
+(def (function io) he-value (entry)
+  (prc::value-of (first (prc::c-values-of (he-d-value entry)))))
+
+(def (function i) he-time (entry)
+  (bind ((index (position *time-dimension* (he-dimensions entry))))
+    (if index
+        (coordinate-range-begin (elt (he-coordinates entry) index))
+        nil)))
+
+(def (function i) he-validity-begin (entry)
+  (bind ((index (position *validity-dimension* (he-dimensions entry))))
+    (if index
+        (coordinate-range-begin (elt (he-coordinates entry) index))
+        nil)))
+
+(def (function i) he-validity-end (entry)
+  (bind ((index (position *validity-dimension* (he-dimensions entry))))
+    (if index
+        (coordinate-range-end (elt (he-coordinates entry) index))
+        nil)))
+
+(def (function io) dimensions-of* (slot)
+  (if (typep slot 'prc::persistent-slot-definition-d)
+      (prc::dimensions-of slot)
+      nil))
+
+(def function collect-coordinates (instance slot-name)
+  (bind ((slot (find-slot (class-of instance) slot-name))
+         (dimensions (dimensions-of* slot)))
+    (prc::collect-coordinates-from-variables dimensions)))
+
+(def (function io) call-with-function-of (dimension)
+  (symbol-function (format-symbol (symbol-package (name-of dimension)) "CALL-WITH-~A" (name-of dimension))))
+
+(def (function io) call-with-range-function-of (dimension)
+  (symbol-function (format-symbol (symbol-package (name-of dimension)) "CALL-WITH-~A-RANGE" (name-of dimension))))
+
+(def function call-with-coordinates (dimensions coordinates thunk)
+  (flet ((coerce-coordinate (coordinate type) ; TODO make these coercions in with-coordinates
+           (if (coordinate-range-p coordinate)
+               (make-coordinate-range
+                (coordinate-range-bounds coordinate)
+                (prc::coerce-to-coordinate (coordinate-range-begin coordinate) type)
+                (prc::coerce-to-coordinate (coordinate-range-end coordinate) type))
+               (prc::coerce-to-coordinate coordinate type))))
+    (if (null dimensions)
+        (progn
+          (assert (null coordinates))
+          (funcall thunk))
+        (bind ((dimension (lookup-dimension (first dimensions)))
+               (type (prc::the-type-of dimension))
+               (coordinate (coerce-coordinate (first coordinates) type)))
+          (typecase dimension
+            (ordering-dimension
+             (funcall (call-with-range-function-of dimension)
+                      (prc::coordinate-range-begin coordinate)
+                      (prc::coordinate-range-end coordinate)
+                      (lambda ()
+                        (call-with-coordinates (rest dimensions)
+                                               (rest coordinates)
+                                               thunk))))
+            (t
+             (funcall (call-with-function-of dimension)
+                      coordinate
+                      (lambda ()
+                        (call-with-coordinates (rest dimensions)
+                                               (rest coordinates)
+                                               thunk)))))))))
+
+(def macro with-coordinates (dimensions coordinates &body forms)
+  `(call-with-coordinates
+    ',dimensions
+    ',coordinates
+    (lambda ()
+      ,@forms)))
 
 (def function sort-entries-by-step (entries &key (ascending #t))
   (sort entries (if ascending #'< #'>) :key #'he-step))
 
-(def function sort-entries-by-time (entries &key (ascending #t))
-  (bind ((local-time-comparator (if ascending #'timestamp< #'timestamp>))
-         (step-comparator (if ascending #'< #'>)))
-    (sort entries (lambda (value-1 value-2)
-                    (or (funcall local-time-comparator
-                                 (he-time value-1)
-                                 (he-time value-2))
-                        (and (timestamp= (he-time value-1)
-                                         (he-time value-2))
-                             (funcall step-comparator
-                                      (he-step value-1)
-                                      (he-step value-2))))))))
+(def function sort-entries-by-coordinate (entries coordinate-index &key (ascending #t))
+  (sort entries
+        (if ascending
+            (lambda (he-1 he-2)
+              (bind ((coordinate-1 (coordinate-range-begin (elt (he-coordinates he-1) coordinate-index)))
+                     (coordinate-2 (coordinate-range-begin (elt (he-coordinates he-2) coordinate-index))))
+                (or (coordinate< coordinate-1 coordinate-2)
+                    (and (coordinate= coordinate-1 coordinate-2)
+                         (< (he-step he-1) (he-step he-2))))))
+            (lambda (he-1 he-2)
+              (bind ((coordinate-1 (coordinate-range-begin (elt (he-coordinates he-1) coordinate-index)))
+                     (coordinate-2 (coordinate-range-begin (elt (he-coordinates he-2) coordinate-index))))
+                (or (coordinate< coordinate-2 coordinate-1)
+                    (and (coordinate= coordinate-2 coordinate-1)
+                        (< (he-step he-2) (he-step he-1)))))))))
 
 (def function take (n list)
   (labels ((recurse (n list result)
@@ -50,10 +132,10 @@
                (t (recurse (1- n) (rest list) (cons (first list) result))))))
     (nreverse (recurse n list nil))))
 
-(defgeneric filter-and-sort-history-entries (instance slot)
+(defgeneric filter-and-sort-history-entries (instance slot coordinates)
 
   ;; normal slot
-  (:method ((instance persistent-object) (slot persistent-slot-definition))
+  (:method ((instance persistent-object) (slot persistent-slot-definition) coordinates)
     (bind ((slot-name (slot-definition-name slot)))
       (take 1
             (sort-entries-by-step
@@ -63,7 +145,7 @@
              :ascending #f))))
 
   ;; normal association-end
-  (:method ((instance persistent-object) (slot persistent-association-end-slot-definition))
+  (:method ((instance persistent-object) (slot persistent-association-end-slot-definition) coordinates)
     (bind ((slot-name (slot-definition-name slot))
            (other-slot-name (slot-definition-name (prc::other-association-end-of slot))))
       (sort-entries-by-step
@@ -72,129 +154,120 @@
                    *history-entries*)
        :ascending #t)))
 
-  ;; t-s slot
-  (:method ((instance persistent-object) (slot persistent-slot-definition-t))
-    (bind ((slot-name (slot-definition-name slot)))
-      (cond
-        ((and (prc::time-dependent-p slot) (prc::validity-dependent-p slot))
-         (sort-entries-by-t
-          (collect-if #L(and (eq slot-name (he-slot-name !1))
-                             (p-eq instance (he-instance !1))
-                             (timestamp<= (he-time !1) *time*)
-                             (timestamp< (he-validity-begin !1) *validity-end*)
-                             (timestamp< *validity-begin* (he-validity-end !1)))
-                      *history-entries*)
-          :ascending #t))
-        ((prc::time-dependent-p slot)
-         (take 1
-               (sort-entries-by-t
-                (collect-if #L(and (eq slot-name (he-slot-name !1))
-                                   (p-eq instance (he-instance !1))
-                                   (timestamp<= (he-time !1) *time*))
-                            *history-entries*)
-                :ascending #f)))
-        ((prc::validity-dependent-p slot)
-         (sort-entries-by-step
-          (collect-if #L(and (eq slot-name (he-slot-name !1))
-                             (p-eq instance (he-instance !1))
-                             (timestamp< (he-validity-begin !1) *validity-end*)
-                             (timestamp< *validity-begin* (he-validity-end !1)))
-                      *history-entries*)
-          :ascending #t))
-        (t
-         (error "Bug")))))
-
-  ;; t-s association-end
-  (:method ((instance persistent-object) (slot persistent-association-end-slot-definition-t))
+  ;; d-s slot
+  (:method ((instance persistent-object) (slot persistent-slot-definition-d) coordinates)
     (bind ((slot-name (slot-definition-name slot))
-           (other-slot-name (slot-definition-name (prc::other-association-end-of slot))))
-      (cond
-        ((and (prc::time-dependent-p slot) (prc::validity-dependent-p slot))
-         (sort-entries-by-t
-          (collect-if #L(and (or (eq slot-name (he-slot-name !1))
-                                 (eq other-slot-name (he-slot-name !1)))
-                             (timestamp<= (he-time !1) *time*)
-                             (timestamp< (he-validity-begin !1) *validity-end*)
-                             (timestamp< *validity-begin* (he-validity-end !1)))
-                      *history-entries*)
-          :ascending #t))
-        ((prc::time-dependent-p slot)
-         (sort-entries-by-t
-          (collect-if #L(and (or (eq slot-name (he-slot-name !1))
-                                 (eq other-slot-name (he-slot-name !1)))
-                             (timestamp<= (he-time !1) *time*))
-                      *history-entries*)
-          :ascending #t))
-        ((prc::validity-dependent-p slot)
-         (sort-entries-by-step
-          (collect-if #L(and (or (eq slot-name (he-slot-name !1))
-                                 (eq other-slot-name (he-slot-name !1)))
-                             (timestamp< (he-validity-begin !1) *validity-end*)
-                             (timestamp< *validity-begin* (he-validity-end !1)))
-                      *history-entries*)
-          :ascending #t))
-        (t
-         (error "Bug"))))))
+           (dimensions (prc::dimensions-of slot))
+           (inheriting-dimension-index (position-if [typep !1 'inheriting-dimension] dimensions))
+           (entries (collect-if (lambda (entry)
+                                  (and (eq slot-name (he-slot-name entry))
+                                       (p-eq instance (he-instance entry))
+                                       (every
+                                        (lambda (dimension coordinate he-coordinate)
+                                          (etypecase dimension
+                                            (inheriting-dimension
+                                             (coordinate<= (coordinate-range-begin he-coordinate)
+                                                           (coordinate-range-begin coordinate)))
+                                            (ordering-dimension
+                                             (overlapping-range-p he-coordinate coordinate))
+                                            (dimension
+                                             (eq he-coordinate coordinate))))
+                                        dimensions coordinates (he-coordinates entry))))
+                                *history-entries*)))
 
-(def function default-value-for-slot (slot)
+      (if inheriting-dimension-index
+          (if (length= 1 dimensions)
+              (take 1 (sort-entries-by-coordinate entries inheriting-dimension-index :ascending #f))
+              (sort-entries-by-coordinate entries inheriting-dimension-index :ascending #t))
+          (sort-entries-by-step entries :ascending #t))))
+
+  ;; d-s association-end
+  (:method ((instance persistent-object) (slot persistent-association-end-slot-definition-d) coordinates)
+    (bind ((slot-name (slot-definition-name slot))
+           (other-slot-name (slot-definition-name (prc::other-association-end-of slot)))
+           (dimensions (prc::dimensions-of slot))
+           (inheriting-dimension-index (position-if [typep !1 'inheriting-dimension] dimensions))
+           (entries (collect-if (lambda (entry)
+                                  (and (or (eq slot-name (he-slot-name entry))
+                                           (eq other-slot-name (he-slot-name entry)))
+                                       (every
+                                        (lambda (dimension coordinate he-coordinate)
+                                          (etypecase dimension
+                                            (inheriting-dimension
+                                             (coordinate<= (coordinate-range-begin he-coordinate)
+                                                           (coordinate-range-begin coordinate)))
+                                            (ordering-dimension
+                                             (overlapping-range-p he-coordinate coordinate))
+                                            (dimension
+                                             (eq he-coordinate coordinate))))
+                                        dimensions coordinates (he-coordinates entry))))
+                                *history-entries*)))
+
+      (if inheriting-dimension-index
+          (sort-entries-by-coordinate entries inheriting-dimension-index :ascending #t)
+          (sort-entries-by-step entries :ascending #t)))))
+
+(def function default-value-for-slot (slot coordinates)
   (bind (((slot-default-value . has-default-p) (prc::default-value-for-type-of slot))
          (default-value (if has-default-p slot-default-value +unbound-slot-marker+)))
-    (if (and (typep slot 'prc::persistent-slot-definition-t)
-             (prc::validity-dependent-p slot))
-        (make-single-d-value default-value *validity-begin* *validity-end*)
+    (if (and (typep slot 'prc::persistent-slot-definition-d))
+        (make-single-d-value (prc::dimensions-of slot) coordinates default-value)
         default-value)))
 
-(def function execute-history-entries (history-entries instance slot)
+(def function execute-history-entries (history-entries instance slot coordinates)
   "Executes the given history entries on the slot and returns the slot-value."
-  (iter (with slot-value = (default-value-for-slot slot))
+  (iter (with slot-value = (default-value-for-slot slot coordinates))
         (for entry :in history-entries)
-        (setf slot-value (execute-history-entry instance slot slot-value entry))
+        (setf slot-value (execute-history-entry entry instance slot slot-value coordinates))
         (finally (return slot-value))))
 
 (def macro lift-values-having-validity ((slot-value &rest variables) &body body)
+  "TODO: eliminate the typecase: normal slots values can be 0-dimensional d-values"
   (bind ((variable-names (mapcar #'first variables))
-         (missing-value (cons nil nil))
-         (variable-specs (mapcar #L(list !1 :default `',missing-value) variable-names)))
+         (missing-value (cons nil nil)))
     `(typecase ,slot-value
-       (values-having-validity
-        (bind (,@(mapcar #L(list (first !1)
-                                 `(make-single-d-value ,(first !1) ,(second !1) ,(third !1)))
+       (d-value
+        (bind ((dimensions (prc::dimensions-of ,slot-value))
+               ,@(mapcar (lambda (variable-spec)
+                           `(,(first variable-spec) (make-single-d-value dimensions
+                                                                         ,(second variable-spec)
+                                                                         ,(first variable-spec))))
                          variables))
-          (iter (for (validity-begin validity-end (,slot-value :skip-if-missing #t) ,@variable-specs) :in-values-having-validity (,slot-value ,@variable-names))
-                (collect-value-with-validity
+          (iter (for (coordinates (,slot-value ,@variable-names)) :in-d-values (,slot-value ,@variable-names) :unspecified-value ',missing-value)
+                (when (eq ,slot-value ',missing-value)
+                  (next-iteration))
+                (collect-d-value
                  (if (or ,@(mapcar (lambda (name) `(eq ,name ',missing-value)) variable-names))
                      ,slot-value (progn ,@body))
-                 from validity-begin to validity-end))))
+                 :dimensions dimensions :coordinates coordinates))))
        (t
         (progn ,@body)))))
 
-(defgeneric execute-history-entry (instance slot slot-value entry)
+(defgeneric execute-history-entry (entry instance slot slot-value coordinates)
   (:documentation "Returns the new slot-value.")
 
   ;; slot
-  (:method ((instance persistent-object) (slot persistent-slot-definition) slot-value entry)
+  (:method (entry (instance persistent-object) (slot persistent-slot-definition) slot-value coordinates)
     (if (and (p-eq instance (he-instance entry))
              (eq (slot-definition-name slot) (he-slot-name entry)))
 
         (bind ((he-value (he-value entry))
-               (he-validity-begin (he-validity-begin entry))
-               (he-validity-end (he-validity-end entry)))
-          (lift-values-having-validity (slot-value (he-value he-validity-begin he-validity-end))
+               (he-coordinates (he-coordinates entry)))
+          (lift-values-having-validity (slot-value (he-value he-coordinates))
             he-value))
         slot-value))
 
   ;; association-end
-  (:method ((instance persistent-object) (slot persistent-association-end-slot-definition) slot-value entry)
+  (:method (entry (instance persistent-object) (slot persistent-association-end-slot-definition) slot-value coordinates)
     (bind ((slot-name (slot-definition-name slot))
            (other-slot-name (slot-definition-name (prc::other-association-end-of slot)))
            (association-kind (prc::association-kind-of (prc::association-of slot)))
            (slot-cardinality-kind (prc::cardinality-kind-of slot))
            (he-instance (he-instance entry))
            (he-value (he-value entry))
+           (he-coordinates (he-coordinates entry))
            (he-slot-name (he-slot-name entry))
-           (he-action (he-action entry))
-           (he-validity-begin (he-validity-begin entry))
-           (he-validity-end (he-validity-end entry)))
+           (he-action (he-action entry)))
       (ecase association-kind
         (:1-1
          ;;  A----EV       EI: he-instance
@@ -206,24 +279,24 @@
            ;; set slot of this instance (I=EI)
            ((and (eq slot-name he-slot-name)
                  (p-eq instance he-instance))
-            (lift-values-having-validity (slot-value (he-value he-validity-begin he-validity-end))
+            (lift-values-having-validity (slot-value (he-value he-coordinates))
               he-value))
            ;; set other-slot of some other instance to this instance (I=EV)
            ((and (eq other-slot-name he-slot-name)
                  he-value
                  (p-eq instance he-value))
-            (lift-values-having-validity (slot-value (he-instance he-validity-begin he-validity-end))
+            (lift-values-having-validity (slot-value (he-instance he-coordinates))
               he-instance))
            ;; set slot of some other instance to the same value as this instance had-> clear slot value (I=A)
            ((and (eq slot-name he-slot-name)
                  he-value)
-            (lift-values-having-validity (slot-value (he-value he-validity-begin he-validity-end))
+            (lift-values-having-validity (slot-value (he-value he-coordinates))
               (if (p-eq slot-value he-value)
                   nil
                   slot-value)))
            ;; set other slot of the value this instance had -> clear slot value (I=B)
            ((eq other-slot-name he-slot-name)
-            (lift-values-having-validity (slot-value (he-instance he-validity-begin he-validity-end))
+            (lift-values-having-validity (slot-value (he-instance he-coordinates))
               (if (p-eq slot-value he-instance)
                   nil
                   slot-value)))
@@ -242,7 +315,7 @@
               ;; set/insert/delete children of this instance (I=EI)
               ((and (eq slot-name he-slot-name)
                     (p-eq instance he-instance))
-               (lift-values-having-validity (slot-value (he-value he-validity-begin he-validity-end))
+               (lift-values-having-validity (slot-value (he-value he-coordinates))
                  (ecase he-action
                    (:set he-value)
                    (:insert (adjoin he-value slot-value :test #'p-eq))
@@ -251,19 +324,19 @@
               ((and (eq other-slot-name he-slot-name)
                     he-value
                     (p-eq instance he-value))
-               (lift-values-having-validity (slot-value (he-instance he-validity-begin he-validity-end))
+               (lift-values-having-validity (slot-value (he-instance he-coordinates))
                  (adjoin he-instance slot-value :test #'p-eq)))
               ;; set/add children of some other instance and this instance had those children -> remove children (I=A)
               ((and (eq slot-name he-slot-name)
                     he-value)
-               (lift-values-having-validity (slot-value (he-value he-validity-begin he-validity-end))
+               (lift-values-having-validity (slot-value (he-value he-coordinates))
                  (ecase he-action
                    (:set (set-difference slot-value he-value :test #'p-eq))
                    (:insert (remove he-value slot-value :test #'p-eq))
                    (:delete slot-value))))
               ;; set parent of some current child to another one (or null) -> remove that child (I=B)
               ((eq other-slot-name he-slot-name)
-               (lift-values-having-validity (slot-value (he-instance he-validity-begin he-validity-end))
+               (lift-values-having-validity (slot-value (he-instance he-coordinates))
                  (remove he-instance slot-value :test #'p-eq)))
               (t
                slot-value)))
@@ -278,13 +351,13 @@
               ;; set parent of this instance (I=EI)
               ((and (eq slot-name he-slot-name)
                     (p-eq instance he-instance))
-               (lift-values-having-validity (slot-value (he-value he-validity-begin he-validity-end))
+               (lift-values-having-validity (slot-value (he-value he-coordinates))
                  he-value))
               ;; set children
               ((and (eq other-slot-name he-slot-name)
                     slot-value)
-               (lift-values-having-validity (slot-value (he-instance he-validity-begin he-validity-end)
-                                                        (he-value he-validity-begin he-validity-end))
+               (lift-values-having-validity (slot-value (he-instance he-coordinates)
+                                                        (he-value he-coordinates))
                  (if (p-eq slot-value he-instance)
                      ;; set/remove children of the current parent -> clear parent (I=B)
                      (ecase he-action
@@ -299,7 +372,7 @@
               ;; set/insert this child to some other parent (I=EV)
               ((and (eq other-slot-name he-slot-name)
                     he-value)
-               (lift-values-having-validity (slot-value (he-value he-validity-begin he-validity-end))
+               (lift-values-having-validity (slot-value (he-value he-coordinates))
                  (ecase he-action
                    (:set (if (member instance he-value :test #'p-eq) he-instance slot-value))
                    (:insert (if (p-eq instance he-value) he-instance slot-value))
@@ -312,15 +385,15 @@
            ((and (eq slot-name he-slot-name)
                  (p-eq instance he-instance))
 
-            (lift-values-having-validity (slot-value (he-value he-validity-begin he-validity-end))
+            (lift-values-having-validity (slot-value (he-value he-coordinates))
               (ecase he-action
                 (:set he-value)
                 (:insert (adjoin he-value slot-value :test #'p-eq))
                 (:delete (remove he-value slot-value :test #'p-eq)))))
            ;; set other slot (I=EV)
            ((eq other-slot-name he-slot-name)
-            (lift-values-having-validity (slot-value (he-value he-validity-begin he-validity-end)
-                                                     (he-instance he-validity-begin he-validity-end))
+            (lift-values-having-validity (slot-value (he-value he-coordinates)
+                                                     (he-instance he-coordinates))
               
               (ecase he-action
                 (:set
@@ -346,27 +419,48 @@
            (t
             slot-value)))))))
 
+(def function collect-coordinates* (dimensions)
+  (iter (for dimension :in dimensions)
+        (typecase dimension
+          (inheriting-dimension
+           (assert (coordinate= (begin-coordinate dimension)
+                                (end-coordinate dimension)))
+           (collect (make-coordinate-range
+                     'ii
+                     (begin-coordinate dimension)
+                     (prc::maximum-coordinate-of dimension))))
+          (ordering-dimension
+           (assert (coordinate< (begin-coordinate dimension)
+                                (end-coordinate dimension)))
+           (collect (make-coordinate-range
+                     'ie
+                     (begin-coordinate dimension)
+                     (end-coordinate dimension))))
+          (t
+           (collect (coordinate dimension))))))
+
 (def function slot-value* (instance slot-name)
   (bind ((slot (find-slot (class-of instance) slot-name))
-         (entries (filter-and-sort-history-entries instance slot))
-         (value (execute-history-entries entries instance slot)))
+         (dimensions (dimensions-of* slot))
+         (coordinates (prc::collect-coordinates-from-variables dimensions))
+         (entries (filter-and-sort-history-entries instance slot coordinates))
+         (value (execute-history-entries entries instance slot coordinates)))
 
-    (if (and (values-having-validity-p value)
-             (iter (for (s e v) :in-values-having-validity value)
+    (if (and (d-value-p value)
+             (iter (for (coords v) :in-d-value value)
                    (thereis (unbound-slot-marker-p v)))) 
         +unbound-slot-marker+
         value)))
 
 (def function (setf slot-value*) (new-value instance slot-name)
-  (assert (not (values-having-validity-p new-value)))
-  (push (make-history-entry :action :set
-                            :instance instance
-                            :slot-name slot-name
-                            :time *time*
-                            :validity-begin *validity-begin*
-                            :validity-end *validity-end*
-                            :value new-value)
-        *history-entries*))
+  (assert (not (d-value-p new-value)))
+  (bind ((dimensions (dimensions-of* (find-slot (class-of instance) slot-name)))
+         (coordinates (collect-coordinates* dimensions)))
+    (push (make-history-entry :action :set
+                                     :instance instance
+                                     :slot-name slot-name
+                                     :d-value (make-single-d-value dimensions coordinates new-value))
+         *history-entries*)))
 
 (def function (setf slot-value-and-slot-value*) (new-value instance slot-name)
   (setf (slot-value instance slot-name) new-value)
@@ -374,31 +468,31 @@
 
 (def function insert-item-and-insert-item* (instance slot-name item)
   (with-lazy-slot-value-collections
-    (when (or (typep (find-slot (class-of instance) slot-name) 'persistent-association-end-slot-definition-t)
-              (not (find-item (slot-value instance slot-name) item)))
-      (insert-item (slot-value instance slot-name) item))
-    (push (make-history-entry :action :insert
-                              :instance instance
-                              :slot-name slot-name
-                              :time *time*
-                              :validity-begin *validity-begin*
-                              :validity-end *validity-end*
-                              :value item)
-          *history-entries*)))
+    (bind ((slot (find-slot (class-of instance) slot-name))
+           (dimensions (dimensions-of* slot))
+           (coordinates (collect-coordinates* dimensions)))
+      (when (or (typep slot 'persistent-association-end-slot-definition-d)
+                (not (find-item (slot-value instance slot-name) item)))
+        (insert-item (slot-value instance slot-name) item))
+      (push (make-history-entry :action :insert
+                                :instance instance
+                                :slot-name slot-name
+                                :d-value (make-single-d-value dimensions coordinates item))
+            *history-entries*))))
 
 (def function delete-item-and-delete-item* (instance slot-name item)
   (with-lazy-slot-value-collections
-    (when (or (typep (find-slot (class-of instance) slot-name) 'persistent-association-end-slot-definition-t)
-              (find-item (slot-value instance slot-name) item))
-      (delete-item (slot-value instance slot-name) item))
-    (push (make-history-entry :action :delete
-                              :instance instance
-                              :slot-name slot-name
-                              :time *time*
-                              :validity-begin *validity-begin*
-                              :validity-end *validity-end*
-                              :value item)
-          *history-entries*)))
+    (bind ((slot (find-slot (class-of instance) slot-name))
+           (dimensions (dimensions-of* slot))
+           (coordinates (collect-coordinates* dimensions)))
+      (when (or (typep slot 'persistent-association-end-slot-definition-d)
+                (find-item (slot-value instance slot-name) item))
+        (delete-item (slot-value instance slot-name) item))
+      (push (make-history-entry :action :delete
+                                :instance instance
+                                :slot-name slot-name
+                                :d-value (make-single-d-value dimensions coordinates item))
+            *history-entries*))))
 
 (def function complex-test-slot-names (class slot-names)
   (bind ((available-slot-names
@@ -423,10 +517,10 @@
         (setf (slot-value* instance slot-name)
               (if (slot-boundp instance slot-name)
                   (bind ((value (slot-value instance slot-name)))
-                    (when (values-having-validity-p value)
-                      (assert (single-values-having-validity-p value))
-                      (setf value (single-d-value value)))
-                    value)
+                    (assert (or (not (d-value-p value)) (single-d-value-p value)))
+                    (if (d-value-p value)
+                        (single-d-value value)
+                        value))
                   +unbound-slot-marker+))
         (finally (return instance))))
 
@@ -442,28 +536,18 @@
                          (sort (copy-seq test-value) #'< :key #'oid-of)))
                  (t (eql persistent-value test-value)))))
 
-    ;; TODO slot-value should consolidate
-    (when (values-having-validity-p persistent-value)
-      (setf persistent-value (consolidate-values-having-validity persistent-value :test #'compare)))
-    (when (values-having-validity-p test-value)
-      (setf test-value (consolidate-values-having-validity test-value :test #'compare)))
-
-    
     (cond
-      ((and (values-having-validity-p persistent-value)
-            (values-having-validity-p test-value))
-       (iter (for (persistent-validity-begin persistent-validity-end persistent-value) :in-values-having-validity persistent-value)
-             (for (test-validity-begin test-validity-end test-value) :in-values-having-validity test-value)
-             (always (and (compare persistent-value test-value)
-                          (timestamp= persistent-validity-begin test-validity-begin)
-                          (timestamp= persistent-validity-end test-validity-end)))))
+      ((and (d-value-p persistent-value)
+            (d-value-p test-value))
+       (d-value-equal persistent-value test-value :test #'compare))
       (t
        (compare persistent-value test-value)))))
 
 (def function assert-persistent-and-test-values (instance slot-name persistent-value test-value)
   (is (compare-persistent-and-test-values persistent-value test-value)
-      "The persistent value: ~A and test value: ~A are different~%in the slot ~A of ~A~%with t ~A and with validity range ~A -> ~A~%with ~A history entries: ~A"
-      persistent-value test-value slot-name instance *time* *validity-begin* *validity-end* (length *history-entries*) *history-entries*))
+      "The persistent value: ~A and test value: ~A are different~%in the slot ~A of ~A~%with coordinates ~A~%with ~A history entries: ~A"
+      persistent-value test-value slot-name instance (collect-coordinates instance slot-name)
+      (length *history-entries*) *history-entries*))
 
 (def function compare-history (instances &key (slot-names nil))
   (iter (for instance :in instances)
@@ -490,7 +574,7 @@
            (fixup-timestamps (timestamps)
              (sort (delete-duplicates (delete-if #L(or (timestamp< !1 +beginning-of-time+)
                                                        (timestamp< +end-of-time+ !1))
-                                                 (extend-timestamps timestamps))
+                                                 (extend-timestamps (remove nil timestamps)))
                                       :test #'timestamp=)
                    #'timestamp<)))
     (bind ((time-values (fixup-timestamps
@@ -518,20 +602,41 @@
                               (compare-history instances :slot-names slot-names))))))))))
 
 (def function random-universal-time ()
-  (random 5000000000))
+  (1+ (random 5000000000)))
 
 (def function random-timestamp ()
   (universal-to-timestamp (random-universal-time)))
 
-(def macro with-random-time (&body forms)
-  `(with-time (random-timestamp)
-     ,@forms))
+(def function random-coordinate (dimension)
+  (bind ((type (prc::the-type-of dimension)))
+   (flet ((random-value ()
+            (case type
+              (timestamp (random-timestamp))
+              (t (error "TODO"))))
+          (random-range ()
+            (case type
+              (timestamp
+               (bind ((begin (random-timestamp))
+                      (offset (random-universal-time)))
+                 (make-coordinate-range 'ie begin (adjust-timestamp begin (offset :sec offset)))))
+              (t (error "TODO")))))
+     (etypecase dimension
+       (inheriting-dimension
+        (make-empty-coordinate-range (random-value)))
+       (ordering-dimension
+        (random-range))
+       (dimension
+        (random-value))))))
 
-(def macro with-random-validity-range (&body forms)
-  `(bind ((validity-begin (random-timestamp))
-          (validity-end (adjust-timestamp validity-begin (offset :sec (random-universal-time)))))
-     (with-validity-range validity-begin validity-end
-       ,@forms)))
+(def function call-with-random-coordinates (dimensions thunk)
+  (bind ((coordinates (mapcar #'random-coordinate dimensions)))
+    (call-with-coordinates dimensions coordinates thunk)))
+
+(def macro with-random-coordinates (dimensions &body forms)
+  `(call-with-random-coordinates
+    ,dimensions
+    (lambda ()
+      ,@forms)))
 
 (def function do-random-operation (instances &key (slot-names nil))
   (bind ((instance (load-instance (random-elt instances)))
@@ -549,19 +654,19 @@
                      (1 (values :insert (random-elt instances)))
                      (2 (values :delete (random-elt instances))))))
                 (t (error "Unknown type ~A" slot-type)))))
-    (format t "+ ~A slot ~A of ~A~%  with t ~A and with validity range ~A -> ~A~%  the value ~A~%"
+    (format t "+ ~A slot ~A of ~A~%  with coordinates ~A the value ~A~%"
             (ecase action
               (:set "Setting")
               (:insert "Inserting into")
               (:delete "Deleting from"))
-            slot-name instance *time* *validity-begin* *validity-end* slot-value)
+            slot-name instance (collect-coordinates instance slot-name) slot-value)
     (ecase action
       (:set (setf (slot-value-and-slot-value* instance slot-name) slot-value))
       (:insert (insert-item-and-insert-item* instance slot-name slot-value))
       (:delete (delete-item-and-delete-item* instance slot-name slot-value)))))
 
 (def function run-complex-test (&key (class-name nil) (class-names (when class-name (list class-name))) (instance-count 1) (operation-count 1) (transaction-count 1) (timestamp-count 10)
-                         (full-test #t) (test-epsilon-timestamps #t) (random-test-count 1) (slot-name nil) (slot-names (when slot-name (list slot-name))))
+                                     (full-test #t) (test-epsilon-timestamps #t) (random-test-count 1) (slot-name nil) (slot-names (when slot-name (list slot-name))))
   (bind ((*history-entries* nil)
          (*history-entry-counter* 0)
          (*transaction-counter* 0)
@@ -573,8 +678,37 @@
     (restart-bind
         ((print-test
           (lambda ()
-            (flet ((instance-variable-name (instance)
-                     (concatenate-symbol "instance-" (oid-of instance))))
+            (labels ((instance-variable-name (instance)
+                       (concatenate-symbol "instance-" (oid-of instance)))
+                     (format-value (value)
+                       (cond ((typep value 'persistent-object)
+                              (instance-variable-name value))
+                             ((listp value)
+                              `(list ,@(mapcar #'instance-variable-name value)))
+                             (t value)))
+                     (format-coordinate (coordinate)
+                       (typecase coordinate
+                         (cons (cons
+                                (coordinate-range-bounds coordinate)
+                                (cons (format-coordinate (coordinate-range-begin coordinate))
+                                      (format-coordinate (coordinate-range-end coordinate)))))
+                         (timestamp (format-timestring nil coordinate :timezone +utc-zone+))
+                         (t coordinate))) ; TODO
+                     (format-coordinates (coordinates)
+                       (mapcar #'format-coordinate coordinates))
+                     (format-dimensions (dimensions)
+                       (mapcar #'name-of dimensions))
+                     (transform-coordinates (dimensions coordinates)
+                       (iter (for dimension :in dimensions)
+                             (for coordinate :in coordinates)
+                             (collect
+                                 (typecase dimension
+                                   (inheriting-dimension
+                                    (make-coordinate-range
+                                     (coordinate-range-bounds coordinate)
+                                     (coordinate-range-begin coordinate)
+                                     (coordinate-range-begin coordinate)))
+                                   (t coordinate))))))
               (bind ((*print-level* nil)
                      (*print-length* nil)
                      (*print-lines* nil)
@@ -602,35 +736,33 @@
                                         `((with-transaction
                                             (with-revived-instances ,(mapcar #'instance-variable-name instances)
                                               ,@(iter (for entry :in history-entries)
-                                                      (for value = (bind ((value (he-value entry)))
-                                                                     (cond ((typep value 'persistent-object)
-                                                                            (instance-variable-name value))
-                                                                           ((listp value)
-                                                                            `(list ,@(mapcar #'instance-variable-name value)))
-                                                                           (t value))))
+                                                      (for value = (format-value (he-value entry)))
                                                       (for instance = (instance-variable-name (he-instance entry)))
                                                       (for slot-name = (he-slot-name entry))
-                                                      (collect `(with-time ,(format-timestring (he-time entry) :timezone +utc-zone+)
-                                                                  (with-validity-range
-                                                                      ,(format-timestring (he-validity-begin entry) :timezone +utc-zone+)
-                                                                      ,(format-timestring (he-validity-end entry) :timezone +utc-zone+)
-                                                                    ,(ecase (he-action entry)
-                                                                            (:set `(setf (slot-value-and-slot-value* ,instance ',slot-name) ,value))
-                                                                            (:insert `(insert-item-and-insert-item* ,instance ',slot-name ,value))
-                                                                            (:delete `(delete-item-and-delete-item* ,instance ',slot-name ,value)))))))))
+                                                      (for dimensions = (he-dimensions entry))
+                                                      (for coordinates = (transform-coordinates
+                                                                          dimensions
+                                                                          (he-coordinates entry)))
+                                                      (collect
+                                                          `(with-coordinates
+                                                               ,(format-dimensions dimensions)
+                                                               ,(format-coordinates coordinates)
+                                                             ,(ecase (he-action entry)
+                                                                     (:set `(setf (slot-value-and-slot-value* ,instance ',slot-name) ,value))
+                                                                     (:insert `(insert-item-and-insert-item* ,instance ',slot-name ,value))
+                                                                     (:delete `(delete-item-and-delete-item* ,instance ',slot-name ,value))))))))
                                           (incf *transaction-counter*)))))
                              (setf *history-entries* (nreverse *history-entries*))
                              (with-transaction
                                (with-revived-instance ,instance-variable-name
-                                 (with-time ,(format-timestring *time* :timezone +utc-zone+)
-                                   (with-validity-range
-                                       ,(format-timestring *validity-begin* :timezone +utc-zone+)
-                                       ,(format-timestring *validity-end* :timezone +utc-zone+)
-                                     (bind ((persistent-value (if (slot-boundp ,instance-variable-name ',slot-name)
-                                                                  (slot-value ,instance-variable-name ',slot-name)
-                                                                  +unbound-slot-marker+))
-                                            (test-value (slot-value* ,instance-variable-name ',slot-name)))
-                                       (assert-persistent-and-test-values ,instance-variable-name ',slot-name persistent-value test-value))))))))))))
+                                 (with-coordinates (time validity)
+                                     (,(format-coordinate (make-empty-coordinate-range *time*))
+                                       ,(format-coordinate (make-coordinate-range 'ie *validity-begin* *validity-end*)))
+                                   (bind ((persistent-value (if (slot-boundp ,instance-variable-name ',slot-name)
+                                                                (slot-value ,instance-variable-name ',slot-name)
+                                                                +unbound-slot-marker+))
+                                          (test-value (slot-value* ,instance-variable-name ',slot-name)))
+                                     (assert-persistent-and-test-values ,instance-variable-name ',slot-name persistent-value test-value)))))))))))
            :report-function (lambda (stream)
                               (format stream "Print a specific test case for this error"))))
       (handler-bind
@@ -644,22 +776,17 @@
                                                (collect (random-timestamp)))
                                          'simple-vector))
               (repeat transaction-count)
-              (flet ((random-timestamp (&optional (offset 0))
-                       (bind ((max (- (length timestamps) offset))
-                              (index (+ offset (random max))))
-                         (values (aref timestamps index) index))))
-                (with-transaction
-                  (format t "Starting new transaction~%")
-                  (iter (repeat operation-count)
-                        (with-time (random-elt timestamps)
-                          (bind (((:values start end)
-                                  (iter (for start = (random-elt timestamps))
-                                        (for end = (random-elt timestamps))
-                                        (until (timestamp> end start))
-                                        (finally (return (values start end))))))
-                            (with-validity-range start end
-                              (do-random-operation instances :slot-names slot-names))))))
-                (incf *transaction-counter*))
+              (with-transaction
+                (format t "Starting new transaction~%")
+                (iter (repeat operation-count)
+                      (with-time (random-elt timestamps)
+                        (bind (((:values start end)
+                                (iter (for start = (random-elt timestamps))
+                                      (for end = (random-elt timestamps))
+                                      (until (timestamp< start end))
+                                      (finally (return (values start end))))))
+                          (with-validity-range start end
+                            (do-random-operation instances :slot-names slot-names))))))
               (finally
                (setf *history-entries* (nreverse *history-entries*))
                (when full-test
@@ -670,17 +797,16 @@
                (iter (repeat random-test-count)
                      ;; default x random
                      (with-transaction
-                       (with-random-validity-range
+                       (with-random-coordinates (list *validity-dimension*)
                          (compare-history instances :slot-names slot-names)))
                      ;; random x default
                      (with-transaction
-                       (with-random-t
+                       (with-random-coordinates (list *time-dimension*)
                          (compare-history instances :slot-names slot-names)))
                      ;; random x random
                      (with-transaction
-                       (with-random-t
-                         (with-random-validity-range
-                           (compare-history instances :slot-names slot-names)))))))))))
+                       (with-random-coordinates (list *time-dimension* *validity-dimension*)
+                         (compare-history instances :slot-names slot-names))))))))))
 
 (def test run-complex-tests (&rest args &key (instance-count 10) (operation-count 10) &allow-other-keys)
   (apply #'run-complex-test

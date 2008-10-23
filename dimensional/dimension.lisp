@@ -101,9 +101,9 @@
                                                         `(:default-coordinate (lambda () ,default-coordinate))))))
          (slots (unless (persistent-class-name-p type)
                   (if (and ordered (not inherit))
-                      `((,begin-variable-name :type ,type)
-                        (,end-variable-name :type ,type))
-                      `((,name :type ,type))))))
+                      `((,begin-variable-name :type (or unbound ,type))
+                        (,end-variable-name :type (or unbound ,type)))
+                      `((,name :type (or unbound ,type)))))))
     `(progn
        ,(when (getf -options- :export)
               `(export ',name))
@@ -124,10 +124,12 @@
        ,@(unless external
            (if ordered
                `((def (macro e) ,with-macro-name (,name &body forms)
-                   `(,',call-with-range-fn-name
-                     ,(coerce-to-coordinate-begin ,name ',type)
-                     ,(coerce-to-coordinate-end ,name ',type)
-                     (lambda () ,@forms)))
+                   (if (stringp ,name)
+                       `(,',call-with-range-fn-name
+                         ,(coerce-to-coordinate-begin ,name ',type)
+                         ,(coerce-to-coordinate-end ,name ',type)
+                         (lambda () ,@forms))
+                       `(,',call-with-fn-name ,,name (lambda () ,@forms))))
                  (def (special-variable e) ,begin-special-name)
                  (def (special-variable e) ,end-special-name)
                  (def (symbol-macro e) ,coordinate-name

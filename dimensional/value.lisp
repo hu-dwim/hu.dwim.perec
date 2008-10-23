@@ -74,42 +74,96 @@
 ;;;;;;
 ;;; Coordinate range
 
+(def (type e) bounds ()
+  '(member ii ie ei ee))
+
+(export '(ii ie ei ee))
+
+(def (function ioe) make-bounds (begin-inclusive end-inclusive)
+  (cond
+    ((and begin-inclusive end-inclusive) 'ii)
+    (begin-inclusive 'ie)
+    (end-inclusive 'ei)
+    (t 'ee)))
+
+(def (function ioe) begin-inclusive-p (bounds)
+  (debug-only (assert (typep bounds 'bounds)))
+  (member bounds '(ii ie)))
+
+(def (function ioe) begin-exclusive-p (bounds)
+  (debug-only (assert (typep bounds 'bounds)))
+  (member bounds '(ei ee)))
+
+(def (function ioe) end-inclusive-p (bounds)
+  (debug-only (assert (typep bounds 'bounds)))
+  (member bounds '(ii ei)))
+
+(def (function ioe) end-exclusive-p (bounds)
+  (debug-only (assert (typep bounds 'bounds)))
+  (member bounds '(ie ee)))
+
 (def (type e) coordinate-range ()
-  'cons)
+  '(cons bounds (cons coordinate coordinate)))
 
 (def (function e) coordinate-range-p (value)
-  (bind ((begin (coordinate-range-begin value))
-         (end (coordinate-range-end value)))
-    (and (consp value)
-         (not (null begin))
-         (not (null end))
-         (not (consp begin))
-         (not (consp end)))))
+  (and (consp value)
+       (consp (cdr value))
+       (bind ((bounds (coordinate-range-bounds value))
+              (begin (coordinate-range-begin value))
+              (end (coordinate-range-end value)))
+         (and (typep bounds 'bounds)
+              (not (null begin))
+              (not (null end))
+              (not (consp begin))
+              (not (consp end))))))
 
-(def (function ioe) make-coordinate-range (begin end)
-  (debug-only (assert (coordinate<= begin end)))
-  (cons begin end))
+(def (function ioe) make-coordinate-range (bounds begin end)
+  (debug-only
+    (assert (typep bounds 'bounds))
+    (assert (coordinate<= begin end))
+    (assert (or (coordinate< begin end) (eq bounds 'ii))))
+  (cons bounds (cons begin end)))
 
-(def (function ioe) make-empty-coordinate-range (coordinate)
-  (cons coordinate coordinate))
+(def (function io) make-coordinate-range* (bounds begin end)
+  (when (or (coordinate< begin end)
+            (and (coordinate= begin end)
+                 (eq bounds 'ii)))
+    (debug-only (assert (typep bounds 'bounds)))
+    (cons bounds (cons begin end))))
 
-(def (function ioe) coordinate-range-begin (range)
+(def (function ioe) coordinate-range-bounds (range)
   (car range))
 
+(def (function ioe) coordinate-range-begin (range)
+  (cadr range))
+
 (def (function ioe) coordinate-range-end (range)
-  (cdr range))
+  (cddr range))
+
+(def (function ioe) make-empty-coordinate-range (coordinate)
+  (cons 'ii (cons coordinate coordinate)))
 
 (def (function io) coordinate-range-empty-p (range)
-  (coordinate= (coordinate-range-begin range)
-               (coordinate-range-end range)))
+  (and (eq 'ii (coordinate-range-bounds range))
+       (coordinate= (coordinate-range-begin range)
+                (coordinate-range-end range))))
 
 (def function in-coordinate-range-p (coordinate range)
-  (and (coordinate<= (coordinate-range-begin range) coordinate)
-       (coordinate<= coordinate (coordinate-range-end range))))
+  (ecase (coordinate-range-bounds range)
+    (ii (and (coordinate<= (coordinate-range-begin range) coordinate)
+             (coordinate<= coordinate (coordinate-range-end range))))
+    (ie (and (coordinate<= (coordinate-range-begin range) coordinate)
+             (coordinate< coordinate (coordinate-range-end range))))
+    (ei (and (coordinate< (coordinate-range-begin range) coordinate)
+             (coordinate<= coordinate (coordinate-range-end range))))
+    (ee (and (coordinate< (coordinate-range-begin range) coordinate)
+             (coordinate< coordinate (coordinate-range-end range))))))
 
 (def function coordinate-range= (range-1 range-2)
   (debug-only (assert-ranges range-1 range-2))
-  (and (coordinate= (coordinate-range-begin range-1)
+  (and (eq (coordinate-range-bounds range-1)
+           (coordinate-range-bounds range-2))
+       (coordinate= (coordinate-range-begin range-1)
                     (coordinate-range-begin range-2))
        (coordinate= (coordinate-range-end range-1)
                     (coordinate-range-end range-2))))
@@ -118,61 +172,136 @@
   (assert (and (coordinate-range-p range-1)
                (coordinate-range-p range-2))))
 
-(def (function e) overlapping-range-p (range-1 range-2 &optional strict)
+(def (function e) overlapping-range-p (range-1 range-2)
   (debug-only (assert-ranges range-1 range-2))
-  (and (funcall (if (or (not strict)
-                        (coordinate-range-empty-p range-2))
-                    #'coordinate<=
-                    #'coordinate<)
-                (coordinate-range-begin range-1)
-                (coordinate-range-end range-2))
-       (funcall (if (or (not strict)
-                        (coordinate-range-empty-p range-1))
-                    #'coordinate<=
-                    #'coordinate<)
-                (coordinate-range-begin range-2)
-                (coordinate-range-end range-1))))
+  (bind ((bounds-1 (coordinate-range-bounds range-1))
+         (bounds-2 (coordinate-range-bounds range-2)))
+    (and (funcall (if (and (begin-inclusive-p bounds-1)
+                           (end-inclusive-p bounds-2))
+                     #'coordinate<=
+                     #'coordinate<)
+                 (coordinate-range-begin range-1)
+                 (coordinate-range-end range-2))
+         (funcall (if (and (end-inclusive-p bounds-1)
+                           (begin-inclusive-p bounds-2))
+                     #'coordinate<=
+                     #'coordinate<)
+                 (coordinate-range-begin range-2)
+                 (coordinate-range-end range-1)))))
 
 (def function covering-range-p (cover range)
-  (and (coordinate<= (coordinate-range-begin cover)
-                     (coordinate-range-begin range))
-       (coordinate<= (coordinate-range-end range)
-                     (coordinate-range-end cover))))
+  (debug-only (assert-ranges cover range))
+  (bind ((cover-bounds (coordinate-range-bounds cover))
+         (range-bounds (coordinate-range-bounds range)))
+    (and (funcall (if (and (begin-exclusive-p cover-bounds)
+                           (begin-inclusive-p range-bounds))
+                      #'coordinate<
+                      #'coordinate<=)
+                  (coordinate-range-begin cover)
+                  (coordinate-range-begin range))
+         (funcall (if (and (end-exclusive-p cover-bounds)
+                           (end-inclusive-p range-bounds))
+                      #'coordinate<
+                      #'coordinate<=)
+                  (coordinate-range-end range)
+                  (coordinate-range-end cover)))))
 
 (def function range-intersection (range-1 range-2)
   (debug-only (assert-ranges range-1 range-2))
-  (when (overlapping-range-p range-1 range-2 #t)
-    (make-coordinate-range (coordinate-max (coordinate-range-begin range-1)
-                                           (coordinate-range-begin range-2))
-                           (coordinate-min (coordinate-range-end range-1)
-                                           (coordinate-range-end range-2)))))
+  (when (overlapping-range-p range-1 range-2)
+    (bind ((begin-range (cond
+                          ((coordinate< (coordinate-range-begin range-1)
+                                        (coordinate-range-begin range-2))
+                           range-2)
+                          ((coordinate< (coordinate-range-begin range-2)
+                                        (coordinate-range-begin range-1))
+                           range-1)
+                          ((begin-exclusive-p (coordinate-range-bounds range-1))
+                           range-1)
+                          (t
+                           range-2)))
+           (end-range (cond
+                        ((coordinate< (coordinate-range-end range-1)
+                                      (coordinate-range-end range-2))
+                         range-1)
+                        ((coordinate< (coordinate-range-end range-2)
+                                      (coordinate-range-end range-1))
+                         range-2)
+                        ((end-exclusive-p (coordinate-range-bounds range-1))
+                         range-1)
+                        (t
+                         range-2))))
+      (make-coordinate-range
+       (make-bounds (begin-inclusive-p (coordinate-range-bounds begin-range))
+                    (end-inclusive-p (coordinate-range-bounds end-range)))
+       (coordinate-range-begin begin-range)
+       (coordinate-range-end end-range)))))
 
 (def function range-union (range-1 range-2)
   (debug-only (assert-ranges range-1 range-2))
-  (when (overlapping-range-p range-1 range-2)
-    (make-coordinate-range (coordinate-min (coordinate-range-begin range-1)
-                                           (coordinate-range-begin range-2))
-                           (coordinate-max (coordinate-range-end range-1)
-                                           (coordinate-range-end range-2)))))
+  (when (or (overlapping-range-p range-1 range-2)
+            (and (coordinate= (coordinate-range-end range-1)
+                              (coordinate-range-begin range-2))
+                 (or (end-inclusive-p (coordinate-range-bounds range-1))
+                     (begin-inclusive-p (coordinate-range-bounds range-2))))
+            (and (coordinate= (coordinate-range-end range-2)
+                              (coordinate-range-begin range-1))
+                 (or (end-inclusive-p (coordinate-range-bounds range-2))
+                     (begin-inclusive-p (coordinate-range-bounds range-1)))))
+    (bind ((begin-range (cond
+                          ((coordinate< (coordinate-range-begin range-1)
+                                        (coordinate-range-begin range-2))
+                           range-1)
+                          ((coordinate< (coordinate-range-begin range-2)
+                                        (coordinate-range-begin range-1))
+                           range-2)
+                          ((begin-inclusive-p (coordinate-range-bounds range-1))
+                           range-1)
+                          (t
+                           range-2)))
+           (end-range (cond
+                        ((coordinate< (coordinate-range-end range-1)
+                                      (coordinate-range-end range-2))
+                         range-2)
+                        ((coordinate< (coordinate-range-end range-2)
+                                      (coordinate-range-end range-1))
+                         range-1)
+                        ((end-inclusive-p (coordinate-range-bounds range-1))
+                         range-1)
+                        (t
+                         range-2))))
+      (make-coordinate-range
+       (make-bounds (begin-inclusive-p (coordinate-range-bounds begin-range))
+                    (end-inclusive-p (coordinate-range-bounds end-range)))
+       (coordinate-range-begin begin-range)
+       (coordinate-range-end end-range)))))
 
 (def function range-difference (range-1 range-2)
   (debug-only (assert-ranges range-1 range-2))
-  (if (overlapping-range-p range-1 range-2 #t)
-      (bind ((intersection (range-intersection range-1 range-2))
-             (difference-1 (make-coordinate-range (coordinate-range-begin range-1) (coordinate-range-begin intersection)))
-             (difference-2 (make-coordinate-range (coordinate-range-end intersection) (coordinate-range-end range-1)))
-             (empty-1 (coordinate-range-empty-p difference-1))
-             (empty-2 (coordinate-range-empty-p difference-2)))
-        (cond ((and empty-1
-                    empty-2)
-               nil)
-              (empty-1
-               (list difference-2))
-              (empty-2
-               (list difference-1))
-              (t
-               (list difference-1 difference-2))))
-      (list range-1)))
+  (cond
+    ((covering-range-p range-2 range-1)
+     nil)
+    ((overlapping-range-p range-1 range-2)
+     (bind ((intersection (range-intersection range-1 range-2))
+            (difference-1 (make-coordinate-range*
+                           (make-bounds (begin-inclusive-p (coordinate-range-bounds range-1))
+                                        (begin-exclusive-p (coordinate-range-bounds intersection)))
+                           (coordinate-range-begin range-1)
+                           (coordinate-range-begin intersection)))
+            (difference-2 (make-coordinate-range*
+                           (make-bounds (end-exclusive-p (coordinate-range-bounds intersection))
+                                        (end-inclusive-p (coordinate-range-bounds range-1)))
+                           (coordinate-range-end intersection)
+                           (coordinate-range-end range-1))))
+       (cond ((and difference-1 difference-2)
+              (list difference-1 difference-2))
+             (difference-1
+              (list difference-1))
+             (difference-2
+              (list difference-2))
+             (t
+              nil))))
+    (t (list range-1))))
 
 ;;;;;;
 ;;; Dimension coordinate
@@ -200,6 +329,12 @@
     (range-intersection coordinate-1 coordinate-2)))
 
 (def (generic e) coordinate-union (dimension coordinate-1 coordinate-2)
+  (:method ((dimension abstract-dimension) (coordinate-1 null) (coordinate-2 cons))
+    coordinate-2)
+
+  (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 null))
+    coordinate-1)
+  
   (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (union coordinate-1 coordinate-2))
 
@@ -228,6 +363,7 @@
 (def (function e) coordinates-equal (coordinates-1 coordinates-2)
   (coordinates= coordinates-1 coordinates-2))
 
+;; FIXME ???
 (def (function e) make-empty-coordinates (dimensions)
   (mapcar (constantly nil) dimensions))
 
@@ -280,6 +416,7 @@
                    (setf (elt it different-index) unified-coordinate)))
                coordinates-1)))))
 
+;; TODO
 (def (function e) coordinates-difference (dimensions coordinates-1 coordinates-2)
   (if (coordinates-intersection dimensions coordinates-1 coordinates-2)
       (iter outer
@@ -346,7 +483,8 @@
   (typep value 'd-value))
 
 (def print-object d-value ()
-  (format t "(~{~A~^, ~})" (mapcar #'name-of (dimensions-of -self-))))
+  (format t "(~{~A~^, ~}) " (mapcar #'name-of (dimensions-of -self-)))
+  (mapc #'print-c-value (c-values-of -self-)))
 
 (def (function e) print-d-value (d-value &optional (stream t))
   (princ d-value stream)
@@ -367,7 +505,7 @@
 
 (def (function e) make-empty-d-value (dimensions)
   (make-instance 'd-value
-                 :dimensions dimensions
+                 :dimensions (mapcar #'lookup-dimension dimensions)
                  :c-values nil))
 
 (def (function e) make-single-d-value (dimensions coordinates value)
@@ -469,6 +607,7 @@
                                                        (c-values-of d-value))))
                                (go :restart))))
                (collect c-value-1))))
+    #+nil
     (debug-only (and (d-value-equal d-value original-d-value)
                      (valid-d-value-p d-value)))
     d-value))

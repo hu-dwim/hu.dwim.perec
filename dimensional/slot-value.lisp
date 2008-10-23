@@ -28,12 +28,15 @@
          :coordinates coordinates))
 
 (def (function io) collect-coordinates-from-variables (dimensions)
+  ;; TODO asserts for read/write
   (iter (for dimension :in dimensions)
         (typecase dimension
           (ordering-dimension
-           (collect (cons
-                     (begin-coordinate dimension)
-                     (end-coordinate dimension))))
+           (collect (if (coordinate= (begin-coordinate dimension)
+                                     (end-coordinate dimension))
+                        (make-empty-coordinate-range (begin-coordinate dimension))
+                        (make-coordinate-range
+                         'ie (begin-coordinate dimension) (end-coordinate dimension)))))
           (t
            (collect (coordinate dimension))))))
 
@@ -51,7 +54,7 @@
               (when (covering-d-value-p d-value coordinates)
                 (return-from slot-boundp-or-value-using-class-d (simplify-d-value d-value))))))
       (if persistent
-          (aprog1 (restore-slot class instance slot :coordinates coordinates)
+          (aprog1 (restore-slot class instance slot :coordinates coordinates) ;; FIXME returns ii
             (when (or (not persistent) cache-p)
               (if (d-value-p cached-value)
                   (setf (into-d-value cached-value) it)
@@ -73,7 +76,7 @@
     (when (or (not persistent) cache-p)
       (bind (((:values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
         (if (and slot-value-cached (d-value-p cached-value))
-            (setf (into-d-value cached-value) new-value)
+            (setf (into-d-value cached-value) new-value) ;; FIXME does not work with inheriting dimensions
             (setf (underlying-slot-value-using-class class instance slot) new-value)))))
   new-value)
 
