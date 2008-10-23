@@ -80,3 +80,32 @@
                (data-tables-of d2)))
     (is (equal (list :append (primary-table-of d2))
                (primary-tables-of d2)))))
+
+(defpclass table-x1-test ()
+  ((s1 :type boolean))
+  (:abstract #t))
+
+(defpclass table-x2-test (table-x1-test)
+  ((s2 :type boolean)))
+
+(defpclass table-y1-test ()
+  ((s1 :type boolean))
+  (:abstract #t))
+
+(defpclass table-y2-test (table-y1-test)
+  ())
+
+(defpclass table-y3-test (table-y1-test)
+  ())
+
+(defpclass table-y4-test (table-y2-test table-y3-test)
+  ())
+
+(deftest test/persistence/table/separate-primary-table ()
+  (bind ((x1-table (primary-table-of (find-class 'table-x1-test)))
+         (x2-table (primary-table-of (find-class 'table-x2-test)))
+         (y1-table (primary-table-of (find-class 'table-y1-test))))
+    (is (null x1-table))
+    (is (length= 3 (columns-of x2-table)))
+    (is (not (null y1-table)))
+    (is (length= 2 (columns-of y1-table)))))
