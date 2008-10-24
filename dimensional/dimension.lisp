@@ -59,7 +59,7 @@
 ;;;;;;
 ;;; Defining
 
-(def (definer :available-flags "e") dimension (name &key type ordered inherit external
+(def (definer :available-flags "e") dimension (name &key (type name) ordered inherit external
                                                     (default-coordinate nil default-coordinate?)
                                                     (default-begin-coordinate nil default-begin-coordinate?)
                                                     (default-end-coordinate nil default-end-coordinate?)
@@ -116,7 +116,8 @@
        (setf (find-dimension ',name) ,dimension-variable-name)
        (defpclass* ,dependent-object-name ()
          ,slots
-         (:abstract #t))
+         (:abstract #t)
+         (:direct-store :down))
        ,@(when (persistent-class-name-p type)
                `((defassociation*
                    ((:class ,dependent-object-name :slot ,name :type ,type)

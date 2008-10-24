@@ -136,8 +136,8 @@
     (ensure-finalized class)
     (ensure-class name
                   :metaclass (class-of class)
-                  ;; TODO: what about killing other class options?
                   :abstract (list (abstract-p class))
+                  :direct-store (direct-store-of class)
                   :direct-slots (mapcar
                                  [list :instance !1 :name (slot-definition-name !1) :readers (slot-definition-readers !1) :writers (slot-definition-writers !1)]
                                  (remove-if #L(typep !1 'persistent-association-end-direct-slot-definition)
