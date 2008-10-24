@@ -138,7 +138,7 @@
                    (bind ((,begin-special-name ,name)
                           (,end-special-name ,name))
                      (funcall thunk)))
-                 (def macro ,with-range-macro-name (,begin-variable-name ,end-variable-name &body forms)
+                 (def (macro e) ,with-range-macro-name (,begin-variable-name ,end-variable-name &body forms)
                    `(,',call-with-range-fn-name
                      ,(coerce-to-coordinate-begin ,begin-variable-name ',type)
                      ,(coerce-to-coordinate-end ,end-variable-name ',type)
@@ -149,7 +149,7 @@
                  ,@(when minimum-coordinate?
                          `((def (macro e) ,with-range-to-macro-name (end &body forms)
                              `(,',with-range-macro-name ,,minimum-coordinate ,end ,@forms))))
-                 (def function ,call-with-range-fn-name (,begin-variable-name ,end-variable-name thunk)
+                 (def (function e) ,call-with-range-fn-name (,begin-variable-name ,end-variable-name thunk)
                    (bind ((,begin-special-name ,begin-variable-name)
                           (,end-special-name ,end-variable-name))
                      (funcall thunk))))
