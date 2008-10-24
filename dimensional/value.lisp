@@ -143,7 +143,7 @@
 (def (function ioe) make-empty-coordinate-range (coordinate)
   (cons 'ii (cons coordinate coordinate)))
 
-(def (function io) coordinate-range-empty-p (range)
+(def (function ioe) coordinate-range-empty-p (range)
   (and (eq 'ii (coordinate-range-bounds range))
        (coordinate= (coordinate-range-begin range)
                 (coordinate-range-end range))))
