@@ -67,17 +67,23 @@
         (is (null (single-d-value (population-of instance)))))
       (with-validity-range "2006" "2007"
         (is (d-value-equal
-             (make-instance 'd-value
-                            :dimensions (list *time-dimension*)
-                            :c-values (list (make-c-value `((,(parse-timestring "2006-01-01TZ") ,(parse-timestring "2007-01-01TZ"))) 1000)
-                                            (make-c-value `((,(parse-timestring "2007-01-01TZ") ,(parse-timestring "2008-01-01TZ"))) nil)))
+             (make-d-value
+              '(validity)
+              (list (list (make-coordinate-range
+                           'ie (parse-timestring "2006-01-01TZ") (parse-timestring "2007-01-01TZ")))
+                    (list (make-coordinate-range
+                           'ie (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ"))))
+              '(1000 nil))
              (population-of instance))))
       (with-validity-range "2007" "2008"
         (is (d-value-equal
-             (make-instance 'd-value
-                            :dimensions (list *time-dimension*)
-                            :c-values (list (make-c-value `((,(parse-timestring "2007-01-01TZ") ,(parse-timestring "2008-01-01TZ"))) nil)
-                                            (make-c-value `((,(parse-timestring "2008-01-01TZ") ,(parse-timestring "2009-01-01TZ"))) 2000)))
+             (make-d-value
+              '(validity)
+              (list (list (make-coordinate-range
+                           'ie (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ")))
+                    (list (make-coordinate-range
+                           'ie (parse-timestring "2008-01-01TZ") (parse-timestring "2009-01-01TZ"))))
+              '(nil 2000))
              (population-of instance)))))))
 
 (def test test/dimensional/validity-dependent/initial-value/integer/1 ()
@@ -138,15 +144,15 @@
     (with-validity "2007"
       (setf (population-of -instance-) 2007))
     (with-validity-range "2006" "2007"
-      (iter (for index :from 0)
-            (for ((validity-begin . validity-end) value) :in-d-value (population-of -instance-))
-            (ecase index
-              (0 (is (= 2006 value))
-                 (is (timestamp= (parse-datestring "2006-01-01") validity-begin))
-                 (is (timestamp= (parse-datestring "2007-01-01") validity-end)))
-              (1 (is (= 2007 value))
-                 (is (timestamp= (parse-datestring "2007-01-01") validity-begin))
-                 (is (timestamp= (parse-datestring "2008-01-01") validity-end))))))))
+      (iter (for ((validity-range) value) :in-d-value (population-of -instance-))
+            (is (member value '(2006 2007) :test '=))
+            (case value
+              (2006 (is (eq 'ie (coordinate-range-bounds validity-range)))
+                    (is (timestamp= (parse-datestring "2006-01-01") (coordinate-range-begin validity-range)))
+                    (is (timestamp= (parse-datestring "2007-01-01") (coordinate-range-end validity-range))))
+              (2007 (is (eq 'ie (coordinate-range-bounds validity-range)))
+                    (is (timestamp= (parse-datestring "2007-01-01") (coordinate-range-begin validity-range)))
+                    (is (timestamp= (parse-datestring "2008-01-01") (coordinate-range-end validity-range)))))))))
 
 (defpclass* validity-dependent-complex-test ()
   ((slot :type (or null integer-32))
