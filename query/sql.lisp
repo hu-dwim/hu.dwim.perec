@@ -156,19 +156,27 @@
 
 (defvar *suppress-alias-names* nil)
 
+;; Note: this function must be idempotent: (sql-alias-for (sql-alias-for x)) = (sql-alias-for x)
 (defgeneric sql-alias-for (element)
   (:documentation "Generates a table alias for the given ELEMENT. Alias names may be supressed
 by setting *SUPRESS-ALIAS-NAMES* to true.")
-  (:method ((name symbol))
+  (:method :around (alias)
            (unless *suppress-alias-names*
-             (rdbms-name-for name)))
-  (:method ((variable query-variable))
-           (sql-alias-for (name-of variable)))
-  (:method ((class persistent-class))
-           (sql-alias-for (class-name class)))
+             (call-next-method)))
+  (:method ((alias null))
+    nil)
+  (:method ((name string))
+    name)
   (:method ((table table))
-           (unless *suppress-alias-names*
-             (name-of table))))
+    (aprog1 (name-of table)
+      (debug-only (check-type it string))))
+  (:method ((alias symbol))
+    (aprog1 (rdbms-name-for (symbol-name alias))
+      (debug-only (check-type it string))))
+  (:method ((variable query-variable))
+    (sql-alias-for (name-of variable)))
+  (:method ((class persistent-class))
+    (sql-alias-for (class-name class))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Select lists
@@ -209,50 +217,51 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
              (delete nil (mapcar 'sql-table-reference-for variables variables)))))
 
 (defgeneric sql-table-reference-for (element alias)
+  
   (:method ((table sql-table-alias) (alias null))
     table)
   
-  (:method ((table table) (alias symbol))
+  (:method ((table table) alias)
     (ensure-exported table)
-    (sql-table-alias :name (name-of table) :alias alias))
+    (sql-table-alias :name (name-of table) :alias (sql-alias-for alias)))
 
-  (:method ((view view) (alias symbol))
+  (:method ((view view) alias)
     (ensure-exported view)
-    (sql-table-alias :name (name-of view) :alias alias))
+    (sql-table-alias :name (name-of view) :alias (sql-alias-for alias)))
 
-  (:method ((subquery sql-subquery) (alias symbol))
-    (sql-derived-table :subquery subquery :alias (or alias (gensym "pg")))) ; Postgresql requires alias
+  (:method ((subquery sql-subquery) alias)
+    (sql-derived-table :subquery subquery :alias (or (sql-alias-for alias) ; Postgresql requires alias
+                                                     (rdbms-name-for (symbol-name (gensym "pg"))))))
 
-  (:method ((class persistent-class) (alias symbol))
-    (sql-table-reference-for-type class alias))
+  (:method ((class persistent-class) alias)
+    (sql-table-reference-for-type class (sql-alias-for alias)))
 
-  (:method ((class-name symbol) (alias symbol))
+  (:method ((class-name symbol) alias)
     (aif (find-class class-name)
          (sql-table-reference-for it alias)
          (error "No persistent class named '~A~%" class-name)))
 
-  (:method ((variable query-variable) (alias symbol))
+  (:method ((variable query-variable) alias)
     (assert (not (eq (persistent-type-of variable) +unknown-type+)))
     (sql-table-reference-for-type
      `(join ,(persistent-type-of variable) ,@(joined-types-of variable))
-     alias))
+     (sql-alias-for alias)))
 
-  (:method ((association persistent-association) (alias symbol))
+  (:method ((association persistent-association) alias)
     (assert (eq (association-kind-of association) :m-n))
     (ensure-exported association)
     (sql-table-reference-for (primary-table-of association) alias))
 
-  (:method ((syntax syntax-object) (alias symbol))
+  (:method :around ((syntax syntax-object) (alias null))
     (make-function-call :fn 'sql-table-reference-for :args (list syntax alias)))
 
-  (:method (element (variable query-variable))
-    (sql-table-reference-for element (sql-alias-for variable)))
+  (:method :around ((syntax syntax-object) (alias string))
+    (make-function-call :fn 'sql-table-reference-for :args (list syntax alias)))
 
-  (:method (element (class persistent-class))
-    (sql-table-reference-for element (sql-alias-for class)))
-
-  (:method (element (syntax syntax-object))
-    (make-function-call :fn 'sql-table-reference-for :args (list element syntax))))
+  (:method :around (element (syntax syntax-object))
+    (typecase syntax
+      (query-variable (call-next-method))
+      (t (make-function-call :fn 'sql-table-reference-for :args (list element syntax))))))
 
 (def function sql-table-reference-for-type (type &optional alias)
   (sql-table-reference-for-type* (simplify-persistent-class-type type) alias))
@@ -260,81 +269,86 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defgeneric sql-table-reference-for-type* (type &optional alias)
   
   (:method ((class persistent-class) &optional alias)
-           (ensure-class-and-subclasses-exported class)
-           (when-bind relation (primary-relation-of class)
-             (sql-table-reference-for relation alias)))
+    (ensure-class-and-subclasses-exported class)
+    (when-bind relation (primary-relation-of class)
+      (sql-table-reference-for relation alias)))
 
   (:method ((type-name symbol) &optional alias)
-           (bind ((class (find-class type-name #f)))
-             (typecase class
-               (persistent-class (sql-table-reference-for-type* class alias))
-               (otherwise nil)))) ; FIXME signal error
+    (bind ((class (find-class type-name #f)))
+      (typecase class
+        (persistent-class (sql-table-reference-for-type* class alias))
+        (otherwise nil))))              ; FIXME signal error
 
   (:method ((type syntax-object) &optional alias) ;; type unknown at compile time
-    (sql-unquote :form `(sql-table-reference-for-type ,(backquote-type-syntax type) ',alias)))
+    (debug-only (check-type alias (or null string)))
+    (sql-unquote :form `(sql-table-reference-for-type ,(backquote-type-syntax type) ,alias)))
 
   (:method ((combined-type list) &optional alias)
-           (if (contains-syntax-p combined-type)
-               ;; delay evaluation until run-time
-               (sql-unquote :form `(sql-table-reference-for-type ,(backquote-type-syntax combined-type) ',alias))
-               ;; and/or/not types
-               (labels ((ensure-sql-query (table-ref)
-                          (assert (not (syntax-object-p table-ref)))
-                          (etypecase table-ref
-                            (sql-table-alias (sql-subquery :query (sql-select-oids-from-table table-ref)))
-                            (sql-derived-table (cl-rdbms::subquery-of table-ref)))) ; TODO missing export
-                        (ensure-alias (table-ref)
-                          (if (or (typep table-ref 'sql-table-alias)
-                                  (typep table-ref 'sql-derived-table))
-                              (progn
-                                (setf (cl-rdbms::alias-of table-ref) alias)
-                                table-ref)
-                              (sql-derived-table
-                                :subquery table-ref
-                                :alias alias)))
-                        (combine-types (sql-set-operation types)
-                          (bind ((operands (delete nil
-                                                   (mapcar 'sql-table-reference-for-type* types))))
-                            (case (length operands)
-                              (0 nil)
-                              (1 (ensure-alias (first operands)))
-                              (t (ensure-alias
-                                  (sql-subquery
-                                    :query (apply sql-set-operation
-                                                  (mapcar #'ensure-sql-query operands))))))))
-                        (join-types (types)
-                          (bind ((primary-table-ref (sql-table-reference-for-type*
-                                                     (first types) (gensym "x")))
-                                 (joined-table-refs
-                                  (mapcan
-                                   #L(when (primary-table-of !1)
-                                       (list (sql-table-reference-for (primary-table-of !1) nil)))
-                                   (rest types))))
-                            (cond
-                              ((null primary-table-ref) nil)
-                              ((null joined-table-refs) (ensure-alias primary-table-ref))
-                              (t (ensure-alias
-                                  (reduce #L(sql-joined-table
-                                              :kind :inner
-                                              :left !1
-                                              :right !2
-                                              :using (list +oid-column-name+))
-                                          joined-table-refs
-                                          :initial-value primary-table-ref)))))))
-                 (case (car combined-type)
-                   (or (combine-types 'sql-union (rest combined-type)))
-                   (and (combine-types 'sql-intersect (rest combined-type)))
-                   (not (not-yet-implemented))
-                   (join (join-types (rest combined-type)))
-                   (t (error "Unsupported type constructor in ~A" combined-type)))))))
+    (debug-only (check-type alias (or null string)))
+    (if (contains-syntax-p combined-type)
+        ;; delay evaluation until run-time
+        (sql-unquote :form `(sql-table-reference-for-type ,(backquote-type-syntax combined-type) ,alias))
+        ;; and/or/not types
+        (labels ((ensure-sql-query (table-ref)
+                   (assert (not (syntax-object-p table-ref)))
+                   (etypecase table-ref
+                     (sql-table-alias (sql-subquery :query (sql-select-oids-from-table table-ref)))
+                     (sql-derived-table (cl-rdbms::subquery-of table-ref)))) ; TODO missing export
+                 (ensure-alias (table-ref)
+                   (typecase table-ref
+                     ((or sql-table-alias sql-derived-table)
+                      (setf (cl-rdbms::alias-of table-ref) alias)
+                      table-ref)
+                     (t
+                      (sql-derived-table
+                        :subquery table-ref
+                        :alias alias))))
+                 (combine-types (sql-set-operation types)
+                   (bind ((operands (delete nil
+                                            (mapcar 'sql-table-reference-for-type* types))))
+                     (case (length operands)
+                       (0 nil)
+                       (1 (ensure-alias (first operands)))
+                       (t (ensure-alias
+                           (sql-subquery
+                             :query (apply sql-set-operation
+                                           (mapcar #'ensure-sql-query operands))))))))
+                 (join-types (types)
+                   (bind ((primary-table-ref (sql-table-reference-for-type*
+                                              (first types) (gensym "x")))
+                          (joined-table-refs
+                           (mapcan
+                            #L(when (primary-table-of !1)
+                                (list (sql-table-reference-for (primary-table-of !1) nil)))
+                            (rest types))))
+                     (cond
+                       ((null primary-table-ref) nil)
+                       ((null joined-table-refs) (ensure-alias primary-table-ref))
+                       (t (ensure-alias
+                           (reduce #L(sql-joined-table
+                                       :kind :inner
+                                       :left !1
+                                       :right !2
+                                       :using (list +oid-column-name+))
+                                   joined-table-refs
+                                   :initial-value primary-table-ref)))))))
+          (case (car combined-type)
+            (or (combine-types 'sql-union (rest combined-type)))
+            (and (combine-types 'sql-intersect (rest combined-type)))
+            (not (not-yet-implemented))
+            (join (join-types (rest combined-type)))
+            (t (error "Unsupported type constructor in ~A" combined-type)))))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Column references
 
 (defgeneric sql-column-reference-for (element qualifier)
-  (:method ((column-name symbol) (qualifier symbol))
+  (:method ((column-name string) (qualifier string))
            (sql-column-alias :column column-name :table qualifier))
 
+  (:method ((column-name string) (qualifier null))
+           (sql-column-alias :column column-name))
+  
   (:method ((column column) qualifier)
            (sql-column-reference-for (rdbms::name-of column) qualifier))
 
@@ -346,7 +360,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
              (ecase (length column-names)
                (1 (sql-column-reference-for (first column-names) qualifier))
                (2 (values
-                   (sql-column-reference-for (second column-names) qualifier)
+                   (sql-column-reference-for (second column-names) qualifier) ; FIXME relies on that tag is the first
                    (sql-column-reference-for (first column-names) qualifier))))))
 
   (:method (element qualifier)
