@@ -233,10 +233,10 @@
                (coordinate< (coordinate-range-begin (first coordinates))
                             (coordinate-range-end (first coordinates))))
       (bind ((coordinate (first coordinates))
-             (last-coordinate (second (lastcar result))))
-        (when (and last-coordinate
-                   (not (coordinate= (coordinate-range-begin coordinate)
-                                     last-coordinate)))
+             (last-coordinate (second (first result))))
+        (when (or (null last-coordinate)
+                  (not (coordinate= (coordinate-range-begin coordinate)
+                                    last-coordinate)))
           (setf result
                 (append
                  ;; this select returns at most 1 record
