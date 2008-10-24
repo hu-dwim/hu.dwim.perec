@@ -38,40 +38,44 @@
     (signals unbound-slot-d (population-of (make-instance 'time-dependent-unbound-test)))))
 
 (def test test/dimensional/time-dependent/initial-value/null ()
-  (with-transaction
-    (is (null (population-of (make-instance 'time-dependent-null-test))))
-    (is (null (population-of (make-instance 'time-dependent-null-test :population nil))))))
+  (bind ((*simplify-d-values* #t))
+    (with-transaction
+     (is (null (population-of (make-instance 'time-dependent-null-test))))
+     (is (null (population-of (make-instance 'time-dependent-null-test :population nil)))))))
 
 (def test test/dimensional/time-dependent/initial-value/integer ()
-  (with-transaction
-    (with-time-dependent-test-classes
-      (is (= 1000 (population-of (make-instance *time-dependent-class-name* :population 1000)))))))
+  (bind ((*simplify-d-values* #t))
+    (with-transaction
+      (with-time-dependent-test-classes
+        (is (= 1000 (population-of (make-instance *time-dependent-class-name* :population 1000))))))))
 
 (def test test/dimensional/time-dependent/store-value/1 ()
-  (with-time-dependent-test-classes
-    (with-one-and-two-transactions
-        (let ((instance (make-instance *time-dependent-class-name*)))
-          (setf (population-of instance) 1000)
-          instance)
-      (is (= 1000 (population-of -instance-)))
-      (is (= 1 (length (h-instances-of -instance-)))))))
+  (bind ((*simplify-d-values* #t))
+    (with-time-dependent-test-classes
+      (with-one-and-two-transactions
+          (let ((instance (make-instance *time-dependent-class-name*)))
+            (setf (population-of instance) 1000)
+            instance)
+        (is (= 1000 (population-of -instance-)))
+        (is (= 1 (length (h-instances-of -instance-))))))))
 
 (def test test/dimensional/time-dependent/store-value/2 ()
-  (with-time-dependent-test-classes
-    (bind (((:values instance time)
-            (with-transaction
-              (values (make-instance *time-dependent-class-name* :population 1000) *time*))))
-      (with-transaction
-        (with-revived-instance instance
-          (setf (population-of instance) 2000)))
-      (with-transaction
-        (with-revived-instance instance
-          (is (= 2000 (population-of instance)))))
-      (with-transaction
-        (with-time time
+  (bind ((*simplify-d-values* #t))
+    (with-time-dependent-test-classes
+      (bind (((:values instance time)
+              (with-transaction
+                (values (make-instance *time-dependent-class-name* :population 1000) *time*))))
+        (with-transaction
           (with-revived-instance instance
-            (is (= 1000 (population-of instance)))
-            (is (= 2 (length (h-instances-of instance))))))))))
+            (setf (population-of instance) 2000)))
+        (with-transaction
+          (with-revived-instance instance
+            (is (= 2000 (population-of instance)))))
+        (with-transaction
+          (with-time time
+            (with-revived-instance instance
+              (is (= 1000 (population-of instance)))
+              (is (= 2 (length (h-instances-of instance)))))))))))
 
 (defpclass* time-dependent-complex-test ()
   ((slot :type (or null integer-32))
@@ -79,29 +83,31 @@
    (slot-2 :type (or null integer-32) :dimensions (time))))
 
 (def test test/dimensional/time-dependent/complex/same-time ()
-  (with-one-and-two-transactions
-      (bind ((instance
-              (make-instance 'time-dependent-complex-test :slot 0 :slot-1 1000)))
-        (setf (slot-2-of instance) 2000)
-        instance)
-    (is (= 0 (slot-of -instance-)))
-    (is (= 1000 (slot-1-of -instance-)))
-    (is (= 2000 (slot-2-of -instance-)))
-    (is (= 1 (length (h-instances-of -instance-))))))
+  (bind ((*simplify-d-values* #t))
+    (with-one-and-two-transactions
+        (bind ((instance
+                (make-instance 'time-dependent-complex-test :slot 0 :slot-1 1000)))
+          (setf (slot-2-of instance) 2000)
+          instance)
+      (is (= 0 (slot-of -instance-)))
+      (is (= 1000 (slot-1-of -instance-)))
+      (is (= 2000 (slot-2-of -instance-)))
+      (is (= 1 (length (h-instances-of -instance-)))))))
 
 (def test test/dimensional/time-dependent/complex/different-time ()
-  (bind ((instance
-          (with-transaction
-            (make-instance 'time-dependent-complex-test :slot 0 :slot-1 1000))))
-    (with-transaction
-      (with-revived-instance instance
-        (is (= 0 (slot-of instance)))
-        (is (= 1000 (slot-1-of instance)))
-        (is (null (slot-2-of instance)))
-        (setf (slot-2-of instance) 2000)
-        (is (= 2 (length (h-instances-of instance))))))
-    (with-transaction
-      (with-revived-instance instance
-        (is (= 0 (slot-of instance)))
-        (is (= 1000 (slot-1-of instance)))
-        (is (= 2000 (slot-2-of instance)))))))
+  (bind ((*simplify-d-values* #t))
+    (bind ((instance
+            (with-transaction
+              (make-instance 'time-dependent-complex-test :slot 0 :slot-1 1000))))
+      (with-transaction
+        (with-revived-instance instance
+          (is (= 0 (slot-of instance)))
+          (is (= 1000 (slot-1-of instance)))
+          (is (null (slot-2-of instance)))
+          (setf (slot-2-of instance) 2000)
+          (is (= 2 (length (h-instances-of instance))))))
+      (with-transaction
+        (with-revived-instance instance
+          (is (= 0 (slot-of instance)))
+          (is (= 1000 (slot-1-of instance)))
+          (is (= 2000 (slot-2-of instance))))))))
