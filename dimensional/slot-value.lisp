@@ -6,14 +6,14 @@
 
 (in-package :cl-perec)
 
-(def special-variable *simplify-d-values* #f)
+(def (special-variable e) *simplify-d-values* #f)
 
 (def (function io) simplify-d-value (d-value)
   (if (and *simplify-d-values* (single-d-value-p d-value))
       (single-d-value d-value)
       d-value))
 
-(defcondition* unbound-slot-d (unbound-slot)
+(def (condition* e) unbound-slot-d (unbound-slot)
   ((coordinates :type list))
   (:report (lambda (condition stream)
              (format stream "The slot ~S is unbound in the object ~S with coordinates ~S."
@@ -54,11 +54,12 @@
               (when (covering-d-value-p d-value coordinates)
                 (return-from slot-boundp-or-value-using-class-d (simplify-d-value d-value))))))
       (if persistent
-          (aprog1 (restore-slot class instance slot :coordinates coordinates) ;; FIXME returns ii
+          (bind ((d-value (restore-slot class instance slot :coordinates coordinates))) ;; FIXME returns ii
             (when (or (not persistent) cache-p)
               (if (d-value-p cached-value)
-                  (setf (into-d-value cached-value) it)
-                  (setf (underlying-slot-value-using-class class instance slot) it))))
+                  (setf (into-d-value cached-value) d-value)
+                  (setf (underlying-slot-value-using-class class instance slot) d-value)))
+            (simplify-d-value d-value))
           (return-from slot-boundp-or-value-using-class-d +unbound-slot-marker+)))))
 
 (def (function io) (setf slot-boundp-or-value-using-class-d) (new-value class instance slot)
