@@ -162,21 +162,12 @@
            (entries (collect-if (lambda (entry)
                                   (and (eq slot-name (he-slot-name entry))
                                        (p-eq instance (he-instance entry))
-                                       (every
-                                        (lambda (dimension coordinate he-coordinate)
-                                          (etypecase dimension
-                                            (inheriting-dimension
-                                             (coordinate<= (coordinate-range-begin he-coordinate)
-                                                           (coordinate-range-begin coordinate)))
-                                            (ordering-dimension
-                                             (overlapping-range-p he-coordinate coordinate))
-                                            (dimension
-                                             (eq he-coordinate coordinate))))
-                                        dimensions coordinates (he-coordinates entry))))
+                                       (coordinates-intersection dimensions coordinates (he-coordinates entry))))
                                 *history-entries*)))
 
       (if inheriting-dimension-index
-          (if (length= 1 dimensions)
+          (if (and (length= 1 dimensions)
+                   (coordinate-range-empty-p (elt coordinates inheriting-dimension-index)))
               (take 1 (sort-entries-by-coordinate entries inheriting-dimension-index :ascending #f))
               (sort-entries-by-coordinate entries inheriting-dimension-index :ascending #t))
           (sort-entries-by-step entries :ascending #t))))
@@ -190,17 +181,7 @@
            (entries (collect-if (lambda (entry)
                                   (and (or (eq slot-name (he-slot-name entry))
                                            (eq other-slot-name (he-slot-name entry)))
-                                       (every
-                                        (lambda (dimension coordinate he-coordinate)
-                                          (etypecase dimension
-                                            (inheriting-dimension
-                                             (coordinate<= (coordinate-range-begin he-coordinate)
-                                                           (coordinate-range-begin coordinate)))
-                                            (ordering-dimension
-                                             (overlapping-range-p he-coordinate coordinate))
-                                            (dimension
-                                             (eq he-coordinate coordinate))))
-                                        dimensions coordinates (he-coordinates entry))))
+                                       (coordinates-intersection dimensions coordinates (he-coordinates entry))))
                                 *history-entries*)))
 
       (if inheriting-dimension-index
@@ -604,29 +585,53 @@
 (def function random-universal-time ()
   (1+ (random 5000000000)))
 
-(def function random-timestamp ()
-  (universal-to-timestamp (random-universal-time)))
+(def function random-timestamp (&optional choices)
+  (if choices
+      (random-elt choices)
+      (universal-to-timestamp (random-universal-time))))
 
-(def function random-coordinate (dimension)
+(def function random-timestamp-interval (&optional choices (empty-interval-probability 0.0))
+  (cond
+    ((< (random 1.0) empty-interval-probability)
+     (bind ((begin (random-timestamp choices)))
+       (cons begin begin)))
+    ((null choices)
+     (bind ((begin (random-timestamp))
+            (offset (random-universal-time)))
+       (cons begin (adjust-timestamp begin (offset :sec offset)))))
+    (t
+     (assert (not (length= 1 choices)))
+     (iter (for begin = (random-timestamp choices))
+           (for end = (random-timestamp choices))
+           (when (timestamp< begin end)
+             (leave (cons begin end)))))))
+
+(def function random-coordinate (dimension &optional for-writing-p choices
+                                           (empty-interval-probability 0.0))
   (bind ((type (prc::the-type-of dimension)))
-   (flet ((random-value ()
+   (flet ((random-coordinate ()
             (case type
-              (timestamp (random-timestamp))
+              (timestamp (make-empty-coordinate-range (random-timestamp choices)))
               (t (error "TODO"))))
-          (random-range ()
+          (random-coordinate-range ()
             (case type
               (timestamp
-               (bind ((begin (random-timestamp))
-                      (offset (random-universal-time)))
-                 (make-coordinate-range 'ie begin (adjust-timestamp begin (offset :sec offset)))))
+               (bind (((begin . end) (random-timestamp-interval choices empty-interval-probability)))
+                 (if (timestamp= begin end)
+                     (make-empty-coordinate-range begin)
+                     (make-coordinate-range 'ie begin end))))
               (t (error "TODO")))))
      (etypecase dimension
        (inheriting-dimension
-        (make-empty-coordinate-range (random-value)))
+        (if for-writing-p
+            (random-coordinate)
+            (random-coordinate-range)))
        (ordering-dimension
-        (random-range))
+        (if for-writing-p
+            (random-coordinate)
+            (random-coordinate-range)))
        (dimension
-        (random-value))))))
+        (random-coordinate))))))
 
 (def function call-with-random-coordinates (dimensions thunk)
   (bind ((coordinates (mapcar #'random-coordinate dimensions)))
@@ -694,6 +699,11 @@
                                       (format-coordinate (coordinate-range-end coordinate)))))
                          (timestamp (format-timestring nil coordinate :timezone +utc-zone+))
                          (t coordinate))) ; TODO
+                     (format-coordinate-range (begin end)
+                       (cons
+                        (if (coordinate= begin end) 'ii 'ie)
+                        (cons (format-coordinate begin)
+                              (format-coordinate end))))
                      (format-coordinates (coordinates)
                        (mapcar #'format-coordinate coordinates))
                      (format-dimensions (dimensions)
@@ -755,9 +765,12 @@
                              (setf *history-entries* (nreverse *history-entries*))
                              (with-transaction
                                (with-revived-instance ,instance-variable-name
-                                 (with-coordinates (time validity)
-                                     (,(format-coordinate (make-empty-coordinate-range *time*))
-                                       ,(format-coordinate (make-coordinate-range 'ie *validity-begin* *validity-end*)))
+                                 (with-coordinates
+                                     (time validity)
+                                     (,(format-coordinate-range (begin-coordinate 'time)
+                                                                (end-coordinate 'time))
+                                       ,(format-coordinate-range (begin-coordinate 'validity)
+                                                                 (end-coordinate 'validity)))
                                    (bind ((persistent-value (if (slot-boundp ,instance-variable-name ',slot-name)
                                                                 (slot-value ,instance-variable-name ',slot-name)
                                                                 +unbound-slot-marker+))
@@ -776,17 +789,14 @@
                                                (collect (random-timestamp)))
                                          'simple-vector))
               (repeat transaction-count)
-              (with-transaction
-                (format t "Starting new transaction~%")
-                (iter (repeat operation-count)
-                      (with-time (random-elt timestamps)
-                        (bind (((:values start end)
-                                (iter (for start = (random-elt timestamps))
-                                      (for end = (random-elt timestamps))
-                                      (until (timestamp< start end))
-                                      (finally (return (values start end))))))
-                          (with-validity-range start end
-                            (do-random-operation instances :slot-names slot-names))))))
+              (bind (((time-begin . time-end) (random-timestamp-interval timestamps 1.0))
+                     ((validity-begin . validity-end) (random-timestamp-interval timestamps 0.0)))
+                (with-transaction
+                 (format t "Starting new transaction~%")
+                 (iter (repeat operation-count)
+                       (with-time-range time-begin time-end
+                         (with-validity-range validity-begin validity-end
+                           (do-random-operation instances :slot-names slot-names))))))
               (finally
                (setf *history-entries* (nreverse *history-entries*))
                (when full-test
