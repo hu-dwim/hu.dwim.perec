@@ -35,7 +35,7 @@
     (try :asdf-system-connections)))
 
 (defpackage :cl-perec-system
-  (:use :cl :asdf :asdf-system-connections)
+  (:use :cl :asdf)
 
   (:export
    #:*load-as-production-p*))
