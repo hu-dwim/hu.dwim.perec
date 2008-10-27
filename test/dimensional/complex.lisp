@@ -15,6 +15,10 @@
 
 (def special-variable *transaction-counter*)
 
+(def special-variable *test-instance* nil)
+
+(def special-variable *test-slot-name* nil)
+
 (defstruct (history-entry (:conc-name he-))
   (step (incf *history-entry-counter*) :type integer)
   (transaction-index *transaction-counter* :type integer)
@@ -535,11 +539,13 @@
         (for class = (class-of instance))
         (revive-instance instance)
         (iter (for slot-name :in (complex-test-slot-names (class-of instance) slot-names))
-              (for persistent-value = (if (slot-boundp instance slot-name)
+              (bind ((*test-instance* instance)
+                     (*test-slot-name* slot-name)
+                     (persistent-value (if (slot-boundp instance slot-name)
                                           (slot-value instance slot-name)
                                           +unbound-slot-marker+))
-              (for test-value = (slot-value* instance slot-name))
-              (assert-persistent-and-test-values instance slot-name persistent-value test-value))))
+                     (test-value (slot-value* instance slot-name)))
+                (assert-persistent-and-test-values instance slot-name persistent-value test-value)))))
 
 (def function full-compare-history (instances &key (slot-names nil) (add-epsilon-timestamps t))
   (labels ((extend-timestamps (timestamps)
@@ -723,12 +729,8 @@
                      (*print-length* nil)
                      (*print-lines* nil)
                      (*print-circle* #f)
-                     (failure-descriptions (stefil::failure-descriptions-of stefil::*global-context*))
-                     (failure-description (aref failure-descriptions (1- (length failure-descriptions))))
-                     (format-arguments (stefil::format-arguments-of failure-description))
-                     (slot-name (elt format-arguments 2))
-                     (instance (elt format-arguments 3))
-                     (instance-variable-name (instance-variable-name instance)))
+                     (slot-name *test-slot-name*)
+                     (instance-variable-name (when *test-instance* (instance-variable-name *test-instance*))))
                 (format t "~%~S"
                         `(def test test/dimensional/complex/generated ()
                            ,(format nil "~A" error)
@@ -763,19 +765,24 @@
                                                                      (:delete `(delete-item-and-delete-item* ,instance ',slot-name ,value))))))))
                                           (incf *transaction-counter*)))))
                              (setf *history-entries* (nreverse *history-entries*))
-                             (with-transaction
-                               (with-revived-instance ,instance-variable-name
-                                 (with-coordinates
-                                     (time validity)
-                                     (,(format-coordinate-range (begin-coordinate 'time)
-                                                                (end-coordinate 'time))
-                                       ,(format-coordinate-range (begin-coordinate 'validity)
-                                                                 (end-coordinate 'validity)))
-                                   (bind ((persistent-value (if (slot-boundp ,instance-variable-name ',slot-name)
-                                                                (slot-value ,instance-variable-name ',slot-name)
-                                                                +unbound-slot-marker+))
-                                          (test-value (slot-value* ,instance-variable-name ',slot-name)))
-                                     (assert-persistent-and-test-values ,instance-variable-name ',slot-name persistent-value test-value)))))))))))
+                             ,@(when (and instance-variable-name slot-name)
+                                     `((with-transaction
+                                         (with-revived-instance ,instance-variable-name
+                                           (with-coordinates
+                                               (time validity)
+                                               (,(format-coordinate-range (begin-coordinate 'time)
+                                                                          (end-coordinate 'time))
+                                                 ,(format-coordinate-range (begin-coordinate 'validity)
+                                                                           (end-coordinate 'validity)))
+                                             (bind ((persistent-value
+                                                     (if (slot-boundp ,instance-variable-name ',slot-name)
+                                                         (slot-value ,instance-variable-name ',slot-name)
+                                                         +unbound-slot-marker+))
+                                                    (test-value
+                                                     (slot-value* ,instance-variable-name ',slot-name)))
+                                               (assert-persistent-and-test-values
+                                                ,instance-variable-name ',slot-name
+                                                persistent-value test-value)))))))))))))
            :report-function (lambda (stream)
                               (format stream "Print a specific test case for this error"))))
       (handler-bind
@@ -792,11 +799,11 @@
               (bind (((time-begin . time-end) (random-timestamp-interval timestamps 1.0))
                      ((validity-begin . validity-end) (random-timestamp-interval timestamps 0.0)))
                 (with-transaction
-                 (format t "Starting new transaction~%")
-                 (iter (repeat operation-count)
-                       (with-time-range time-begin time-end
-                         (with-validity-range validity-begin validity-end
-                           (do-random-operation instances :slot-names slot-names))))))
+                  (format t "Starting new transaction~%")
+                  (iter (repeat operation-count)
+                        (with-time-range time-begin time-end
+                          (with-validity-range validity-begin validity-end
+                            (do-random-operation instances :slot-names slot-names))))))
               (finally
                (setf *history-entries* (nreverse *history-entries*))
                (when full-test
