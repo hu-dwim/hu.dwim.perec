@@ -740,7 +740,7 @@
                                   ,@(iter (for instance :in instances)
                                           (collect `(,(instance-variable-name instance)
                                                       (with-transaction
-                                                        (make-instance ',(class-name (class-of instance))))))))
+                                                        (make-instance* ',(class-name (class-of instance))))))))
                              ,@(iter (for transaction-counter :from 0 :to *transaction-counter*)
                                      (for history-entries = (collect-if #L(= transaction-counter (he-transaction-index !1)) *history-entries*))
                                      (when history-entries
