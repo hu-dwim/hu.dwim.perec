@@ -75,9 +75,11 @@
     (when persistent
       (store-slot class instance slot new-value))
     (when (or (not persistent) cache-p)
+      (setf (underlying-slot-value-using-class class instance slot) new-value)
+      #+nil
       (bind (((:values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
         (if (and slot-value-cached (d-value-p cached-value))
-            (setf (into-d-value cached-value) new-value) ;; FIXME does not work with inheriting dimensions
+            (setf (into-d-value cached-value) new-value) ; FIXME does not work with inheriting dimensions, should make a select
             (setf (underlying-slot-value-using-class class instance slot) new-value)))))
   new-value)
 
