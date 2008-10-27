@@ -781,13 +781,10 @@
                                 (syntax-to-sql list)))))
     (t (sql-in (syntax-to-sql item) (syntax-to-sql list)))))
 
-#+nil
-(defun sql-syntax-node->lisp-form (node)
-  (typecase node
-    (sql-unquote (rdbms::form-of node))
-    (t node)))
-
-
+(def query-function coalesce (&rest args)
+  "Returns the first of its arguments that is not null. Null is returned only if all arguments are null."
+  (declare (persistent-type (forall (a) (function (a &rest a) a))))
+  (sql-function-call :name 'coalesce :arguments args))
 
 
 

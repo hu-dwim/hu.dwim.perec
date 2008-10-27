@@ -32,6 +32,10 @@
            (scan pattern string :start start :end end)
            (scan (create-scanner pattern :case-insensitive-mode #t) string :start start :end end))))))
 
+(def (function e) coalesce (&rest values)
+  "Returns the first of its arguments that is not nil. Nil is returned only if all arguments are nil."
+  (find nil values :test-not #'eq))
+
 ;;;
 ;;; Markers for partial eval
 ;;;
