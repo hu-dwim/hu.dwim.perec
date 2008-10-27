@@ -152,9 +152,9 @@
                                            (or
                                             (not (slot-boundp h-instance ',h-slot-name))
                                             (not (eq (slot-value h-instance ',h-slot-name)
-                                                     ,+h-unused-slot-marker+))))))
-                            `(d-instance)))
-         result)
+                                                     ,+h-unused-slot-marker+)))))
+                               (order-by :ascending (oid-of h-instance)))
+                            `(d-instance))))
 
     (iter (for dimension :in dimensions)
           (for coordinate :in coordinates)
@@ -182,23 +182,31 @@
              (when (and (length= 1 dimensions) interval-p)
                (add-assert query
                            `(,(dimension-less-or-equal dimension)
-                              ;; TODO should be a subselect:
-                              ;;  (select ((max (slot-value h-instance ',(name-of dimension))))
-                              ;;     (from (h-instance ,h-class-name))
-                              ;;     (where ...)))
-                              (coordinate-range-begin ,(name-of dimension))
+                              (coalesce
+                               (select ((max (slot-value h-instance-2 ',(name-of dimension))))
+                                 (from (h-instance-2 ,h-class-name))
+                                 (where (and
+                                         (eq (d-instance-of h-instance-2) d-instance)
+                                         (or
+                                          (not (slot-boundp h-instance-2 ',h-slot-name))
+                                          (not (eq (slot-value h-instance-2 ',h-slot-name)
+                                                   ,+h-unused-slot-marker+)))
+                                         (,(dimension-less-or-equal dimension)
+                                           (slot-value h-instance-2 ',(name-of dimension))
+                                           (coordinate-range-begin ,(name-of dimension))))))
+                               (coordinate-range-begin ,(name-of dimension)))
                               (slot-value h-instance ',(name-of dimension)))))
 
              (if (and (length= 1 dimensions) (not interval-p))
                  (bind ((direction (ecase (direction-of dimension)
                                      (:ascending :descending)
                                      (:descending :ascending))))
-                   (setf (limit-of query) 1)
-                   (add-order-by query `(slot-value h-instance ',(slot-name-of dimension)) direction)
-                   (add-order-by query 'h-instance direction))
-                 (progn
-                   (add-order-by query `(slot-value h-instance ',(slot-name-of dimension)) (direction-of dimension))
-                   (add-order-by query 'h-instance (direction-of dimension)))))
+                   (setf (limit-of query) 1
+                         (order-by-of query) `(,direction (slot-value h-instance ',(slot-name-of dimension))
+                                                          ,direction (oid-of h-instance))))
+                 (setf (order-by-of query)
+                       `(,(direction-of dimension) (slot-value h-instance ',(slot-name-of dimension))
+                          ,(direction-of dimension) (oid-of h-instance)))))
 
             (ordering-dimension
              (add-collect query `(slot-value h-instance ',(begin-slot-name-of dimension)))
@@ -220,32 +228,8 @@
                            (slot-value h-instance ',(slot-name-of dimension))
                            ,(name-of dimension))))))
 
-    (unless (order-by-of query)
-      ;; order by _id column (as version)
-      (add-order-by query 'h-instance :ascending))
 
-    (setf result (apply #'execute-query query d-instance coordinates))
-
-    ;; This can be deleted if the subselect above can be added to the query
-    ;; (adds the missing record that is the last before the beginning of the interval)
-    (when (and (length= 1 dimensions)
-               (typep (first dimensions) 'inheriting-dimension)
-               (coordinate< (coordinate-range-begin (first coordinates))
-                            (coordinate-range-end (first coordinates))))
-      (bind ((coordinate (first coordinates))
-             (last-coordinate (second (first result))))
-        (when (or (null last-coordinate)
-                  (not (coordinate= (coordinate-range-begin coordinate)
-                                    last-coordinate)))
-          (setf result
-                (append
-                 ;; this select returns at most 1 record
-                 (select-slot-values-with-dimensions d-class d-instance d-slot
-                                                     (list (make-empty-coordinate-range
-                                                            (coordinate-range-begin coordinate))))
-                 result)))))
-
-    result))
+    (apply #'execute-query query d-instance coordinates)))
 
 (defun update-h-instance-slot-value (d-class d-instance d-slot value coordinates)
 
