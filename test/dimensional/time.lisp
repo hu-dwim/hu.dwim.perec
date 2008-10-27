@@ -77,6 +77,20 @@
               (is (= 1000 (population-of instance)))
               (is (= 2 (length (h-instances-of instance)))))))))))
 
+(def test test/dimensional/time-dependent/cache ()
+  (bind ((*simplify-d-values* #t))
+    (with-time-dependent-test-classes
+      (bind ((instance
+              (with-transaction
+                (make-instance *time-dependent-class-name* :population 1000))))
+        (with-transaction
+          (with-revived-instance instance
+            (with-time-from *time*
+              (population-of instance))
+            (setf (population-of instance) 2000)
+            (with-time (adjust-timestamp *time* (offset :sec 1))
+              (is (= 2000 (population-of instance))))))))))
+
 (defpclass* time-dependent-complex-test ()
   ((slot :type (or null integer-32))
    (slot-1 :type (or null integer-32) :dimensions (time))
