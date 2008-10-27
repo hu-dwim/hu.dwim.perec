@@ -200,7 +200,6 @@
     (value->sql-literal value (first type) type-info (rest type)))
 
   ;; Infer type from value
-
   (:method (value (type (eql +unknown-type+)) type-info &optional args)
     (declare (ignore args))
     (error "Could not infer SQL type for literal: ~S" value))
@@ -222,6 +221,10 @@
   (:method ((value number) (type (eql +unknown-type+)) type-info &optional args)
     (assert (null args))
     (value->sql-literal value 'number type-info))
+
+  (:method ((value timestamp) (type (eql +unknown-type+)) type-info &optional args)
+    (assert (null args))
+    (value->sql-literal value 'timestamp type-info))
 
   ;; Iterate on lists
 
