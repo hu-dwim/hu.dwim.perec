@@ -52,17 +52,17 @@
   `(deftest ,name ()
     (purge-test ',class-name ,delete-counter)))
 
-(def-purge-test test/persistence/purge/a purge-a-test 6)
+(def-purge-test test/persistence/purge/a purge-a-test 7)
 
-(def-purge-test test/persistence/purge/b purge-b-test 6)
+(def-purge-test test/persistence/purge/b purge-b-test 7)
 
-(def-purge-test test/persistence/purge/c purge-c-test 5)
+(def-purge-test test/persistence/purge/c purge-c-test 6)
 
-(def-purge-test test/persistence/purge/d purge-d-test 5)
+(def-purge-test test/persistence/purge/d purge-d-test 6)
 
-(def-purge-test test/persistence/purge/e purge-e-test 4)
+(def-purge-test test/persistence/purge/e purge-e-test 5)
 
-(def-purge-test test/persistence/purge/f purge-f-test 4)
+(def-purge-test test/persistence/purge/f purge-f-test 5)
 
 (def-purge-test test/persistence/purge/g purge-g-test 3)
 

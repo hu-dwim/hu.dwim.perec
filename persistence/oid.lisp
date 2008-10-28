@@ -63,6 +63,9 @@
       (error "Two different class names have the same class id ~A ~A" it class-name)))
   (setf (gethash class-id *oid-class-id->class-name-map*) class-name))
 
+(def (function io) class->class-id (class)
+  (class-name->class-id (class-name class)))
+
 (def (function io) class-name->class-id (class-name)
   (mod (ironclad:octets-to-integer (ironclad:digest-sequence :crc32 (string-to-octets (symbol-name class-name) :encoding :utf-8)))
        +oid-maximum-class-id+))

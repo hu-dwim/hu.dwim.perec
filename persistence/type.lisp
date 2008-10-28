@@ -503,6 +503,10 @@
 (def function rdbms-values->lisp-value (type rdbms-values)
   (funcall (reader-of (compute-mapping type)) rdbms-values 0))
 
+(def function tag-column-of (slot)
+  (when (tagged-p (mapping-of slot))
+    (first (columns-of slot))))
+
 ;;;;;;;;
 ;;; Type
 

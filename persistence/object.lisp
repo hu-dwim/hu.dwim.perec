@@ -36,6 +36,7 @@
     :documentation ":created means the instance was created in the current transaction, :modified means the instance was not created but modified in the current transaction. :deleted means the instance was already present at the very beginning but got deleted in the current transaction."))
   (:default-initargs :persistent *make-persistent-instances*)
   (:abstract #t)
+  (:direct-store :push-down)
   (:documentation "Base class for all persistent classes. If this class is not inherited by a persistent class then it is automatically added to the direct superclasses. There is only one persistent instance in a transaction with a give oid therefore eq will return true iff the oids are equal."))
 
 (def (function e) persistent-object-internal-slot-p (slot)

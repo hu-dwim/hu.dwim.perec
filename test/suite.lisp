@@ -43,12 +43,15 @@
           (awhen (primary-table-of elememnt)
             (invalidate-computed-slot it 'ensure-exported))
           (when (typep elememnt 'persistent-class)
-            (awhen (primary-view-of elememnt)
+            (awhen (direct-instances-identity-view-of elememnt)
               (invalidate-computed-slot it 'ensure-exported))
-            (awhen (data-view-of elememnt)
+            (awhen (direct-instances-data-view-of elememnt)
+              (invalidate-computed-slot it 'ensure-exported))
+            (awhen (all-instances-identity-view-of elememnt)
+              (invalidate-computed-slot it 'ensure-exported))
+            (awhen (all-instances-data-view-of elememnt)
               (invalidate-computed-slot it 'ensure-exported))))
         (append (hash-table-values *persistent-classes*)
-
                 (hash-table-values *persistent-associations*)))
   (test))
 

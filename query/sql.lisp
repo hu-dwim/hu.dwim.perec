@@ -17,7 +17,7 @@
   "Generates a select for the oids of instances of the class named CLASS-NAME."
   (bind ((class (find-class class-name)))
     (ensure-class-and-subclasses-exported class)
-    (sql-select-oids-from-table (primary-relation-of class))))
+    (sql-select-oids-from-table (all-instances-data-view-of class))))
 
 (defun sql-select-oids-from-table (thing)
   "Generates a select for the oids in THING."
@@ -270,7 +270,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   
   (:method ((class persistent-class) &optional alias)
     (ensure-class-and-subclasses-exported class)
-    (when-bind relation (primary-relation-of class)
+    (when-bind relation (all-instances-data-view-of class)
       (sql-table-reference-for relation alias)))
 
   (:method ((type-name symbol) &optional alias)
@@ -353,7 +353,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (sql-column-reference-for (rdbms::name-of column) qualifier))
 
   (:method ((association-end persistent-association-end-slot-definition) qualifier)
-           (sql-column-reference-for (id-column-of association-end) qualifier))
+           (sql-column-reference-for (oid-column-of association-end) qualifier))
 
   (:method ((slot persistent-slot-definition) qualifier)
            (bind ((column-names (column-names-of slot)))

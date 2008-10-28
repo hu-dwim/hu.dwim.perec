@@ -65,7 +65,7 @@
 (def compiler-macro concatenate-string (&rest args)
   `(concatenate 'string ,@args))
 
-(def (function io) find-slot (class-or-name slot-name &key (otherwise :error))
+(def (function io) find-slot (class-or-name slot-name &key (otherwise nil otherwise?))
   (or (find slot-name
             (the list
               (class-slots (if (symbolp class-or-name)
@@ -73,7 +73,9 @@
                                class-or-name)))
             :key 'slot-definition-name
             :test 'eq)
-      (handle-otherwise otherwise)))
+      (handle-otherwise (if otherwise?
+                            otherwise
+                            (list :error "Cannot find slot ~A in class ~A" slot-name class-or-name)))))
 
 (def macro if-bind (var test &body then/else)
   (assert (first then/else)

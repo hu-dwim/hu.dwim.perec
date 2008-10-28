@@ -10,17 +10,17 @@
 ;;; Persistent class and slot meta objects
 
 ;; TODO: support flattenning subclasses into superclass and dispatch on type
-;; TODO: support flattenning (1-1) associations and slots with persistent object subtype into referer's primary table
+;; TODO: support flattenning (1-1) associations and slots with persistent object subtype into referer's table
 
 (defcclass* persistent-class (standard-class exportable)
   ((abstract
     (compute-as #f)
     :type boolean
-    :documentation "An abstract persistent class cannot be instantiated but still can be used in associations and may have slots. Calling make-instance on an abstract persistent class will signal an error. On the other hand abstract classes might not have a primary table and thus handling the instances may require simpler or less SQL statements.")
+    :documentation "An abstract persistent class cannot be instantiated but still can be used in associations and may have slots. Calling make-instance on an abstract persistent class will signal an error. On the other hand abstract classes might not have a primary table and thus handling the instances of subclasses may require simpler or less SQL statements.")
    (direct-store
-    (compute-as nil)
+    (compute-as '(:separate))
     :type list
-    :documentation "Specifies in which tables should the effective slots be stored. Valid options are :down :up for all slots or per each superclass slot groups.")
+    :documentation "Specifies in which tables should the effective slots be stored. Valid options are :separate :push-down :push-up for all slots or per each superclass slot groups.")
    (effective-store
     (compute-as (compute-effective-store -self-))
     :type list
@@ -34,11 +34,11 @@
     :type (list standard-effective-slot-definition)
     :documentation "All computed slots that needs the effective slots should use this slot so that invalidation will work.")
    (persistent-direct-slots
-    (compute-as (collect-if #L(typep !1 'persistent-direct-slot-definition) (standard-direct-slots-of -self-)))
+    (compute-as (collect-if (of-type 'persistent-direct-slot-definition) (standard-direct-slots-of -self-)))
     :type (list persistent-direct-slot-definition)
     :documentation "The list of direct slots which are defined to be persistent in this class.")
    (persistent-effective-slots
-    (compute-as (collect-if #L(typep !1 'persistent-effective-slot-definition) (standard-effective-slots-of -self-)))
+    (compute-as (collect-if (of-type 'persistent-effective-slot-definition) (standard-effective-slots-of -self-)))
     :type (list persistent-effective-slot-definition)
     :documentation "The list of effective slots which are turned out to be persistent in this class.")
    (persistent-direct-superclasses
@@ -61,50 +61,34 @@
     (compute-as (compute-persistent-effective-subclasses -self-))
     :type (list persistent-class)
     :documentation "The list of persistent effective subclasses in no particular order.")
-   (direct-instances-primary-data-view
-    (compute-as (compute-direct-instances-primary-data-view -self-))
+   (direct-instances-identity-view
+    (compute-as (compute-direct-instances-identity-view -self-))
     :type (or null view)
-    :documentation "TODO:")
-   (direct-instances-inherited-data-view
-    (compute-as (compute-direct-instances-inherited-data-view -self-))
+    :documentation "The view which provides the oid for the direct instances of this class.")
+   (direct-instances-data-view
+    (compute-as (compute-direct-instances-data-view -self-))
     :type (or null view)
-    :documentation "TODO:")
-   (all-instances-primary-data-view
-    (compute-as (compute-all-instances-primary-data-view -self-))
+    :documentation "The view which provides the data for the effective slots of the direct instances of this class.")
+   (all-instances-identity-view
+    (compute-as (compute-all-instances-identity-view -self-))
     :type (or null view)
-    :documentation "TODO:")
-   (all-instances-inherited-data-view
-    (compute-as (compute-all-instances-inherited-data-view -self-))
+    :documentation "The view which provides the oid for all instances of this class.")
+   (all-instances-data-view
+    (compute-as (compute-all-instances-data-view -self-))
     :type (or null view)
-    :documentation "TODO:")
+    :documentation "The view which provides the data for the effective slots of all instances of this class.")
    (primary-table
     (compute-as (compute-primary-table -self- -current-value-))
     :type (or null table)
-    :documentation "The table which holds the oid and the data of the direct slots of this class. If the class is abstract and does not have any persistent direct slots then it will not have a primary table. A primary table if exists contains exactly one record per instance of its persistent class.")
-   (primary-tables
-    (compute-as (compute-primary-tables -self-))
-    :type (list class-primary-table)
-    :documentation "The smallest set of tables which hold all instances of this class by having exactly one record per instance. This list may contain functional nodes such as :union, :append according to the required SQL operation. For classes which have a primary table this list contains only that table while for other classes the list will contain some of the primary tables of the sub persistent classes.")
-   (primary-view
-    (compute-as (compute-primary-view -self-))
-    :type (or null view)
-    :documentation "When a class does not have a primary table then it is required to have a primary view which can be used to select data as if it were a primary table.")
-   (primary-relation
-    (compute-as (or (primary-table-of -self-) (primary-view-of -self-)))
-    :type (or table view)
-    :documentation "The primary relation from which instances of this class can be selected or nil.")
+    :documentation "The table that primarily belongs to this class and will store its direct slots by default. If a class has no slots then the identities of its instances will be stored in its primary table. On the other hand the primary table may or may not store all the effective slots depending on the provided store settings. In general there are no more tables in the RDBMS mapping than the set of all primary tables.")
    (data-tables
     (compute-as (compute-data-tables -self-))
     :type (list table)
-    :documentation "All the tables which hold direct data of an instance of this class. This list contains the primary tables of the super persistent classes.")
-   (data-view
-    (compute-as (compute-data-view -self-))
-    :type (or null view)
-    :documentation "This is a view which joins all data tables for this class, nil if the view would be the same as the primary table.")
-   (data-relation
-    (compute-as (or (data-view-of -self-) (primary-table-of -self-)))
-    :type (or table view)
-    :documentation "Either a view or a table which can be used to query for data slots.")
+    :documentation "All the tables which hold data or the identity of an instance of this class. This list contains the tables of the effective slots, it is NIL for abstract classes.")
+   (data-table-slots
+    (compute-as (collect-if #'data-table-slot-p (persistent-effective-slots-of -self-)))
+    :type (list persistent-effective-slot-definition)
+    :documentation "The list of effective slots which are stored in the data tables, this excludes n-ary association ends.")
    (prefetched-slots
     (compute-as (collect-if #'prefetch-p (persistent-effective-slots-of -self-)))
     :type (list persistent-effective-slot-definition)
@@ -116,7 +100,7 @@
    (depends-on
     (compute-as nil)
     :type (list persistent-class)
-    :documentation "The list of persistent classes which must be looked at by this class when computing RDBMS meta data. This used to generate columns into other classes' primary tables.")
+    :documentation "The list of persistent classes which must be looked at by this class when computing RDBMS meta data. This is used to generate columns into other classes' primary tables.")
    (depends-on-me
     (compute-as nil)
     :type (list persistent-class)
@@ -201,7 +185,7 @@
     (compute-as (compute-columns -self-))
     :type (list sql-column)
     :documentation "The list of RDBMS columns which will be queried or updated to get and set the data of this slot.")
-   (id-column
+   (oid-column
     (compute-as (bind ((type (canonical-type-of -self-)))
                   (if (or (persistent-class-type-p* type)
                           (set-type-p* type))
@@ -259,29 +243,21 @@
   (:documentation "Class for persistent effective slot definitions."))
 
 (eval-always
-  (mapc #L(pushnew !1 *allowed-slot-definition-properties*) '(:persistent :prefetch :cache :index :unique :type-check)))
+  (mapc [pushnew !1 *allowed-slot-definition-properties*] '(:persistent :prefetch :cache :index :unique :type-check)))
 
 (defcclass* class-primary-table (table)
   ((persistent-class
     :type persistent-class
     :documentation "The persistent class for which this table is the primary table.")
-   (oid-columns
-    (compute-as (list (id-column-of -self-)))
-    :type (list sql-column)
-    :documentation "The list of RDBMS columns corresponding to the oid of this table.")
-   (id-column
+   (stored-persistent-classes
+    (compute-as (compute-stored-persistent-classes -self-))
+    :type (list persistent-class)
+    :documentation "The persistent classes which actually store at least one of their effective slots in this table. Abstract classes are not included.")
+   (oid-column
     (compute-as (find +oid-column-name+ (columns-of -self-) :key #'cl-rdbms::name-of :test #'string=))
     :type sql-column
-    :documentation "The RDBMS column of the corresponding oid slot."))
+    :documentation "The RDBMS column representing the oid in this table."))
   (:documentation "This is a special table related to a persistent class."))
-
-(def method describe-object ((instance persistent-class) stream)
-  (call-next-method)
-  (aif (primary-table-of instance)
-       (progn
-         (princ "The primary table is the following: ")
-         (describe-object it stream))
-       (princ (format nil "The primary tables are: ~A" (primary-tables-of instance)) stream)))
 
 (def print-object persistent-slot-definition
   (princ (slot-definition-name -self-)))
@@ -301,17 +277,24 @@
   (bind ((class-name (class-name class)))
     (setf (class-id->class-name (class-name->class-id class-name)) class-name))
   (ensure-finalized class)
-  (mapc #'ensure-exported
-        (persistent-effective-superclasses-of class))
-  (mapc #'ensure-exported
-        (collect-if #L(typep !1 'persistent-association)
-                    (depends-on-of class)))
+  (dolist (superclass (persistent-effective-superclasses-of class))
+    (awhen (primary-table-of superclass)
+      (ensure-exported it)))
   (awhen (primary-table-of class)
     (ensure-exported it))
-  (awhen (primary-view-of class)
-    (mapc #'ensure-exported (cdr (primary-tables-of class)))
+  (dolist (subclass (persistent-effective-subclasses-of class))
+    (awhen (primary-table-of subclass)
+      (ensure-exported it)))
+  (dolist (association (collect-if [typep !1 'persistent-association]
+                                   (depends-on-of class)))
+    (ensure-exported association))
+  (awhen (direct-instances-identity-view-of class)
     (ensure-exported it))
-  (awhen (data-view-of class)
+  (awhen (direct-instances-data-view-of class)
+    (ensure-exported it))
+  (awhen (all-instances-identity-view-of class)
+    (ensure-exported it))
+  (awhen (all-instances-data-view-of class)
     (ensure-exported it)))
 
 ;;;;;;;;;;;
@@ -350,11 +333,17 @@
              (iter (for subclass in (persistent-direct-subclasses-of class))
                    (appending (persistent-effective-subclasses-of subclass)))))))
 
+(def generic compute-stored-persistent-classes (table)
+  (:method ((table class-primary-table))
+    (bind ((class (persistent-class-of table)))
+      (collect-if [and (not (abstract-p !1)) (member table (data-tables-of !1))]
+                  (append (persistent-effective-superclasses-of class)
+                          (list class)
+                          (persistent-effective-subclasses-of class))))))
+
 (def generic compute-effective-store (class)
   (:method ((class persistent-class))
-    (bind ((slots (persistent-effective-slots-of class))
-           (slot-definer-superclasses (delete-duplicates (mapcar #'slot-definer-superclass slots)))
-           (seen-classes nil)
+    (bind ((seen-classes nil)
            (class-precedence-list (persistent-class-precedence-list-of class))
            (cpl-length (length class-precedence-list)))
       (iter (for superclass :in class-precedence-list)
@@ -371,17 +360,18 @@
                          (push class seen-classes)
                          (prog1
                              (case option
-                               (:up (if (< (1+ position) cpl-length)
-                                        (find-primary-class (elt class-precedence-list (1+ position)))
-                                        class))
-                               (:down (if (<= 0 (1- position))
-                                          (find-primary-class (elt class-precedence-list (1- position)))
-                                          class))
+                               (:push-up (when (< (1+ position) cpl-length)
+                                           (find-primary-class (elt class-precedence-list (1+ position)))))
+                               (:push-down (when (<= 0 (1- position))
+                                             (find-primary-class (elt class-precedence-list (1- position)))))
+                               (:separate class)
                                ((nil) class)
                                (t (find-class option)))
                            (pop seen-classes)))))
-              (when (member superclass slot-definer-superclasses)
-                (collect (list (class-name superclass) (class-name (find-primary-class superclass))))))))))
+              (bind ((primary-class (find-primary-class superclass)))
+                (when primary-class
+                  (collect (list (class-name superclass)
+                                 (class-name primary-class))))))))))
 
 (def generic compute-slot-mapping (slot)
   (:method ((slot persistent-effective-slot-definition))
@@ -407,14 +397,17 @@
                            (dolist (slot (persistent-effective-slots-of related-class))
                              (when (eq (primary-class-of slot) class)
                                (dolist (column (columns-of slot))
-                                 (assert (not (find column columns :key #'rdbms::name-of)))
+                                 (assert (bind ((column-with-same-name (find (rdbms::name-of column) columns :key #'rdbms::name-of :test #'string=)))
+                                           (or (not column-with-same-name)
+                                               (eq column-with-same-name column)))
+                                         nil "Duplicate column ~A to store slot ~A in primary table for class ~A" column slot class)
                                  (pushnew column columns)))))))
                   (map nil #'push-columns (persistent-effective-superclasses-of class))
                   (map nil #'push-columns (persistent-effective-subclasses-of class))
                   (push-columns class)
-                  (map nil #'push-columns (collect-if #L(typep !1 'persistent-class) (depends-on-of class))))))))
-      (when (or (and (not (abstract-p class))
-                     (null (persistent-effective-slots-of class)))
+                  (map nil #'push-columns (collect-if (of-type 'persistent-class) (depends-on-of class))))))))
+      (when (or (not (abstract-p class))
+                (eq (class-name class) (find-class-store-location class class))
                 (compute-columns))
         (or current-table
             (make-instance 'class-primary-table
@@ -425,84 +418,39 @@
                                        (list (make-oid-column))
                                        (compute-columns)))))))))
 
-(def generic compute-primary-tables (class)
+(def generic compute-direct-instances-identity-view (class)
   (:method ((class persistent-class))
-    (labels ((primary-classes-of (class)
-               (if (primary-table-of class)
-                   (list class)
-                   (iter (for subclass in (persistent-direct-subclasses-of class))
-                         (appending (primary-classes-of subclass))))))
-      (bind ((primary-classes (primary-classes-of class))
-             (primary-class-subclasses (mapcar #'persistent-effective-subclasses-of primary-classes))
-             (primary-tables (mapcar #'primary-table-of primary-classes)))
-        (when primary-class-subclasses
-          (if (eq (length (reduce #'union primary-class-subclasses))
-                  (length (reduce #'append primary-class-subclasses)))
-              (cons :append primary-tables)
-              (cons :union primary-tables)))))))
+    (make-view-for-classes-and-slots (concatenate-string (rdbms-name-for (class-name class) :view) "_di")
+                                     (list class)
+                                     nil)))
 
-(def generic compute-direct-instances-primary-data-view (class)
+(def generic compute-direct-instances-data-view (class)
   (:method ((class persistent-class))
-    (not-yet-implemented)))
+    (make-view-for-classes-and-slots (concatenate-string (rdbms-name-for (class-name class) :view) "_dd")
+                                     (list class)
+                                     (mapcar #'slot-definition-name (data-table-slots-of class)))))
 
-(def generic compute-direct-instances-inherited-data-view (class)
+(def generic compute-all-instances-identity-view (class)
   (:method ((class persistent-class))
-    (not-yet-implemented)))
+    (make-view-for-classes-and-slots (concatenate-string (rdbms-name-for (class-name class) :view) "_ai")
+                                     (list* class (persistent-effective-subclasses-of class))
+                                     nil)))
 
-(def generic compute-all-instances-primary-data-view (class)
+(def generic compute-all-instances-data-view (class)
   (:method ((class persistent-class))
-    (not-yet-implemented)))
-
-(def generic compute-all-instances-inherited-data-view (class)
-  (:method ((class persistent-class))
-    (not-yet-implemented)))
-
-(def generic compute-primary-view (class)
-  (:method ((class persistent-class))
-    (unless (primary-table-of class)
-      (when-bind primary-tables (primary-tables-of class)
-        (bind ((columns (append (list (make-oid-column))
-                                (mappend (lambda (slot)
-                                           (bind ((first-table (first (cdr primary-tables))) ; skip UNION/APPEND
-                                                  (slot (find-slot (persistent-class-of first-table)
-                                                                   (slot-definition-name slot))))
-                                             (if (eq (table-of slot) first-table)
-                                                 (columns-of slot)
-                                                 nil))) ;; inherited slot
-                                         (collect-if (lambda (slot)
-                                                       (bind ((canonical-type (canonical-type-of slot)))
-                                                         (or (primitive-type-p* canonical-type)
-                                                             (persistent-class-type-p canonical-type))))
-                                                     (persistent-direct-slots-of class))))))
-          (make-instance 'view
-                         :name (rdbms-name-for (concatenate-symbol (class-name class) "-view") :view)
-                         :columns columns
-                         :query (sql-set-operation-expression :set-operation :union :all (eq :append (first primary-tables))
-                                                              :subqueries
-                                                              (mapcar (lambda (table)
-                                                                        (sql-subquery :query
-                                                                                      (sql-select :columns columns
-                                                                                                  :tables (list (name-of table)))))
-                                                                      (cdr primary-tables)))))))))
+    (make-view-for-classes-and-slots (concatenate-string (rdbms-name-for (class-name class) :view) "_ad")
+                                     (list* class (persistent-effective-subclasses-of class))
+                                     (mapcar #'slot-definition-name (data-table-slots-of class)))))
 
 (def generic compute-data-tables (class)
   (:method ((class persistent-class))
-    (delete-if #'null
-               (mapcar #'primary-table-of
-                       (list* class (persistent-effective-superclasses-of class))))))
-
-(def generic compute-data-view (class)
-  (:method ((class persistent-class))
-    (when (> (length (data-tables-of class)) 1)
-      (make-instance 'view
-                     :name (rdbms-name-for (concatenate-symbol (class-name class) "-data") :view)
-                     :columns nil
-                     :query (sql-select :columns (list (sql-all-columns))
-                                        :tables (list (reduce #L(sql-joined-table :kind :inner
-                                                                                  :using +oid-column-names+
-                                                                                  :left !1
-                                                                                  :right !2)
-                                                              (mapcar #L(sql-identifier :name (name-of !1)) (data-tables-of class)))))))))
+    (unless (abstract-p class)
+      (prog1-bind tables
+          (delete-duplicates
+           (append (mapcar #'table-of (data-table-slots-of class))
+                   (mapcar [primary-table-of (find-class (find-class-store-location class !1))]
+                           (list* class (persistent-effective-superclasses-of class)))))
+        (assert (not (member nil tables)))))))
 
 (def generic compute-primary-table-slot-p (slot)
   (:method ((slot persistent-effective-slot-definition))
@@ -512,20 +460,20 @@
 (def generic compute-data-table-slot-p (slot)
   (:method ((slot persistent-effective-slot-definition))
     (bind ((type (canonical-type-of slot)))
-      (and (subtypep (slot-definition-class slot) (primary-class-of slot))
-           (or (primitive-type-p* type)
-               (persistent-class-type-p* type))))))
+      (or (primitive-type-p* type)
+          (persistent-class-type-p* type)))))
 
 (def generic compute-primary-class (slot)
   (:method ((slot persistent-effective-slot-definition))
-    (bind ((class (slot-definition-class slot))
+    (bind ((owner-class (slot-definition-class slot))
            (slot-definer-superclass (slot-definer-superclass slot)))
-      (find-class (second (find (class-name slot-definer-superclass)
-                                (effective-store-of class) :key #'first))))))
+      (awhen (find-class-store-location owner-class slot-definer-superclass)
+        (find-class it)))))
 
 (def generic compute-table (slot)
   (:method ((slot persistent-effective-slot-definition))
-    (primary-table-of (primary-class-of slot))))
+    (awhen (primary-class-of slot)
+      (primary-table-of it))))
 
 (def generic compute-column-names (slot)
   (:method ((slot persistent-effective-slot-definition))
@@ -535,9 +483,10 @@
   (:method ((slot persistent-effective-slot-definition))
     (bind ((primary-class (primary-class-of slot)))
       (or (some (lambda (superslot)
-                  (when (eq primary-class (primary-class-of superslot))
-                    (columns-of superslot)))
-                (persistent-effective-slot-precedence-list-of slot))
+                  (bind ((superslot-primary-class (primary-class-of superslot)))
+                    (when (or (null superslot-primary-class)
+                              (eq superslot-primary-class primary-class))
+                      (columns-of superslot)))) (persistent-effective-slot-precedence-list-of slot))
           (bind ((class (slot-definition-class slot))
                  (name (slot-definition-name slot))
                  (class-name (class-name (or primary-class class)))
@@ -652,7 +601,10 @@
         (when slot (collect slot))))
 
 (def function slot-definer-superclass (slot)
-  (slot-definition-class (first (direct-slots-of slot))))
+  (slot-definition-class (last-elt (direct-slots-of slot))))
+
+(def function find-class-store-location (owner-class definer-class)
+  (second (find (class-name definer-class) (effective-store-of owner-class) :key #'first)))
 
 (def function make-oid-column ()
   "Creates an RDBMS column that will be used to store the oid of the instances in this table."
@@ -663,12 +615,12 @@
                                     (sql-primary-key-constraint))))
 
 (def function make-column-for-reference-slot (class-name column-name)
-  (bind ((id-column-name (rdbms-name-for (concatenate-symbol column-name "-oid")) :column)
-         (id-index-name (rdbms-name-for (concatenate-symbol column-name "-oid-on-" class-name "-idx") :index)))
+  (bind ((oid-column-name (rdbms-name-for (concatenate-symbol column-name "-oid")) :column)
+         (oid-index-name (rdbms-name-for (concatenate-symbol column-name "-oid-on-" class-name "-idx") :index)))
     (make-instance 'column
-                   :name id-column-name
+                   :name oid-column-name
                    :type +oid-sql-type+
-                   :index (sql-index :name id-index-name))))
+                   :index (sql-index :name oid-index-name))))
 
 (def function make-tag-column (mapping name)
   (bind ((type (first (rdbms-types-of mapping)))
@@ -682,9 +634,77 @@
                                       :null
                                       0))))
 
-(def function tag-column-of (slot)
-  (when (tagged-p (mapping-of slot))
-    (first (columns-of slot))))
+(def function make-class-id-matcher-where-clause (classes)
+  (bind ((oid-clause (sql-binary-operator :name "&"
+                                          :left (sql-identifier :name +oid-column-name+)
+                                          :right +oid-maximum-class-id+)))
+    (if (length= 1 classes)
+        (sql-= oid-clause (class->class-id (first classes)))
+        (sql-in oid-clause (mapcar #'class->class-id classes)))))
+
+(def (function e) make-view-for-classes-and-slots (name class-or-names slot-names)
+  (when-bind query (make-query-for-classes-and-slots class-or-names slot-names)
+    (make-instance 'view
+                   :name name
+                   :columns nil
+                   :query query)))
+
+(def (function e) make-query-for-classes-and-slots (classes-or-class-names slot-names)
+  (bind ((normalized-classes (remove-if #'abstract-p
+                                        (mapcar (lambda (class)
+                                                  (ensure-finalized (if (symbolp class)
+                                                                        (find-class class)
+                                                                        class)))
+                                                classes-or-class-names)))
+         (class->slots-map (aprog1 (make-hash-table :test #'eq)
+                             (dolist (class normalized-classes)
+                               (setf (gethash class it)
+                                     (mapcar [find-slot class !1] slot-names)))))
+         (class->tables-map (aprog1 (make-hash-table :test #'eq)
+                              (dolist (class normalized-classes)
+                                (setf (gethash class it)
+                                      (delete-duplicates (list* (primary-table-of class)
+                                                                (mapcar #'table-of (gethash class class->slots-map))))))))
+         (table->classes-map (aprog1 (make-hash-table :test #'eq)
+                               (dolist (class (persistent-effective-subclasses-of (find-class 'persistent-object)))
+                                 (ensure-finalized class)
+                                 (dolist (table (data-tables-of class))
+                                   (push class (gethash table it))))))
+         ;; TODO: should we use topological sort here?
+         (sorted-classes (sort (copy-seq normalized-classes) #'subsetp
+                               :key (lambda (class)
+                                      (gethash class class->tables-map))))
+         (subquery-and-covered-classes-list (iter (with already-collected-classes = nil)
+                                                  (for class :in sorted-classes)
+                                                  (unless (member class already-collected-classes)
+                                                    (for tables = (gethash class class->tables-map))
+                                                    (for classes-in-tables = (reduce #'intersection (mapcar [gethash !1 table->classes-map] tables)))
+                                                    (for covered-requested-classes = (collect-if [set-equal (gethash !1 class->tables-map) tables] normalized-classes))
+                                                    (appendf already-collected-classes covered-requested-classes)
+                                                    (collect (list (sql-select :columns (list* +oid-column-name+
+                                                                                               (mappend (lambda (slot)
+                                                                                                          (bind ((table-name (name-of (primary-table-of (primary-class-of slot)))))
+                                                                                                            (mapcar [sql-column-alias :column (rdbms::name-of !1) :table table-name]
+                                                                                                                    (columns-of slot))))
+                                                                                                        (gethash class class->slots-map)))
+                                                                               :tables (list (reduce [sql-joined-table :kind :inner :using +oid-column-names+ :left !1 :right !2]
+                                                                                                     (mapcar [sql-identifier :name (name-of !1)] tables)))
+                                                                               :where (when (set-difference classes-in-tables covered-requested-classes)
+                                                                                        (make-class-id-matcher-where-clause covered-requested-classes)))
+                                                                   covered-requested-classes))))))
+    (when subquery-and-covered-classes-list
+      (bind ((query-and-classes (reduce (lambda (subquery-and-covered-classes-1 subquery-and-covered-classes-2)
+                                          (bind ((covered-classes-1 (second subquery-and-covered-classes-1))
+                                                 (covered-classes-2 (second subquery-and-covered-classes-2)))
+                                            (list (sql-set-operation-expression :set-operation :union
+                                                                                :all (not (intersection covered-classes-1 covered-classes-2))
+                                                                                :subqueries (list (first subquery-and-covered-classes-1)
+                                                                                                  (first subquery-and-covered-classes-2)))
+                                                  (union covered-classes-1 covered-classes-2))))
+                                        subquery-and-covered-classes-list)))
+        (assert (set-equal normalized-classes (second query-and-classes)) nil
+                "The provided classes ~A and~%The resulting classes ~A~%do not match" normalized-classes (second query-and-classes))
+        (first query-and-classes)))))
 
 (def method matches-type* (value (type symbol))
   (and (typep value type)

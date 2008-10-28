@@ -59,7 +59,7 @@
       (update-records (name-of (table-of slot))
                       (columns-of slot)
                       rdbms-values
-                      (id-column-matcher-where-clause item)))))
+                      (make-oid-matcher-where-clause item)))))
 
 (defmethod ensure-item ((set persistent-slot-set-container) (item persistent-object))
   (unless (find-item set item)
@@ -71,18 +71,18 @@
     (update-records (name-of (table-of slot))
                     (columns-of slot)
                     '(nil nil)
-                    (id-column-matcher-where-clause item))))
+                    (make-oid-matcher-where-clause item))))
 
 (defmethod find-item ((set persistent-slot-set-container) (item persistent-object))
   (bind ((slot (slot-of set)))
     (not (zerop (select-count-* (list (name-of (table-of slot)))
-                                (sql-and (id-column-matcher-where-clause (instance-of set) (id-column-of slot))
-                                         (id-column-matcher-where-clause item)))))))
+                                (sql-and (make-oid-matcher-where-clause (instance-of set) (oid-column-of slot))
+                                         (make-oid-matcher-where-clause item)))))))
 
 (defmethod size ((set persistent-slot-set-container))
   (bind ((slot (slot-of set)))
     (select-count-* (list (name-of (table-of slot)))
-                    (id-column-matcher-where-clause (instance-of set) (id-column-of slot)))))
+                    (make-oid-matcher-where-clause (instance-of set) (oid-column-of slot)))))
 
 (defmethod empty-p ((set persistent-slot-set-container))
   (= 0 (size set)))

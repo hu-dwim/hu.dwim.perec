@@ -14,7 +14,7 @@
   (and (oid-of instance)
        (not (null (select-records '(1)
                                   (list (name-of (primary-table-of (class-of instance))))
-                                  :where (id-column-matcher-where-clause instance))))))
+                                  :where (make-oid-matcher-where-clause instance))))))
 
 (def function debug-persistent-p (instance)
   "Same as persistent-p except it never prefetches slot values. Use for debug purposes."
@@ -112,44 +112,36 @@
     (ensure-exported (class-of instance))
     (dolist (table (data-tables-of (class-of instance)))
       (delete-records (name-of table)
-                      (id-column-matcher-where-clause instance)))
+                      (make-oid-matcher-where-clause instance)))
     (update-instance-cache-for-deleted-instance instance)))
 
 ;; TODO: what about invalidating cache instances, references?
 (def generic purge-instances (class)
   (:documentation "Purges all instances of the given class without respect to associations and references.")
 
-  (:method ((thing t))
-    ;; can't use dispatch because null is both a symbol and an empty list (bah...)
-    (etypecase thing
-      ((or null sequence) (map nil #'purge-instance thing))
-      (symbol (purge-instances (find-class thing)))))
+  (:method ((name null))
+    (values))
+
+  (:method ((name symbol))
+    (purge-instances (find-class name)))
+
+  (:method ((classes-or-names sequence))
+    (map nil #'purge-instance classes-or-names))
 
   (:method ((class persistent-class))
     (ensure-exported class)
-    (bind ((class-primary-table (primary-table-of class))
-           (superclasses (persistent-effective-superclasses-of class))
-           (subclasses (persistent-effective-subclasses-of class))
-           (super-primary-tables (mapcar #'primary-table-of superclasses))
-           (sub-primary-tables (mapcar #'primary-table-of subclasses)))
-      (mapc #'ensure-exported superclasses)
-      (mapc #'ensure-exported subclasses)
-      (when (primary-tables-of class)
-        ;; delete instances from the primary tables of superclasses and non primary data tables of subclasses 
-        (dolist (table (delete-if #L(or (eq !1 class-primary-table)
-                                        (member !1 sub-primary-tables))
-                                  (delete-duplicates
-                                   (append super-primary-tables
-                                           (mappend #'data-tables-of subclasses)))))
-          (when table
-            (delete-records (name-of table)
-                            (sql-in (sql-identifier :name +oid-column-name+)
-                                    (sql-subquery :query (sql-select :columns (list +oid-column-name+)
-                                                                     :tables (list (name-of (primary-relation-of class)))))))))
-        ;; delete instances from the primary tables of subclasses
-        (dolist (table (list* class-primary-table sub-primary-tables))
-          (when table
-            (delete-records (name-of table))))))))
+    (bind ((classes (delete-if #'abstract-p (list* class (persistent-effective-subclasses-of class))))
+           (tables (reduce #'union (mapcar #'data-tables-of classes)))
+           (where-clause (make-class-id-matcher-where-clause classes)))
+      (dolist (table tables)
+        (ensure-exported table)
+        (delete-records (name-of table)
+                        (etypecase table
+                          (class-primary-table
+                           (when (set-difference (stored-persistent-classes-of table) classes)
+                             where-clause))
+                          (association-primary-table
+                           nil)))))))
 
 (def function purge-all-instances ()
   (purge-instances 'persistent-object))
@@ -189,8 +181,8 @@
     (bind ((class (class-of instance))
            (records
             (execute (sql-select :columns columns
-                                 :tables (list (name-of (data-relation-of class)))
-                                 :where (id-column-matcher-where-clause instance)
+                                 :tables (list (name-of (direct-instances-data-view-of class)))
+                                 :where (make-oid-matcher-where-clause instance)
                                  :for :update
                                  :wait wait))))
       (assert (= 1 (length records)))
@@ -201,8 +193,8 @@
 
   (:method ((class persistent-class) &key (wait #t))
     (with-waiting-for-rdbms-lock wait
-      (execute (sql-select :columns (list (sql-all-columns))
-                           :tables (list (name-of (primary-relation-of class)))
+      (execute (sql-select :columns +oid-column-names+
+                           :tables (list (name-of (primary-table-of class)))
                            :for :update
                            :wait wait))
       #t)))
@@ -341,8 +333,7 @@
 ;;; Broken references
 
 (def (function e) signal-broken-references ()
-  (bind ((oids (select-records (list +oid-column-name+)
-                               (list (name-of (primary-relation-of (find-class 'persistent-object))))))
+  (bind ((oids (execute (make-query-for-classes-and-slots (persistent-effective-subclasses-of (find-class 'persistent-object)) nil)))
          (oid-set (make-hash-table :test #'eql))
          (tables nil)
          (table->referer-slots-map (make-hash-table)))
@@ -381,7 +372,7 @@
           (iter (for record :in-sequence records)
                 (for oid = (rdbms-values->oid record))
                 (dolist (table (data-tables-of class))
-                  (when (zerop (length (select-records '(1) (list (name-of table)) :where (id-column-matcher-where-clause oid))))
+                  (when (zerop (length (select-records '(1) (list (name-of table)) :where (make-oid-matcher-where-clause oid))))
                     (cerror "Let's see if there's more" "Insance ~A is broken because no matching record can be found in ~A"
                             (make-instance (oid-class-name oid) :persistent #f :oid oid) table)))))))
 

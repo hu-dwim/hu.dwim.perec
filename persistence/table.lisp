@@ -41,12 +41,12 @@
 ;;;;;;;;;;
 ;;; Export
 
-(defmethod export-to-rdbms ((table table))
+(def method export-to-rdbms ((table table))
   "Updates the RDBMS table definition according to the current state of the given table. This might add, alter or drop existing columns, but all destructive changes are required to signal a continuable condition."
   (update-table (name-of table) (columns-of table))
   (mapc #L(awhen (index-of !1)
             (update-index (rdbms::name-of it) (name-of table) (list !1) :unique (rdbms::unique-p it)))
         (columns-of table)))
 
-(defmethod export-to-rdbms ((view view))
+(def method export-to-rdbms ((view view))
   (update-view (name-of view) (columns-of view) (query-of view)))

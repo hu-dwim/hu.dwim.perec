@@ -4,7 +4,7 @@
 ;;; Constants
 
 (def (special-variable :documentation "True means slot-value-using-class will by default return lazy collections.")
-    *lazy-slot-value-collections* #f)
+  *lazy-slot-value-collections* #f)
 
 ;;;;;;;;;;;
 ;;; Utility
@@ -15,16 +15,16 @@
 (def (function io) object-writer (slot-value rdbms-values index)
   (oid->rdbms-values* (oid-of slot-value) rdbms-values index))
 
-(def (function io) id-column-matcher-where-clause (instance-or-oid &optional (id-name +oid-column-name+))
+(def (function io) make-oid-matcher-where-clause (instance-or-oid &optional (oid-name +oid-column-name+))
   (sql-binary-operator :name '=
-                       :left (sql-identifier :name id-name)
+                       :left (sql-identifier :name oid-name)
                        :right (sql-literal :type +oid-sql-type+ :value (if (integerp instance-or-oid)
                                                                            instance-or-oid
                                                                            (oid-of instance-or-oid)))))
 
-(def (function io) id-column-list-matcher-where-clause (values &optional (id-name +oid-column-name+))
+(def (function io) make-oid-list-matcher-where-clause (values &optional (oid-name +oid-column-name+))
   (sql-binary-operator :name 'in
-                       :left (sql-identifier :name id-name)
+                       :left (sql-identifier :name oid-name)
                        :right (mapcar (lambda (value)
                                         (sql-literal :type +oid-sql-type+ :value (oid-of value)))
                                       values)))
@@ -41,9 +41,9 @@
 (def (function o) restore-slot-set (instance slot)
   "Restores the non lazy list without local side effects from the database."
   (map 'list #L(object-reader !1 0)
-       (select-records (oid-columns-of (table-of slot))
+       (select-records (list (oid-column-of (table-of slot)))
                        (list (name-of (table-of slot)))
-                       :where (id-column-matcher-where-clause instance (id-column-of slot))
+                       :where (make-oid-matcher-where-clause instance (oid-column-of slot))
                        :order-by (bind ((type (canonical-type-of slot)))
                                    (if (ordered-set-type-p type)
                                        ;; TODO: use reflection instead of third
@@ -59,9 +59,9 @@
     (map 'list #L(object-reader !1 0)
          (select-records (columns-of slot)
                          (list (name-of (table-of slot)))
-                         :where (id-column-matcher-where-clause instance (id-column-of other-slot))))))
+                         :where (make-oid-matcher-where-clause instance (oid-column-of other-slot))))))
 
-(defgeneric restore-slot (class instance persistent-effective-slot-definition &key &allow-other-keys)
+(def generic restore-slot (class instance persistent-effective-slot-definition &key &allow-other-keys)
   (:documentation "Restores a single slot without local side effects from the database.")
 
   (:method ((class persistent-class) (instance persistent-object) (slot persistent-effective-slot-definition) &key)
@@ -75,7 +75,7 @@
                  (first-elt
                   (select-records (columns-of slot)
                                   (list (name-of (table-of slot)))
-                                  :where (id-column-matcher-where-clause instance)))))
+                                  :where (make-oid-matcher-where-clause instance)))))
            (restore-slot-value instance slot record 0)))
      slot))
 
@@ -88,7 +88,7 @@
                     (select-records +oid-column-names+
                                     (list (name-of (table-of slot)))
                                     :where (sql-= (sql-literal :type +oid-sql-type+ :value (oid-of instance))
-                                                  (sql-identifier :name (id-column-of slot))))))
+                                                  (sql-identifier :name (oid-column-of slot))))))
               (declare (type vector records))
               (unless (zerop (length records))
                 (restore-slot-value instance slot (first-elt records) 0)))
@@ -105,15 +105,15 @@
             (restore-m-n-association-end-set instance slot))))
      slot)))
 
-(defgeneric restore-prefetched-slots (class instance &optional allow-missing)
+(def generic restore-prefetched-slots (class instance &optional allow-missing)
   (:documentation "Restores all prefetched slots at once without local side effects from the database. Executes a single select statement.")
 
   (:method ((class persistent-class) (instance persistent-object) &optional (allow-missing #f))
     (when-bind slots (prefetched-slots-of (class-of instance))
       (bind ((records
               (select-records (mappend #'columns-of slots)
-                              (list (name-of (data-relation-of class)))
-                              :where (id-column-matcher-where-clause instance)))
+                              (list (name-of (direct-instances-data-view-of class)))
+                              :where (make-oid-matcher-where-clause instance)))
              (record (unless (and allow-missing
                                   (zerop (length records)))
                        (assert (= 1 (length records)) nil "The persistent instance ~A is missing from the database" instance)
@@ -126,39 +126,6 @@
                  (for slot :in slots)
                  (collect (restore-slot-value instance slot record i)))
            slots))))))
-
-;; TODO: use this to eliminate generating SQL AST garbage upon slot access
-;; (funcall (compile-restore-prefetched-slots (class-of instance)) instance allow-missing)
-(def function compile-restore-prefetched-slots (class)
-  "Restores all prefetched slots at once without local side effects from the database. Executes a single select statement."
-  (ensure-finalized class)
-  (compile nil
-           `(lambda (instance &optional (allow-missing #f))
-              ,(when-bind slots (prefetched-slots-of class)
-                          `(bind ((records
-                                   (execute
-                                    ,(rdbms::expand-sql-ast-into-lambda-form
-                                      (make-instance 'sql-select
-                                                     :columns (mapcan (lambda (slot)
-                                                                        (mapcar (lambda (column)
-                                                                                  (sql-column-alias :table (name-of (table-of slot)) :column column))
-                                                                                (columns-of slot)))
-                                                                      slots)
-                                                     :tables (list (name-of (data-relation-of class)))
-                                                     :where (id-column-matcher-where-clause (sql-unquote :form 'instance))))))
-                                  (record (unless (and allow-missing
-                                                       (zerop (length records)))
-                                            (debug-only (assert (= 1 (length records))))
-                                            (first-elt records))))
-                             (declare (type vector records))
-                             (declare (type (or null vector) record))
-                             (when record
-                               (values
-                                (list
-                                 ,@(iter (for i :first 0 :then (+ i (length (columns-of slot))))
-                                         (for slot :in slots)
-                                         (collect `(funcall ,(reader-of slot) record ,i))))
-                                ',slots)))))))
 
 (def (function o) restore-all-slots (instance)
   "Restores all slots wihtout local side effects from the database."
@@ -181,7 +148,7 @@
   (update-records (name-of (table-of slot))
                   (columns-of slot)
                   (make-array +oid-column-count+ :initial-element :null)
-                  (id-column-matcher-where-clause instance (id-column-of slot))))
+                  (make-oid-matcher-where-clause instance (oid-column-of slot))))
 
 (def (function o) store-slot-set (instance slot values)
   "Stores the non lazy list without local side effects into the database."
@@ -196,7 +163,7 @@
       (update-records (name-of (table-of slot))
                       (columns-of slot)
                       rdbms-values
-                      (id-column-list-matcher-where-clause values)))))
+                      (make-oid-list-matcher-where-clause values)))))
 
 (def (function o) store-1-n-association-end-set (instance slot value)
   "Stores the non lazy list association end value without local side effects into the database."
@@ -204,7 +171,7 @@
 
 (def (function o) delete-m-n-association-end-set (instance slot)
   (delete-records (name-of (table-of slot))
-		  (id-column-matcher-where-clause instance (id-column-of (other-association-end-of slot)))))
+		  (make-oid-matcher-where-clause instance (oid-column-of (other-association-end-of slot)))))
 
 (def (function o) insert-into-m-n-association-end-set (instance slot value)
   (check-slot-value-type instance slot value)
@@ -226,7 +193,7 @@
               (insert-into-m-n-association-end-set instance slot !1))
           value)))
 
-(defgeneric store-slot (class instance slot value)
+(def generic store-slot (class instance slot value)
   (:documentation "Stores a single slot without local side effects into the database.")
 
   (:method ((class persistent-class) (instance persistent-object) (slot persistent-effective-slot-definition) value)
@@ -242,7 +209,7 @@
                       (update-records (name-of (table-of slot))
                                       columns
                                       rdbms-values
-                                      (id-column-matcher-where-clause instance))))
+                                      (make-oid-matcher-where-clause instance))))
                 (assert (= 1 count))))))))
 
   (:method ((class persistent-class) (instance persistent-object) (slot persistent-association-end-effective-slot-definition) value)
@@ -267,7 +234,7 @@
                (update-records (name-of (table-of slot))
                                (columns-of slot)
                                (make-array +oid-column-count+ :initial-element :null)
-                               (id-column-matcher-where-clause value (id-column-of slot))))
+                               (make-oid-matcher-where-clause value (oid-column-of slot))))
              (call-next-method))))
       (:1-n
        (if (eq (cardinality-kind-of slot) :n)
@@ -280,7 +247,7 @@
                  (persistent-p instance))
          (store-m-n-association-end-set instance slot value))))))
 
-(defgeneric store-prefetched-slots (class instance)
+(def generic store-prefetched-slots (class instance)
   (:documentation "Stores all prefetched slots without local side effects into the database. Executes one insert statement for each table.")
 
   (:method ((class persistent-class) (instance persistent-object))
@@ -290,7 +257,7 @@
       (dolist (table tables)
         (bind ((slots (collect-if #L(eq (table-of !1) table) prefetched-slots))
                (slot-values (mapcar #L(underlying-slot-boundp-or-value-using-class (class-of instance) instance !1) slots))
-               (oid-columns (oid-columns-of table))
+               (oid-columns (list (oid-column-of table)))
                (columns (mappend #'columns-of slots))
                (oid-values (oid->rdbms-values oid))
                (rdbms-values (make-array (length columns))))
@@ -301,11 +268,11 @@
                 (check-slot-value-type instance slot slot-value)
                 (store-slot-value instance slot slot-value rdbms-values index))
           (if (persistent-p instance)
-              (update-records (name-of table) columns rdbms-values (id-column-matcher-where-clause instance))
+              (update-records (name-of table) columns rdbms-values (make-oid-matcher-where-clause instance))
               (insert-record (name-of table) (append oid-columns columns) (concatenate 'vector oid-values rdbms-values)))))
       (unless (persistent-p instance)
         (dolist (table (set-difference (data-tables-of (class-of instance)) tables))
-          (insert-record (name-of table) (oid-columns-of table) (oid->rdbms-values oid)))))))
+          (insert-record (name-of table) (list (oid-column-of table)) (oid->rdbms-values oid)))))))
 
 (def (function o) store-all-slots (instance)
   "Stores all slots wihtout local side effects into the database."

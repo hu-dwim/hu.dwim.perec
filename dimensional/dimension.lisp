@@ -117,7 +117,7 @@
        (defpclass* ,dependent-object-name ()
          ,slots
          (:abstract #t)
-         (:direct-store :down))
+         (:direct-store :push-down))
        ,@(when (persistent-class-name-p type)
                `((defassociation*
                    ((:class ,dependent-object-name :slot ,name :type ,type)

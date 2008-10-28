@@ -308,7 +308,7 @@
   (bind ((previous-class (class-of previous-instance))
          (current-class (class-of current-instance))
          (current-oid (oid-of current-instance))
-         (at-current-instance (id-column-matcher-where-clause current-instance)))
+         (at-current-instance (make-oid-matcher-where-clause current-instance)))
     #+nil ;; TODO: change oid
     (setf (oid-class-name current-oid) (name-of current-class))
     (dolist (table (data-tables-of current-class))
@@ -320,7 +320,7 @@
                           at-current-instance)
           ;; TODO: handle initargs
           (insert-record (name-of table)
-                         (oid-columns-of table)
+                         (list (oid-column-of table))
                          (oid->rdbms-values current-oid))))
     (dolist (table (data-tables-of previous-class))
       (unless (member table (data-tables-of current-class))

@@ -49,8 +49,9 @@
                                 invalidate-cached-instance invalidate-all-cached-instances persistent
                                 clear-compiled-query-cache reset-compile-query-counter
                                 ensure-exported primary-table-slot-p data-table-slot-p
-                                primary-table-of primary-tables-of data-tables-of
-                                primary-view-of data-view-of
+                                primary-table-of primary-table-of data-tables-of 
+                                direct-instances-identity-view-of direct-instances-data-view-of
+                                all-instances-identity-view-of all-instances-data-view-of
                                 prefetch-p cache-p compute-mapping reader-of writer-of
                                 compute-rdbms-types compute-reader compute-writer
                                 table-of columns-of reader-name-of writer-name-of

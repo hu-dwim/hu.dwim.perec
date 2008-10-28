@@ -37,23 +37,16 @@
     (compute-as (primary-table-of (h-class-of -self-)))
     :type table)
    (action-slot
-    (compute-as (find-persistent-slot (h-class-of -self-) 'action :otherwise nil)))
-   (action-column
-    (compute-as (first (columns-of (action-slot-of -self-))))
-    :type column)
+    (compute-as (find-persistent-slot (h-class-of -self-) 'action :otherwise nil))
+    :type persistent-effective-slot-definition)
    (h-slot-name
     (compute-as (concatenate-symbol "d-" (slot-definition-name (other-association-end-of -self-))))
     :type symbol)
    (h-slot
-    (compute-as (find-persistent-slot (h-class-of -self-) (h-slot-name-of -self-) :otherwise nil)))
-   (h-oid-columns
-    (compute-as (columns-of (h-slot-of -self-)))
-    :type list)
+    (compute-as (find-persistent-slot (h-class-of -self-) (h-slot-name-of -self-) :otherwise nil))
+    :type persistent-effective-slot-definition)
    (other-end-h-slot
     (compute-as (h-slot-of (other-association-end-of -self-)))
-    :type list)
-   (other-end-h-oid-columns
-    (compute-as (h-oid-columns-of (other-association-end-of -self-)))
     :type list)))
 
 ;;;;;;;;;;;;;;;;;;

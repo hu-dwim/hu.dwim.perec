@@ -20,9 +20,6 @@
    (parent-slot
     (compute-as (find-persistent-slot (h-class-of -self-) 'd-instance :otherwise nil))
     :type column)
-   (parent-id-column
-    (compute-as (id-column-of (parent-slot-of -self-)))
-    :type column)
    (prefetched-slots
     (compute-as (collect-if [and (not (typep !1 'persistent-effective-slot-definition-d)) (prefetch-p !1)]
                             (persistent-effective-slots-of -self-)))))

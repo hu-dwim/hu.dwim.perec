@@ -96,23 +96,23 @@
          (instance (instance-of set)))
     (check-slot-value-type instance slot item)
     (delete-records (name-of (table-of (slot-of set)))
-                    (sql-and (id-column-matcher-where-clause item (id-column-of slot))
-                             (id-column-matcher-where-clause instance (id-column-of other-slot))))))
+                    (sql-and (make-oid-matcher-where-clause item (oid-column-of slot))
+                             (make-oid-matcher-where-clause instance (oid-column-of other-slot))))))
 
 (defmethod find-item ((set persistent-m-n-association-end-set-container) (item persistent-object))
   (bind ((association-end (slot-of set))
          (other-association-end (other-association-end-of association-end)))
     (not (zerop (select-count-* (list (name-of (table-of association-end)))
-                                (sql-and (id-column-matcher-where-clause (instance-of set)
-                                                                         (id-column-of other-association-end))
-                                         (id-column-matcher-where-clause item
-                                                                         (id-column-of association-end))))))))
+                                (sql-and (make-oid-matcher-where-clause (instance-of set)
+                                                                        (oid-column-of other-association-end))
+                                         (make-oid-matcher-where-clause item
+                                                                        (oid-column-of association-end))))))))
 
 (defmethod size ((set persistent-m-n-association-end-set-container))
   (bind ((slot (slot-of set))
          (other-slot (other-association-end-of slot)))
     (select-count-* (list (name-of (table-of (slot-of set))))
-                    (id-column-matcher-where-clause (instance-of set) (id-column-of other-slot)))))
+                    (make-oid-matcher-where-clause (instance-of set) (oid-column-of other-slot)))))
 
 (defmethod empty! ((set persistent-m-n-association-end-set-container))
   (delete-m-n-association-end-set (instance-of set) (slot-of set)))
