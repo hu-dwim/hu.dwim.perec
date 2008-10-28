@@ -193,7 +193,7 @@
                             (:1 (setf (value-at-coordinates d-value coords) instance))
                             (:n (insert-at-coordinates d-value coords instance))))
             (#.+t-delete+ (ecase cardinality
-                            (:1 (setf (value-at-coordinates d-value coords) nil))
+                            (:1 (clear-at-coordinates d-value coords instance))
                             (:n (delete-at-coordinates d-value coords instance))))))
     
     (value-at-coordinates d-value coordinates)))
