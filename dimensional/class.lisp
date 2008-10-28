@@ -20,6 +20,10 @@
    (parent-slot
     (compute-as (find-persistent-slot (h-class-of -self-) 'd-instance :otherwise nil))
     :type column)
+   ;; overrides
+   (data-table-slots
+    (compute-as (collect-if [and (not (typep !1 'persistent-effective-slot-definition-d)) (data-table-slot-p !1)]
+                            (persistent-effective-slots-of -self-))))
    (prefetched-slots
     (compute-as (collect-if [and (not (typep !1 'persistent-effective-slot-definition-d)) (prefetch-p !1)]
                             (persistent-effective-slots-of -self-)))))
