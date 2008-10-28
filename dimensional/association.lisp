@@ -33,9 +33,6 @@
    (h-class
     (compute-as (h-class-of (association-of -self-)))
     :type persistent-class)
-   (table
-    (compute-as (primary-table-of (h-class-of -self-)))
-    :type table)
    (action-slot
     (compute-as (find-persistent-slot (h-class-of -self-) 'action :otherwise nil))
     :type persistent-effective-slot-definition)

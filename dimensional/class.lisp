@@ -96,7 +96,16 @@
 ;;;;;;;;;;;;
 ;;; Computed
 
+(def method compute-primary-class ((slot persistent-effective-slot-definition-d))
+  nil)
+
+(def method compute-table ((slot persistent-effective-slot-definition-d))
+  nil)
+
 (def method compute-columns ((slot persistent-effective-slot-definition-d))
+  nil)
+
+(def method compute-data-table-slot-p ((slot persistent-effective-slot-definition-d))
   nil)
 
 ;;;;;;;;;;;
