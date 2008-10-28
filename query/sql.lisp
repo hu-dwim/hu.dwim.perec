@@ -63,17 +63,11 @@
 
 (defun tables-for-delete (class)
   "Returns the tables where instances of CLASS are stored."
-  (bind ((superclasses (persistent-effective-superclasses-of class))
-         (subclasses (persistent-effective-subclasses-of class))
-         (class-primary-table (primary-table-of class))
-         (super-primary-tables (mapcar 'primary-table-of superclasses))
-         (super-sub-primary-tables (mappend 'data-tables-of subclasses)))
-    (delete nil
-            (delete-duplicates
-             (append
-              (list class-primary-table)
-              super-primary-tables
-              super-sub-primary-tables)))))
+  (reduce #'union
+          (mapcar #'data-tables-of
+                  (delete-if #'abstract-p
+                             (list* class
+                                    (persistent-effective-subclasses-of class))))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Updates

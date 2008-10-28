@@ -322,18 +322,7 @@ with the result of the naively compiled query.")
     (when (slot-of access)
       (setf (arg-of access)
             (ensure-type query (arg-of access) (slot-definition-class (slot-of access)))))
-    ;;(debug-only (check-slot-access access))
     (values)))
-
-(defun check-slot-access (access)
-  (when (slot-of access)
-    (bind ((slot (slot-of access))
-           (object (arg-of access))
-           (persistent-class (base-type-for (persistent-type-of object))))
-      (unless (eq persistent-class +unknown-type+)
-        ;; FIXME: review primary-tables-of here
-        (bind ((table (first (rest (primary-tables-of persistent-class)))))
-          (assert (eq (table-of slot) table)))))))
 
 (defun add-prefetched-types (query)
   (when (eq (prefetch-mode-of query) :all)
