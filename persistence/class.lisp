@@ -700,12 +700,19 @@
                                                                    covered-requested-classes))))))
     (when subquery-and-covered-classes-list
       (bind ((query-and-classes (reduce (lambda (subquery-and-covered-classes-1 subquery-and-covered-classes-2)
-                                          (bind ((covered-classes-1 (second subquery-and-covered-classes-1))
-                                                 (covered-classes-2 (second subquery-and-covered-classes-2)))
-                                            (list (sql-set-operation-expression :set-operation :union
-                                                                                :all (not (intersection covered-classes-1 covered-classes-2))
-                                                                                :subqueries (list (first subquery-and-covered-classes-1)
-                                                                                                  (first subquery-and-covered-classes-2)))
+                                          (bind ((subquery-1 (first subquery-and-covered-classes-1))
+                                                 (subquery-2 (first subquery-and-covered-classes-2))
+                                                 (covered-classes-1 (second subquery-and-covered-classes-1))
+                                                 (covered-classes-2 (second subquery-and-covered-classes-2))
+                                                 (all? (not (intersection covered-classes-1 covered-classes-2))))
+                                            (list (if (and (typep subquery-1 'sql-set-operation-expression)
+                                                           (eq all? (rdbms::all-p subquery-1)))
+                                                      (progn
+                                                        (push subquery-2 (rdbms::subqueries-of subquery-1))
+                                                        subquery-1)
+                                                      (sql-set-operation-expression :set-operation :union
+                                                                                    :all all?
+                                                                                    :subqueries (list subquery-1 subquery-2)))
                                                   (union covered-classes-1 covered-classes-2))))
                                         subquery-and-covered-classes-list)))
         (assert (set-equal normalized-classes (second query-and-classes)) nil
