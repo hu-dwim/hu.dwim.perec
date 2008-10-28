@@ -424,25 +424,25 @@
 
 (def generic compute-direct-instances-identity-view (class)
   (:method ((class persistent-class))
-    (make-view-for-classes-and-slots (concatenate-string (rdbms-name-for (class-name class) :view) "_di")
+    (make-view-for-classes-and-slots (view-name-for-class class "_di")
                                      (list class)
                                      nil)))
 
 (def generic compute-direct-instances-data-view (class)
   (:method ((class persistent-class))
-    (make-view-for-classes-and-slots (concatenate-string (rdbms-name-for (class-name class) :view) "_dd")
+    (make-view-for-classes-and-slots (view-name-for-class class "_dd")
                                      (list class)
                                      (mapcar #'slot-definition-name (data-table-slots-of class)))))
 
 (def generic compute-all-instances-identity-view (class)
   (:method ((class persistent-class))
-    (make-view-for-classes-and-slots (concatenate-string (rdbms-name-for (class-name class) :view) "_ai")
+    (make-view-for-classes-and-slots (view-name-for-class class "_ai")
                                      (list* class (persistent-effective-subclasses-of class))
                                      nil)))
 
 (def generic compute-all-instances-data-view (class)
   (:method ((class persistent-class))
-    (make-view-for-classes-and-slots (concatenate-string (rdbms-name-for (class-name class) :view) "_ad")
+    (make-view-for-classes-and-slots (view-name-for-class class "_ad")
                                      (list* class (persistent-effective-subclasses-of class))
                                      (mapcar #'slot-definition-name (data-table-slots-of class)))))
 
@@ -608,6 +608,9 @@
 
 (def function find-class-store-location (owner-class definer-class)
   (second (find (class-name definer-class) (effective-store-of owner-class) :key #'first)))
+
+(def function view-name-for-class (class suffix)
+  (rdbms-name-for (concatenate-string (symbol-name (class-name class)) suffix) :view))
 
 (def function make-oid-column ()
   "Creates an RDBMS column that will be used to store the oid of the instances in this table."
