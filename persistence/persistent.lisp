@@ -347,7 +347,7 @@
               (bind ((oid-table (table-of slot)))
                 (when oid-table
                   (bind ((referer-slots (gethash oid-table table->referer-slots-map)))
-                    (unless (find (columns-of slot) referer-slots :key #'columns-of :test #'equal)
+                    (unless (find (column-names-of slot) referer-slots :key #'column-names-of :test #'equal)
                       (setf (gethash oid-table table->referer-slots-map)
                             (pushnew slot referer-slots)))))))))
     (iter (for (table referer-slots) :in-hashtable table->referer-slots-map)

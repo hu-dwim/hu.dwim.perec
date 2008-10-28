@@ -50,3 +50,19 @@
 
 (def method export-to-rdbms ((view view))
   (update-view (name-of view) (columns-of view) (query-of view)))
+
+;;;;;;
+;;; Functional
+
+(def function column-equal-p (column-1 column-2)
+  (and (equalp (rdbms::name-of column-1)
+               (rdbms::name-of column-2))
+       (rdbms::equal-type-p (rdbms::type-of column-1)
+                            (rdbms::type-of column-2)
+                            *database*)
+       (or (and (not (slot-boundp column-1 'rdbms::default-value))
+                (not (slot-boundp column-2 'rdbms::default-value)))
+           (equalp (rdbms::default-value-of column-1)
+                   (rdbms::default-value-of column-2)))
+       (equalp (rdbms::constraints-of column-1)
+               (rdbms::constraints-of column-2))))
