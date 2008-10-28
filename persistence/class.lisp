@@ -490,9 +490,8 @@
 
 (def generic compute-columns (slot)
   (:method ((slot persistent-effective-slot-definition))
-    (awhen (primary-class-of slot)
-      (bind ((primary-class (primary-class-of slot))
-             (class-name (class-name primary-class))
+    (when-bind primary-class (primary-class-of slot)
+      (bind ((class-name (class-name primary-class))
              (name (slot-definition-name slot))
              (type (canonical-type-of slot))
              (mapping (mapping-of slot))
