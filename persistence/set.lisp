@@ -96,40 +96,49 @@
 (defmethod (setf list-of) (new-value (set persistent-slot-set-container))
   (store-slot-set (instance-of set) (slot-of set) new-value))
 
-(defmethod iterate-items ((set persistent-slot-set-container) fn)
-  (mapc fn (list-of set)))
+(defmethod iterate-items ((set persistent-slot-set-container) function)
+  (mapc function (list-of set)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lazy persistent set with identity
 
+(defpclass persistent-set-element ()
+  ()
+  (:abstract #t)
+  (:direct-store :push-down))
+
 (defpclass persistent-set ()
   ())
 
-;; TODO: implement persistent set with identity (needs a separate table just like m-n associations to store references)
+(defassociation*
+  ((:class persistent-set :slot items :type (set persistent-set-element))
+   (:class persistent-set-element :slot sets :type (set persistent-set))))
 
-(defmethod insert-item ((set persistent-set) (item persistent-object))
-  (not-yet-implemented))
+(defmethod insert-item ((set persistent-set) (item persistent-set-element))
+  (insert-item (items-of* set) item))
 
-(defmethod delete-item ((set persistent-set) (item persistent-object))
-  (not-yet-implemented))
+(defmethod delete-item ((set persistent-set) (item persistent-set-element))
+  (delete-item (items-of* set) item))
 
-(defmethod find-item ((set persistent-set) (item persistent-object))
-  (not-yet-implemented))
+(defmethod find-item ((set persistent-set) (item persistent-set-element))
+  (find-item (items-of* set) item))
 
 (defmethod size ((set persistent-set))
-  (not-yet-implemented))
+  (with-lazy-slot-value-collections
+    (size (items-of set))))
 
 (defmethod empty-p ((set persistent-set))
   (= 0 (size set)))
 
 (defmethod empty! ((set persistent-set))
-  (not-yet-implemented))
+  (with-lazy-slot-value-collections
+    (empty! (items-of set))))
 
 (defmethod list-of ((set persistent-set))
-  (not-yet-implemented))
+  (items-of set))
 
-(defmethod (setf list-of) (new-value (set persistent-set))
-  (not-yet-implemented))
+(defmethod (setf list-of) (items (set persistent-set))
+  (setf (items-of set) items))
 
-(defmethod iterate-items ((set persistent-set) fn)
-  (not-yet-implemented))
+(defmethod iterate-items ((set persistent-set) function)
+  (mapc function (items-of set)))

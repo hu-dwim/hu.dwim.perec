@@ -145,6 +145,9 @@
            ;; persistent classes, all persistent-classes are valid slot types
            #:persistent-object
            #:persistent-set
+           #:persistent-set-element
+           #:items-of
+           #:sets-of
 
            ;; most of the transaction API is inherited from cl-rdbms
            #:with-database
