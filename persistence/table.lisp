@@ -64,5 +64,6 @@
                 (not (slot-boundp column-2 'rdbms::default-value)))
            (equalp (rdbms::default-value-of column-1)
                    (rdbms::default-value-of column-2)))
-       (equalp (rdbms::constraints-of column-1)
-               (rdbms::constraints-of column-2))))
+       (every [eq (class-of !1) (class-of !2)]
+              (rdbms::constraints-of column-1)
+              (rdbms::constraints-of column-2))))
