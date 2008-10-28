@@ -68,6 +68,10 @@
            #:unique-p
            #:required-p
            #:association-end-query-of
+           #:direct-instances-identity-view-of
+           #:direct-instances-data-view-of
+           #:all-instances-identity-view-of
+           #:all-instances-data-view-of
            #:-instance-
            #:-associated-instance-
 
@@ -146,8 +150,6 @@
            #:persistent-object
            #:persistent-set
            #:persistent-set-element
-           #:items-of
-           #:sets-of
 
            ;; most of the transaction API is inherited from cl-rdbms
            #:with-database
@@ -216,12 +218,16 @@
            #:find-item
            #:iterate-items
            #:list-of
+           #:items-of
+           #:sets-of
 
+           ;; consistency checks
            #:signal-broken-database
            #:signal-broken-references
            #:signal-broken-instances
 
            ;; query
+           #:make-query-for-classes-and-slots
            #:query
            #:copy-query
            #:query-builder
