@@ -467,9 +467,13 @@
 
 (def generic compute-primary-class (slot)
   (:method ((slot persistent-effective-slot-definition))
-    (bind ((owner-class (slot-definition-class slot))
+    (bind ((type (canonical-type-of slot))
+           (owner-class (slot-definition-class slot))
            (slot-definer-superclass (slot-definer-superclass slot)))
-      (awhen (find-class-store-location owner-class slot-definer-superclass)
+      (awhen (if (set-type-p* type)
+                 (bind ((referred-class (find-class (set-type-class-for type))))
+                   (find-class-store-location referred-class referred-class))
+                 (find-class-store-location owner-class slot-definer-superclass))
         (find-class it)))))
 
 (def generic compute-table (slot)
