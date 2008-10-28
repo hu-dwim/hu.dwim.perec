@@ -60,6 +60,13 @@
       (list :dimensions (mapcar 'lookup-dimension (merge-dimensions (mapcar #'dimensions-of direct-slot-definitions))))
       (call-next-method)))
 
+(def method compute-persistent-effective-slot-definition-option ((class persistent-class) (direct-slot persistent-association-end-direct-slot-definition-d)
+                                                                 slot-option-name
+                                                                 direct-slot-definitions)
+  (if (eq slot-option-name 'dimensions)
+      (list :dimensions (mapcar 'lookup-dimension (merge-dimensions (mapcar #'dimensions-of direct-slot-definitions))))
+      (call-next-method)))
+
 (def method initialize-instance :after ((instance persistent-effective-slot-definition-d) &key &allow-other-keys)
   (assert (dimensions-of instance)))
 

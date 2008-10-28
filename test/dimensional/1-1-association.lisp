@@ -55,15 +55,16 @@
                      :slot-names '(time-and-validity-dependent-sister time-and-validity-dependent-brother)))
 
 (def test test/dimensional/association/1-1/store-value/2 ()
-  (with-transaction
-    (bind ((brother (make-instance 'dimensional-brother-test))
-           (sister1 (make-instance 'dimensional-sister-test))
-           (sister2 (make-instance 'dimensional-sister-test)))
-      (setf (sister-of brother) sister1)
-      (setf (brother-of sister2) brother)
-      (is (eq sister2 (sister-of brother)))
-      (is (eq brother (brother-of sister2)))
-      (is (null (brother-of sister1))))))
+  (bind ((*simplify-d-values* #t))
+    (with-transaction
+     (bind ((brother (make-instance 'dimensional-brother-test))
+            (sister1 (make-instance 'dimensional-sister-test))
+            (sister2 (make-instance 'dimensional-sister-test)))
+       (setf (sister-of brother) sister1)
+       (setf (brother-of sister2) brother)
+       (is (eq sister2 (sister-of brother)))
+       (is (eq brother (brother-of sister2)))
+       (is (null (brother-of sister1)))))))
 
 (def test test/dimensional/association/1-1/integrity () 
   (bind ((brother-1 (with-transaction (make-instance 'dimensional-brother-test)))
@@ -73,7 +74,7 @@
 
     (with-transaction
       (with-revived-instances (brother-1 sister-1 sister-2 brother-2)
-        (with-time "2002-01-01"
+        (with-time (parse-datestring "2002-01-01")
           (with-validity-range "2002-01-01" +end-of-time+
             (setf (slot-value sister-1 'time-and-validity-dependent-brother) brother-1))
           ;; this clears the sister-1's slot on the intersection of this and previous interval
@@ -85,13 +86,19 @@
 
     (with-transaction
       (with-revived-instances (sister-1 brother-1 brother-2)
-        (with-time "2002-01-01"
+        (with-time (parse-datestring "2002-01-01")
           (with-validity-range +beginning-of-time+ +end-of-time+
-            (is (values-having-validity=
-                 (consolidate-values-having-validity
-                  (slot-value sister-1 'time-and-validity-dependent-brother))
-                 (make-values-having-validity*
-                  (list (list nil "1000-01-01T00:00:00Z" "2000-01-01T00:00:00Z")
-                        (list brother-2 "2000-01-01T00:00:00Z" "2002-01-01T00:00:00Z")
-                        (list nil "2002-01-01T00:00:00Z" "2003-01-01T00:00:00Z")
-                        (list brother-1 "2003-01-01T00:00:00Z" "3000-01-01T00:00:00Z")))))))))))
+            (is (d-value-equal
+                 (slot-value sister-1 'time-and-validity-dependent-brother)
+                 (make-d-value
+                  '(time validity)
+                  (list
+                   (list (make-empty-coordinate-range (parse-datestring "2002-01-01"))
+                         (make-coordinate-range 'ie +beginning-of-time+ (parse-datestring "2000-01-01")))
+                   (list (make-empty-coordinate-range (parse-datestring "2002-01-01"))
+                         (make-coordinate-range 'ie (parse-datestring "2000-01-01") (parse-datestring "2002-01-01")))
+                   (list (make-empty-coordinate-range (parse-datestring "2002-01-01"))
+                         (make-coordinate-range 'ie (parse-datestring "2002-01-01") (parse-datestring "2003-01-01")))
+                   (list (make-empty-coordinate-range (parse-datestring "2002-01-01"))
+                         (make-coordinate-range 'ie (parse-datestring "2003-01-01") +end-of-time+)))
+                  (list nil brother-2 nil brother-1))))))))))

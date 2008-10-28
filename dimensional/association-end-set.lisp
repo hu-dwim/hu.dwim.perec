@@ -3,24 +3,28 @@
 ;;;;;;;;;;;;;;;;;;
 ;; Store interface
 
-(def generic insert-into-association-end-set-d (instance d-association-end item)
+(def generic insert-into-association-end-set-d (instance d-association-end item &key coordinates)
   (:documentation "TODO"))
 
-(def generic delete-from-association-end-set-d (instance d-association-end item)
+(def generic delete-from-association-end-set-d (instance d-association-end item &key coordinates)
   (:documentation "TODO"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; t-s lazy association end set containers
+;;; d-s lazy association end set containers
 
 
 (def class* persistent-association-end-set-container-d (persistent-association-end-set-container)
   ())
 
 (def method insert-item ((set persistent-association-end-set-container-d) item)
-  (insert-into-association-end-set-d (instance-of set) (slot-of set) item))
+  (insert-into-association-end-set-d (instance-of set) (slot-of set) item
+                                     :coordinates (collect-coordinates-from-variables
+                                                   (dimensions-of (slot-of set)))))
 
 (def method delete-item ((set persistent-association-end-set-container-d) item)
-  (delete-from-association-end-set-d (instance-of set) (slot-of set) item))
+  (delete-from-association-end-set-d (instance-of set) (slot-of set) item
+                                     :coordinates (collect-coordinates-from-variables
+                                                   (dimensions-of (slot-of set)))))
 
 (def method find-item ((set persistent-association-end-set-container-d) (item persistent-object))
   (not-yet-implemented))
