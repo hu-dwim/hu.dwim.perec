@@ -17,7 +17,7 @@
   "Generates a select for the oids of instances of the class named CLASS-NAME."
   (bind ((class (find-class class-name)))
     (ensure-class-and-subclasses-exported class)
-    (sql-select-oids-from-table (all-instances-data-view-of class))))
+    (sql-select-oids-from-table (all-instances-identity-view-of class))))
 
 (defun sql-select-oids-from-table (thing)
   "Generates a select for the oids in THING."
@@ -264,8 +264,13 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   
   (:method ((class persistent-class) &optional alias)
     (ensure-class-and-subclasses-exported class)
-    (when-bind relation (all-instances-data-view-of class)
-      (sql-table-reference-for relation alias)))
+    (when-bind query (make-query-for-classes-and-slots
+                      (list* class (persistent-effective-subclasses-of class))
+                      (collect-if [data-table-slot-p (find-slot class !1)]
+                       (mapcar #'slot-definition-name
+                               (collect-if (of-type 'persistent-direct-slot-definition)
+                                           (class-direct-slots class)))))
+      (sql-derived-table :subquery (sql-subquery :query query) :alias (sql-alias-for alias))))
 
   (:method ((type-name symbol) &optional alias)
     (bind ((class (find-class type-name #f)))
