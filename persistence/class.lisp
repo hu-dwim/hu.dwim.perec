@@ -490,41 +490,42 @@
 
 (def generic compute-columns (slot)
   (:method ((slot persistent-effective-slot-definition))
-    (when-bind primary-class (primary-class-of slot)
-      (bind ((class-name (class-name primary-class))
-             (name (slot-definition-name slot))
-             (type (canonical-type-of slot))
-             (mapping (mapping-of slot))
-             (rdbms-types (column-types-of slot)))
-        (when type
-          (cond ((set-type-p* type)
-                 (list (make-column-for-reference-slot class-name (concatenate-string (symbol-name name) "-for-" (symbol-name class-name)))))
-                ((persistent-class-type-p* type)
-                 (append
-                  (when (tagged-p mapping)
-                    (list (make-tag-column mapping name)))
-                  (list (make-column-for-reference-slot class-name name))))
-                ((primitive-type-p* type)
-                 (append
-                  (when (tagged-p mapping)
-                    (list (make-tag-column mapping name)))
-                  (list
-                   (make-instance 'column
-                                  :name (rdbms-name-for name :column)
-                                  :type (if (tagged-p mapping)
-                                            (second rdbms-types)
-                                            (first rdbms-types))
-                                  ;; TODO: add null constraint if type-check is :always (and (not (subytpep 'null type))
-                                  ;;                                                         (not (subytpep 'unbound type)))
-                                  :constraints (if (unique-p slot)
-                                                   (list (sql-unique-constraint)))
-                                  :index (if (and (index-p slot)
-                                                  (not (unique-p slot)))
-                                             (sql-index :name
-                                                        (rdbms-name-for (concatenate-symbol name "-on-" class-name "-idx")
-                                                                        :index)))))))
-                (t
-                 (error "Unknown type ~A in slot ~A" type slot))))))))
+    (bind ((class (slot-definition-class slot))
+           (primary-class (primary-class-of slot))
+           (class-name (class-name (or primary-class class)))
+           (name (slot-definition-name slot))
+           (type (canonical-type-of slot))
+           (mapping (mapping-of slot))
+           (rdbms-types (column-types-of slot)))
+      (when type
+        (cond ((set-type-p* type)
+               (list (make-column-for-reference-slot class-name (concatenate-string (symbol-name name) "-for-" (symbol-name class-name)))))
+              ((persistent-class-type-p* type)
+               (append
+                (when (tagged-p mapping)
+                  (list (make-tag-column mapping name)))
+                (list (make-column-for-reference-slot class-name name))))
+              ((primitive-type-p* type)
+               (append
+                (when (tagged-p mapping)
+                  (list (make-tag-column mapping name)))
+                (list
+                 (make-instance 'column
+                                :name (rdbms-name-for name :column)
+                                :type (if (tagged-p mapping)
+                                          (second rdbms-types)
+                                          (first rdbms-types))
+                                ;; TODO: add null constraint if type-check is :always (and (not (subytpep 'null type))
+                                ;;                                                         (not (subytpep 'unbound type)))
+                                :constraints (if (unique-p slot)
+                                                 (list (sql-unique-constraint)))
+                                :index (if (and (index-p slot)
+                                                (not (unique-p slot)))
+                                           (sql-index :name
+                                                      (rdbms-name-for (concatenate-symbol name "-on-" class-name "-idx")
+                                                                      :index)))))))
+              (t
+               (error "Unknown type ~A in slot ~A" type slot)))))))
 
 ;;;;;;;;;;;
 ;;; Utility
