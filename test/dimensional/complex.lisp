@@ -800,6 +800,7 @@
                      ((validity-begin . validity-end) (random-timestamp-interval timestamps 0.0)))
                 (with-transaction
                   (format t "Starting new transaction~%")
+                  (incf *transaction-counter*)
                   (iter (repeat operation-count)
                         (with-time-range time-begin time-end
                           (with-validity-range validity-begin validity-end
