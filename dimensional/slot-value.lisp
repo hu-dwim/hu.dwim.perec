@@ -47,7 +47,7 @@
     (assert-instance-access instance persistent)
     (bind (((:values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
       (when (or (not persistent)
-                slot-value-cached)
+                (and cache-p slot-value-cached))
         (if (unbound-slot-marker-p cached-value)
             (return-from slot-boundp-or-value-using-class-d +unbound-slot-marker+)
             (bind ((d-value (value-at-coordinates cached-value coordinates)))
