@@ -499,19 +499,19 @@
                   (list (rdbms::expand-sql-ast-into-lambda-form
                          (sql-select
                            :columns (list (cl-rdbms::sql-count-*))
-                           :tables (list (sql-table-reference-for
-                                          (sql-subquery
-                                            :query
-                                            (sql-select
-                                              :distinct distinct
-                                              :columns columns
-                                              :tables tables
-                                              :where where
-                                              :group-by group-by
-                                              :having having
-                                              :offset offset
-                                              :limit limit))
-                                          (gensym "pg")))))))))))
+                           :tables (list (sql-derived-table
+                                           :subquery (sql-subquery
+                                                       :query
+                                                       (sql-select
+                                                         :distinct distinct
+                                                         :columns columns
+                                                         :tables tables
+                                                         :where where
+                                                         :group-by group-by
+                                                         :having having
+                                                         :offset offset
+                                                         :limit limit))
+                                           :alias (gensym "pg")))))))))))
 
   (:method ((filter filter-operation))
     (with-slots (input condition) filter
@@ -605,11 +605,11 @@
                                   variables)))))))))
         ;; sql deletes
         (sql-query-node
-         (assert (length= 1 variables))  ; FIXME check earlier
+         (assert (length= 1 variables)) ; FIXME check earlier
          (bind ((variable (first (variables-of delete)))
                 (type (persistent-type-of variable))
                 (tables (when (persistent-class-p type) (tables-for-delete type))))
-           (if (length= 1 tables)        ; simple delete
+           (if (length= 1 tables)       ; simple delete
                `(execute ,(rdbms::expand-sql-ast-into-lambda-form
                            (sql-delete-from-table (first tables) :where (where-of input))))
                (bind (((:values create-temporary-table deletes drop-temporary-table)

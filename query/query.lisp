@@ -96,11 +96,13 @@
               (list :result-type (result-type-of query))))))
 
 (defun mapc-query (fn query)
-  (mapc fn (asserts-of query))
   (mapc fn (action-args-of query))
+  (mapc fn (asserts-of query))
   (mapc fn (group-by-of query))
   (mapc fn (having-of query))
-  (mapc #L(when (syntax-object-p !1) (funcall fn !1)) (order-by-of query)))
+  (mapc #L(when (syntax-object-p !1) (funcall fn !1)) (order-by-of query))
+  (when (offset-of query) (funcall fn (offset-of query)))
+  (when (limit-of query) (funcall fn (limit-of query))))
 
 (defun map-query (f query)
   (setf (action-args-of query) (mapcar [funcall f :action-arg !1] (action-args-of query))

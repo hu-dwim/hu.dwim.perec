@@ -21,7 +21,8 @@
 
 (defun sql-select-oids-from-table (thing)
   "Generates a select for the oids in THING."
-  (sql-select :columns +oid-column-names+ :tables (list (sql-table-reference-for thing nil))))
+  (sql-select :columns +oid-column-names+
+              :tables (list (sql-table-reference-for thing nil))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Deletes
@@ -192,15 +193,11 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defun prefetched-slots-for (variable prefetch-mode)
   (ecase prefetch-mode
     (:none nil)
-    (:accessed
+    ((:accessed :all)
      (bind ((type (persistent-type-of variable)))
        (when (persistent-class-p type)
-         (collect-if #L(eq (table-of !1) (primary-table-of type))
-                     (prefetched-slots-of type)))))
-    (:all
-     (bind ((type (persistent-type-of variable)))
-       (when (persistent-class-p type)
-         (prefetched-slots-of type))))))
+         (mapcar [find-slot type !1]
+                 (referenced-slots-of variable)))))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Table references
@@ -210,83 +207,106 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
            (bind ((variables (query-variables-of query)))
              (delete nil (mapcar 'sql-table-reference-for variables variables)))))
 
-(defgeneric sql-table-reference-for (element alias)
+(defgeneric sql-table-reference-for (element alias &optional referenced-slots)
+
+  (:method ((element null) alias &optional referenced-slots)
+    (declare (ignore element alias referenced-slots))
+    nil)
   
-  (:method ((table sql-table-alias) (alias null))
+  (:method ((table sql-table-alias) (alias null) &optional referenced-slots)
+    (declare (ignore referenced-slots))
     table)
   
-  (:method ((table table) alias)
+  (:method ((table table) alias &optional referenced-slots)
+    (declare (ignore referenced-slots))
     (ensure-exported table)
     (sql-table-alias :name (name-of table) :alias (sql-alias-for alias)))
 
-  (:method ((view view) alias)
+  (:method ((view view) alias &optional referenced-slots)
+    (declare (ignore referenced-slots))
     (ensure-exported view)
     (sql-table-alias :name (name-of view) :alias (sql-alias-for alias)))
 
-  (:method ((subquery sql-subquery) alias)
+  (:method ((subquery sql-subquery) alias &optional referenced-slots)
+    (declare (ignore referenced-slots))
     (sql-derived-table :subquery subquery :alias (or (sql-alias-for alias) ; Postgresql requires alias
                                                      (rdbms-name-for (symbol-name (gensym "pg"))))))
 
-  (:method ((class persistent-class) alias)
-    (sql-table-reference-for-type class (sql-alias-for alias)))
+  (:method ((class persistent-class) alias &optional referenced-slots)
+    (sql-table-reference-for-type class referenced-slots (sql-alias-for alias)))
 
-  (:method ((class-name symbol) alias)
+  (:method ((class-name symbol) alias &optional referenced-slots)
     (aif (find-class class-name)
-         (sql-table-reference-for it alias)
+         (sql-table-reference-for it alias referenced-slots)
          (error "No persistent class named '~A~%" class-name)))
 
-  (:method ((variable query-variable) alias)
+  (:method ((variable query-variable) alias &optional referenced-slots)
+    (declare (ignore referenced-slots))
     (assert (not (eq (persistent-type-of variable) +unknown-type+)))
     (sql-table-reference-for-type
-     `(join ,(persistent-type-of variable) ,@(joined-types-of variable))
+     (persistent-type-of variable)
+     (referenced-slots-of variable)
      (sql-alias-for alias)))
 
-  (:method ((association persistent-association) alias)
+  (:method ((association persistent-association) alias &optional referenced-slots)
     (assert (eq (association-kind-of association) :m-n))
     (ensure-exported association)
-    (sql-table-reference-for (primary-table-of association) alias))
+    (sql-table-reference-for (primary-table-of association) alias referenced-slots))
 
-  (:method :around ((syntax syntax-object) (alias null))
-    (make-function-call :fn 'sql-table-reference-for :args (list syntax alias)))
+  ;; delay eval
+  (:method :around ((syntax syntax-object) (alias null) &optional referenced-slots)
+    (make-function-call :fn 'sql-table-reference-for
+                        :args (list syntax alias (make-literal-value :value referenced-slots))))
 
-  (:method :around ((syntax syntax-object) (alias string))
-    (make-function-call :fn 'sql-table-reference-for :args (list syntax alias)))
+  (:method :around ((syntax syntax-object) (alias string) &optional referenced-slots)
+    (make-function-call :fn 'sql-table-reference-for
+                        :args (list syntax alias (make-literal-value :value referenced-slots))))
 
-  (:method :around (element (syntax syntax-object))
+  (:method :around (element (syntax syntax-object) &optional referenced-slots)
     (typecase syntax
       (query-variable (call-next-method))
-      (t (make-function-call :fn 'sql-table-reference-for :args (list element syntax))))))
+      (t (make-function-call :fn 'sql-table-reference-for
+                             :args (list element syntax (make-literal-value :value referenced-slots)))))))
 
-(def function sql-table-reference-for-type (type &optional alias)
-  (sql-table-reference-for-type* (simplify-persistent-class-type type) alias))
+(def function sql-table-reference-for-type (type referenced-slots alias)
+  (sql-table-reference-for-type* (simplify-persistent-class-type type) referenced-slots alias))
 
-(defgeneric sql-table-reference-for-type* (type &optional alias)
+(defgeneric sql-table-reference-for-type* (type referenced-slots alias)
   
-  (:method ((class persistent-class) &optional alias)
+  (:method ((class persistent-class) referenced-slots alias)
     (ensure-class-and-subclasses-exported class)
-    (when-bind query (make-query-for-classes-and-slots
+    (cond
+      ((null referenced-slots)
+       (sql-table-reference-for (all-instances-identity-view-of class) alias))
+      ((every* [eq !1 (slot-definition-name !2)] referenced-slots (prefetched-slots-of class))
+       (sql-table-reference-for (all-instances-prefetch-view-of class) alias))
+      ((every* [eq !1 (slot-definition-name !2)] referenced-slots (data-table-slots-of class))
+       (sql-table-reference-for (all-instances-data-view-of class) alias))
+      (t
+       (when-bind query (make-query-for-classes-and-slots
                       (list* class (persistent-effective-subclasses-of class))
-                      (collect-if [data-table-slot-p (find-slot class !1)]
-                       (mapcar #'slot-definition-name
-                               (collect-if (of-type 'persistent-direct-slot-definition)
-                                           (class-direct-slots class)))))
-      (sql-derived-table :subquery (sql-subquery :query query) :alias (sql-alias-for alias))))
+                      referenced-slots)
+      (sql-derived-table :subquery (sql-subquery :query query) :alias (sql-alias-for alias))))))
 
-  (:method ((type-name symbol) &optional alias)
+  (:method ((type-name symbol) referenced-slots alias)
     (bind ((class (find-class type-name #f)))
       (typecase class
-        (persistent-class (sql-table-reference-for-type* class alias))
+        (persistent-class (sql-table-reference-for-type* class referenced-slots alias))
         (otherwise nil))))              ; FIXME signal error
 
-  (:method ((type syntax-object) &optional alias) ;; type unknown at compile time
+  (:method ((type syntax-object)  referenced-slots alias) ;; type unknown at compile time
     (debug-only (check-type alias (or null string)))
-    (sql-unquote :form `(sql-table-reference-for-type ,(backquote-type-syntax type) ,alias)))
+    (sql-unquote :form `(sql-table-reference-for-type ,(backquote-type-syntax type)
+                                                      ',referenced-slots
+                                                      ,alias)))
 
-  (:method ((combined-type list) &optional alias)
+  (:method ((combined-type list)  referenced-slots alias)
     (debug-only (check-type alias (or null string)))
     (if (contains-syntax-p combined-type)
         ;; delay evaluation until run-time
-        (sql-unquote :form `(sql-table-reference-for-type ,(backquote-type-syntax combined-type) ,alias))
+        (sql-unquote :form `(sql-table-reference-for-type ,(backquote-type-syntax combined-type)
+                                                          ',referenced-slots
+                                                          ,alias))
         ;; and/or/not types
         (labels ((ensure-sql-query (table-ref)
                    (assert (not (syntax-object-p table-ref)))
@@ -304,38 +324,19 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
                         :alias alias))))
                  (combine-types (sql-set-operation types)
                    (bind ((operands (delete nil
-                                            (mapcar 'sql-table-reference-for-type* types))))
+                                            (mapcar [sql-table-reference-for-type* !1 referenced-slots nil]
+                                                    types))))
                      (case (length operands)
                        (0 nil)
                        (1 (ensure-alias (first operands)))
                        (t (ensure-alias
                            (sql-subquery
                              :query (apply sql-set-operation
-                                           (mapcar #'ensure-sql-query operands))))))))
-                 (join-types (types)
-                   (bind ((primary-table-ref (sql-table-reference-for-type*
-                                              (first types) (gensym "x")))
-                          (joined-table-refs
-                           (mapcan
-                            #L(when (primary-table-of !1)
-                                (list (sql-table-reference-for (primary-table-of !1) nil)))
-                            (rest types))))
-                     (cond
-                       ((null primary-table-ref) nil)
-                       ((null joined-table-refs) (ensure-alias primary-table-ref))
-                       (t (ensure-alias
-                           (reduce #L(sql-joined-table
-                                       :kind :inner
-                                       :left !1
-                                       :right !2
-                                       :using (list +oid-column-name+))
-                                   joined-table-refs
-                                   :initial-value primary-table-ref)))))))
+                                           (mapcar #'ensure-sql-query operands)))))))))
           (case (car combined-type)
             (or (combine-types 'sql-union (rest combined-type)))
             (and (combine-types 'sql-intersect (rest combined-type)))
             (not (not-yet-implemented))
-            (join (join-types (rest combined-type)))
             (t (error "Unsupported type constructor in ~A" combined-type)))))))
 
 ;;;----------------------------------------------------------------------------
@@ -390,7 +391,8 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defun sql-exists-subselect-for-variable (variable type)
   "Returns an sql expression which evaluates to true iff the query variable named VARIABLE-NAME
  has the type TYPE."
-  (bind ((table-ref (sql-table-reference-for-type type type)))
+  (check-type type persistent-class)
+  (bind ((table-ref (sql-table-reference-for type type)))
     (if table-ref
         (sql-exists
          (sql-subquery
@@ -420,7 +422,8 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   (bind ((1-association-end (other-association-end-of n-association-end))
          (n-class (slot-definition-class 1-association-end))
          (n-var (make-query-variable :name (gensym (symbol-name (class-name n-class)))
-                                     :persistent-type n-class))
+                                     :persistent-type n-class
+                                     :referenced-slots (list (slot-definition-name 1-association-end))))
          (table-ref (sql-table-reference-for n-var n-var)))
     (cond
       (table-ref
@@ -451,7 +454,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defun sql-subselect-for-secondary-association-end (association-end variable)
   (bind ((primary-association-end (other-association-end-of association-end))
          (class (slot-definition-class primary-association-end))
-         (table-ref (sql-table-reference-for class nil)))
+         (table-ref (sql-table-reference-for class nil (list (slot-definition-name primary-association-end)))))
     (if table-ref
         (sql-subquery
           :query

@@ -119,7 +119,7 @@ Be careful when using in different situations, because it modifies *readtable*."
 
 (define-syntax-node query-variable (variable)
   ((persistent-type +persistent-object-class+)
-   (joined-types nil)))
+   (referenced-slots nil)))
 
 (define-syntax-node joined-variable (query-variable)
   ((object :documentation "Object which owns the association-end.")

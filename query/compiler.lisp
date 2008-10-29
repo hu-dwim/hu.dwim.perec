@@ -186,8 +186,8 @@ with the result of the naively compiled query.")
   (normalize-query query)
   (infer-types query)
   (normalize-association-end-access query)
-  (introduce-joined-variables query)
-  (add-prefetched-types query)
+  (set-slot-references query)
+  (add-prefetched-slots query)
   (partial-eval-query query)
   query)
 
@@ -299,40 +299,39 @@ with the result of the naively compiled query.")
       (?otherwise
        call))))
 
-(defun introduce-joined-variables (query)
-  (mapc-query (lambda (expr) (introduce-joined-variables-for expr query)) query))
+(defun set-slot-references (query)
+  (mapc-query (lambda (expr) (set-slot-references-in expr query)) query))
 
-(defgeneric introduce-joined-variables-for (syntax query)
+(defgeneric set-slot-references-in (syntax query)
   (:documentation "Substitutes the arguments of slot accessor forms with joined variables.")
   ;; atoms, unparsed
   (:method (syntax query)
     (values))
   ;; subselect
   (:method ((subselect subselect) query)
-    (introduce-joined-variables subselect))
+    (set-slot-references subselect))
   ;; recurse on compound forms
   (:method ((syntax compound-form) query)
-    (mapc #L(introduce-joined-variables-for !1 query) (operands-of syntax)))  
+    (mapc #L(set-slot-references-in !1 query) (operands-of syntax)))  
   ;; slot access -> ensure that arg is a query variable with the correct type
   (:method ((access slot-access) query)
     (call-next-method)
     (when (association-end-access-p (arg-of access)) ;; TODO check 1-ary end
-      (setf (arg-of access)
-            (joined-variable-for-association-end-access query (arg-of access))))
-    (when (slot-of access)
-      (setf (arg-of access)
-            (ensure-type query (arg-of access) (slot-definition-class (slot-of access)))))
+      (bind ((joined-variable (joined-variable-for-association-end-access query (arg-of access))))
+        (setf (arg-of access) joined-variable)))
+    (when (query-variable-p (arg-of access)) ; FIXME association-ends?
+      (when (slot-of access) ; FIXME handle this case properly
+          (pushnew (slot-definition-name (slot-of access))
+                   (referenced-slots-of (arg-of access)))))
     (values)))
 
-(defun add-prefetched-types (query)
+(defun add-prefetched-slots (query)
   (when (eq (prefetch-mode-of query) :all)
     (dolist (variable (query-variables-of query))
       (bind ((type (persistent-type-of variable)))
         (when (persistent-class-p type)
-          (dolist (class (persistent-effective-superclasses-of type))
-            (when (and (primary-table-of class)
-                       (prefetched-slots-of class))
-              (ensure-variable-type variable class))))))))
+          (setf (referenced-slots-of variable)
+                (mapcar #'slot-definition-name (prefetched-slots-of type))))))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Optimize
@@ -372,28 +371,6 @@ with the result of the naively compiled query.")
   (or (and (query-variable-p object) (eq (persistent-type-of object) type) object)
       (find-joined-variable-by-definition query object association-end type)
       (make-new-joined-variable query object association-end type)))
-
-(defun ensure-type (query object type)
-  (acond
-    ((eq (persistent-type-of object) +unknown-type+)
-     (progn (setf (persistent-type-of object) type) object)) ; FIXME?
-
-    ((eq (persistent-type-of object) type)
-     object)
-
-    ((query-variable-p object)
-     (ensure-variable-type object type)
-     object)
-
-    ((find-joined-variable-by-definition query object nil type)
-     it)
-
-    (t
-     (make-new-joined-variable query object nil type))))
-
-(defun ensure-variable-type (variable type)
-  (unless (find type (joined-types-of variable))
-    (push type (joined-types-of variable))))
 
 (defun find-joined-variable-by-definition (query object association-end type)
   (find-if
