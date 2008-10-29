@@ -65,6 +65,10 @@
     (compute-as (compute-direct-instances-identity-view -self-))
     :type (or null view)
     :documentation "The view which provides the oid for the direct instances of this class.")
+   (direct-instances-prefetch-view
+    (compute-as (compute-direct-instances-prefetch-view -self-))
+    :type (or null view)
+    :documentation "The view which provides the oid for the direct instances of this class.")
    (direct-instances-data-view
     (compute-as (compute-direct-instances-data-view -self-))
     :type (or null view)
@@ -73,6 +77,10 @@
     (compute-as (compute-all-instances-identity-view -self-))
     :type (or null view)
     :documentation "The view which provides the oid for all instances of this class.")
+   (all-instances-prefetch-view
+    (compute-as (compute-all-instances-prefetch-view -self-))
+    :type (or null view)
+    :documentation "The view which provides the data for the effective slots of all instances of this class.")
    (all-instances-data-view
     (compute-as (compute-all-instances-data-view -self-))
     :type (or null view)
@@ -292,9 +300,13 @@
     (ensure-exported association))
   (awhen (direct-instances-identity-view-of class)
     (ensure-exported it))
+  (awhen (direct-instances-prefetch-view-of class)
+    (ensure-exported it))
   (awhen (direct-instances-data-view-of class)
     (ensure-exported it))
   (awhen (all-instances-identity-view-of class)
+    (ensure-exported it))
+  (awhen (all-instances-prefetch-view-of class)
     (ensure-exported it))
   (awhen (all-instances-data-view-of class)
     (ensure-exported it)))
@@ -429,6 +441,12 @@
                                      (list class)
                                      nil)))
 
+(def generic compute-direct-instances-prefetch-view (class)
+  (:method ((class persistent-class))
+    (make-view-for-classes-and-slots (view-name-for-class class "_dp")
+                                     (list class)
+                                     (mapcar #'slot-definition-name (prefetched-slots-of class)))))
+
 (def generic compute-direct-instances-data-view (class)
   (:method ((class persistent-class))
     (make-view-for-classes-and-slots (view-name-for-class class "_dd")
@@ -440,6 +458,12 @@
     (make-view-for-classes-and-slots (view-name-for-class class "_ai")
                                      (list* class (persistent-effective-subclasses-of class))
                                      nil)))
+
+(def generic compute-all-instances-prefetch-view (class)
+  (:method ((class persistent-class))
+    (make-view-for-classes-and-slots (view-name-for-class class "_ap")
+                                     (list* class (persistent-effective-subclasses-of class))
+                                     (mapcar #'slot-definition-name (prefetched-slots-of class)))))
 
 (def generic compute-all-instances-data-view (class)
   (:method ((class persistent-class))
