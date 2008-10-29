@@ -16,10 +16,16 @@
 (def class* persistent-association-end-set-container-d (persistent-association-end-set-container)
   ())
 
+(def method check-insert-item ((set persistent-association-end-set-container-d) item)
+  nil)
+
 (def method insert-item ((set persistent-association-end-set-container-d) item)
   (insert-into-association-end-set-d (instance-of set) (slot-of set) item
                                      :coordinates (collect-coordinates-from-variables
                                                    (dimensions-of (slot-of set)))))
+
+(def method check-delete-item ((set persistent-association-end-set-container-d) item)
+  nil)
 
 (def method delete-item ((set persistent-association-end-set-container-d) item)
   (delete-from-association-end-set-d (instance-of set) (slot-of set) item

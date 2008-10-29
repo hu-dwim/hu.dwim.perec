@@ -49,9 +49,13 @@
    (slot
     :type persistent-effective-slot-definition)))
 
+(def generic check-insert-item (set item)
+  (:method ((set persistent-slot-set-container) item)
+    (when (find-item set item)
+      (error "The item ~A is already in the association end set ~A" item set))))
+
 (defmethod insert-item :before ((set persistent-slot-set-container) item)
-  (when (find-item set item)
-    (error "The item ~A is already in the association end set ~A" item set)))
+  (check-insert-item set item))
 
 (defmethod insert-item ((set persistent-slot-set-container) (item persistent-object))
   (bind ((slot (slot-of set))
@@ -69,9 +73,13 @@
   (unless (find-item set item)
     (insert-item set item)))
 
+(def generic check-delete-item (set item)
+  (:method ((set persistent-slot-set-container) item)
+    (unless (find-item set item)
+      (error "The item ~A is not in the association end set ~A" item set))))
+
 (defmethod delete-item :before ((set persistent-slot-set-container) item)
-  (unless (find-item set item)
-    (error "The item ~A is not in the association end set ~A" item set)))
+  (check-delete-item set item))
 
 (defmethod delete-item ((set persistent-slot-set-container) (item persistent-object))
   (bind ((slot (slot-of set)))
