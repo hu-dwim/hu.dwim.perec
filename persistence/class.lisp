@@ -68,7 +68,7 @@
    (direct-instances-prefetch-view
     (compute-as (compute-direct-instances-prefetch-view -self-))
     :type (or null view)
-    :documentation "The view which provides the oid for the direct instances of this class.")
+    :documentation "The view which provides the data for the prefetched slots of the direct instances of this class.")
    (direct-instances-data-view
     (compute-as (compute-direct-instances-data-view -self-))
     :type (or null view)
@@ -80,7 +80,7 @@
    (all-instances-prefetch-view
     (compute-as (compute-all-instances-prefetch-view -self-))
     :type (or null view)
-    :documentation "The view which provides the data for the effective slots of all instances of this class.")
+    :documentation "The view which provides the data for the prefetched slots of all instances of this class.")
    (all-instances-data-view
     (compute-as (compute-all-instances-data-view -self-))
     :type (or null view)
