@@ -9,13 +9,7 @@
 ;;;;;;;;;;;;;;;
 ;;; MOP methods 
 
-(def method validate-superclass ((class persistent-class) (superclass persistent-class-d))
-  t)
-
 (def method validate-superclass ((class persistent-class-d) (superclass persistent-class))
-  t)
-
-(def method validate-superclass ((class persistent-class) (superclass persistent-class-h))
   t)
 
 (def method validate-superclass ((class persistent-class-h) (superclass persistent-class))
