@@ -11,6 +11,9 @@
     (body)
     (bind ((*association-1-n-parent-class-name* '1-n-self-association-test)
            (*association-1-n-child-class-name* '1-n-self-association-test))
+      (body))
+    (bind ((*association-1-n-parent-class-name* 'concrete-parent-test)
+           (*association-1-n-child-class-name* 'concrete-child-test))
       (body))))
 
 (defpclass* parent-test ()
@@ -29,6 +32,26 @@
 (defassociation*
   ((:class child-test :slot parent :type (or null parent-test))
    (:class parent-test :slot children :type (set child-test))))
+
+(defpclass abstract-parent-test ()
+  ()
+  (:abstract #t)
+  (:direct-store :push-down))
+
+(defpclass concrete-parent-test (abstract-parent-test)
+  ())
+
+(defpclass abstract-child-test ()
+  ()
+  (:abstract #t)
+  (:direct-store :push-down))
+
+(defpclass concrete-child-test (abstract-child-test)
+  ())
+
+(defassociation*
+  ((:class abstract-child-test :slot parent :type (or null abstract-parent-test))
+   (:class abstract-parent-test :slot children :type (set abstract-child-test))))
 
 (defmacro with-parent-and-child-transaction (&body body)
   `(with-transaction

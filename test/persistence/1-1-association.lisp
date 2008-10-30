@@ -21,6 +21,9 @@
       (test/persistence/association/1-1/referential-integrity/2))
     (bind ((*association-1-1-brother-class-name* '1-1-self-association-test)
            (*association-1-1-sister-class-name* '1-1-self-association-test))
+      (body))
+    (bind ((*association-1-1-brother-class-name* 'concrete-brother-test)
+           (*association-1-1-sister-class-name* 'concrete-sister-test))
       (body))))
 
 (defpclass* brother-test ()
@@ -59,6 +62,26 @@
 (defassociation*
   ((:class 1-1-self-association-test :slot sister :type (or null 1-1-self-association-test))
    (:class 1-1-self-association-test :slot brother :type (or null 1-1-self-association-test))))
+
+(defpclass* abstract-brother-test ()
+  ()
+  (:abstract #t)
+  (:direct-store :push-down))
+
+(defpclass* concrete-brother-test (abstract-brother-test)
+  ())
+   
+(defpclass* abstract-sister-test ()
+  ()
+  (:abstract #t)
+  (:direct-store :push-down))
+
+(defpclass* concrete-sister-test (abstract-sister-test)
+  ())
+
+(defassociation*
+  ((:class abstract-brother-test :slot sister :type (or null abstract-sister-test))
+   (:class abstract-sister-test :slot brother :type (or null abstract-brother-test))))
 
 (defmacro with-sister-and-brother-transaction (&body body)
   `(with-transaction

@@ -19,6 +19,12 @@
    (secondary-association-end
     (compute-as nil)
     :type persistent-association-end-direct-slot-definition)
+   (primary-association-end-view
+    (compute-as (compute-association-end-view (primary-association-end-of -self-)))
+    :type (or null view))
+   (secondary-association-end-view
+    (compute-as (compute-association-end-view (secondary-association-end-of -self-)))
+    :type (or null view))
    (association-ends
     (compute-as (list (primary-association-end-of -self-) (secondary-association-end-of -self-)))
     :type (list persistent-association-end-direct-slot-definition))
@@ -48,9 +54,16 @@
                                   (set-type-class-for type)
                                   (persistent-class-type-for type)))))
     :type persistent-class)
+   (association-end-view
+    (compute-as (bind ((association (association-of -self-)))
+                  (if (primary-association-end-p -self-)
+                      (primary-association-end-view-of association)
+                      (secondary-association-end-view-of association))))
+    :type (or null view))
    (association-end-query
     (compute-as (compute-association-end-query -self-))
-    :type t)
+    :type (or null query)
+    :documentation "The query with one parameter which returns the associated instances.")
    (min-cardinality
     :type integer
     :documentation "The minimum number of instances present in an association for this end.")
@@ -94,7 +107,10 @@
   (:metaclass identity-preserving-class))
 
 (defcclass* persistent-association-end-effective-slot-definition (persistent-association-end-slot-definition persistent-effective-slot-definition)
-  ((min-cardinality
+  ((association-end-tables
+    (compute-as (compute-association-end-tables -self-))
+    :type (list table))
+   (min-cardinality
     (compute-as (apply #'max (mapcar #'min-cardinality-of (direct-slots-of -self-)))))
    (max-cardinality
     (compute-as (apply #'min* (mapcar #'max-cardinality-of (direct-slots-of -self-)))))
@@ -143,7 +159,7 @@
                                  (remove-if #L(typep !1 'persistent-association-end-direct-slot-definition)
                                             (class-direct-slots class))))))
 
-(defmethod expand-defassociation-form ((metaclass persistent-association) association-ends options)
+(def method expand-defassociation-form ((metaclass persistent-association) association-ends options)
   (flet ((process-association-end (association-end)
            (bind ((initarg (getf association-end :initarg))
                   (accessor (getf association-end :accessor))
@@ -199,31 +215,62 @@
 ;;;;;;;;;;
 ;;; Export
 
-(defmethod export-to-rdbms ((association persistent-association))
+(def method export-to-rdbms ((association persistent-association))
   (mapc #'ensure-exported (remove-if #'null (mapcar #'primary-table-of (associated-classes-of association))))
   (awhen (primary-table-of association)
+    (ensure-exported it))
+  (awhen (primary-association-end-view-of association)
+    (ensure-exported it))
+  (awhen (secondary-association-end-view-of association)
     (ensure-exported it)))
 
-(defmethod export-to-rdbms :after ((table association-primary-table))
+(def method export-to-rdbms :after ((table association-primary-table))
   (unless (find-if #L(search "pkey" (rdbms::name-of !1)) (list-table-indices (name-of table)))
     (add-primary-key-constraint (name-of table) (columns-of table))))
 
 ;;;;;;;;;;;
 ;;; Compute
 
-(defmethod compute-slot-mapping ((slot persistent-association-end-effective-slot-definition))
+(def generic compute-association-end-view (slot)
+  (:method ((slot persistent-association-end-slot-definition))
+    (bind ((association (association-of slot)))
+      (when (ecase (association-kind-of association)
+              (:1-1 (primary-association-end-p slot))
+              (:1-n (eq :1 (cardinality-kind-of slot)))
+              (:m-n #f))
+        (bind ((other-slot (other-association-end-of slot))
+               (class (associated-class-of other-slot))
+               (slot-name (slot-definition-name slot)))
+          (make-view-for-classes-and-slots (rdbms-name-for (concatenate-string (symbol-name (class-name class))
+                                                                               "-"
+                                                                               (symbol-name slot-name)
+                                                                               "-ai") :view)
+                                           (list* class (persistent-effective-subclasses-of class))
+                                           (list slot-name)))))))
+
+(def generic compute-association-end-tables (slot)
+  (:method ((slot persistent-association-end-effective-slot-definition))
+    (bind ((other-slot (other-association-end-of slot))
+           (other-slot-name (slot-definition-name other-slot))
+           (other-class (slot-definition-class other-slot)))
+      (delete-duplicates
+       (iter (for class :in (list* other-class (persistent-effective-subclasses-of other-class)))
+             (awhen (table-of (find-slot class other-slot-name))
+               (collect it)))))))
+
+(def method compute-slot-mapping ((slot persistent-association-end-effective-slot-definition))
   (when (eq (cardinality-kind-of slot) :1)
     (call-next-method)))
 
-(defmethod compute-slot-reader ((slot persistent-association-end-effective-slot-definition))
+(def method compute-slot-reader ((slot persistent-association-end-effective-slot-definition))
   (when (eq (cardinality-kind-of slot) :1)
     (call-next-method)))
 
-(defmethod compute-slot-writer ((slot persistent-association-end-effective-slot-definition))
+(def method compute-slot-writer ((slot persistent-association-end-effective-slot-definition))
   (when (eq (cardinality-kind-of slot) :1)
     (call-next-method)))
 
-(defmethod compute-primary-table ((association persistent-association) current-table)
+(def method compute-primary-table ((association persistent-association) current-table)
   (when (eq (association-kind-of association) :m-n)
     (make-instance 'association-primary-table
                    :name (rdbms-name-for (name-of association) :table)
@@ -232,7 +279,7 @@
                               (mappend #'columns-of
                                        (mapcar #'effective-association-end-for (association-ends-of association)))))))
 
-(defmethod compute-primary-class ((slot persistent-association-end-effective-slot-definition))
+(def method compute-primary-class ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))
     (ecase (association-kind-of association)
       (:1-1 (if (primary-association-end-p slot)
@@ -243,13 +290,13 @@
                 (primary-class-of (other-association-end-of slot))))
       (:m-n nil))))
 
-(defmethod compute-table ((slot persistent-association-end-effective-slot-definition))
+(def method compute-table ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))
     (if (eq :m-n (association-kind-of association))
         (primary-table-of association)
         (call-next-method))))
 
-(defmethod compute-columns ((slot persistent-association-end-effective-slot-definition))
+(def method compute-columns ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))
     (ecase (association-kind-of association)
       (:1-1 (if (primary-association-end-p slot)
@@ -264,7 +311,7 @@
                                                                       "-for-"
                                                                       (symbol-name (set-type-class-for (canonical-type-of slot))))))))))
 
-(defmethod compute-data-table-slot-p ((slot persistent-association-end-effective-slot-definition))
+(def method compute-data-table-slot-p ((slot persistent-association-end-effective-slot-definition))
   (bind ((association (association-of slot)))
     (ecase (association-kind-of association)
       (:1-1 (if (primary-association-end-p slot)
@@ -275,12 +322,12 @@
                 #f))
       (:m-n #f))))
 
-(defgeneric compute-association-end-query (association-end))
+(def generic compute-association-end-query (association-end))
 
 ;;;;;;;;;;;
 ;;; Utility
 
-(defparameter *persistent-associations* (make-hash-table)
+(def special-variable *persistent-associations* (make-hash-table)
   "A mapping from association names to association instances.")
 
 (def function find-association (name)
@@ -305,15 +352,15 @@
 (def (function io) other-effective-association-end-for (class effective-slot)
   (find-slot class (slot-definition-name (some #'other-association-end-of (direct-slots-of effective-slot)))))
 
-(defun association-end-accessor-p (name)
+(def function association-end-accessor-p (name)
   (and (symbolp name)
        (effective-association-ends-for-accessor name)))
 
-(defun effective-association-ends-for-accessor (name)
+(def function effective-association-ends-for-accessor (name)
   (collect-if #L(typep !1 'persistent-association-end-effective-slot-definition)
               (effective-slots-for-accessor name)))
 
-(defun min* (&rest args)
+(def function min* (&rest args)
   (if (find-if #'numberp args)
       (apply #'min (delete-if-not #'numberp args))
       :n))

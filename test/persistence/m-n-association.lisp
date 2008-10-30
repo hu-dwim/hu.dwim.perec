@@ -11,6 +11,9 @@
     (body)
     (bind ((*association-m-n-student-class-name* 'm-n-self-association-test)
            (*association-m-n-course-class-name* 'm-n-self-association-test))
+      (body))
+    (bind ((*association-m-n-student-class-name* 'concrete-student-test)
+           (*association-m-n-course-class-name* 'concrete-course-test))
       (body))))
 
 (defpclass* student-test ()
@@ -30,11 +33,31 @@
   ((:class m-n-self-association-test :slot students :type (set m-n-self-association-test))
    (:class m-n-self-association-test :slot courses :type (set m-n-self-association-test))))
 
+(defpclass* abstract-student-test ()
+  ()
+  (:abstract #t)
+  (:direct-store :push-down))
+
+(defpclass* concrete-student-test (abstract-student-test)
+  ())
+   
+(defpclass* abstract-course-test ()
+  ()
+  (:abstract #t)
+  (:direct-store :push-down))
+
+(defpclass* concrete-course-test (abstract-course-test)
+  ())
+
+(defassociation*
+  ((:class abstract-student-test :slot courses :type (set abstract-course-test))
+   (:class abstract-course-test :slot students :type (set abstract-student-test))))
+
 (defmacro with-student-and-course-transaction (&body body)
   `(with-transaction
-    (bind ((student (make-instance *association-m-n-student-class-name*))
-           (course (make-instance *association-m-n-course-class-name*)))
-      ,@body)))
+     (bind ((student (make-instance *association-m-n-student-class-name*))
+            (course (make-instance *association-m-n-course-class-name*)))
+       ,@body)))
 
 (deftest test/persistence/association/m-n/class ()
   (ensure-exported (find-class *association-m-n-course-class-name*))

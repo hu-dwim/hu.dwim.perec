@@ -64,10 +64,11 @@
     (check-slot-value-type instance slot item)
     (let ((rdbms-values (make-array +oid-column-count+)))
       (object-writer instance rdbms-values 0)
-      (update-records (name-of (table-of slot))
-                      (columns-of slot)
-                      rdbms-values
-                      (make-oid-matcher-where-clause item)))))
+      (dolist (table (association-end-tables-of slot))
+        (update-records (name-of table)
+                        (columns-of slot)
+                        rdbms-values
+                        (make-oid-matcher-where-clause item))))))
 
 (defmethod ensure-item ((set persistent-slot-set-container) (item persistent-object))
   (unless (find-item set item)
@@ -84,20 +85,21 @@
 (defmethod delete-item ((set persistent-slot-set-container) (item persistent-object))
   (bind ((slot (slot-of set)))
     (check-slot-value-type (instance-of set) slot item)
-    (update-records (name-of (table-of slot))
-                    (columns-of slot)
-                    '(nil nil)
-                    (make-oid-matcher-where-clause item))))
+    (dolist (table (association-end-tables-of slot))
+      (update-records (name-of table)
+                      (columns-of slot)
+                      '(nil nil)
+                      (make-oid-matcher-where-clause item)))))
 
 (defmethod find-item ((set persistent-slot-set-container) (item persistent-object))
   (bind ((slot (slot-of set)))
-    (not (zerop (select-count-* (list (name-of (table-of slot)))
+    (not (zerop (select-count-* (list (name-of (association-end-view-of (other-association-end-of slot))))
                                 (sql-and (make-oid-matcher-where-clause (instance-of set) (oid-column-of slot))
                                          (make-oid-matcher-where-clause item)))))))
 
 (defmethod size ((set persistent-slot-set-container))
   (bind ((slot (slot-of set)))
-    (select-count-* (list (name-of (table-of slot)))
+    (select-count-* (list (name-of (association-end-view-of (other-association-end-of slot))))
                     (make-oid-matcher-where-clause (instance-of set) (oid-column-of slot)))))
 
 (defmethod empty-p ((set persistent-slot-set-container))

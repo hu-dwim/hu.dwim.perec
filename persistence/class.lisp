@@ -92,7 +92,7 @@
    (data-tables
     (compute-as (compute-data-tables -self-))
     :type (list table)
-    :documentation "All the tables which hold data or the identity of an instance of this class. This list contains the tables of the effective slots, it is NIL for abstract classes.")
+    :documentation "All the tables which hold data of the effective slots or the identity of an instance of this class.")
    (data-table-slots
     (compute-as (collect-if #'data-table-slot-p (persistent-effective-slots-of -self-)))
     :type (list persistent-effective-slot-definition)
@@ -296,8 +296,9 @@
     (dolist (subclass-superclass (persistent-effective-superclasses-of subclass))
       (awhen (primary-table-of subclass-superclass)
         (ensure-exported it))))
-  (dolist (association (collect-if (of-type 'persistent-association) (depends-on-of class)))
-    (ensure-exported association))
+  (dolist (superclass (persistent-effective-superclasses-of class))
+    (dolist (association (collect-if (of-type 'persistent-association) (depends-on-of superclass)))
+      (ensure-exported association)))
   (awhen (direct-instances-identity-view-of class)
     (ensure-exported it))
   (awhen (direct-instances-prefetch-view-of class)
@@ -473,13 +474,11 @@
 
 (def generic compute-data-tables (class)
   (:method ((class persistent-class))
-    (unless (abstract-p class)
-      (prog1-bind tables
-          (delete-duplicates
-           (append (mapcar #'table-of (data-table-slots-of class))
-                   (mapcar [primary-table-of (find-class (find-class-store-location class !1))]
-                           (list* class (persistent-effective-superclasses-of class)))))
-        (assert (not (member nil tables)))))))
+    (delete nil
+            (delete-duplicates
+             (append (mapcar #'table-of (data-table-slots-of class))
+                     (mapcar [awhen (find-class-store-location class !1) (primary-table-of (find-class it))]
+                             (list* class (persistent-effective-superclasses-of class))))))))
 
 (def generic compute-primary-table-slot-p (slot)
   (:method ((slot persistent-effective-slot-definition))
@@ -755,7 +754,7 @@
                                                                                         :subqueries (list subquery-1 subquery-2)))
                                                       (union covered-classes-1 covered-classes-2))))
                                             subquery-and-covered-classes-list)))
-            (assert (set-equal (remove-if #'abstract-p normalized-classes) (second query-and-classes)) nil
+            (assert (set-equal (remove-if-not #'data-tables-of normalized-classes) (second query-and-classes)) nil
                     "The provided classes ~A and~%The resulting classes ~A~%do not match, merging the subqueries was unsuccessful" normalized-classes (second query-and-classes))
             (first query-and-classes)))))))
 

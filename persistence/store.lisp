@@ -41,8 +41,8 @@
 (def (function o) restore-slot-set (instance slot)
   "Restores the non lazy list without local side effects from the database."
   (map 'list #L(object-reader !1 0)
-       (select-records (list (oid-column-of (table-of slot)))
-                       (list (name-of (table-of slot)))
+       (select-records +oid-column-names+
+                       (list (name-of (association-end-view-of (other-association-end-of slot))))
                        :where (make-oid-matcher-where-clause instance (oid-column-of slot))
                        :order-by (bind ((type (canonical-type-of slot)))
                                    (if (ordered-set-type-p type)
@@ -66,7 +66,7 @@
 
   (:method ((class persistent-class) (instance persistent-object) (slot persistent-effective-slot-definition) &key)
     (values
-     ;; TODO this set-type-p* calls subtypep, which is expensive. search tnis file for other occurrances, too.
+     ;; TODO this set-type-p* calls subtypep, which is expensive. search this file for other occurrances, too.
      (if (set-type-p* (canonical-type-of slot))
          (if *lazy-slot-value-collections*
              (make-instance 'persistent-slot-set-container :instance instance :slot slot)
@@ -86,7 +86,7 @@
         (if (secondary-association-end-p slot)
             (bind ((records
                     (select-records +oid-column-names+
-                                    (list (name-of (table-of slot)))
+                                    (list (name-of (association-end-view-of (other-association-end-of slot))))
                                     :where (sql-= (sql-literal :type +oid-sql-type+ :value (oid-of instance))
                                                   (sql-identifier :name (oid-column-of slot))))))
               (declare (type vector records))
@@ -145,10 +145,11 @@
       (error 'slot-type-error :instance instance :slot slot :expected-type (specified-type-of slot) :datum slot-value))))
 
 (def (function o) delete-slot-set (instance slot)
-  (update-records (name-of (table-of slot))
-                  (columns-of slot)
-                  (make-array +oid-column-count+ :initial-element :null)
-                  (make-oid-matcher-where-clause instance (oid-column-of slot))))
+  (dolist (table (association-end-tables-of slot))
+    (update-records (name-of table)
+                    (columns-of slot)
+                    (make-array +oid-column-count+ :initial-element :null)
+                    (make-oid-matcher-where-clause instance (oid-column-of slot)))))
 
 (def (function o) store-slot-set (instance slot values)
   "Stores the non lazy list without local side effects into the database."
@@ -160,10 +161,12 @@
       (check-slot-value-type instance slot value))
     (bind ((rdbms-values (make-array +oid-column-count+)))
       (object-writer instance rdbms-values 0)
-      (update-records (name-of (table-of slot))
-                      (columns-of slot)
-                      rdbms-values
-                      (make-oid-list-matcher-where-clause values)))))
+      (dolist (table (association-end-tables-of slot))
+        (update-records (name-of table)
+                        (columns-of slot)
+                        rdbms-values
+                        (make-oid-list-matcher-where-clause values))))))
+
 
 (def (function o) store-1-n-association-end-set (instance slot value)
   "Stores the non lazy list association end value without local side effects into the database."
@@ -197,7 +200,7 @@
   (:documentation "Stores a single slot without local side effects into the database.")
 
   (:method ((class persistent-class) (instance persistent-object) (slot persistent-effective-slot-definition) value)
-    ;; TODO this set-type-p* calls subtypep, which is expensive. search tnis file for other occurrances, too.
+    ;; TODO this set-type-p* calls subtypep, which is expensive. search this file for other occurrances, too.
     (if (set-type-p* (canonical-type-of slot))
         (store-slot-set instance slot value)
         (progn
