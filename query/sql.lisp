@@ -294,6 +294,9 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
         (persistent-class (sql-table-reference-for-type* class referenced-slots alias))
         (otherwise nil))))              ; FIXME signal error
 
+  (:method ((type literal-value) referenced-slots alias)
+    (sql-table-reference-for-type* (value-of type) referenced-slots alias))
+
   (:method ((type syntax-object)  referenced-slots alias) ;; type unknown at compile time
     (debug-only (check-type alias (or null string)))
     (sql-unquote :form `(sql-table-reference-for-type ,(backquote-type-syntax type)
