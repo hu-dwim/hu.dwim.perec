@@ -679,85 +679,6 @@
                    :columns nil
                    :query query)))
 
-(def (function e) make-query-for-classes-and-slots (classes-or-class-names slot-names)
-  (bind ((classes (mapcar (lambda (class)
-                            (ensure-finalized (if (symbolp class)
-                                                  (find-class class)
-                                                  class)))
-                          classes-or-class-names)))
-    (unless (every #'abstract-p classes)
-      (bind ((abstract-superclasses (collect-if (lambda (superclass)
-                                                  (and (abstract-p superclass)
-                                                       (every [find-slot superclass !1 :otherwise #f] slot-names)))
-                                                (reduce #'union (mapcar #'persistent-effective-superclasses-of classes) :initial-value nil)))
-             (normalized-classes (collect-if #'primary-table-of (union classes abstract-superclasses)))
-             (class->slots-map (aprog1 (make-hash-table :test #'eq)
-                                 (dolist (class normalized-classes)
-                                   (setf (gethash class it)
-                                         (mapcar [prog1-bind slot (find-slot class !1) (assert (data-table-slot-p slot))] slot-names)))))
-             (class->tables-map (aprog1 (make-hash-table :test #'eq)
-                                  (dolist (class normalized-classes)
-                                    (setf (gethash class it)
-                                          (delete-duplicates (if slot-names
-                                                                 (mapcar #'table-of (gethash class class->slots-map))
-                                                                 (list (primary-table-of class))))))))
-             (table->classes-map (aprog1 (make-hash-table :test #'eq)
-                                   (dolist (class (persistent-effective-subclasses-of (find-class 'persistent-object)))
-                                     (ensure-finalized class)
-                                     (dolist (table (data-tables-of class))
-                                       (push class (gethash table it))))))
-             ;; TODO: should we use topological sort here?
-             (sorted-classes (stable-sort (sort (copy-seq normalized-classes) (complement #'subtypep))
-                                          #'subsetp :key [gethash !1 class->tables-map]))
-             (subquery-and-covered-classes-list (iter (with already-collected-classes = nil)
-                                                      (for class :in sorted-classes)
-                                                      (for slots = (gethash class class->slots-map))
-                                                      (unless (member class already-collected-classes)
-                                                        (for tables = (gethash class class->tables-map))
-                                                        (for classes-in-tables = (reduce #'intersection (mapcar [gethash !1 table->classes-map] tables)))
-                                                        (for covered-requested-classes = (collect-if (lambda (covered-class)
-                                                                                                       (and (every (lambda (slot covered-slot)
-                                                                                                                     (and (eq (table-of slot)
-                                                                                                                              (table-of covered-slot))
-                                                                                                                          (equal (column-names-of slot)
-                                                                                                                                 (column-names-of covered-slot))))
-                                                                                                                   slots (gethash covered-class class->slots-map))
-                                                                                                            (every [member !1 (data-tables-of covered-class)] tables)))
-                                                                                                     normalized-classes))
-                                                        (appendf already-collected-classes covered-requested-classes)
-                                                        (when covered-requested-classes
-                                                          (collect (list (sql-select :columns (list* +oid-column-name+
-                                                                                                     (mappend (lambda (slot)
-                                                                                                                (bind ((table-name (name-of (primary-table-of (primary-class-of slot)))))
-                                                                                                                  (mapcar [sql-column-alias :column !1 :table table-name]
-                                                                                                                          (column-names-of slot))))
-                                                                                                              (gethash class class->slots-map)))
-                                                                                     :tables (list (reduce [sql-joined-table :kind :inner :using +oid-column-names+ :left !1 :right !2]
-                                                                                                           (mapcar [sql-identifier :name (name-of !1)] tables)))
-                                                                                     :where (when (set-difference classes-in-tables covered-requested-classes)
-                                                                                              (make-class-id-matcher-where-clause covered-requested-classes)))
-                                                                         covered-requested-classes)))))))
-        (when subquery-and-covered-classes-list
-          (bind ((query-and-classes (reduce (lambda (subquery-and-covered-classes-1 subquery-and-covered-classes-2)
-                                              (bind ((subquery-1 (first subquery-and-covered-classes-1))
-                                                     (subquery-2 (first subquery-and-covered-classes-2))
-                                                     (covered-classes-1 (second subquery-and-covered-classes-1))
-                                                     (covered-classes-2 (second subquery-and-covered-classes-2))
-                                                     (all? (not (intersection covered-classes-1 covered-classes-2))))
-                                                (list (if (and (typep subquery-1 'sql-set-operation-expression)
-                                                               (eq all? (rdbms::all-p subquery-1)))
-                                                          (progn
-                                                            (push subquery-2 (rdbms::subqueries-of subquery-1))
-                                                            subquery-1)
-                                                          (sql-set-operation-expression :set-operation :union
-                                                                                        :all all?
-                                                                                        :subqueries (list subquery-1 subquery-2)))
-                                                      (union covered-classes-1 covered-classes-2))))
-                                            subquery-and-covered-classes-list)))
-            (assert (set-equal (remove-if-not #'data-tables-of normalized-classes) (second query-and-classes)) nil
-                    "The provided classes ~A and~%The resulting classes ~A~%do not match, merging the subqueries was unsuccessful" normalized-classes (second query-and-classes))
-            (first query-and-classes)))))))
-
 (def method matches-type* (value (type symbol))
   (and (typep value type)
        (or (not (persistent-class-type-p type))
@@ -772,3 +693,104 @@
                                   (error (make-condition 'instance-slot-type-violation :instance value :slot slot)))))
                             (not (unbound-subtype-p type))))))
                   (persistent-effective-slots-of type)))))
+
+;;;;;;
+;;; Building simple queries
+
+(def class* storage-location ()
+  ((tables)
+   (classes)
+   (slot-names)
+   (where)))
+
+(def function find-and-ensure-classes (classes-or-class-names)
+  (mapcar (lambda (class)
+            (ensure-finalized (if (symbolp class)
+                                  (find-class class)
+                                  class)))
+          classes-or-class-names))
+
+(def function make-hash-table-from-list (list key-function)
+  (aprog1 (make-hash-table :test #'equal)
+    (iter (for element :in list)
+          (push element (gethash (funcall key-function element) it)))))
+
+(def function make-list-from-hash-table (hash-table element-function)
+  (iter (for (key value) :in-hashtable hash-table)
+        (collect (funcall element-function key value))))
+
+(def function update-storage-location-where-clauses (storage-locations)
+  (iter (for storage-location :in storage-locations)
+        (for classes = (classes-of storage-location))
+        (setf (where-of storage-location)
+              (when (set-difference (reduce #'intersection (mapcar #'stored-persistent-classes-of (tables-of storage-location))) classes)
+                (make-class-id-matcher-where-clause classes))))
+  storage-locations)
+
+(def function merge-storage-location-classes (storage-locations)
+  (make-list-from-hash-table (make-hash-table-from-list storage-locations [list (tables-of !1) (slot-names-of !1)])
+                             (lambda (key value)
+                               (make-instance 'storage-location
+                                              :tables (first key)
+                                              :slot-names (second key)
+                                              :classes (mappend #'classes-of value)))))
+
+(def function merge-storage-location-slot-names (storage-locations)
+  (make-list-from-hash-table (make-hash-table-from-list storage-locations [list (tables-of !1) (classes-of !1)])
+                             (lambda (key value)
+                               (make-instance 'storage-location
+                                              :tables (first key)
+                                              :slot-names (mappend #'slot-names-of value)
+                                              :classes (second key)))))
+
+(def (function e) collect-storage-locations-for-updating-classes-and-slots (classes-or-class-names slot-names)
+  (update-storage-location-where-clauses
+   (merge-storage-location-slot-names
+    (merge-storage-location-classes
+     (iter outer
+           (for class :in (remove-if #'abstract-p (find-and-ensure-classes classes-or-class-names)))
+           (iter (for slot-name :in slot-names)
+                 (for slot = (find-slot class slot-name))
+                 (in outer (collect (make-instance 'storage-location
+                                                   :tables (list (table-of slot))
+                                                   :classes (list class)
+                                                   :slot-names (list slot-name))))))))))
+
+(def (function e) collect-storage-locations-for-selecting-classes-and-slots (classes-or-class-names slot-names)
+  (update-storage-location-where-clauses
+   (merge-storage-location-classes
+    (iter (for class :in (remove-if #'abstract-p (find-and-ensure-classes classes-or-class-names)))
+          (collect (make-instance 'storage-location
+                                  :tables (if slot-names
+                                              (delete-duplicates (mapcar [table-of (find-slot class !1)] slot-names))
+                                              (list (primary-table-of class)))
+                                  :classes (list class)
+                                  :slot-names slot-names))))))
+
+(def (function e) make-query-for-classes-and-slots (classes-or-class-names &optional slot-names)
+  (first
+   (reduce (lambda (accumulator storage-location)
+             (bind ((classes (classes-of storage-location))
+                    (subquery (sql-select :columns (list* +oid-column-name+ (mappend [columns-of (find-slot (first classes) !1)] (slot-names-of storage-location)))
+                                          :tables (list (reduce [sql-joined-table :kind :inner :using +oid-column-names+ :left !1 :right !2]
+                                                                (mapcar [sql-identifier :name (name-of !1)] (tables-of storage-location))))
+                                          :where (where-of storage-location))))
+               (if accumulator
+                   (bind ((subquery-1 (first accumulator))
+                          (subquery-2 subquery)
+                          (covered-classes-1 (second accumulator))
+                          (covered-classes-2 (classes-of storage-location))
+                          (all? (not (intersection covered-classes-1 covered-classes-2))))
+                     (list (if (and (typep subquery-1 'sql-set-operation-expression)
+                                    (eq all? (rdbms::all-p subquery-1)))
+                               (progn
+                                 (push subquery-2 (rdbms::subqueries-of subquery-1))
+                                 subquery-1)
+                               (sql-set-operation-expression :set-operation :union
+                                                             :all all?
+                                                             :subqueries (list subquery-1 subquery-2)))
+                           (union covered-classes-1 covered-classes-2)))
+                   (list subquery
+                         classes))))
+           (collect-storage-locations-for-selecting-classes-and-slots classes-or-class-names slot-names)
+           :initial-value nil)))
