@@ -85,3 +85,12 @@
          (defassociation*
            ((:class ,association-name :slot ,(concatenate-symbol "d-" primary-slot *package*) :type (or null ,secondary-class))
             (:class ,secondary-class :slot ,(concatenate-symbol "h-" secondary-slot *package*) :type (set ,association-name))))))))
+
+;;;;;;;;;;;
+;;; Compute
+
+(def method compute-association-end-view ((slot persistent-association-end-slot-definition-d))
+  nil)
+
+(def method compute-association-end-tables ((slot persistent-association-end-slot-definition-d))
+  nil)
