@@ -34,13 +34,16 @@
        ;; invalidate all cached back references 
        (if (eq (cardinality-kind-of slot) :n)
            (bind ((other-slot (other-association-end-of slot))
+                  (other-slot-name (slot-definition-name other-slot))
                   ((:values cache-p old-slot-value) (slot-value-cached-p instance slot)))
              (if cache-p
                  (unless (unbound-slot-marker-p old-slot-value)
                    (dolist (child old-slot-value)
                      ;; FIXME: other-slot must be from the type (class-of child) use slot-name instead?
                      (invalidate-cached-slot child other-slot)))
-                 (invalidate-cached-1-n-association-end-set-slot other-slot))))))))
+                 (invalidate-cached-1-n-association-end-set-slot other-slot))
+             (dolist (child new-value)
+               (setf (underlying-slot-value child other-slot-name) instance))))))))
 
 ;; TODO: this is hell slow for huge transactions, what if this kind of caching is turned off after some limit?
 (defun invalidate-cached-1-n-association-end-set-slot (slot)
