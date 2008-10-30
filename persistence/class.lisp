@@ -719,12 +719,26 @@
   (iter (for (key value) :in-hashtable hash-table)
         (collect (funcall element-function key value))))
 
+(def function need-where-clause-p (storage-location)
+  (set-difference (reduce #'intersection (mapcar #'stored-persistent-classes-of (tables-of storage-location)))
+                  (classes-of storage-location)))
+
 (def function update-storage-location-where-clauses (storage-locations)
   (iter (for storage-location :in storage-locations)
-        (for classes = (classes-of storage-location))
         (setf (where-of storage-location)
-              (when (set-difference (reduce #'intersection (mapcar #'stored-persistent-classes-of (tables-of storage-location))) classes)
-                (make-class-id-matcher-where-clause classes))))
+              (when (need-where-clause-p storage-location)
+                (make-class-id-matcher-where-clause (classes-of storage-location)))))
+  storage-locations)
+
+(def function update-storage-location-tables (storage-locations)
+  (iter (for storage-location :in storage-locations)
+        (for classes = (classes-of storage-location))
+        (when (and (length= 1 classes)
+                   (need-where-clause-p storage-location))
+          (when-bind table
+              (find-if [equal classes (stored-persistent-classes-of !1)]
+                       (data-tables-of (first classes)))
+            (push table (tables-of storage-location)))))
   storage-locations)
 
 (def function merge-storage-location-classes (storage-locations)
@@ -747,7 +761,18 @@
   (tagbody
    :restart
      (iter (for storage-location :in storage-locations)
-           (when (find-if [and (not (eq !1 storage-location)) (subsetp (classes-of storage-location) (classes-of !1))] storage-locations)
+           (for classes = (classes-of storage-location))
+           (for need-where-clause? = (need-where-clause-p storage-location))
+           (when (find-if (lambda (cover-storage-location)
+                            (bind ((cover-classes (classes-of cover-storage-location))
+                                   (cover-need-where-clause? (need-where-clause-p cover-storage-location)))
+                              (and (not (eq storage-location
+                                            cover-storage-location))
+                                   (if (set-equal classes cover-classes)
+                                       (and need-where-clause?
+                                            (not cover-need-where-clause?))
+                                       (subsetp classes cover-classes)))))
+                          storage-locations)
              (removef storage-locations storage-location)
              (go :restart))))
   storage-locations)
@@ -767,22 +792,23 @@
 
 (def (function e) collect-storage-locations-for-selecting-classes-and-slots (classes-or-class-names slot-names)
   (update-storage-location-where-clauses
-   (funcall (if slot-names
-                #'identity
-                #'merge-covering-storage-locations)
-            (merge-storage-location-classes
-             (iter outer
-                   (for class :in (remove-if #'abstract-p (find-and-ensure-classes classes-or-class-names)))
-                   (if slot-names
-                       (collect (make-instance 'storage-location
-                                               :tables (delete-duplicates (mapcar [table-of (find-slot class !1)] slot-names))
-                                               :classes (list class)
-                                               :slot-names slot-names))
-                       (iter (for table :in (data-tables-of class))
-                             (in outer (collect (make-instance 'storage-location
-                                                               :tables (list table)
-                                                               :classes (list class)
-                                                               :slot-names nil))))))))))
+   (update-storage-location-tables
+    (funcall (if slot-names
+                 #'identity
+                 #'merge-covering-storage-locations)
+             (merge-storage-location-classes
+              (iter outer
+                    (for class :in (remove-if #'abstract-p (find-and-ensure-classes classes-or-class-names)))
+                    (if slot-names
+                        (collect (make-instance 'storage-location
+                                                :tables (delete-duplicates (mapcar [table-of (find-slot class !1)] slot-names))
+                                                :classes (list class)
+                                                :slot-names slot-names))
+                        (iter (for table :in (data-tables-of class))
+                              (in outer (collect (make-instance 'storage-location
+                                                                :tables (list table)
+                                                                :classes (list class)
+                                                                :slot-names nil)))))))))))
 
 (def (function e) make-query-for-classes-and-slots (classes-or-class-names &optional slot-names)
   (first
