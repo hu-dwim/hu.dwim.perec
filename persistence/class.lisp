@@ -814,7 +814,13 @@
   (first
    (reduce (lambda (accumulator storage-location)
              (bind ((classes (classes-of storage-location))
-                    (subquery (sql-select :columns (list* +oid-column-name+ (mappend [columns-of (find-slot (first classes) !1)] (slot-names-of storage-location)))
+                    (subquery (sql-select :columns (list* +oid-column-name+
+                                                          (mappend (lambda (slot-name)
+                                                                     (bind ((slot (find-slot (first classes) slot-name))
+                                                                            (table-name (name-of (table-of slot))))
+                                                                       (mapcar [sql-column-alias :column !1 :table table-name]
+                                                                               (column-names-of slot))))
+                                                                   (slot-names-of storage-location)))
                                           :tables (list (reduce [sql-joined-table :kind :inner :using +oid-column-names+ :left !1 :right !2]
                                                                 (mapcar [sql-identifier :name (name-of !1)] (tables-of storage-location))))
                                           :where (where-of storage-location))))
