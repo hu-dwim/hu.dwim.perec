@@ -296,7 +296,7 @@
     (dolist (subclass-superclass (persistent-effective-superclasses-of subclass))
       (awhen (primary-table-of subclass-superclass)
         (ensure-exported it))))
-  (dolist (superclass (persistent-effective-superclasses-of class))
+  (dolist (superclass (list* class (persistent-effective-superclasses-of class)))
     (dolist (association (collect-if (of-type 'persistent-association) (depends-on-of superclass)))
       (ensure-exported association)))
   (awhen (direct-instances-identity-view-of class)
