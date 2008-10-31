@@ -69,7 +69,8 @@
 (defcclass* update-operation (unary-operation-node)
   ((variable :documentation "The query variable containing the instance to be updated.")
    (place-value-pairs :documentation "The list of accessor and value expression pairs.")
-   (column-value-pairs (compute-as (compute-columns-and-sql-values -self-))))
+   (slots-to-update (compute-as (compute-slots-to-update -self-)))
+   (column-value-pairs (compute-as (compute-column-value-pairs -self-))))
   (:documentation "Updates the slots of VARIABLE with the specified values."))
 
 
@@ -608,12 +609,23 @@
          (assert (length= 1 variables)) ; FIXME check earlier
          (bind ((variable (first (variables-of delete)))
                 (type (persistent-type-of variable))
-                (tables (when (persistent-class-p type) (tables-for-delete type))))
-           (if (length= 1 tables)       ; simple delete
-               `(execute ,(rdbms::expand-sql-ast-into-lambda-form
-                           (sql-delete-from-table (first tables) :where (where-of input))))
+                (tables-and-where-clauses (when (persistent-class-p type) (tables-for-delete type))))
+           (if (length= 1 tables-and-where-clauses)
+               ;; all data contained by one table -> simple sql delete
+               (bind ((table (car (first tables-and-where-clauses)))
+                      (extra-where-clause (cdr (first tables-and-where-clauses))))
+                 `(execute ,(rdbms::expand-sql-ast-into-lambda-form
+                             (sql-delete :table (sql-table-reference-for table nil)
+                                         :where (if extra-where-clause
+                                                    `(and ,extra-where-clause
+                                                          ,(where-of input))
+                                                    (where-of input))))))
                (bind (((:values create-temporary-table deletes drop-temporary-table)
-                       (sql-delete-from-tables tables (tables-of input) (where-of input) variable)))
+                       (sql-delete-from-tables (mapcar #'car tables-and-where-clauses)
+                                               (sql-select
+                                                 :columns (list (sql-id-column-reference-for variable))
+                                                 :tables  (tables-of input)
+                                                 :where (where-of input)))))
                  `(execute-protected
                    ,create-temporary-table
                    (list ,@deletes)
@@ -641,10 +653,16 @@
         (sql-query-node
          (bind ((sql-query input)
                 (variable (variable-of update))
-                (table->column-value-pairs (column-value-pairs-of update)))
+                (class (persistent-type-of variable))
+                (slots (slots-to-update-of update))
+                (storage-locations (collect-storage-locations-for-updating-classes-and-slots
+                                    (list* class (persistent-effective-subclasses-of class))
+                                    (mapcar #'slot-definition-name slots)))
+                (column-value-pairs (column-value-pairs-of update)))
            (cond
-             ((null table->column-value-pairs)
-              ;; some place is not a slot access => execute in lisp
+             ;; some place is not a slot access or some value cannot be mapped to sql => execute in lisp
+             ((or (null storage-locations)
+                  (null column-value-pairs))
               (with-unique-names (row count)
                 (bind ((bindings (generate-bindings sql-query row place-value-pairs)))
                   `(prog1-bind ,count 0
@@ -654,38 +672,53 @@
                                 (let* ,bindings
                                   (incf ,count)
                                   (setf ,@(apply #'append place-value-pairs)))))))))
-             ((= 1 (hash-table-count table->column-value-pairs))
-              ;; there is only one table to update => single SQL command
-              (bind ((table (first (hash-table-keys table->column-value-pairs)))
-                     (column-value-pairs (gethash table table->column-value-pairs))
-                     (columns (mapcar #'first column-value-pairs))
-                     (sql-values (mapcar #'second column-value-pairs)))
+             ;; there is only one table to update => single SQL command
+             ((length= 1 storage-locations)
+              (bind ((storage-location (first storage-locations))
+                     (table (first (tables-of storage-location)))
+                     (extra-where-clause (where-of storage-location))
+                     (columns (mapcar #'car column-value-pairs))
+                     (sql-values (mapcar #'cdr column-value-pairs)))
                 `(nth-value
                   1
                   (execute ,(rdbms::expand-sql-ast-into-lambda-form
                              (if (where-of input)
                                  ;; TODO eliminate the subselect by adding a FROM clause (Postgres only)
                                  ;; to the UPDATE and using the WHERE clause of the SELECT
-                                 (sql-update-for-subselect table columns sql-values
-                                                           (sql-subquery
-                                                             :query
-                                                             (sql-select
-                                                               :columns (list (sql-id-column-reference-for variable))
-                                                               :tables  (tables-of input)
-                                                               :where (where-of input))))
-                                 (sql-update-table table columns sql-values)))))))
+                                 (sql-update
+                                   :table (sql-table-reference-for table nil)
+                                   :columns (sql-column-references-for columns nil)
+                                   :values sql-values
+                                   :where (sql-in
+                                           (sql-id-column-reference-for table)
+                                           (sql-subquery
+                                             :query
+                                             (sql-select
+                                               :columns (list (sql-id-column-reference-for variable))
+                                               :tables  (tables-of input)
+                                               :where (where-of input)))))
+                                 (sql-update
+                                   :table (sql-table-reference-for table nil)
+                                   :columns (sql-column-references-for columns nil)
+                                   :values sql-values
+                                   :where extra-where-clause)))))))
              (t
               ;; multiple tables needs to be updated => select the ids first into a temporary table,
               ;; then one UPDATE command for each table
               ;; (FIXME ordering issues when the new values refers the the updated columns)
-              (bind (((:values create-temporary-table updates drop-temporary-table)
-                      (sql-update-tables table->column-value-pairs
-                                         (tables-of input) (where-of input) variable)))
-                `(nth-value 1
-                            (execute-protected
-                             ,create-temporary-table
-                             (list ,@updates)
-                             ,drop-temporary-table)))))))))))
+              (bind (((:values create-temporary-table select-count updates drop-temporary-table)
+                      (sql-update-tables storage-locations
+                                         column-value-pairs
+                                         (sql-select
+                                           :columns (list (sql-id-column-reference-for variable))
+                                           :tables  (tables-of input)
+                                           :where (where-of input)))))
+                `(unwind-protect
+                      (progn
+                        ,(when create-temporary-table `(execute ,create-temporary-table))
+                        ,@(mapcar (lambda (update) `(execute ,update)) updates)
+                        (elt (elt (execute ,select-count) 0) 0))
+                   ,(when drop-temporary-table `(execute ,drop-temporary-table))))))))))))
 
 ;;;
 ;;; Helpers
@@ -922,23 +955,38 @@ If true then all query variables must be under some aggregate call."
             (assert (and (typep having 'sql-n-ary-operator) (string= (rdbms::name-of having) "AND")))
             (appendf (rdbms::expressions-of having) conditions))))))
 
-(def function compute-columns-and-sql-values (update-operation)
-  (bind ((variable (variable-of update-operation))
-         (places (mapcar #'first (place-value-pairs-of update-operation)))
-         (lisp-values (mapcar #'second (place-value-pairs-of update-operation))))
+(def function compute-slots-to-update (update-operation)
+  (iter (for place :in (mapcar #'first (place-value-pairs-of update-operation)))
+        (if (and (slot-access-p place)
+                 (slot-of place))
+            (collect (slot-of place))
+            (return nil))))
 
-    (when (and (every #L(and (slot-access-p !1)
-                             (eq (arg-of !1) variable)
-                             (slot-of !1))
-                      places))
-      (prog1-bind result (make-hash-table)
-        (iter (for slot-access in places)
-              (for lisp-value in lisp-values)
-              (for table = (table-of (slot-of slot-access)))
-              (for columns = (sql-column-references-for (slot-of slot-access) nil))
-              (for sql-values = (reverse (transform-to-sql* lisp-value))) ; FIXME tag is the first column
-                                                                          ; but transform-to-sql* returns
-                                                                          ; the tag as the second value
-              (if (= (length columns) (length sql-values))
-                  (appendf (gethash table result) (mapcar #'list columns sql-values))
-                  (return-from compute-columns-and-sql-values)))))))
+(def function compute-column-value-pairs (update-operation)
+  "Note: assumes that the effective slot's type does not change in the inheritance chain."
+  (iter outer
+        (for slot :in (slots-to-update-of update-operation))
+        (for value :in (mapcar #'second (place-value-pairs-of update-operation)))
+        (for column-names = (column-names-of slot))
+        (for sql-values = (reverse (transform-to-sql* value)))  ; FIXME tag is the first column
+        (unless sql-values (leave))                             ; but transform-to-sql* returns
+        (unless (length= column-names sql-values) (leave))      ; the tag as the second value
+        (iter (for column-name :in column-names)
+              (for sql-value :in sql-values)
+              (in outer (collect (cons column-name sql-value))))))
+
+(defun tables-for-delete (class)
+  "Returns the tables and where clauses, where instances of CLASS are stored."
+  (bind ((classes (delete-if #'abstract-p (list* class (persistent-effective-subclasses-of class))))
+         (tables (reduce #'union (mapcar #'data-tables-of classes)))
+         (where-clause (make-class-id-matcher-where-clause classes)))
+    (mapcar
+     (lambda (table)
+       (cons table
+             (etypecase table
+               (class-primary-table
+                (when (set-difference (stored-persistent-classes-of table) classes)
+                  where-clause))
+               (association-primary-table
+                nil))))
+     tables)))

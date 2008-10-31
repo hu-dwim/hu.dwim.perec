@@ -27,87 +27,67 @@
 ;;;----------------------------------------------------------------------------
 ;;; Deletes
 
-(defun sql-delete-from-tables (data-tables joined-tables where &optional qualifier)
+(defun sql-delete-from-tables (data-tables select-ids-to-delete)
   (bind ((temp-table (rdbms-name-for 'deleted-ids :table)))
     (values
-      (rdbms::expand-sql-ast-into-lambda-form
-        (create-temporary-table temp-table
-                                (list
-                                 (sql-column :name +oid-column-name+ :type +oid-sql-type+))
-                                (sql-select
-                                  :columns (list (sql-id-column-reference-for qualifier))
-                                  :tables  joined-tables
-                                  :where where)
-                                *database*))
-      (mapcar (lambda (table)
-                (rdbms::expand-sql-ast-into-lambda-form
-                 (sql-delete-for-subselect table
-                                           (sql-subquery
-                                             :query
-                                             (sql-select
-                                               :columns (list +oid-column-name+)
-                                               :tables (list temp-table))))))
-              data-tables)
-      (drop-temporary-table temp-table *database*))))
-
-(defun sql-delete-for-subselect (table subselect)
-  "Generate a delete command for records in TABLE whose oid is in the set returned by SUBSELECT."
-  (sql-delete-from-table
-   table
-   :where (sql-in (sql-id-column-reference-for table) subselect)))
-
-(defun sql-delete-from-table (table &key where)
-  "Generate a delete command for records in TABLE that satisfies the WHERE clause."
-  (sql-delete
-    :table (sql-table-reference-for table nil)
-    :where where))
-
-(defun tables-for-delete (class)
-  "Returns the tables where instances of CLASS are stored."
-  (reduce #'union
-          (mapcar #'data-tables-of
-                  (delete-if #'abstract-p
-                             (list* class
-                                    (persistent-effective-subclasses-of class))))))
+     (rdbms::expand-sql-ast-into-lambda-form
+      (create-temporary-table temp-table
+                              (list
+                               (sql-column :name +oid-column-name+ :type +oid-sql-type+))
+                              select-ids-to-delete
+                              *database*))
+     (mapcar (lambda (table)
+               (rdbms::expand-sql-ast-into-lambda-form
+                (sql-delete :table (sql-table-reference-for table nil)
+                            :where (sql-in
+                                    (sql-id-column-reference-for table)
+                                    (sql-subquery
+                                      :query
+                                      (sql-select
+                                        :columns (list +oid-column-name+)
+                                        :tables (list temp-table)))))))
+             data-tables)
+     (drop-temporary-table temp-table *database*))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Updates
-(defun sql-update-tables (table->column-value-pairs table-refs where &optional qualifier)
+(defun sql-update-tables (storage-locations column-value-pairs select-ids-to-update)
+  (assert storage-locations)
   (bind ((temp-table (rdbms-name-for 'updated-ids :table)))
     (values
      (rdbms::expand-sql-ast-into-lambda-form
       (create-temporary-table temp-table
                               (list (sql-column :name +oid-column-name+ :type +oid-sql-type+))
-                              (sql-select
-                                :columns (list (sql-id-column-reference-for qualifier))
-                                :tables  table-refs
-                                :where where)
+                              select-ids-to-update
                               *database*))
-     (maphash (lambda (table column-value-pairs)
-                (rdbms::expand-sql-ast-into-lambda-form
-                 (sql-update-for-subselect table
-                                           (mapcar #'first column-value-pairs)
-                                           (mapcar #'second column-value-pairs)
-                                           (sql-subquery
-                                             :query
-                                             (sql-select
-                                               :columns (list +oid-column-name+)
-                                               :tables (list temp-table))))))
-              table->column-value-pairs)
-     (drop-temporary-table temp-table *database*))))
-
-(defun sql-update-for-subselect (table columns values subselect)
-  "Generate a delete command for records in TABLE whose oid is in the set returned by SUBSELECT."
-  (sql-update-table
-   table columns values
-   :where (sql-in (sql-id-column-reference-for table) subselect)))
-
-(defun sql-update-table (table columns values &key where)
-  (sql-update
-    :table (sql-table-reference-for table nil)
-    :columns (sql-column-references-for columns nil)
-    :values values
-    :where where))
+     (rdbms::expand-sql-ast-into-lambda-form
+      (sql-select :tables (list temp-table)
+                  :columns (list (rdbms::sql-count-*))))
+     
+     (mapcar (lambda (storage-location)
+                (assert (length= 1 (tables-of storage-location)))
+                (assert (classes-of storage-location))
+                (bind ((table (first (tables-of storage-location)))
+                       (class (first (classes-of storage-location)))
+                       (slot-names (slot-names-of storage-location))
+                       (slots (mapcar [find-slot class !1] slot-names))
+                       (columns (mappend #'columns-of slots))
+                       (sql-values (mapcar [cdr (assoc (rdbms::name-of !1) column-value-pairs :test #'string=)] columns)))
+                  (rdbms::expand-sql-ast-into-lambda-form
+                   (sql-update
+                     :table (sql-table-reference-for table nil)
+                     :columns (sql-column-references-for columns nil)
+                     :values sql-values
+                     :where (sql-in
+                             (sql-id-column-reference-for table)
+                             (sql-subquery
+                               :query
+                               (sql-select
+                                 :columns (list +oid-column-name+)
+                                 :tables (list temp-table))))))))
+              storage-locations)
+     (rdbms::expand-sql-ast-into-lambda-form
+      (drop-temporary-table temp-table *database*)))))
 
 ;;;----------------------------------------------------------------------------
 ;;; Temporary tables
