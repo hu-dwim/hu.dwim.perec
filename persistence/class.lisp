@@ -698,10 +698,11 @@
 ;;; Building simple queries
 
 (def class* storage-location ()
-  ((tables)
-   (classes)
-   (slot-names)
-   (where)))
+  ((tables :type list)
+   (classes :type list)
+   (slot-names :type list)
+   (where :type (or null sql-syntax-node))
+   (need-where-clause :type boolean)))
 
 (def function find-and-ensure-classes (classes-or-class-names)
   (mapcar (lambda (class)
@@ -719,14 +720,17 @@
   (iter (for (key value) :in-hashtable hash-table)
         (collect (funcall element-function key value))))
 
-(def function need-where-clause-p (storage-location)
+(def function compute-need-where-clause (storage-location)
   (set-difference (reduce #'intersection (mapcar #'stored-persistent-classes-of (tables-of storage-location)))
                   (classes-of storage-location)))
+
+(def function update-need-where-clauses (storage-locations)
+  (map nil [setf (need-where-clause-p !1) (compute-need-where-clause !1)] storage-locations))
 
 (def function update-storage-location-where-clauses (storage-locations)
   (iter (for storage-location :in storage-locations)
         (setf (where-of storage-location)
-              (when (need-where-clause-p storage-location)
+              (when (compute-need-where-clause storage-location)
                 (make-class-id-matcher-where-clause (classes-of storage-location)))))
   storage-locations)
 
@@ -734,7 +738,7 @@
   (iter (for storage-location :in storage-locations)
         (for classes = (classes-of storage-location))
         (when (and (length= 1 classes)
-                   (need-where-clause-p storage-location))
+                   (compute-need-where-clause storage-location))
           (when-bind table
               (find-if [equal classes (stored-persistent-classes-of !1)]
                        (data-tables-of (first classes)))
@@ -758,6 +762,7 @@
                                               :classes (second key)))))
 
 (def function merge-covering-storage-locations (storage-locations)
+  (update-need-where-clauses storage-locations)
   (tagbody
    :restart
      (iter (for storage-location :in storage-locations)
