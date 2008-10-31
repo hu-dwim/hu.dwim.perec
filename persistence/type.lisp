@@ -510,20 +510,24 @@
 ;;;;;;;;
 ;;; Type
 
+(def special-variable *mapped-types* (make-hash-table :test #'equal))
+
 (def function mapped-type-for (type)
   "Returns the smalleset supertype which is directly mapped to RDBMS based on *MAPPED-TYPE-PRECEDENCE-LIST*."
   (if (persistent-class-type-p type)
       type
-      (find-if #L(cond ((or (eq type !1)
-                            (and (listp type)
-                                 (eq (first type) !1)))
-                        #t)
-                       ((eq 'member !1)
-                        (and (listp type)
-                             (eq 'member (first type))))
-                       (t
-                        (subtypep type !1)))
-               *mapped-type-precedence-list*)))
+      (or (gethash type *mapped-types*)
+          (setf (gethash type *mapped-types*)
+                (find-if #L(cond ((or (eq type !1)
+                                      (and (listp type)
+                                           (eq (first type) !1)))
+                                  #t)
+                                 ((eq 'member !1)
+                                  (and (listp type)
+                                       (eq 'member (first type))))
+                                 (t
+                                  (subtypep type !1)))
+                         *mapped-type-precedence-list*)))))
 
 (def function normalized-type-for (type)
   "Returns a type which does not include unit types which are mapped to :null column values."
