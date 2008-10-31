@@ -5,11 +5,13 @@
 
 (defpclass* persistent-object-d ()
   ()
-  (:abstract #t))
+  (:abstract #t)
+  (:direct-store :push-down))
 
 (defpclass* persistent-object-h ()
   ()
-  (:abstract #t))
+  (:abstract #t)
+  (:direct-store :push-down))
 
 (defassociation*
   ((:class persistent-object-h :slot d-instance :type persistent-object-d)

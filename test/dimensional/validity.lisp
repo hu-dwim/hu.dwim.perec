@@ -109,7 +109,7 @@
           (bind ((instance (make-instance *validity-dependent-class-name*)))
             (setf (population-of instance) 1000)
             (is (= (update-counter-of (command-counter-of *transaction*)) 1))
-            (is (= (insert-counter-of (command-counter-of *transaction*)) (+ 1 3)))
+            (is (= (insert-counter-of (command-counter-of *transaction*)) (+ 1 1)))
             instance)
         (let ((update-counter (update-counter-of (command-counter-of *transaction*)))
               (insert-counter (insert-counter-of (command-counter-of *transaction*))))
