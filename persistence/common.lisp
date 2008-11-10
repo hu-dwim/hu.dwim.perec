@@ -6,7 +6,7 @@
 
 (in-package :cl-perec)
 
-(defparameter *exporting-to-rdbms* #f)
+(def special-variable *exporting-to-rdbms* #f)
 
 (defcclass* exportable ()
   ((ensure-exported
@@ -14,7 +14,7 @@
     :reader ensure-exported
     :documentation "A persistent class, a persistent association and the related tables must be exported before use. This will automatically happen not later than making, reviving, querying or using by any means the first instance of it.")))
 
-(defgeneric export-to-rdbms (instance)
+(def generic export-to-rdbms (instance)
   (:documentation "Exports classes, associations, tables to the database, may create new tables or alter existing ones.")
 
   (:method :around (instance)

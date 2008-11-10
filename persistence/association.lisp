@@ -216,7 +216,12 @@
 ;;; Export
 
 (def method export-to-rdbms ((association persistent-association))
-  (mapc #'ensure-exported (remove-if #'null (mapcar #'primary-table-of (associated-classes-of association))))
+  (mapc #'ensure-exported
+        (delete-if #'null
+                   (mapcar #'primary-table-of
+                           (append (associated-classes-of association)
+                                   (reduce #'union
+                                           (mapcar #'persistent-effective-subclasses-of (associated-classes-of association)))))))
   (awhen (primary-table-of association)
     (ensure-exported it))
   (awhen (primary-association-end-view-of association)
