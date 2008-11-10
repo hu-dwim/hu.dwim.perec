@@ -527,7 +527,7 @@
                             (slot-value h-instance ',(name-of dimension))
                             (coordinate-range-end ,(name-of dimension))))
 
-             (when (and (length= 1 dimensions) interval-p)
+             (when (and (length= 1 dimensions) interval-p (eq association-kind :1-1))
                (add-assert query
                            `(,(dimension-less-or-equal dimension)
                               (coalesce
