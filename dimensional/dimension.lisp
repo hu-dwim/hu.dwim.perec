@@ -224,6 +224,42 @@
              (funcall it)
              (error "The coordinate for ~A is unspecified" dimension)))))
 
+(def (function e) call-with-coordinate (dimension coordinate thunk)
+  (if (typep dimension 'ordering-dimension)
+      (progv
+          (list (begin-coordinate-name-of dimension)
+                (end-coordinate-name-of dimension))
+          (list (coordinate-range-begin coordinate)
+                (coordinate-range-end coordinate))
+        (funcall thunk))
+      (progv
+          (list (coordinate-name-of dimension))
+          (list coordinate)
+        (funcall thunk))))
+
+(def (macro e) with-coordinate (dimension coordinate &body forms)
+  `(call-with-coordinate ,dimension ,coordinate (lambda () ,@forms)))
+
+(def (function e) call-with-coordinates (dimensions coordinates thunk)
+  (iter (for dimension :in dimensions)
+        (for coordinate :in coordinates)
+        (if (typep dimension 'ordering-dimension)
+            (progn
+              (collect (begin-coordinate-name-of dimension) :into variables)
+              (collect (coordinate-range-begin coordinate) :into values)
+              (collect (end-coordinate-name-of dimension) :into variables)
+              (collect (coordinate-range-end coordinate) :into values))
+            (progn
+              (collect (coordinate-name-of dimension) :into variables)
+              (collect coordinate :into values)))
+        (finally
+         (return
+           (progv variables values
+             (funcall thunk))))))
+
+(def (macro e) with-coordinates (dimensions coordinates &body forms)
+  `(call-with-coordinates ,dimensions ,coordinates (lambda () ,@forms)))
+
 ;;;;;;
 ;;; Constants
 

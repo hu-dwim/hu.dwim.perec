@@ -302,6 +302,10 @@
            #:ordering-dimension
            #:inheriting-dimension
            #:time
+           #:with-coordinate
+           #:with-coordinates
+           #:call-with-coordinate
+           #:call-with-coordinates
            #:with-time
            #:with-default-time
            #:validity
