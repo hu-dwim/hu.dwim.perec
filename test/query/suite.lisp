@@ -9,14 +9,6 @@
       ,@body)
     (stop-sql-recording)))
 
-(defmacro with-setup (fixture &body body)
-  (if fixture
-      `(progn
-        (funcall ',fixture)
-        ,@body)
-      `(progn
-        ,@body)))
-
 (defmacro with-debug-query-compiler (&body body)
   `(let ((*test-query-compiler* #t))
      ,@body))
