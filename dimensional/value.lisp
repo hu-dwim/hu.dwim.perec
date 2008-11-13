@@ -666,8 +666,9 @@
   (debug-only (valid-d-value-p d-value))
   (bind ((new-d-value (value-at-coordinates d-value coordinates)))
     (iter (for c-value :in (c-values-of new-d-value))
-          (deletef (value-of c-value) value))
-    (setf (into-d-value d-value) new-d-value)))
+          (removef (value-of c-value) value))
+    (setf (into-d-value d-value) new-d-value))
+  d-value)
 
 (def (function e) clear-at-coordinates (d-value coordinates value)
   (debug-only (valid-d-value-p d-value))
