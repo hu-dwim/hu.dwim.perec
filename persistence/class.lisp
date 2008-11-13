@@ -579,7 +579,14 @@
 (def function persistent-class-name-p (name)
   (and name
        (symbolp name)
-       (persistent-class-p (find-class name #f))))
+       (aif (find-class name #f)
+            (persistent-class-p it)
+            ;; FIXME gives false positives (for standard classes)
+            (forthcoming-defclass-type-p name))))
+
+(def (function io) forthcoming-defclass-type-p (class-name)
+  #+sbcl(eq (sb-int:info :type :kind class-name) :forthcoming-defclass-type)
+  #-sbcl(not-yet-implemented))
 
 (def function persistent-slot-p (slot)
   (typep slot 'persistent-slot-definition))
