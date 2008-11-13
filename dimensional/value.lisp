@@ -660,7 +660,8 @@
   (bind ((new-d-value (value-at-coordinates d-value coordinates)))
     (iter (for c-value :in (c-values-of new-d-value))
           (pushnew value (value-of c-value)))
-    (setf (into-d-value d-value) new-d-value)))
+    (setf (into-d-value d-value) new-d-value))
+  d-value)
 
 (def (function e) delete-at-coordinates (d-value coordinates value)
   (debug-only (valid-d-value-p d-value))
@@ -676,7 +677,8 @@
     (iter (for c-value :in (c-values-of new-d-value))
           (when (eq (value-of c-value) value)
             (setf (value-of c-value) nil)))
-    (setf (into-d-value d-value) new-d-value)))
+    (setf (into-d-value d-value) new-d-value))
+  d-value)
 
 ;;;;;;
 ;;; Iteration support
