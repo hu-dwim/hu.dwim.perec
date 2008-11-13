@@ -704,6 +704,11 @@
    (where :type (or null sql-syntax-node))
    (need-where-clause :type boolean)))
 
+(def constructor storage-location ()
+  (assert (every (of-type 'class-primary-table) (tables-of -self-)))
+  (assert (every (of-type 'persistent-class) (classes-of -self-)))
+  (assert (every #'symbolp (slot-names-of -self-))))
+
 (def function find-and-ensure-classes (classes-or-class-names)
   (mapcar (lambda (class)
             (ensure-finalized (if (symbolp class)
