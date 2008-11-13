@@ -20,6 +20,14 @@
   (:method (coordinate-1 coordinate-2)
     (eq coordinate-1 coordinate-2))
 
+  ;; FIXME: do we need these methods? If yes, we need to pass the dimension here
+  #+nil
+  (:method ((coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 cons))
+    (equal (domain dimension) coordinate-2))
+  #+nil
+  (:method ((coordinate-1 cons) (coordinate-2 (eql +whole-domain-marker+)))
+    (equal coordinate-1 (domain dimension)))
+
   (:method ((coordinate-1 cons) (coordinate-2 cons))
     (if (or (coordinate-range-p coordinate-1)
             (coordinate-range-p coordinate-2))
@@ -307,6 +315,12 @@
 ;;; Dimension coordinate
 
 (def (generic e) covering-coordinate-p (dimension cover coordinate)
+  (:method ((dimension abstract-dimension) (cover (eql +whole-domain-marker+)) (coordinate t))
+    #t)
+
+  (:method ((dimension abstract-dimension) (cover list) (coordinate (eql +whole-domain-marker+)))
+    (coordinate= cover (domain dimension)))
+  
   (:method ((dimension abstract-dimension) (cover cons) (coordinate cons))
     (every (lambda (element)
              (member element cover))
@@ -322,6 +336,12 @@
   (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 null))
     nil)
 
+  (:method ((dimension abstract-dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 t))
+    coordinate-2)
+
+  (:method ((dimension abstract-dimension) (coordinate-1 t) (coordinate-2 (eql +whole-domain-marker+)))
+    coordinate-1)
+  
   (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (intersection coordinate-1 coordinate-2))
 
@@ -334,6 +354,12 @@
 
   (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 null))
     coordinate-1)
+
+  (:method ((dimension abstract-dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 t))
+    +whole-domain-marker+)
+
+  (:method ((dimension abstract-dimension) (coordinate-1 t) (coordinate-2 (eql +whole-domain-marker+)))
+    +whole-domain-marker+)
   
   (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (union coordinate-1 coordinate-2))
@@ -347,6 +373,12 @@
 
   (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 null))
     (list coordinate-1))
+
+  (:method ((dimension abstract-dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 list))
+    (list (set-difference (domain dimension) coordinate-2)))
+
+  (:method ((dimension abstract-dimension) (coordinate-1 t) (coordinate-2 (eql +whole-domain-marker+)))
+    nil)
 
   (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (list (set-difference coordinate-1 coordinate-2)))

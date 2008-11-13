@@ -97,8 +97,11 @@
                                                               `(:maximum-coordinate ,maximum-coordinate))
                                                       ,@(when inherit (list :direction inherit)))
                              `(:coordinate-name ',coordinate-name
-                                                ,@(when default-coordinate?
-                                                        `(:default-coordinate (lambda () ,default-coordinate))))))
+                                                ,@(cond
+                                                   (default-coordinate?
+                                                       `(:default-coordinate (lambda () ,default-coordinate)))
+                                                   (t
+                                                    `(:default-coordinate (lambda () +whole-domain-marker+)))))))
          (slots (unless (persistent-class-name-p type)
                   (if (and ordered (not inherit))
                       `((,begin-variable-name :type (or unbound ,type))
@@ -120,48 +123,48 @@
          (:direct-store :push-down))
        ,@(when (persistent-class-name-p type)
                `((defassociation*
-                   ((:class ,dependent-object-name :slot ,name :type ,type)
+                   ((:class ,dependent-object-name :slot ,name :type (or null ,type))
                     (:class ,type :slot ,dependent-instances-name :type (set ,dependent-object-name))))))
        ,@(unless external
-           (if ordered
-               `((def (macro e) ,with-macro-name (,name &body forms)
-                   (if (stringp ,name)
-                       `(,',call-with-range-fn-name
-                         ,(coerce-to-coordinate-begin ,name ',type)
-                         ,(coerce-to-coordinate-end ,name ',type)
-                         (lambda () ,@forms))
-                       `(,',call-with-fn-name ,,name (lambda () ,@forms))))
-                 (def (special-variable e) ,begin-special-name)
-                 (def (special-variable e) ,end-special-name)
-                 (def (symbol-macro e) ,coordinate-name
-                     (coordinate (find-dimension ',name)))
-                 (def (function e) ,call-with-fn-name (,name thunk)
-                   (bind ((,begin-special-name ,name)
-                          (,end-special-name ,name))
-                     (funcall thunk)))
-                 (def (macro e) ,with-range-macro-name (,begin-variable-name ,end-variable-name &body forms)
-                   `(,',call-with-range-fn-name
-                     ,(coerce-to-coordinate-begin ,begin-variable-name ',type)
-                     ,(coerce-to-coordinate-end ,end-variable-name ',type)
-                     (lambda () ,@forms)))
-                 ,@(when maximum-coordinate?
-                         `((def (macro e) ,with-range-from-macro-name (begin &body forms)
-                             `(,',with-range-macro-name ,begin ,,maximum-coordinate ,@forms))))
-                 ,@(when minimum-coordinate?
-                         `((def (macro e) ,with-range-to-macro-name (end &body forms)
-                             `(,',with-range-macro-name ,,minimum-coordinate ,end ,@forms))))
-                 (def (function e) ,call-with-range-fn-name (,begin-variable-name ,end-variable-name thunk)
-                   (bind ((,begin-special-name ,begin-variable-name)
-                          (,end-special-name ,end-variable-name))
-                     (funcall thunk))))
-               `((def (macro e) ,with-macro-name (,name &body forms)
-                   `(,',call-with-fn-name
-                     ,(coerce-to-coordinate ,name ',type)
-                     (lambda () ,@forms)))
-                 (def (special-variable e) ,coordinate-name)
-                 (def (function e) ,call-with-fn-name (,name thunk)
-                   (bind ((,coordinate-name (ensure-list ,name)))
-                     (funcall thunk)))))))))
+                 (if ordered
+                     `((def (macro e) ,with-macro-name (,name &body forms)
+                         (if (stringp ,name)
+                             `(,',call-with-range-fn-name
+                               ,(coerce-to-coordinate-begin ,name ',type)
+                               ,(coerce-to-coordinate-end ,name ',type)
+                               (lambda () ,@forms))
+                             `(,',call-with-fn-name ,,name (lambda () ,@forms))))
+                       (def (special-variable e) ,begin-special-name)
+                       (def (special-variable e) ,end-special-name)
+                       (def (symbol-macro e) ,coordinate-name
+                           (coordinate (find-dimension ',name)))
+                       (def (function e) ,call-with-fn-name (,name thunk)
+                         (bind ((,begin-special-name ,name)
+                                (,end-special-name ,name))
+                           (funcall thunk)))
+                       (def (macro e) ,with-range-macro-name (,begin-variable-name ,end-variable-name &body forms)
+                         `(,',call-with-range-fn-name
+                           ,(coerce-to-coordinate-begin ,begin-variable-name ',type)
+                           ,(coerce-to-coordinate-end ,end-variable-name ',type)
+                           (lambda () ,@forms)))
+                       ,@(when maximum-coordinate?
+                               `((def (macro e) ,with-range-from-macro-name (begin &body forms)
+                                   `(,',with-range-macro-name ,begin ,,maximum-coordinate ,@forms))))
+                       ,@(when minimum-coordinate?
+                               `((def (macro e) ,with-range-to-macro-name (end &body forms)
+                                   `(,',with-range-macro-name ,,minimum-coordinate ,end ,@forms))))
+                       (def (function e) ,call-with-range-fn-name (,begin-variable-name ,end-variable-name thunk)
+                         (bind ((,begin-special-name ,begin-variable-name)
+                                (,end-special-name ,end-variable-name))
+                           (funcall thunk))))
+                     `((def (macro e) ,with-macro-name (,name &body forms)
+                         `(,',call-with-fn-name
+                           ,(coerce-to-coordinate ,name ',type)
+                           (lambda () ,@forms)))
+                       (def (special-variable e) ,coordinate-name)
+                       (def (function e) ,call-with-fn-name (,name thunk)
+                         (bind ((,coordinate-name (ensure-list ,name)))
+                           (funcall thunk)))))))))
 
 (def function dependent-object-name (dimension-name)
   (format-symbol *package* "~A-DEPENDENT-OBJECT" dimension-name))
@@ -214,6 +217,15 @@
 
 (def (function e) end-coordinate (dimension)
   (lookup-coordinate dimension #'end-coordinate-name-of #'default-end-coordinate-of))
+
+(def (function e) domain (dimension)
+  ;; TODO domain of ordering-dimensions is the range: [min,max]
+  (assert (not (typep dimension 'ordering-dimension)))
+  (assert (persistent-class-name-p (the-type-of dimension)))
+  ;; TODO cache the result in the transaction
+  (select (:prefetch-mode :none) (instance)
+          (from (instance))
+          (where (typep instance (the-type-of dimension)))))
 
 (def function lookup-coordinate (dimension name-provider default-provider)
   (bind ((dimension (lookup-dimension dimension))
@@ -269,6 +281,20 @@
 (def (load-time-constant e) +end-of-time+ (parse-timestring "3000-01-01TZ")
   "All timestamps are equal or less than the end of time.")
 
+(eval-always
+  (def (load-time-constant e) +whole-domain-marker+
+      (progn
+        (defstruct whole-domain-marker
+          "Type of the special value that marks the whole domain of the dimension.")
+        (def method make-load-form ((self whole-domain-marker) &optional environment)
+          (declare (ignore environment))
+          '%%%+whole-domain-marker+)
+        (make-whole-domain-marker))
+    "The special value that marks the whole domain of non-ordering dimensions."))
+
+(def (function ioe) whole-domain-marker-p (coordinate)
+  (eq coordinate +whole-domain-marker+))
+
 ;;;;;;
 ;;; Time dimension
 
@@ -293,7 +319,6 @@
 
 ;;;;;;
 ;;; Enumerated
-
 (def (dimension e) enumerated
   :type symbol
   :default-coordinate t)

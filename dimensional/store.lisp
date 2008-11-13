@@ -58,7 +58,8 @@
     (and has-default-p (equal value slot-default-value)))) ; FIXME equal
 
 (def function store-slot-t* (d-class d-instance d-slot value coordinates)
-  (bind ((update-count))
+  (bind ((dimensions (dimensions-of d-slot))
+         (update-count))
 
     ;; do not store the default value of the slot in a transient instance except if temporal.
     ;; restore-slot interprets missing h-instances as the default value
@@ -67,13 +68,17 @@
                (null (find-if (of-type 'inheriting-dimension) (dimensions-of d-slot))))
       (return-from store-slot-t*))
 
-    ;; first try to update value in the h-instance having the same coordinates
-    (setf update-count (update-h-instance-slot-value d-class d-instance d-slot value coordinates))
+    (iterate-with-enumerated-coordinate-sets
+     
+     (lambda (coordinates)
+      ;; first try to update value in the h-instance having the same coordinates
+      (setf update-count (update-h-instance-slot-value d-class d-instance d-slot value coordinates))
+      ;; if the update is not succeeded then insert value with t and validity except if it
+      ;; is the default value of a non-temporal slot
+      (when (zerop update-count)
+        (insert-h-instance d-class d-instance d-slot value coordinates)))
 
-    ;; if the update is not succeeded then insert value with t and validity except if it
-    ;; is the default value of a non-temporal slot
-    (when (zerop update-count)
-      (insert-h-instance d-class d-instance d-slot value coordinates))))
+     dimensions coordinates)))
 
 ;;;
 ;;; d-value builders
@@ -138,7 +143,8 @@
 
              (check-result (instance result)
                (bind ((other-association-end (other-association-end-of d-association-end)))
-                 (iter (for (coords value) :in-d-value result)
+                 (iter outer
+                       (for (coords value) :in-d-value result)
                        (cond
                          ((or (null value) (eq value +unbound-slot-marker+))
                           (collect-d-value value :dimensions dimensions :coordinates coords))
@@ -146,19 +152,19 @@
                           (iter (for (other-coords other-value) :in-d-value
                                      (unchecked-value other-association-end value coords))
                                 (if (find instance (ensure-list other-value))
-                                    (collect-d-value value :dimensions dimensions :coordinates other-coords)
-                                    (collect-d-value default-value
-                                                     :dimensions dimensions :coordinates other-coords))))
+                                    (in outer (collect-d-value value :dimensions dimensions :coordinates other-coords))
+                                    (in outer (collect-d-value default-value
+                                                               :dimensions dimensions :coordinates other-coords)))))
                          ((listp value)
                           (bind ((d-values (mapcar [unchecked-value other-association-end !1 coords] value)))
                             (iter (for (other-coords values) :in-d-values d-values :unspecified-value +missing-value+)
-                                  (collect-d-value
-                                   (iter (for vv :in value)
-                                         (for v :in-sequence values)
-                                         (when (and (not (eq v +missing-value+))
-                                                    (find instance (ensure-list v)))
-                                           (adjoining vv)))
-                                   :dimensions dimensions :coordinates other-coords))))
+                                  (in outer (collect-d-value
+                                             (iter (for vv :in value)
+                                                   (for v :in-sequence values)
+                                                   (when (and (not (eq v +missing-value+))
+                                                              (find instance (ensure-list v)))
+                                                     (adjoining vv)))
+                                             :dimensions dimensions :coordinates other-coords)))))
                          (t
                           (error "Bug")))))))
 
@@ -195,7 +201,7 @@
             (#.+t-delete+ (ecase cardinality
                             (:1 (clear-at-coordinates d-value coords instance))
                             (:n (delete-at-coordinates d-value coords instance))))))
-    
+
     (value-at-coordinates d-value coordinates)))
 
 (defmethod store-slot ((d-class persistent-class-d) (d-instance persistent-object-d) (d-slot persistent-association-end-effective-slot-definition-d) value)
@@ -416,11 +422,14 @@
                             (slot-value h-instance ',(end-slot-name-of dimension)))))
 
             (dimension
-             (add-collect query `(slot-value h-instance ',(slot-name-of dimension)))
-             (add-assert query
-                         `(member
-                           (slot-value h-instance ',(slot-name-of dimension))
-                           ,(name-of dimension))))))
+             (add-collect query `(or (and (null (slot-value h-instance ',(slot-name-of dimension)))
+                                          +whole-domain-marker+) ; FIXME if
+                                     (slot-value h-instance ',(slot-name-of dimension))))
+             (unless (whole-domain-marker-p coordinate)
+               (add-assert query
+                           `(member
+                             (slot-value h-instance ',(slot-name-of dimension))
+                             ,(name-of dimension)))))))
 
 
     (apply #'execute-query query d-instance coordinates)))
@@ -437,13 +446,16 @@
                  '(d-instance value))))
 
     (iter (for dimension :in dimensions)
+          (for coordinate :in coordinates)
           (add-lexical-variable query (name-of dimension))
           (etypecase dimension
             (inheriting-dimension
+             (collect coordinate :into coordinates*)
              (add-assert query `(,(dimension-equal dimension)
                                   (slot-value h-instance ',(slot-name-of dimension))
                                   (coordinate-range-begin ,(name-of dimension)))))
             (ordering-dimension
+             (collect coordinate :into coordinates*)
              (add-assert query `(,(dimension-equal dimension)
                                   (slot-value h-instance ',(begin-slot-name-of dimension))
                                   (coordinate-range-begin ,(name-of dimension))))
@@ -451,17 +463,18 @@
                                   (slot-value h-instance ',(end-slot-name-of dimension))
                                   (coordinate-range-end ,(name-of dimension)))))
             (dimension
+             (collect (if (whole-domain-marker-p coordinate) nil coordinate) :into coordinates*)
              (add-assert query `(,(dimension-equal dimension)
                                   (slot-value h-instance ',(slot-name-of dimension))
-                                  ,(name-of dimension))))))
+                                  ,(name-of dimension)))))
 
-    ;; generate condition for version check
-    (add-assert query `(eq h-instance (select ((max (oid-of h-instance-2)))
-                                        (from (h-instance-2 ,(class-name h-class)))
-                                        (where (and (eq (d-instance-of h-instance-2) d-instance))))))
-
-    (prog1-bind count (apply 'execute-query query d-instance value coordinates)
-      (assert (<= count 1) nil "Inconsistent database"))))
+          (finally
+           ;; generate condition for version check
+           (add-assert query `(eq h-instance (select ((max (oid-of h-instance-2)))
+                                               (from (h-instance-2 ,(class-name h-class)))
+                                               (where (and (eq (d-instance-of h-instance-2) d-instance))))))
+           (return (prog1-bind count (apply 'execute-query query d-instance value coordinates*)
+                     (assert (<= count 1) nil "Inconsistent database")))))))
 
 (def function insert-h-instance (d-class d-instance d-slot value coordinates)
   (bind ((h-class (h-class-of d-class)))
@@ -487,7 +500,7 @@
                      (collect (coordinate-range-end coordinate)))
                     (dimension
                      (collect (initarg-of (slot-name-of dimension)))
-                     (collect coordinate))))))))
+                     (collect (if (whole-domain-marker-p coordinate) nil coordinate)))))))))
 
 (defun select-association-end-values-with-dimensions (instance d-association-end coordinates)
   "Returns the values of the association-end (with validity if time-dependent) in descending t order (if temporal). When temporal, but not time-dependent then only the most recent queried."
@@ -566,11 +579,14 @@
                             (slot-value h-instance ',(end-slot-name-of dimension)))))
 
             (dimension
-             (add-collect query `(slot-value h-instance ',(slot-name-of dimension)))
-             (add-assert query
-                         `(member
-                           (slot-value h-instance ',(slot-name-of dimension))
-                           ,(name-of dimension))))))
+             (add-collect query `(or (and (null (slot-value h-instance ',(slot-name-of dimension))) ;FIXME if
+                                          +whole-domain-marker+)
+                                     (slot-value h-instance ',(slot-name-of dimension))))
+             (unless (whole-domain-marker-p coordinate)
+               (add-assert query
+                          `(member
+                            (slot-value h-instance ',(slot-name-of dimension))
+                            ,(name-of dimension)))))))
 
     (apply #'execute-query query instance coordinates)))
 
@@ -578,32 +594,56 @@
   (assert (or (null (action-slot-of d-association-end))
               (integerp action)))
 
-  (bind ((h-class (h-class-of d-association-end)))
+  (bind ((h-class (h-class-of d-association-end))
+         (dimensions (dimensions-of d-association-end)))
     (flet ((initarg-of (slot-or-slot-name)
              (aprog1 (first (slot-definition-initargs (if (symbolp slot-or-slot-name)
                                                           (find-persistent-slot h-class slot-or-slot-name)
                                                           slot-or-slot-name)))
                (assert it))))
-      (apply 'make-instance
-             h-class
-             (append
-              (list (initarg-of (h-slot-of d-association-end)) instance)
-              (list (initarg-of (other-end-h-slot-of d-association-end)) other-instance)
-              (when (action-slot-of d-association-end)
-                (list :action action))
-              (iter (for dimension :in (dimensions-of d-association-end))
-                    (for coordinate :in coordinates)
-                    (etypecase dimension
-                      (inheriting-dimension
-                       (assert (coordinate= (coordinate-range-begin coordinate)
-                                            (coordinate-range-end coordinate)))
-                       (collect (initarg-of (slot-name-of dimension)))
-                       (collect (coordinate-range-begin coordinate)))
-                      (ordering-dimension
-                       (collect (initarg-of (begin-slot-name-of dimension)))
-                       (collect (coordinate-range-begin coordinate))
-                       (collect (initarg-of (end-slot-name-of dimension)))
-                       (collect (coordinate-range-end coordinate)))
-                      (dimension
-                       (collect (initarg-of (slot-name-of dimension)))
-                       (collect coordinate)))))))))
+      (iterate-with-enumerated-coordinate-sets
+       (lambda (coordinates)
+         (apply 'make-instance
+                h-class
+                (append
+                 (list (initarg-of (h-slot-of d-association-end)) instance)
+                 (list (initarg-of (other-end-h-slot-of d-association-end)) other-instance)
+                 (when (action-slot-of d-association-end)
+                   (list :action action))
+                 (iter (for dimension :in dimensions)
+                       (for coordinate :in coordinates)
+                       (etypecase dimension
+                         (inheriting-dimension
+                          (assert (coordinate= (coordinate-range-begin coordinate)
+                                               (coordinate-range-end coordinate)))
+                          (collect (initarg-of (slot-name-of dimension)))
+                          (collect (coordinate-range-begin coordinate)))
+                         (ordering-dimension
+                          (collect (initarg-of (begin-slot-name-of dimension)))
+                          (collect (coordinate-range-begin coordinate))
+                          (collect (initarg-of (end-slot-name-of dimension)))
+                          (collect (coordinate-range-end coordinate)))
+                         (dimension
+                          (collect (initarg-of (slot-name-of dimension)))
+                          (collect (if (whole-domain-marker-p coordinate) nil coordinate))))))))
+       dimensions coordinates))))
+
+;;;
+;;; Helpers
+;;;
+(def function iterate-with-enumerated-coordinate-sets (function dimensions coordinates)
+  "FUNCTION accepts a coordinate list when each coordinate belongs to an enumerated dimension contains only one value. COORDINATES may contain a set of values in these dimensions, the FUNCTION will be called with each value."
+  (labels ((recurse (coordinates remaining-coordinates)
+             (iter (for dimension :in dimensions)
+                   (for coordinates-cell :on remaining-coordinates)
+                   (for coordinate = (car coordinates-cell))
+                   (when (and (not (typep dimension 'ordering-dimension))
+                              (not (whole-domain-marker-p coordinate))
+                              (listp coordinate))
+                     (assert coordinate)
+                     (iter (for single-value :in coordinates)
+                           (setf (car coordinates-cell) single-value)
+                           (recurse coordinates (cdr coordinates-cell))))
+                   (finally (funcall function coordinates)))))
+    (bind ((coordinates (copy-list coordinates)))
+      (recurse coordinates coordinates))))
