@@ -514,15 +514,16 @@
 (def (function e) d-value-p (value)
   (typep value 'd-value))
 
+(def (special-variable e) *print-d-value-details* #t)
+
 (def print-object d-value ()
   (format t "(~{~A~^, ~}) " (mapcar #'name-of (dimensions-of -self-)))
-  (mapc #'print-c-value (c-values-of -self-)))
+  (when *print-d-value-details*
+    (mapc [progn (terpri) (print-c-value !1)] (c-values-of -self-))))
 
 (def (function e) print-d-value (d-value &optional (stream t))
-  (princ d-value stream)
-  (iter (for c-value :in (c-values-of d-value))
-        (terpri stream)
-        (print-c-value c-value stream)))
+  (bind ((*print-d-value-details* #t))
+    (princ d-value stream)))
 
 (def function valid-d-value-p (d-value)
   (iter (with dimensions = (dimensions-of d-value))
