@@ -664,9 +664,13 @@
              ((or (null storage-locations)
                   (null column-value-pairs))
               (with-unique-names (row count)
-                (bind ((bindings (generate-bindings sql-query row place-value-pairs)))
+                (bind (((:values bindings place-value-pairs) (generate-bindings sql-query row place-value-pairs)))
                   `(prog1-bind ,count 0
-                     (execute ,(%compile-plan sql-query)
+                     (execute ,(rdbms::expand-sql-ast-into-lambda-form ;; TODO export
+                                (sql-select
+                                  :columns (columns-of sql-query)
+                                  :tables  (tables-of sql-query)
+                                  :where (where-of sql-query)))
                               :visitor
                               (lambda (,row)
                                 (let* ,bindings
