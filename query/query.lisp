@@ -302,14 +302,18 @@
           (consp (third form))
           (eq (first (third form)) 'quote)
           (symbolp (second (third form))))
-     (bind ((slot (first (effective-slots-for-slot-name (second (third form))))) ; KLUDGE bad, bad, bad...
-            (accessor (when slot (reader-name-of slot))))
+     (bind ((slots (effective-slots-for-slot-name (second (third form))))
+            (accessor (when slots (reader-name-of (first slots))))) ; KLUDGE bad, bad, bad...
        (cond
+         ((some [not (eq accessor (reader-name-of !1))] (rest slots))
+          (warn "Cannot find a unique accessor by slot-name: ~S" form)
+          (make-function-call :fn (first form)
+                              :args (mapcar #L(parse-query-form !1 variables) (rest form))))
          ((null accessor)
           (warn "No accessor found for slot access: ~S" form)
           (make-function-call :fn (first form)
                               :args (mapcar #L(parse-query-form !1 variables) (rest form))))
-         ((typep slot 'persistent-association-end-effective-slot-definition)
+         ((typep (first slots) 'persistent-association-end-effective-slot-definition)
           (make-association-end-access :accessor accessor
                                        :args (list (parse-query-form (second form) variables))))
          (t
