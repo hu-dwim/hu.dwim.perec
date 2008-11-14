@@ -125,6 +125,10 @@
               (not (consp begin))
               (not (consp end))))))
 
+(def function assert-coordinate-ranges (range-1 range-2)
+  (assert (coordinate-range-p range-1))
+  (assert (coordinate-range-p range-2)))
+
 (def (function ioe) make-coordinate-range (bounds begin end)
   (debug-only
     (assert (typep bounds 'bounds))
@@ -168,7 +172,7 @@
              (coordinate< coordinate (coordinate-range-end range))))))
 
 (def function coordinate-range= (range-1 range-2)
-  (debug-only (assert-ranges range-1 range-2))
+  (debug-only (assert-coordinate-ranges range-1 range-2))
   (and (eq (coordinate-range-bounds range-1)
            (coordinate-range-bounds range-2))
        (coordinate= (coordinate-range-begin range-1)
@@ -176,12 +180,8 @@
        (coordinate= (coordinate-range-end range-1)
                     (coordinate-range-end range-2))))
 
-(def function assert-ranges (range-1 range-2)
-  (assert (and (coordinate-range-p range-1)
-               (coordinate-range-p range-2))))
-
 (def (function e) overlapping-range-p (range-1 range-2)
-  (debug-only (assert-ranges range-1 range-2))
+  (debug-only (assert-coordinate-ranges range-1 range-2))
   (bind ((bounds-1 (coordinate-range-bounds range-1))
          (bounds-2 (coordinate-range-bounds range-2)))
     (and (funcall (if (and (begin-inclusive-p bounds-1)
@@ -198,7 +198,7 @@
                  (coordinate-range-end range-1)))))
 
 (def function covering-range-p (cover range)
-  (debug-only (assert-ranges cover range))
+  (debug-only (assert-coordinate-ranges cover range))
   (bind ((cover-bounds (coordinate-range-bounds cover))
          (range-bounds (coordinate-range-bounds range)))
     (and (funcall (if (and (begin-exclusive-p cover-bounds)
@@ -215,7 +215,7 @@
                   (coordinate-range-end cover)))))
 
 (def function range-intersection (range-1 range-2)
-  (debug-only (assert-ranges range-1 range-2))
+  (debug-only (assert-coordinate-ranges range-1 range-2))
   (when (overlapping-range-p range-1 range-2)
     (bind ((begin-range (cond
                           ((coordinate< (coordinate-range-begin range-1)
@@ -246,7 +246,7 @@
        (coordinate-range-end end-range)))))
 
 (def function range-union (range-1 range-2)
-  (debug-only (assert-ranges range-1 range-2))
+  (debug-only (assert-coordinate-ranges range-1 range-2))
   (when (or (overlapping-range-p range-1 range-2)
             (and (coordinate= (coordinate-range-end range-1)
                               (coordinate-range-begin range-2))
@@ -285,7 +285,7 @@
        (coordinate-range-end end-range)))))
 
 (def function range-difference (range-1 range-2)
-  (debug-only (assert-ranges range-1 range-2))
+  (debug-only (assert-coordinate-ranges range-1 range-2))
   (cond
     ((covering-range-p range-2 range-1)
      nil)
@@ -525,7 +525,7 @@
   (bind ((*print-d-value-details* #t))
     (princ d-value stream)))
 
-(def function valid-d-value-p (d-value)
+(def function assert-valid-d-value (d-value)
   (iter (with dimensions = (dimensions-of d-value))
         (with number-of-dimensions = (length dimensions))
         (for c-value-1-cell :on (c-values-of d-value))
@@ -534,7 +534,8 @@
                 nil "Invalid number of coordinates in ~A" d-value)
         (iter (for c-value-2 :in (cdr c-value-1-cell))
               (assert (not (coordinates-intersection dimensions (coordinates-of c-value-1) (coordinates-of c-value-2)))
-                      nil "Invalid d-value due to overlapping coordinates found in c-values of ~A" d-value))))
+                      nil "Invalid d-value due to overlapping coordinates found in c-values of ~A" d-value)))
+  d-value)
 
 (def (function e) make-empty-d-value (dimensions)
   (make-instance 'd-value
@@ -571,14 +572,14 @@
            d-values)))
 
 (def (function e) copy-d-value (d-value)
-  (debug-only (valid-d-value-p d-value))
+  (debug-only (assert-valid-d-value d-value))
   (make-instance 'd-value
                  :dimensions (dimensions-of d-value)
                  :c-values (mapcar #'copy-c-value (c-values-of d-value))))
 
 (def (function e) d-value= (d-value-1 d-value-2 &key (test #'eql))
-  (debug-only (and (valid-d-value-p d-value-1)
-                   (valid-d-value-p d-value-2)))
+  (debug-only (and (assert-valid-d-value d-value-1)
+                   (assert-valid-d-value d-value-2)))
   (and (equal (dimensions-of d-value-1)
               (dimensions-of d-value-2))
        (every* (lambda (c-value-1 c-value-2)
@@ -587,9 +588,8 @@
                (c-values-of d-value-2))))
 
 (def (function e) d-value-equal (d-value-1 d-value-2 &key (test #'eql))
-  (debug-only
-    (valid-d-value-p d-value-1)
-    (valid-d-value-p d-value-2))
+  (debug-only (and (assert-valid-d-value d-value-1)
+                   (assert-valid-d-value d-value-2)))
   (iter (with dimensions-1 = (dimensions-of d-value-1))
         (with dimensions-2 = (dimensions-of d-value-2))
         (unless (equal dimensions-1 dimensions-2)
@@ -607,7 +607,7 @@
                                     :test test))))))
 
 (def (function e) covering-d-value-p (d-value coordinates)
-  (debug-only (valid-d-value-p d-value))
+  (debug-only (assert-valid-d-value d-value))
   (bind ((remaining-coordinates (list coordinates)))
     (iter (with dimensions = (dimensions-of d-value))
           (for c-value :in (c-values-of d-value))
@@ -617,7 +617,7 @@
     (null remaining-coordinates)))
 
 (def (function e) consolidate-d-value (d-value &key (test #'eql))
-  (debug-only (valid-d-value-p d-value))
+  (debug-only (assert-valid-d-value d-value))
   (bind ((original-d-value (debug-only (copy-d-value d-value))))
     (declare (ignorable original-d-value))
     (tagbody
@@ -640,13 +640,12 @@
                                                        (c-values-of d-value))))
                                (go :restart))))
                (collect c-value-1))))
-    #+nil
-    (debug-only (and (d-value-equal d-value original-d-value)
-                     (valid-d-value-p d-value)))
+    (debug-only (and (assert-valid-d-value d-value)
+                     #+nil(d-value-equal d-value original-d-value)))
     d-value))
 
 (def (function e) single-value-at-coordinates (d-value coordinates &key (otherwise :signal-default-error))
-  (debug-only (valid-d-value-p d-value))
+  (debug-only (assert-valid-d-value d-value))
   (iter (with dimensions = (dimensions-of d-value))
         (for c-value :in (c-values-of d-value))
         (when (covering-coordinates-p dimensions (coordinates-of c-value) coordinates)
@@ -658,7 +657,7 @@
                       otherwise))))))
 
 (def (function e) value-at-coordinates (d-value coordinates)
-  (debug-only (valid-d-value-p d-value))
+  (debug-only (assert-valid-d-value d-value))
   (consolidate-d-value
    (prog1-bind result-d-value (make-empty-d-value (dimensions-of d-value))
      (setf (c-values-of result-d-value)
@@ -670,7 +669,7 @@
                                           (value-of c-value)))))))))
 
 (def (function e) (setf value-at-coordinates) (new-value d-value coordinates)
-  (debug-only (valid-d-value-p d-value))
+  (debug-only (assert-valid-d-value d-value))
   (setf (c-values-of d-value)
         (list* (make-c-value coordinates new-value)
                (iter (with dimensions = (dimensions-of d-value))
@@ -681,36 +680,41 @@
   (consolidate-d-value d-value))
 
 (def (function e) (setf into-d-value) (new-d-value d-value)
-  (debug-only (and (valid-d-value-p new-d-value)
-                   (valid-d-value-p d-value)))
+  (debug-only (and (assert-valid-d-value new-d-value)
+                   (assert-valid-d-value d-value)))
   (iter (for c-value :in (c-values-of new-d-value))
         (setf (value-at-coordinates d-value (coordinates-of c-value))
-              (value-of c-value))))
+              (value-of c-value)))
+  (debug-only (assert-valid-d-value d-value))
+  d-value)
 
 (def (function e) insert-at-coordinates (d-value coordinates value)
-  (debug-only (valid-d-value-p d-value))
+  (debug-only (assert-valid-d-value d-value))
   ;; TODO: this is suboptimal
   (bind ((new-d-value (value-at-coordinates d-value coordinates)))
     (iter (for c-value :in (c-values-of new-d-value))
           (pushnew value (value-of c-value)))
     (setf (into-d-value d-value) new-d-value))
+  (debug-only (assert-valid-d-value d-value))
   d-value)
 
 (def (function e) delete-at-coordinates (d-value coordinates value)
-  (debug-only (valid-d-value-p d-value))
+  (debug-only (assert-valid-d-value d-value))
   (bind ((new-d-value (value-at-coordinates d-value coordinates)))
     (iter (for c-value :in (c-values-of new-d-value))
           (removef (value-of c-value) value))
     (setf (into-d-value d-value) new-d-value))
+  (debug-only (assert-valid-d-value d-value))
   d-value)
 
 (def (function e) clear-at-coordinates (d-value coordinates value)
-  (debug-only (valid-d-value-p d-value))
+  (debug-only (assert-valid-d-value d-value))
   (bind ((new-d-value (value-at-coordinates d-value coordinates)))
     (iter (for c-value :in (c-values-of new-d-value))
           (when (eq (value-of c-value) value)
             (setf (value-of c-value) nil)))
     (setf (into-d-value d-value) new-d-value))
+  (debug-only (assert-valid-d-value d-value))
   d-value)
 
 ;;;;;;
