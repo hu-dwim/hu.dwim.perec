@@ -424,7 +424,7 @@
             (dimension
              (add-collect query `(or (and (null (slot-value h-instance ',(slot-name-of dimension)))
                                           +whole-domain-marker+) ; FIXME if
-                                     (slot-value h-instance ',(slot-name-of dimension))))
+                                     (list (slot-value h-instance ',(slot-name-of dimension)))))
              (unless (whole-domain-marker-p coordinate)
                (add-assert query
                            `(member
@@ -581,7 +581,7 @@
             (dimension
              (add-collect query `(or (and (null (slot-value h-instance ',(slot-name-of dimension))) ;FIXME if
                                           +whole-domain-marker+)
-                                     (slot-value h-instance ',(slot-name-of dimension))))
+                                     (list (slot-value h-instance ',(slot-name-of dimension)))))
              (unless (whole-domain-marker-p coordinate)
                (add-assert query
                           `(member
