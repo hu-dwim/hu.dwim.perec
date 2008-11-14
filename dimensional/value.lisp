@@ -39,7 +39,10 @@
     (= coordinate-1 coordinate-2))
 
   (:method ((coordinate-1 timestamp) (coordinate-2 timestamp))
-    (timestamp= coordinate-1 coordinate-2)))
+    (timestamp= coordinate-1 coordinate-2))
+
+  (:method ((coordinate-1 persistent-object) (coordinate-2 persistent-object))
+    (p-eq coordinate-1 coordinate-2)))
 
 (def (generic e) coordinate< (coordinate-1 coordinate-2)
   (:method ((coordinate-1 number) (coordinate-2 number))
@@ -343,7 +346,7 @@
     coordinate-1)
   
   (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 cons))
-    (intersection coordinate-1 coordinate-2))
+    (intersection coordinate-1 coordinate-2 :test #'coordinate=))
 
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (range-intersection coordinate-1 coordinate-2)))
@@ -362,7 +365,7 @@
     +whole-domain-marker+)
   
   (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 cons))
-    (union coordinate-1 coordinate-2))
+    (union coordinate-1 coordinate-2 :test #'coordinate=))
 
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (range-union coordinate-1 coordinate-2)))
@@ -381,7 +384,7 @@
     nil)
 
   (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 cons))
-    (list (set-difference coordinate-1 coordinate-2)))
+    (list (set-difference coordinate-1 coordinate-2 :test #'coordinate=)))
 
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (range-difference coordinate-1 coordinate-2)))
