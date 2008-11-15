@@ -65,9 +65,7 @@
 (def method transaction-mixin-class list ((self postgresql-postmodern/test))
   'transaction-mixin/test)
 
-(in-root-suite)
-
-(defsuite* test)
+(defsuite* (test :in root-suite))
 
 (defsuite* (test/persistence :in test))
 
