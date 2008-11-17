@@ -641,7 +641,7 @@
                               (not (whole-domain-marker-p coordinate))
                               (listp coordinate))
                      (assert coordinate)
-                     (iter (for single-value :in coordinates)
+                     (iter (for single-value :in coordinate)
                            (setf (car coordinates-cell) single-value)
                            (recurse coordinates (cdr coordinates-cell))))
                    (finally (funcall function coordinates)))))
