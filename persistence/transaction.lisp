@@ -28,9 +28,11 @@
 
 (def function instance-in-transaction-p (instance)
   "Returns true iff the instance is attached to a transaction which is in progress."
-  (not (null (aprog1 (transaction-of instance)
-               (debug-only
-                 (assert (or (not it) (transaction-in-progress-p it))))))))
+  (bind ((transaction (transaction-of instance)))
+    (debug-only
+      (assert (or (null transaction)
+                  (transaction-in-progress-p transaction))))
+    (not (null transaction))))
 
 (def function instance-in-current-transaction-p (instance)
   "Returns true iff the instance is attached to the current transaction which is in progress."
