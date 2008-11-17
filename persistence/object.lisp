@@ -112,7 +112,8 @@
            (write-string "nil"))
       (write-string "?")))
 
-(def print-object persistent-object
+(def print-object (persistent-object :identity (or (not (slot-boundp -self- 'persistent))
+                                                   (not (persistent-p -self-))))
   "Prints the oid of the instance and whether the instance is known to be persistent or transient."
   (print-persistent-instance -self-))
 
