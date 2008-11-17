@@ -212,6 +212,12 @@
         (error "The ~A is currently bound to a coordinate range" dimension))
       begin-coordinate)))
 
+(def (function e) make-dimension-coordinate-range (dimension begin-or-range &optional (end begin-or-range))
+  (bind ((dimension (lookup-dimension dimension))
+         (type (the-type-of dimension)))
+    (make-ie-coordinate-range (coerce-to-coordinate-begin begin-or-range type)
+                              (coerce-to-coordinate-end end type))))
+
 (def (function e) begin-coordinate (dimension)
   (lookup-coordinate dimension #'begin-coordinate-name-of #'default-begin-coordinate-of))
 

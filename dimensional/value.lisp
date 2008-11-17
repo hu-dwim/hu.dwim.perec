@@ -88,6 +88,14 @@
 (def (type e) bounds ()
   '(member ii ie ei ee))
 
+(def (constant e) +ii-bounds+ 'ii)
+
+(def (constant e) +ie-bounds+ 'ie)
+
+(def (constant e) +ei-bounds+ 'ei)
+
+(def (constant e) +ee-bounds+ 'ee)
+
 (export '(ii ie ei ee))
 
 (def (function ioe) make-bounds (begin-inclusive end-inclusive)
@@ -146,6 +154,15 @@
     (debug-only (assert (typep bounds 'bounds)))
     (cons bounds (cons begin end))))
 
+(def (function ioe) make-empty-coordinate-range (coordinate)
+  (cons 'ii (cons coordinate coordinate)))
+
+(def (function ioe) make-ie-coordinate-range (begin &optional (end begin))
+  (make-coordinate-range (make-bounds #t #f) begin end))
+
+(def (function ioe) make-ii-coordinate-range (begin &optional (end begin))
+  (make-coordinate-range (make-bounds #t #t) begin end))
+
 (def (function ioe) coordinate-range-bounds (range)
   (car range))
 
@@ -154,9 +171,6 @@
 
 (def (function ioe) coordinate-range-end (range)
   (cddr range))
-
-(def (function ioe) make-empty-coordinate-range (coordinate)
-  (cons 'ii (cons coordinate coordinate)))
 
 (def (function ioe) coordinate-range-empty-p (range)
   (and (eq 'ii (coordinate-range-bounds range))
