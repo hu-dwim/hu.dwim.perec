@@ -368,6 +368,7 @@
     :type list))
   (:documentation "Describes hte mapping of a lisp type to RDBMS."))
 
+;; TODO use -normalized-type- naming convention
 (def macro defmapping (name sql-type reader writer)
   "A mapping specifies how a type is mapped to RDBMS. It defines the transformers to convert between the rdbms values and the slot value."
   (flet ((function-designator-p (transformer)
