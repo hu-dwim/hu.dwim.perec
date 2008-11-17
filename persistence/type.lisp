@@ -54,10 +54,11 @@
             (args ',args)
             (body ',body)
             (substituter
-             (lambda ,args ,@body)
+             (named-lambda ,(format-symbol *package* "TYPE-SUBSTITUTER/~A" name) ,args
+               ,@body)
              :allocation :class)
             (parser
-             (lambda ,args
+             (named-lambda ,(format-symbol *package* "TYPE-PARSER/~A" name) ,args
                (make-instance ',type-class-name
                               ,@(mappend #L(list (intern (symbol-name !1) (find-package :keyword)) !1)
                                          (lambda-list-to-variable-list args :include-&rest #t))))
