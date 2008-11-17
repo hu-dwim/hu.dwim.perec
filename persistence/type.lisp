@@ -60,7 +60,12 @@
             (parser
              (named-lambda ,(format-symbol *package* "TYPE-PARSER/~A" name) ,args
                (make-instance ',type-class-name
-                              ,@(mappend #L(list (intern (symbol-name !1) (find-package :keyword)) !1)
+                              ,@(mappend (lambda (arg)
+                                           (list (intern (symbol-name arg) #.(find-package :keyword))
+                                                 `(if (and (symbolp ,arg)
+                                                           (constantp ,arg))
+                                                      (symbol-value ,arg)
+                                                      ,arg)))
                                          (lambda-list-to-variable-list args :include-&rest #t))))
              :allocation :class))
           (mapcar #L(list !1 nil) (lambda-list-to-variable-list args :include-&rest #t)))
