@@ -427,9 +427,10 @@
                                      (list (slot-value h-instance ',(slot-name-of dimension)))))
              (unless (whole-domain-marker-p coordinate)
                (add-assert query
-                           `(member
-                             (slot-value h-instance ',(slot-name-of dimension))
-                             ,(name-of dimension)))))))
+                           `(or (null (slot-value h-instance ',(slot-name-of dimension)))
+                                (member
+                                 (slot-value h-instance ',(slot-name-of dimension))
+                                 ,(name-of dimension))))))))
 
 
     (apply #'execute-query query d-instance coordinates)))
@@ -584,9 +585,10 @@
                                      (list (slot-value h-instance ',(slot-name-of dimension)))))
              (unless (whole-domain-marker-p coordinate)
                (add-assert query
-                          `(member
-                            (slot-value h-instance ',(slot-name-of dimension))
-                            ,(name-of dimension)))))))
+                          `(or (null (slot-value h-instance ',(slot-name-of dimension)))
+                               (member
+                                (slot-value h-instance ',(slot-name-of dimension))
+                                ,(name-of dimension))))))))
 
     (apply #'execute-query query instance coordinates)))
 
