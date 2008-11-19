@@ -32,8 +32,7 @@
     (if (or (coordinate-range-p coordinate-1)
             (coordinate-range-p coordinate-2))
         (coordinate-range= coordinate-1 coordinate-2)
-        (and (null (set-difference coordinate-1 coordinate-2))
-             (null (set-difference coordinate-2 coordinate-1)))))
+        (null (set-exclusive-or coordinate-1 coordinate-2 :test #'p-eq))))
 
   (:method ((coordinate-1 number) (coordinate-2 number))
     (= coordinate-1 coordinate-2))
