@@ -183,6 +183,32 @@
     (assert (not (eq new-value sb-pcl::+slot-unbound+))))
   (setf (standard-instance-access instance (slot-definition-location slot)) new-value))
 
+(def (function eio) best-effort-slot-value (instance slot-designator)
+  "Tries to get the slot value without signaling any errors. If there's a transaction and the slot is not cached, then fetches it from the db. Otherwise just blindly returns the value from the slot, including the symbols +NOT-CACHED-SLOT-MARKER+ and +UNBOUND-SLOT-MARKER+."
+  (if (instance-in-current-transaction-p instance)
+      (handler-case
+          (slot-value instance slot-designator)
+        (unbound-slot ()
+          '+unbound-slot-marker+))
+      (standard-instance-access instance (etypecase slot-designator
+                                           (fixnum slot-designator)
+                                           (effective-slot-definition (slot-definition-location slot-designator))
+                                           (symbol (slot-definition-location (find-slot (class-of instance) slot-designator)))))))
+
+(def compiler-macro best-effort-slot-value (&whole whole instance slot-designator)
+  (if (and (consp slot-designator)
+           (eq (first slot-designator) 'quote)
+           (symbolp (second slot-designator)))
+      (once-only (instance)
+        `(if (instance-in-current-transaction-p ,instance)
+             (handler-case
+                 ;; so that the slot-value optimizations of the implementation can jump in here
+                 (slot-value ,instance ,slot-designator)
+               (unbound-slot ()
+                 '+unbound-slot-marker+))
+             (standard-instance-access ,instance (slot-definition-location (find-slot (class-of ,instance) ,slot-designator)))))
+      whole))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CLOS MOP slot-value-using-class and friends
 
