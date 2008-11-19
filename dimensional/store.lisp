@@ -490,8 +490,7 @@
                   (for coordinate :in coordinates)
                   (etypecase dimension
                     (inheriting-dimension
-                     (assert (coordinate= (coordinate-range-begin coordinate)
-                                          (coordinate-range-end coordinate)))
+                     (assert (coordinate-range-empty-p coordinate))
                      (collect (initarg-of (slot-name-of dimension)))
                      (collect (coordinate-range-begin coordinate)))
                     (ordering-dimension
@@ -616,8 +615,7 @@
                        (for coordinate :in coordinates)
                        (etypecase dimension
                          (inheriting-dimension
-                          (assert (coordinate= (coordinate-range-begin coordinate)
-                                               (coordinate-range-end coordinate)))
+                          (assert (coordinate-range-empty-p coordinate))
                           (collect (initarg-of (slot-name-of dimension)))
                           (collect (coordinate-range-begin coordinate)))
                          (ordering-dimension
