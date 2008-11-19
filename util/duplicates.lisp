@@ -340,7 +340,7 @@
 (defun but-last-elt (sequence &optional (n 1))
   (subseq sequence 0 (- (length sequence) n)))
 
-(defun every* (predicate sequence-1 sequence-2)
-  (and (= (length sequence-1)
-          (length sequence-2))
-       (every predicate sequence-1 sequence-2)))
+(defun every* (predicate first-sequence &rest other-sequences)
+  (bind ((first-length (length first-sequence)))
+    (and (every [length= first-length !1] other-sequences)
+         (apply #'every predicate first-sequence other-sequences))))
