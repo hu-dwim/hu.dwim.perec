@@ -70,7 +70,7 @@
   (mod (ironclad:octets-to-integer (ironclad:digest-sequence :crc32 (string-to-octets (symbol-name class-name) :encoding :utf-8)))
        +oid-maximum-class-id+))
 
-(def (function io) class-id-and-instance-id->id (class-id instance-id)
+(def (function io) class-id-and-instance-id->oid (class-id instance-id)
   (logior (ash instance-id +oid-class-id-bit-size+) class-id))
 
 (def (function o) make-new-oid (class-name)
@@ -79,10 +79,10 @@
       (ensure-instance-id-sequence))
   (bind ((class-id (class-name->class-id class-name))
          (instance-id (next-instance-id)))
-    (class-id-and-instance-id->id class-id instance-id)))
+    (class-id-and-instance-id->oid class-id instance-id)))
 
 (def (function io) revive-oid (class-id instance-id)
-  (class-id-and-instance-id->id class-id instance-id))
+  (class-id-and-instance-id->oid class-id instance-id))
 
 (def (function o) ensure-instance-id-sequence ()
   "Makes sure the instance id sequence exists in the database."
