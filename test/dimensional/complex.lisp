@@ -64,51 +64,6 @@
          (dimensions (dimensions-of* slot)))
     (prc::collect-coordinates-from-variables dimensions)))
 
-(def (function io) call-with-function-of (dimension)
-  (symbol-function (format-symbol (symbol-package (name-of dimension)) "CALL-WITH-~A" (name-of dimension))))
-
-(def (function io) call-with-range-function-of (dimension)
-  (symbol-function (format-symbol (symbol-package (name-of dimension)) "CALL-WITH-~A-RANGE" (name-of dimension))))
-
-(def function call-with-coordinates (dimensions coordinates thunk)
-  (flet ((coerce-coordinate (coordinate type) ; TODO make these coercions in with-coordinates
-           (if (coordinate-range-p coordinate)
-               (make-coordinate-range
-                (coordinate-range-bounds coordinate)
-                (prc::coerce-to-coordinate (coordinate-range-begin coordinate) type)
-                (prc::coerce-to-coordinate (coordinate-range-end coordinate) type))
-               (prc::coerce-to-coordinate coordinate type))))
-    (if (null dimensions)
-        (progn
-          (assert (null coordinates))
-          (funcall thunk))
-        (bind ((dimension (lookup-dimension (first dimensions)))
-               (type (prc::the-type-of dimension))
-               (coordinate (coerce-coordinate (first coordinates) type)))
-          (typecase dimension
-            (ordering-dimension
-             (funcall (call-with-range-function-of dimension)
-                      (prc::coordinate-range-begin coordinate)
-                      (prc::coordinate-range-end coordinate)
-                      (lambda ()
-                        (call-with-coordinates (rest dimensions)
-                                               (rest coordinates)
-                                               thunk))))
-            (t
-             (funcall (call-with-function-of dimension)
-                      coordinate
-                      (lambda ()
-                        (call-with-coordinates (rest dimensions)
-                                               (rest coordinates)
-                                               thunk)))))))))
-
-(def macro with-coordinates (dimensions coordinates &body forms)
-  `(call-with-coordinates
-    ',dimensions
-    ',coordinates
-    (lambda ()
-      ,@forms)))
-
 (def function sort-entries-by-step (entries &key (ascending #t))
   (sort entries (if ascending #'< #'>) :key #'he-step))
 
@@ -496,6 +451,14 @@
         (format t "Generated instance ~A~%" instance)
         (collect instance)))
 
+(def function collect-dimensions-from-slots (class-names slot-names)
+  (iter outer
+        (for class-name :in class-names)
+        (for class = (find-class class-name))
+        (iter (for slot-name :in (complex-test-slot-names class slot-names))
+              (for slot = (find-slot class slot-name))
+              (in outer (unioning (dimensions-of* slot))))))
+
 (def function make-instance* (class-name &key (slot-names nil))
   (iter (with instance = (make-instance class-name))
         (for slot-name :in (complex-test-slot-names (class-of instance) slot-names))
@@ -588,6 +551,22 @@
                             (with-validity-range validity-begin validity-end
                               (compare-history instances :slot-names slot-names))))))))))
 
+(def function subsets-of (set)
+  (if (null set)
+      (list nil)
+      (bind ((first-element (first set))
+             (powerset-of-rest (subsets-of (rest set))))
+        (append
+         (mapcar [cons first-element !1] powerset-of-rest)
+         powerset-of-rest))))
+
+(def function random-non-empty-subset-of (set)
+  (iter
+    (awhen (iter (for element :in set)
+                 (when (< (random 1.0) 0.5)
+                   (collect element)))
+      (return it))))
+
 (def function random-universal-time ()
   (1+ (random 5000000000)))
 
@@ -612,14 +591,15 @@
            (when (timestamp< begin end)
              (leave (cons begin end)))))))
 
-(def function random-coordinate (dimension &optional for-writing-p choices
-                                           (empty-interval-probability 0.0))
+(def function random-coordinate (dimension &optional for-writing-p choices empty-interval-probability)
   (bind ((type (prc::the-type-of dimension)))
    (flet ((random-coordinate ()
             (case type
               (timestamp (make-empty-coordinate-range (random-timestamp choices)))
-              (t (error "TODO"))))
-          (random-coordinate-range ()
+              (t (cond
+                   (choices (random-elt choices))
+                   (t (random-non-empty-subset-of (domain dimension)))))))
+          (random-coordinate-range (empty-interval-probability)
             (case type
               (timestamp
                (bind (((begin . end) (random-timestamp-interval choices empty-interval-probability)))
@@ -630,24 +610,29 @@
      (etypecase dimension
        (inheriting-dimension
         (if for-writing-p
-            (random-coordinate)
-            (random-coordinate-range)))
+            (random-coordinate-range 1.0)
+            (random-coordinate-range (or empty-interval-probability 0.7))))
        (ordering-dimension
         (if for-writing-p
-            (random-coordinate)
-            (random-coordinate-range)))
+            (random-coordinate-range 0.0)
+            (random-coordinate-range (or empty-interval-probability 0.3))))
        (dimension
         (random-coordinate))))))
 
-(def function call-with-random-coordinates (dimensions thunk)
-  (bind ((coordinates (mapcar #'random-coordinate dimensions)))
+(def function call-with-random-coordinates (dimensions thunk &key for-writing-p choices)
+  (bind ((coordinates (if choices
+                          (mapcar [random-coordinate !1 for-writing-p !2]
+                                  dimensions choices)
+                          (mapcar [random-coordinate !1 for-writing-p]
+                                  dimensions))))
     (call-with-coordinates dimensions coordinates thunk)))
 
-(def macro with-random-coordinates (dimensions &body forms)
+(def macro with-random-coordinates (dimensions (&rest options) &body forms)
   `(call-with-random-coordinates
     ,dimensions
     (lambda ()
-      ,@forms)))
+      ,@forms)
+    ,@options))
 
 (def function do-random-operation (instances &key (slot-names nil))
   (bind ((instance (load-instance (random-elt instances)))
@@ -676,9 +661,112 @@
       (:insert (insert-item-and-insert-item* instance slot-name slot-value))
       (:delete (delete-item-and-delete-item* instance slot-name slot-value)))))
 
+(def function format-dimensions (dimensions)
+  (mapcar #'name-of dimensions))
+
+(def generic format-value (value)
+  (:method ((value t))
+    value)
+  
+  (:method ((value persistent-object))
+    (concatenate-symbol "instance-" (oid-of value)))
+
+  (:method ((value list))
+    `(list ,@(mapcar #'format-value value))))
+
+(def generic format-coordinate (dimension coordinate)
+  (:method ((dimension t) (coordinate t))
+    coordinate)
+
+  (:method ((dimension t) (coordinate persistent-object))
+    (concatenate-symbol "c-" (oid-of coordinate)))
+
+  (:method ((dimension t) (coordinate timestamp))
+    (format-timestring nil coordinate :timezone +utc-zone+))
+
+  (:method ((dimension dimension) (coordinate list))
+    (mapcar [format-coordinate dimension !1] coordinate))
+
+  (:method ((dimension dimension) (coordinate (eql +whole-domain-marker+)))
+    '+whole-domain-marker+)
+
+  (:method ((dimension ordering-dimension) (coordinate cons))
+    (list*
+     (coordinate-range-bounds coordinate)
+     (format-coordinate dimension (coordinate-range-begin coordinate))
+     (format-coordinate dimension (coordinate-range-end coordinate)))))
+
+(def function format-coordinates (dimensions coordinates)
+  (mapcar #'format-coordinate dimensions coordinates))
+
+(def function parse-coordinate (dimension coordinate)
+  (bind ((type (prc::the-type-of dimension)))
+    (cond
+      ((eq coordinate '+whole-domain-marker+)
+       +whole-domain-marker+)
+      ((prc::persistent-class-name-p type)
+       (mapcar
+        [load-instance (parse-integer (subseq (symbol-name !1) 2))]
+        coordinate))
+      ((coordinate-range-p coordinate)
+       (make-coordinate-range
+        (coordinate-range-bounds coordinate)
+        (prc::coerce-to-coordinate (coordinate-range-begin coordinate) type)
+        (prc::coerce-to-coordinate (coordinate-range-end coordinate) type)))
+      (t
+       coordinate))))
+
+(def macro with-coordinates* (dimension-names coordinates &body body)
+  (iter (for dimension-name :in dimension-names)
+        (for coordinate :in coordinates)
+        (for dimension = (find-dimension dimension-name))
+        (for type = (prc::the-type-of dimension))
+        (collect `(find-dimension ',dimension-name) :into dimensions)
+        (collect
+            (cond
+              ((eq coordinate '+whole-domain-marker+)
+               coordinate)
+              ((prc::persistent-class-name-p type)
+               `(list ,@coordinate))
+              ((coordinate-range-p coordinate)
+               `',(make-coordinate-range
+                   (coordinate-range-bounds coordinate)
+                   (prc::coerce-to-coordinate (coordinate-range-begin coordinate) type)
+                   (prc::coerce-to-coordinate (coordinate-range-end coordinate) type)))
+              (t coordinate))
+          :into coords)
+        (finally (return `(with-coordinates (list ,@dimensions) (list ,@coords) ,@body)))))
+
+
+(def function generate-random-coordinate-sets (dimensions timestamp-count)
+  (bind ((timestamps (coerce (iter (repeat timestamp-count)
+                                   (when (first-iteration-p)
+                                     (collect +beginning-of-time+)
+                                     (collect +end-of-time+))
+                                   (collect (random-timestamp)))
+                             'simple-vector)))
+    (iter (for dimension :in dimensions)
+          (collect
+              (etypecase dimension
+                (inheriting-dimension timestamps)
+                (ordering-dimension timestamps)
+                (dimension (list* +whole-domain-marker+
+                                  (subsets-of
+                                   (with-transaction (domain dimension))))))))))
+
+(def function generate-persistent-object-coordinate-bindings (dimensions)
+  (iter (for dimension :in dimensions)
+        (for type = (prc::the-type-of dimension))
+        (when (prc::persistent-class-name-p type)
+          (bind ((instances (with-transaction (domain dimension))))
+            (collect
+                `(,(mapcar [format-coordinate dimension !1] instances)
+                  (with-transaction (domain (find-dimension ',(name-of dimension))))))))))
+
 (def function run-complex-test (&key (class-name nil) (class-names (when class-name (list class-name))) (instance-count 1) (operation-count 1) (transaction-count 1) (timestamp-count 10)
                                      (full-test #t) (test-epsilon-timestamps #t) (random-test-count 1) (slot-name nil) (slot-names (when slot-name (list slot-name))))
-  (bind ((*history-entries* nil)
+  (bind ((dimensions (collect-dimensions-from-slots class-names slot-names))
+         (*history-entries* nil)
          (*history-entry-counter* 0)
          (*transaction-counter* 0)
          (error nil)
@@ -689,141 +777,93 @@
     (restart-bind
         ((print-test
           (lambda ()
-            (labels ((instance-variable-name (instance)
-                       (concatenate-symbol "instance-" (oid-of instance)))
-                     (format-value (value)
-                       (cond ((typep value 'persistent-object)
-                              (instance-variable-name value))
-                             ((listp value)
-                              `(list ,@(mapcar #'instance-variable-name value)))
-                             (t value)))
-                     (format-coordinate (coordinate)
-                       (typecase coordinate
-                         (cons (cons
-                                (coordinate-range-bounds coordinate)
-                                (cons (format-coordinate (coordinate-range-begin coordinate))
-                                      (format-coordinate (coordinate-range-end coordinate)))))
-                         (timestamp (format-timestring nil coordinate :timezone +utc-zone+))
-                         (t coordinate))) ; TODO
-                     (format-coordinate-range (begin end)
-                       (cons
-                        (if (coordinate= begin end) 'ii 'ie)
-                        (cons (format-coordinate begin)
-                              (format-coordinate end))))
-                     (format-coordinates (coordinates)
-                       (mapcar #'format-coordinate coordinates))
-                     (format-dimensions (dimensions)
-                       (mapcar #'name-of dimensions))
-                     (transform-coordinates (dimensions coordinates)
-                       (iter (for dimension :in dimensions)
-                             (for coordinate :in coordinates)
-                             (collect
-                                 (typecase dimension
-                                   (inheriting-dimension
-                                    (make-coordinate-range
-                                     (coordinate-range-bounds coordinate)
-                                     (coordinate-range-begin coordinate)
-                                     (coordinate-range-begin coordinate)))
-                                   (t coordinate))))))
-              (bind ((*print-level* nil)
-                     (*print-length* nil)
-                     (*print-lines* nil)
-                     (*print-circle* #f)
-                     (slot-name *test-slot-name*)
-                     (instance-variable-name (when *test-instance* (instance-variable-name *test-instance*))))
-                (format t "~%~S"
-                        `(def test test/dimensional/complex/generated ()
-                           ,(format nil "~A" error)
-                           (bind ((*history-entries* nil)
-                                  (*history-entry-counter* 0)
-                                  (*transaction-counter* 0)
-                                  ,@(iter (for instance :in instances)
-                                          (collect `(,(instance-variable-name instance)
-                                                      (with-transaction
-                                                        (make-instance* ',(class-name (class-of instance))))))))
-                             ,@(iter (for transaction-counter :from 0 :to *transaction-counter*)
-                                     (for history-entries = (collect-if #L(= transaction-counter (he-transaction-index !1)) *history-entries*))
-                                     (when history-entries
-                                       (appending
-                                        `((with-transaction
-                                            (with-revived-instances ,(mapcar #'instance-variable-name instances)
-                                              ,@(iter (for entry :in history-entries)
-                                                      (for value = (format-value (he-value entry)))
-                                                      (for instance = (instance-variable-name (he-instance entry)))
-                                                      (for slot-name = (he-slot-name entry))
-                                                      (for dimensions = (he-dimensions entry))
-                                                      (for coordinates = (transform-coordinates
-                                                                          dimensions
-                                                                          (he-coordinates entry)))
-                                                      (collect
-                                                          `(with-coordinates
-                                                               ,(format-dimensions dimensions)
-                                                               ,(format-coordinates coordinates)
-                                                             ,(ecase (he-action entry)
-                                                                     (:set `(setf (slot-value-and-slot-value* ,instance ',slot-name) ,value))
-                                                                     (:insert `(insert-item-and-insert-item* ,instance ',slot-name ,value))
-                                                                     (:delete `(delete-item-and-delete-item* ,instance ',slot-name ,value))))))))
-                                          (incf *transaction-counter*)))))
-                             (setf *history-entries* (nreverse *history-entries*))
-                             ,@(when (and instance-variable-name slot-name)
+            (bind ((*print-level* nil)
+                   (*print-length* nil)
+                   (*print-lines* nil)
+                   (*print-circle* #f)
+                   (slot-name *test-slot-name*)
+                   (instance-variable-name (when *test-instance* (format-value *test-instance*))))
+              (format t "~%~S"
+                      `(def test test/dimensional/complex/generated ()
+                         ,(format nil "~A" error)
+                         (bind ((*history-entries* nil)
+                                (*history-entry-counter* 0)
+                                (*transaction-counter* 0)
+                                ,@(iter (for instance :in instances)
+                                        (collect `(,(format-value instance)
+                                                    (with-transaction
+                                                      (make-instance* ',(class-name (class-of instance)))))))
+                                ,@(generate-persistent-object-coordinate-bindings dimensions))
+                           ,@(iter (for transaction-counter :from 0 :to *transaction-counter*)
+                                   (for history-entries = (collect-if #L(= transaction-counter (he-transaction-index !1)) *history-entries*))
+                                   (when history-entries
+                                     (appending
+                                      `((with-transaction
+                                          (with-revived-instances ,(mapcar #'format-value instances)
+                                            ,@(iter (for entry :in history-entries)
+                                                    (for value = (format-value (he-value entry)))
+                                                    (for instance = (format-value (he-instance entry)))
+                                                    (for slot-name = (he-slot-name entry))
+                                                    (for dimensions = (he-dimensions entry))
+                                                    (for coordinates =
+                                                         (iter (for d :in dimensions)
+                                                               (for c :in (he-coordinates entry))
+                                                               (if (typep d 'inheriting-dimension)
+                                                                   (collect
+                                                                       (make-empty-coordinate-range
+                                                                        (coordinate-range-begin c)))
+                                                                   (collect c))))
+                                                    (collect
+                                                        `(with-coordinates*
+                                                             ,(format-dimensions dimensions)
+                                                             ,(format-coordinates dimensions coordinates)
+                                                           ,(ecase (he-action entry)
+                                                                   (:set `(setf (slot-value-and-slot-value* ,instance ',slot-name) ,value))
+                                                                   (:insert `(insert-item-and-insert-item* ,instance ',slot-name ,value))
+                                                                   (:delete `(delete-item-and-delete-item* ,instance ',slot-name ,value))))))))
+                                        (incf *transaction-counter*)))))
+                           (setf *history-entries* (nreverse *history-entries*))
+                           ,@(when (and instance-variable-name slot-name)
+                                   (bind ((coordinates (prc::collect-coordinates-from-variables dimensions)))
                                      `((with-transaction
-                                         (with-revived-instance ,instance-variable-name
-                                           (with-coordinates
-                                               (time validity)
-                                               (,(format-coordinate-range (begin-coordinate 'time)
-                                                                          (end-coordinate 'time))
-                                                 ,(format-coordinate-range (begin-coordinate 'validity)
-                                                                           (end-coordinate 'validity)))
-                                             (bind ((persistent-value
-                                                     (if (slot-boundp ,instance-variable-name ',slot-name)
-                                                         (slot-value ,instance-variable-name ',slot-name)
-                                                         +unbound-slot-marker+))
-                                                    (test-value
-                                                     (slot-value* ,instance-variable-name ',slot-name)))
-                                               (assert-persistent-and-test-values
-                                                ,instance-variable-name ',slot-name
-                                                persistent-value test-value)))))))))))))
+                                        (with-revived-instance ,instance-variable-name
+                                          (with-coordinates*
+                                              ,(format-dimensions dimensions)
+                                              ,(format-coordinates dimensions coordinates)
+                                            (bind ((persistent-value
+                                                    (if (slot-boundp ,instance-variable-name ',slot-name)
+                                                        (slot-value ,instance-variable-name ',slot-name)
+                                                        +unbound-slot-marker+))
+                                                   (test-value
+                                                    (slot-value* ,instance-variable-name ',slot-name)))
+                                              (assert-persistent-and-test-values
+                                               ,instance-variable-name ',slot-name
+                                               persistent-value test-value)))))))))))))
            :report-function (lambda (stream)
                               (format stream "Print a specific test case for this error"))))
       (handler-bind
           ((serious-condition
             (lambda (e)
               (setf error e))))
-        (iter (with timestamps = (coerce (iter (repeat timestamp-count)
-                                               (when (first-iteration-p)
-                                                 (collect +beginning-of-time+)
-                                                 (collect +end-of-time+))
-                                               (collect (random-timestamp)))
-                                         'simple-vector))
+        (iter (with random-coordinates = (generate-random-coordinate-sets dimensions timestamp-count))
               (repeat transaction-count)
-              (bind (((time-begin . time-end) (random-timestamp-interval timestamps 1.0))
-                     ((validity-begin . validity-end) (random-timestamp-interval timestamps 0.0)))
-                (with-transaction
-                  (format t "Starting new transaction~%")
-                  (incf *transaction-counter*)
+              (with-transaction
+                (format t "Starting new transaction~%")
+                (incf *transaction-counter*)
+                (with-random-coordinates dimensions (:for-writing-p #t :choices random-coordinates)
                   (iter (repeat operation-count)
-                        (with-time-range time-begin time-end
-                          (with-validity-range validity-begin validity-end
-                            (do-random-operation instances :slot-names slot-names))))))
+                        (do-random-operation instances :slot-names slot-names))))
               (finally
                (setf *history-entries* (nreverse *history-entries*))
                (when full-test
                  (full-compare-history instances :slot-names slot-names :add-epsilon-timestamps test-epsilon-timestamps))
-               ;; default x default
+               ;; default coordinates
                (with-transaction
                  (compare-history instances :slot-names slot-names))
                (iter (repeat random-test-count)
-                     ;; default x random
+                     ;; random coordinates, TODO test on boundaries
                      (with-transaction
-                       (with-random-coordinates (list *validity-dimension*)
-                         (compare-history instances :slot-names slot-names)))
-                     ;; random x default
-                     (with-transaction
-                       (with-random-coordinates (list *time-dimension*)
-                         (compare-history instances :slot-names slot-names)))
-                     ;; random x random
-                     (with-transaction
-                       (with-random-coordinates (list *time-dimension* *validity-dimension*)
+                       (with-random-coordinates dimensions ()
                          (compare-history instances :slot-names slot-names))))))))))
 
 (def test run-complex-tests (&rest args &key (instance-count 10) (operation-count 10) &allow-other-keys)
