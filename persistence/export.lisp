@@ -53,7 +53,7 @@
   (bind ((class (etypecase prototype-or-class-name
                   (symbol (find-class prototype-or-class-name))
                   (persistent-object (class-of prototype-or-class-name))))
-         (oid (make-class-oid (class-name class)))
+         (oid (make-new-oid (class-name class)))
          (instance (allocate-instance class))
          (old-oid (read-persistent-object-oid context)))
     (initialize-revived-instance instance :persistent #f :oid oid)

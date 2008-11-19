@@ -73,7 +73,7 @@
 (def (function io) class-id-and-instance-id->id (class-id instance-id)
   (logior (ash instance-id +oid-class-id-bit-size+) class-id))
 
-(def (function o) make-class-oid (class-name)
+(def (function o) make-new-oid (class-name)
   "Creates a fresh and unique oid which was never used before in the relational database."
   (or (oid-instance-id-sequence-exists-p *database*)
       (ensure-instance-id-sequence))
