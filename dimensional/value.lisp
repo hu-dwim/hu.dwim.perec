@@ -390,8 +390,11 @@
   (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 null))
     (list coordinate-1))
 
-  (:method ((dimension abstract-dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 list))
-    (list (set-difference (domain dimension) coordinate-2)))
+  (:method ((dimension abstract-dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 null))
+    (list coordinate-1))
+
+  (:method ((dimension abstract-dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 cons))
+    (coordinate-difference dimension (domain dimension) coordinate-2))
 
   (:method ((dimension abstract-dimension) (coordinate-1 t) (coordinate-2 (eql +whole-domain-marker+)))
     nil)
