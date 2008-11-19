@@ -249,7 +249,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
                              :args (list element syntax (make-literal-value :value referenced-slots)))))))
 
 (def function sql-table-reference-for-type (type referenced-slots alias)
-  (sql-table-reference-for-type* (simplify-persistent-class-type type) referenced-slots alias))
+  (sql-table-reference-for-type* (simplify-persistent-class-type* type) referenced-slots alias))
 
 (defgeneric sql-table-reference-for-type* (type referenced-slots alias)
   

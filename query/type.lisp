@@ -411,6 +411,11 @@
            (eq (find-persistent-class* type-1)
                (find-persistent-class* type-2)))))
 
+(def function simplify-persistent-class-type* (type)
+  (prog1-bind simplified-type (simplify-persistent-class-type type)
+    (unless (contains-syntax-p simplified-type)
+      (setf simplified-type (canonical-type-for simplified-type)))))
+
 (defgeneric simplify-persistent-class-type (type)
   
   (:method ((class persistent-class))
