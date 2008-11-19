@@ -74,17 +74,17 @@
 (defsuite* (test/dimensional :in test))
 
 ;; test dimension
-(def pclass* test-dimension ()
+(def pclass* dimension-test ()
   ())
 
-(def dimension test :type test-dimension)
+(def dimension test :type dimension-test)
 
 (defixture test-dimension-fixture
   (with-transaction
-    (purge-instances 'test-dimension)
-    (make-instance 'test-dimension)
-    (make-instance 'test-dimension)
-    (make-instance 'test-dimension)))
+    (purge-instances 'dimension-test)
+    (make-instance 'dimension-test)
+    (make-instance 'dimension-test)
+    (make-instance 'dimension-test)))
 
 (defmacro with-setup (fixture &body body)
   (if fixture
