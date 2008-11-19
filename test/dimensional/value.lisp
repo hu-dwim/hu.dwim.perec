@@ -52,19 +52,22 @@
 ;;; Coordinates union
 
 (def test test/dimensional/value/coordinates-a-union-empty-is-a (dimensions coordinates-a)
-  (is (coordinates-equal (is-not-null (coordinates-union dimensions
+  (is (coordinates-equal dimensions
+                         (is-not-null (coordinates-union dimensions
                                                          coordinates-a
                                                          (make-empty-coordinates dimensions)))
                          coordinates-a)))
 
 (def test test/dimensional/value/coordinates-a-union-a-is-a (dimensions coordinates-a)
-  (is (coordinates-equal (is-not-null (coordinates-union dimensions
+  (is (coordinates-equal dimensions
+                         (is-not-null (coordinates-union dimensions
                                                          coordinates-a
                                                          coordinates-a))
                          coordinates-a)))
 
 (def test test/dimensional/value/coordinates-a-union-b-is-b-union-a (dimensions coordinates-a coordinates-b)
-  (is (coordinates-equal (is-not-null (coordinates-union dimensions
+  (is (coordinates-equal dimensions
+                         (is-not-null (coordinates-union dimensions
                                                          coordinates-a
                                                          coordinates-b))
                          (is-not-null (coordinates-union dimensions
@@ -72,7 +75,8 @@
                                                          coordinates-a)))))
 
 (def test test/dimensional/value/coordinates-a-union-b-union-c-is-a-union-b-union-c (dimensions coordinates-a coordinates-b coordinates-c)
-  (is (coordinates-equal (is-not-null (coordinates-union dimensions
+  (is (coordinates-equal dimensions
+                         (is-not-null (coordinates-union dimensions
                                                          (is-not-null (coordinates-union dimensions
                                                                                          coordinates-a
                                                                                          coordinates-b))
@@ -103,13 +107,15 @@
                                       (make-empty-coordinates dimensions)))))
 
 (def test test/dimensional/value/coordinates-a-intersection-a-is-a (dimensions coordinates-a)
-  (is (coordinates-equal (is-not-null (coordinates-intersection dimensions
+  (is (coordinates-equal dimensions
+                         (is-not-null (coordinates-intersection dimensions
                                                                 coordinates-a
                                                                 coordinates-a))
                          coordinates-a)))
 
 (def test test/dimensional/value/coordinates-a-intersection-b-is-b-intersection-a (dimensions coordinates-a coordinates-b)
-  (is (coordinates-equal (is-not-null (coordinates-intersection dimensions
+  (is (coordinates-equal dimensions
+                         (is-not-null (coordinates-intersection dimensions
                                                                 coordinates-a
                                                                 coordinates-b))
                          (is-not-null (coordinates-intersection dimensions
@@ -117,7 +123,8 @@
                                                                 coordinates-a)))))
 
 (def test test/dimensional/value/coordinates-a-intersection-b-intersection-c-is-a-intersection-b-intersection-c (dimensions coordinates-a coordinates-b coordinates-c)
-  (is (coordinates-equal (is-not-null (coordinates-intersection dimensions
+  (is (coordinates-equal dimensions
+                         (is-not-null (coordinates-intersection dimensions
                                                                 (is-not-null (coordinates-intersection dimensions
                                                                                                        coordinates-a
                                                                                                        coordinates-b))
@@ -149,7 +156,7 @@
 ;;; Coordinates difference
 
 (def test test/dimensional/value/coordinates-a-difference-empty-is-a (dimensions coordinates-a)
-  (is (prc::every* #'coordinates-equal
+  (is (prc::every* [coordinates-equal dimensions !1 !2]
                    (is-not-null (coordinates-difference dimensions
                                                         coordinates-a
                                                         (make-empty-coordinates dimensions)))

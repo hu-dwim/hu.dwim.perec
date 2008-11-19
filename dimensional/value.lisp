@@ -20,19 +20,22 @@
   (:method (coordinate-1 coordinate-2)
     (eq coordinate-1 coordinate-2))
 
-  ;; FIXME: do we need these methods? If yes, we need to pass the dimension here
-  #+nil
-  (:method ((coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 cons))
-    (equal (domain dimension) coordinate-2))
-  #+nil
+  (:method ((coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 (eql +whole-domain-marker+)))
+    #t)
+
+  (:method ((coordinate-1 (eql +whole-domain-marker+)) coordinate-2)
+    (assert #f () "Unable to compare ~A and ~A. Consider using COORDINATE-EQUAL."
+            coordinate-1 coordinate-2))
+
   (:method ((coordinate-1 cons) (coordinate-2 (eql +whole-domain-marker+)))
-    (equal coordinate-1 (domain dimension)))
+    (assert #f () "Unable to compare ~A and ~A. Consider using COORDINATE-EQUAL."
+            coordinate-1 coordinate-2))
 
   (:method ((coordinate-1 cons) (coordinate-2 cons))
     (if (or (coordinate-range-p coordinate-1)
             (coordinate-range-p coordinate-2))
         (coordinate-range= coordinate-1 coordinate-2)
-        (null (set-exclusive-or coordinate-1 coordinate-2 :test #'p-eq))))
+        (null (set-exclusive-or coordinate-1 coordinate-2 :test #'coordinate=))))
 
   (:method ((coordinate-1 number) (coordinate-2 number))
     (= coordinate-1 coordinate-2))
@@ -42,6 +45,17 @@
 
   (:method ((coordinate-1 persistent-object) (coordinate-2 persistent-object))
     (p-eq coordinate-1 coordinate-2)))
+
+(def (generic e) coordinate-equal (dimension coordinate-1 coordinate-2)
+
+  (:method (dimension coordinate-1 coordinate-2)
+    (coordinate= coordinate-1 coordinate-2))
+
+  (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 cons))
+    (coordinate= (domain dimension) coordinate-2))
+
+  (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 (eql +whole-domain-marker+)))
+    (coordinate= coordinate-1 (domain dimension))))
 
 (def (generic e) coordinate< (coordinate-1 coordinate-2)
   (:method ((coordinate-1 number) (coordinate-2 number))
@@ -174,7 +188,7 @@
 (def (function ioe) coordinate-range-empty-p (range)
   (and (eq 'ii (coordinate-range-bounds range))
        (coordinate= (coordinate-range-begin range)
-                (coordinate-range-end range))))
+                    (coordinate-range-end range))))
 
 (def function in-coordinate-range-p (coordinate range)
   (ecase (coordinate-range-bounds range)
@@ -338,9 +352,7 @@
     (coordinate= cover (domain dimension)))
   
   (:method ((dimension abstract-dimension) (cover cons) (coordinate cons))
-    (every (lambda (element)
-             (member element cover))
-           coordinate))
+    (subsetp coordinate cover :test #'coordinate=))
 
   (:method ((dimension ordering-dimension) (cover cons) (coordinate cons))
     (covering-range-p cover coordinate)))
@@ -411,8 +423,8 @@
 (def (function e) coordinates= (coordinates-1 coordinates-2)
   (every* #'coordinate= coordinates-1 coordinates-2))
 
-(def (function e) coordinates-equal (coordinates-1 coordinates-2)
-  (coordinates= coordinates-1 coordinates-2))
+(def (function e) coordinates-equal (dimensions coordinates-1 coordinates-2)
+  (every* #'coordinate-equal dimensions coordinates-1 coordinates-2))
 
 ;; FIXME ???
 (def (function e) make-empty-coordinates (dimensions)
@@ -523,6 +535,14 @@
        (coordinates= (coordinates-of c-value-1)
                      (coordinates-of c-value-2))))
 
+(def (function e) c-value-equal (dimensions c-value-1 c-value-2 &key (test #'eql))
+  (and (funcall test
+                (value-of c-value-1)
+                (value-of c-value-2))
+       (coordinates-equal dimensions
+                          (coordinates-of c-value-1)
+                          (coordinates-of c-value-2))))
+
 ;;;;;;
 ;;; D value (multi dimensional value)
 
@@ -602,7 +622,7 @@
   (and (equal (dimensions-of d-value-1)
               (dimensions-of d-value-2))
        (every* (lambda (c-value-1 c-value-2)
-                 (c-value= c-value-1 c-value-2 :test test))
+                 (c-value-equal (dimensions-of d-value-1) c-value-1 c-value-2 :test test))
                (c-values-of d-value-1)
                (c-values-of d-value-2))))
 
