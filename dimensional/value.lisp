@@ -556,9 +556,19 @@
 (def (special-variable e) *print-d-value-details* #t)
 
 (def print-object d-value ()
-  (format t "(~{~A~^, ~}) " (mapcar #'name-of (dimensions-of -self-)))
-  (when *print-d-value-details*
-    (mapc [progn (terpri) (print-c-value !1)] (c-values-of -self-))))
+  (cond
+    ((not *print-d-value-details*)
+     (format t "(~{~A~^, ~})" (mapcar #'name-of (dimensions-of -self-))))
+    (*print-pretty*
+     (format t "(~{~A~^, ~})" (mapcar #'name-of (dimensions-of -self-)))
+     (mapc (lambda (c-value)
+             (pprint-newline :mandatory)
+             (pprint-indent :block 2)
+             (print-c-value c-value))
+           (c-values-of -self-)))
+    (t
+     (format t "(~{~A~^, ~})" (mapcar #'name-of (dimensions-of -self-)))
+     (mapc [progn (princ " ") (print-c-value !1)] (c-values-of -self-)))))
 
 (def (function e) print-d-value (d-value &optional (stream t))
   (bind ((*print-d-value-details* #t))
