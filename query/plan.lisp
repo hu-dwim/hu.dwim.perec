@@ -596,10 +596,10 @@
            (assert (typep input2 'sql-query-node))
            (with-unique-names (row)
              (bind ((bindings (generate-bindings input row (append variables condition))))
-               `(execute ,(%compile-plan input2)
+               `(execute ,(%compile-plan input2) ; FIXME broken
                          :visitor
                          (lambda (,row)
-                           (let* ,bindings
+                           (let* ,bindings ; FIXME broken
                              (when ,condition
                                ,@(mapcar
                                   (lambda (variable) `(make-transient ,variable))
@@ -642,10 +642,10 @@
                   (bindings (generate-bindings filter row (append place-value-pairs condition))))
              (assert (typep sql-query 'sql-query-node))
              `(let ((,count 0))
-                (execute ,(%compile-plan sql-query)
+                (execute ,(%compile-plan sql-query) ; FIXME broken
                          :visitor
                          (lambda (,row)
-                           (let* ,bindings
+                           (let* ,bindings ; FIXME broken
                              (when ,condition
                                (incf ,count)
                                (setf ,@(apply #'append place-value-pairs))))))
