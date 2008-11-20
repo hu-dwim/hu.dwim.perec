@@ -338,16 +338,13 @@
       (bind ((mapping (compute-mapping (canonical-type-for type)))
              (unit-types (remove 'unbound (unit-types-of mapping))))
         (when unit-types
-          (sql-is-null (syntax-to-sql access))))))
-
-  (:method ((access association-end-access))
-    nil))
+          (sql-is-null (syntax-to-sql access)))))))
 
 (defgeneric null-tag-for (syntax)
   (:documentation "Returns an SQL expression that gives the tag for the value of SYNTAX.")
   
   (:method (syntax)
-    (sql-literal :value 0))
+    (sql-literal :value (compute-type-tag t)))
 
   (:method ((literal literal-value))
     (bind ((type (persistent-type-of literal)))
@@ -362,9 +359,10 @@
            (sql-literal :value (aref rdbms-values 0)))
           ((eq (aref rdbms-values (1- (length rdbms-values))) :null)
            (assert (and (length= 1 unit-types) (not (eq (first unit-types) 'unbound))))
+           ;; NULL or H-UNUSED. FIXME (or null h-unused ...)
            (sql-literal :value (compute-type-tag (first unit-types))))
           (t
-           (sql-literal :value 0))))))
+           (sql-literal :value (compute-type-tag t)))))))
 
   (:method ((variable lexical-variable))
     (bind ((type (persistent-type-of variable)))
@@ -376,7 +374,7 @@
              (unit-types (remove 'unbound (unit-types-of mapping))))
         ;; FIXME does not work for (or null h-unused ...)
         (cond
-          ((null unit-types) (sql-literal :value 0))
+          ((null unit-types) (sql-literal :value (compute-type-tag t)))
           ((member 'null unit-types) (sql-literal :value (compute-type-tag 'null)))
           (t (sql-literal :value (compute-type-tag (first unit-types))))))))
 
@@ -390,7 +388,7 @@
              (unit-types (remove 'unbound (unit-types-of mapping))))
         ;; FIXME does not work for (or null h-unused ...)
         (cond
-          ((null unit-types) (sql-literal :value 0))
+          ((null unit-types) (sql-literal :value (compute-type-tag t)))
           ((member 'null unit-types) (sql-literal :value (compute-type-tag 'null)))
           (t (sql-literal :value (compute-type-tag (first unit-types))))))))
 
@@ -398,7 +396,7 @@
     (bind ((type (persistent-type-of access))
            (slot (slot-of access))
            (variable (arg-of access)))
-      (debug-only (assert (not (contains-syntax-p type))))
+      (debug-only (assert (not (contains-syntax-p type)) () "Called too early, isn't it?"))
 
       (when (or (eq type +unknown-type+)
                 (null slot)
@@ -412,13 +410,10 @@
           ((tagged-p mapping)
            (sql-column-reference-for (tag-column-of slot) variable))
           (unit-types
-           (assert (length= 1 unit-types))
+           (assert (length= 1 unit-types) () "Has more than 1 unit type, and not tagged?")
            (sql-literal :value (compute-type-tag (first unit-types))))
           (t
-           (sql-literal :value 0))))))
-
-  (:method ((access association-end-access))
-    (sql-literal :value 0)))
+           (sql-literal :value (compute-type-tag t))))))))
 
 (defun check-for-rdbms-values (rdbms-values column-names column-types qualifier)
   (assert (= (length rdbms-values) (length column-names)))
