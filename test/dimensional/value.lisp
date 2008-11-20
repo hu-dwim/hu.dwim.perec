@@ -175,6 +175,34 @@
    *test-dimensions*
    '((ie 10 . 20) (ie 0 . 100) (a b))))
 
+(def test test/dimensional/value/coordinates-difference (dimensions coordinates-a coordinates-b expected)
+  (is (null (set-exclusive-or
+             (coordinates-difference dimensions coordinates-a coordinates-b)
+             expected
+             :test [coordinates-equal dimensions !1 !2]))))
+
+(def test test/dimensional/value/coordinates-difference-samples ()
+  (test/dimensional/value/coordinates-difference
+   *test-dimensions*
+   '((ie 10 . 20) (ie 0 . 100) (a))
+   '((ie 10 . 20) (ie 10 . 90) (a))
+   '(((ie 10 . 20) (ie 0 . 10) (a))
+     ((ie 10 . 20) (ie 90 . 100) (a))))
+
+  (test/dimensional/value/coordinates-difference
+   (mapcar 'find-dimension '(enumerated validity))
+   `((a) (ie 0 . 100))
+   `((a) (ie 10 . 90))
+   `(((a) (ie 0 . 10))
+     ((a) (ie 90 . 100))))
+  
+  (test/dimensional/value/coordinates-difference
+   (mapcar 'find-dimension '(enumerated validity))
+   `((a) (ie ,+beginning-of-time+ . ,+end-of-time+))
+   `((a) (ie ,(parse-datestring "2008-01-01") . ,(parse-datestring "2009-01-01")))
+   `(((a) (ie ,+beginning-of-time+ . ,(parse-datestring "2008-01-01")))
+     ((a) (ie ,(parse-datestring "2009-01-01") . ,+end-of-time+)))))
+
 (def test test/dimensional/value/d-value-equal ()
   (is (not (d-value-equal
             (make-single-d-value
