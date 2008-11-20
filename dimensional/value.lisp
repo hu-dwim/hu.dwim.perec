@@ -412,7 +412,8 @@
     nil)
 
   (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 cons))
-    (list (set-difference coordinate-1 coordinate-2 :test #'coordinate=)))
+    (awhen (set-difference coordinate-1 coordinate-2 :test #'coordinate=)
+      (list it)))
 
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (range-difference coordinate-1 coordinate-2)))
@@ -479,28 +480,34 @@
                    (setf (elt it different-index) unified-coordinate)))
                coordinates-1)))))
 
-;; TODO
 (def (function e) coordinates-difference (dimensions coordinates-1 coordinates-2)
-  (if (coordinates-intersection dimensions coordinates-1 coordinates-2)
-      (iter outer
-            (with result-coordinates = (copy-seq coordinates-1))
-            (for index :from 0)
-            (for dimension :in dimensions)
-            (for coordinate-1 :in coordinates-1)
-            (for coordinate-2 :in coordinates-2)
-            (for differences = (coordinate-difference dimension coordinate-1 coordinate-2))
-            (iter (for difference :in differences)
-                  (in outer (if difference
-                                (collect (aprog1 (copy-seq result-coordinates)
-                                           (setf (elt it index) difference)))
-                                (finish))))
-            (if coordinate-2
-                (bind ((intersection (coordinate-intersection dimension coordinate-1 coordinate-2)))
-                  (if intersection
-                      (setf (elt result-coordinates index) intersection)
-                      (finish)))
-                (finish)))
-      (list coordinates-1)))
+  "Returns the difference of COORDINATES-1 and COORDINATES-2 as a coordinates list."
+  (labels ((recurse (dimensions coordinates-1 coordinates-2)
+             (if (length= 1 dimensions)
+                 (mapcar #'list (coordinate-difference (first dimensions)
+                                                       (first coordinates-1)
+                                                       (first coordinates-2)))
+                 (bind ((dimension (first dimensions))
+                        (coordinate-1 (first coordinates-1))
+                        (coordinate-2 (first coordinates-2))
+                        (difference-list (coordinate-difference dimension coordinate-1 coordinate-2))
+                        (intersection (coordinate-intersection dimension coordinate-1 coordinate-2)))
+                   (append
+                    (iter (for difference :in difference-list)
+                          (when difference
+                            (collect (cons difference (rest coordinates-1)))))
+                    (when intersection
+                      (iter (for rest-coords :in (recurse (rest dimensions)
+                                                          (rest coordinates-1)
+                                                          (rest coordinates-2)))
+                            (collect (cons intersection rest-coords)))))))))
+    
+    (cond
+      ((null dimensions)
+       (list nil))
+      ((coordinates-intersection dimensions coordinates-1 coordinates-2)
+       (recurse dimensions coordinates-1 coordinates-2))
+      (t (list coordinates-1)))))
 
 ;;;;;;
 ;;; C value
