@@ -464,7 +464,7 @@
           (return-from coordinates-union coordinates-2))
         (when (null coordinate-2)
           (return-from coordinates-union coordinates-1))
-        (unless (coordinate= coordinate-1 coordinate-2)
+        (unless (coordinate-equal dimension coordinate-1 coordinate-2)
           (if different-index
               (return-from coordinates-union nil)
               (progn
