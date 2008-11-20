@@ -38,7 +38,11 @@
                         (make-coordinate-range
                          'ie (begin-coordinate dimension) (end-coordinate dimension)))))
           (t
-           (collect (coordinate dimension))))))
+           (bind ((coordinate (coordinate dimension)))
+             (assert coordinate () "~A coordinate is bound to NIL." (coordinate-name-of dimension))
+             (collect (if (whole-domain-marker-p coordinate)
+                          coordinate
+                          (ensure-list coordinate))))))))
 
 (def (function io) slot-boundp-or-value-using-class-d (class instance slot coordinates)
   (assert-instance-slot-correspondence)

@@ -643,6 +643,7 @@
                 (recurse (rest remaining-dimensions) (rest remaining-coordinates)
                          (list* (first remaining-coordinates) accumulator)))
                (t
+                (assert (consp (first remaining-coordinates)))
                 (dolist (coordinate (first remaining-coordinates))
                   (recurse (rest remaining-dimensions) (rest remaining-coordinates)
                            (list* coordinate accumulator)))))))

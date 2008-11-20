@@ -751,8 +751,9 @@
                 (inheriting-dimension timestamps)
                 (ordering-dimension timestamps)
                 (dimension (list* +whole-domain-marker+
-                                  (subsets-of
-                                   (with-transaction (domain dimension))))))))))
+                                  (remove nil
+                                          (subsets-of
+                                           (with-transaction (domain dimension)))))))))))
 
 (def function generate-persistent-object-coordinate-bindings (dimensions)
   (iter (for dimension :in dimensions)
