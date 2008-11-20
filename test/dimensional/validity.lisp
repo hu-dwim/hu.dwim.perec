@@ -14,10 +14,10 @@
 (defsuite* (test/dimensional/validity-dependent :in test/dimensional))
 
 (defpclass* validity-dependent-unbound-test ()
-  ((population :type (or unbound integer-32) :dimensions (validity))))
+  ((population :type (or unbound integer-32) :dimensions (test validity))))
 
 (defpclass* validity-dependent-null-test ()
-  ((population :type (or null integer-32) :dimensions (validity))))
+  ((population :type (or null integer-32) :dimensions (test validity))))
 
 (def macro with-validity-dependent-test-classes (&body forms)
   (with-unique-names (body)
@@ -68,20 +68,24 @@
       (with-validity-range "2006" "2007"
         (is (d-value-equal
              (make-d-value
-              '(validity)
-              (list (list (make-coordinate-range
+              '(test validity)
+              (list (list +whole-domain-marker+
+                          (make-coordinate-range
                            'ie (parse-timestring "2006-01-01TZ") (parse-timestring "2007-01-01TZ")))
-                    (list (make-coordinate-range
+                    (list +whole-domain-marker+
+                          (make-coordinate-range
                            'ie (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ"))))
               '(1000 nil))
              (population-of instance))))
       (with-validity-range "2007" "2008"
         (is (d-value-equal
              (make-d-value
-              '(validity)
-              (list (list (make-coordinate-range
+              '(test validity)
+              (list (list +whole-domain-marker+
+                          (make-coordinate-range
                            'ie (parse-timestring "2007-01-01TZ") (parse-timestring "2008-01-01TZ")))
-                    (list (make-coordinate-range
+                    (list +whole-domain-marker+
+                          (make-coordinate-range
                            'ie (parse-timestring "2008-01-01TZ") (parse-timestring "2009-01-01TZ"))))
               '(nil 2000))
              (population-of instance)))))))
@@ -144,8 +148,9 @@
     (with-validity "2007"
       (setf (population-of -instance-) 2007))
     (with-validity-range "2006" "2007"
-      (iter (for ((validity-range) value) :in-d-value (population-of -instance-))
+      (iter (for ((test-instances validity-range) value) :in-d-value (population-of -instance-))
             (is (member value '(2006 2007) :test '=))
+            (is (whole-domain-marker-p test-instances))
             (case value
               (2006 (is (eq 'ie (coordinate-range-bounds validity-range)))
                     (is (timestamp= (parse-datestring "2006-01-01") (coordinate-range-begin validity-range)))
