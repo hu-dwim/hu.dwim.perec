@@ -137,10 +137,10 @@
     :computed-in compute-as
     :documentation "True means the slot value will be enforced to be unique among instances in the underlying RDBMS.")
    (specified-type
-    (compute-as t)
+    (compute-as (compute-specified-type -self-))
     :type (or symbol cons)
     :initarg nil
-    :documentation "The slot type as it was specified.")
+    :documentation "The slot type as it was specified or t.")
    (canonical-type
     (compute-as (bind (((:values canonical-type error) (ignore-errors
                                                          (canonical-type-for (specified-type-of -self-)))))
@@ -238,8 +238,7 @@
     (compute-as #f)
     :documentation "The unique option is inherited among direct slots according to the class precedence list with defaulting to false.")
    (specified-type
-    (compute-as (cons 'and (mapcar #'specified-type-of (direct-slots-of -self-))))
-    :documentation "The types of the direct slots combined with the compount type specifier 'and'.")
+    :documentation "The types of the direct slots combined with the compound type specifier 'and'.")
    (type-check
     (compute-as (if (persistent-class-type-p* (canonical-type-of -self-))
                     :on-commit
@@ -334,6 +333,16 @@
                (not (slot-definition-initfunction slot)))
           `(or unbound ,type)
           type))))
+
+(def generic compute-specified-type (slot)
+  (:method ((slot persistent-direct-slot-definition))
+    t)
+
+  (:method ((slot persistent-effective-slot-definition))
+    (bind ((types (remove t (mapcar #'specified-type-of (direct-slots-of slot)))))
+      (if (length= 1 types)
+          (first types)
+          (cons 'and types)))))
 
 (def generic compute-persistent-effective-superclasses (class)
   (:method ((class persistent-class))
