@@ -32,11 +32,7 @@
   (iter (for dimension :in dimensions)
         (typecase dimension
           (ordering-dimension
-           (collect (if (coordinate= (begin-coordinate dimension)
-                                     (end-coordinate dimension))
-                        (make-empty-coordinate-range (begin-coordinate dimension))
-                        (make-coordinate-range
-                         'ie (begin-coordinate dimension) (end-coordinate dimension)))))
+           (collect (coordinate dimension)))
           (t
            (bind ((coordinate (coordinate dimension)))
              (assert coordinate () "~A coordinate is bound to NIL." (coordinate-name-of dimension))

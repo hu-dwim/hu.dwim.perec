@@ -206,11 +206,11 @@
     (lookup-coordinate dimension #'coordinate-name-of #'default-coordinate-of))
 
   (:method ((dimension ordering-dimension))
-    (bind ((begin-coordinate (begin-coordinate dimension))
-           (end-coordinate (end-coordinate dimension)))
-      (unless (equal begin-coordinate end-coordinate)
-        (error "The ~A is currently bound to a coordinate range" dimension))
-      begin-coordinate)))
+    (bind ((begin (begin-coordinate dimension))
+           (end (end-coordinate dimension)))
+      (if (coordinate= begin end)
+          (make-empty-coordinate-range begin)
+          (make-ie-coordinate-range begin end)))))
 
 (def (function e) make-dimension-coordinate-range (dimension begin-or-range &optional (end begin-or-range))
   (bind ((dimension (lookup-dimension dimension))
