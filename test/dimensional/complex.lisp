@@ -363,8 +363,7 @@
   (iter (for dimension :in dimensions)
         (typecase dimension
           (inheriting-dimension
-           (assert (coordinate= (begin-coordinate dimension)
-                                (end-coordinate dimension)))
+           (assert (coordinate-range-empty-p (coordinate dimension)))
            (collect (make-coordinate-range
                      'ii
                      (begin-coordinate dimension)
