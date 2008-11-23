@@ -237,8 +237,11 @@
       (select (o)
         (from o)
         (where (and (typep o (class-name (class-of instance)))
-                    ;; commenting out the next clause makes it work
-                    (not (eq (oid-of o) (oid-of instance)))))))))
+                    ;; commenting out the next clause makes it work.
+                    ;; also note that it does not do what one would expect...
+                    (not (eq o instance))
+                    ;; while this one does what is expected (not (equal (oid-of o) (oid-of instance)))
+                    ))))))
 
 (deftest test/query/select/macro ()
   (define-query-macro s-of (message)
