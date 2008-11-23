@@ -222,7 +222,7 @@
                  (and (equal (subject-of m) "subject1")
                       (equal (content-of m) "content1")))))))
 
-(deftest test/query/select/typep ()
+(deftest test/query/select/typep-1 ()
   (test-query (:record-count 2 :fixture forum-data)
     (let ((subject "subject1"))
       (select (m)
@@ -230,6 +230,15 @@
         (where (and (or (typep m 'ad-test)
                          (equal (subject-of m) subject))
                      (not (typep m 'spam-test))))))))
+
+(deftest test/query/select/typep-2 ()
+  (test-query (:record-count 4 :fixture forum-data)
+    (bind ((instance (select-first-matching-instance user-test)))
+      (select (o)
+        (from o)
+        (where (and (typep o (class-name (class-of instance)))
+                    ;; commenting out the next clause makes it work
+                    (not (eq (oid-of o) (oid-of instance)))))))))
 
 (deftest test/query/select/macro ()
   (define-query-macro s-of (message)
