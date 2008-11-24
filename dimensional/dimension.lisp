@@ -276,7 +276,7 @@
              (funcall thunk))))))
 
 (def (macro e) with-coordinates (dimensions coordinates &body forms)
-  `(call-with-coordinates ,dimensions ,coordinates (lambda () ,@forms)))
+  `(call-with-coordinates (mapcar #'lookup-dimension ,dimensions) ,coordinates (lambda () ,@forms)))
 
 ;;;;;;
 ;;; Constants
