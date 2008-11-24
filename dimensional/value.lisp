@@ -523,7 +523,7 @@
   (princ (value-of -self-)))
 
 (def (function e) print-c-value (c-value &optional (stream t))
-  (format stream "(~{~A~^ ~}) : ~A" (coordinates-of c-value) (value-of c-value)))
+  (format stream "~A : (~{~A~^ ~})" (value-of c-value) (coordinates-of c-value)))
 
 (def (function e) make-c-value (coordinates value)
   (make-instance 'c-value
