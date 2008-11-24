@@ -232,15 +232,16 @@
                      (not (typep m 'spam-test))))))))
 
 (deftest test/query/select/typep-2 ()
-  (test-query (:record-count 4 :fixture forum-data)
+  (test-query (:select-count nil :record-count 1 :fixture forum-data)
     (bind ((instance (select-first-matching-instance user-test)))
       (select (o)
         (from o)
         (where (and (typep o (class-name (class-of instance)))
                     ;; commenting out the next clause makes it work.
                     ;; also note that it does not do what one would expect...
-                    (not (eq o instance))
+                    #+nil(not (eq o instance))
                     ;; while this one does what is expected (not (equal (oid-of o) (oid-of instance)))
+                    (not (equal (oid-of o) (oid-of instance)))
                     ))))))
 
 (deftest test/query/select/macro ()

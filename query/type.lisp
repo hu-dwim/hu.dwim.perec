@@ -100,6 +100,7 @@
   (cond
     ((eq type-environment :failed) :failed)
     ((eq type +unknown-type+) type-environment)
+    ((contains-syntax-p type) :failed)
     ((and (symbolp pattern) (assoc pattern type-variables))
      (if (assoc pattern type-environment)
          (if (match-type-pattern (cdr (assoc pattern type-environment)) type type-variables type-environment)
@@ -417,7 +418,7 @@
       (setf simplified-type (canonical-type-for simplified-type)))))
 
 (defgeneric simplify-persistent-class-type (type)
-  
+
   (:method ((class persistent-class))
            class)
 
