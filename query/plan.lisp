@@ -802,7 +802,7 @@
 
 (defun has-identity-reader-p (type)
   (and (not (set-type-p* type))
-       (equal (compute-column-reader-form type) ''identity-reader)))
+       (member (compute-column-reader-form type) (list ''identity-reader `',#'identity-reader) :test #'equal)))
 
 (defun ~persistent-class-type-p (type)
   "KLUDGE because (subtypep '(and pclass-1 pclass-2) 'persistent-object) does not work."
