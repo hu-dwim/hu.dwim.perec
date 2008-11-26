@@ -26,6 +26,9 @@
                             (persistent-effective-slots-of -self-))))
    (prefetched-slots
     (compute-as (collect-if [and (not (typep !1 'persistent-effective-slot-definition-d)) (prefetch-p !1)]
+                            (persistent-effective-slots-of -self-))))
+   (dimensional-slots
+    (compute-as (collect-if (of-type 'persistent-slot-definition-d)
                             (persistent-effective-slots-of -self-)))))
   (:documentation "A dimensional slot value is cached in the underlying slot in d-value."))
 

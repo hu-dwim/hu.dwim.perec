@@ -9,25 +9,28 @@
 ;;;;;;
 ;;; Association end cache
 
-(def (function o) cache-to-many-association-ends-d (instances children-slot-provider parent-accessor)
+(def function cache-to-many-association-ends-d (instances children-slot-provider parent-accessor)
   (dolist (instance instances)
     (bind ((class (class-of instance))
-           (children-slot (funcall children-slot-provider class)))
+           (children-slot (funcall children-slot-provider class))
+           (dimensions (dimensions-of children-slot))
+           (coordinates (collect-coordinates-from-variables dimensions)))
       (when (null (underlying-slot-boundp-or-value-using-class class instance children-slot))
         (setf (underlying-slot-boundp-or-value-using-class class instance children-slot)
-              (make-single-d-value nil *validity-begin* *validity-end*)))
+              (make-single-d-value dimensions coordinates nil)))
       (when-bind parent (funcall parent-accessor instance)
        (bind ((parent-class (class-of parent))
               (parent-children-slot (funcall children-slot-provider parent-class))
-              ((:values cached-p children)
+              ((:values cached-p cached-children)
                (slot-value-cached-p parent parent-children-slot)))
          (assert cached-p)
          (setf (underlying-slot-boundp-or-value-using-class parent-class parent parent-children-slot)
                (make-single-d-value
-                (cons instance (single-d-value children))
-                *validity-begin* *validity-end*)))))))
+                dimensions
+                coordinates
+                (cons instance (single-d-value cached-children)))))))))
 
-(def (function o) cache-to-many-association-ends-for-tree-d (instances children-slot-provider parent-accessor)
+(def function cache-to-many-association-ends-for-tree-d (instances children-slot-provider parent-accessor)
   (dolist (instance instances)
     (bind ((class (class-of instance))
            (children-slot (funcall children-slot-provider class)))
@@ -47,31 +50,51 @@
 (def function set-cached-slot-values-from-h-instances (h-instances)
   (iter (for h-instance :in h-instances)
         (for d-instance = (d-instance-of h-instance))
-        (for d-class = (class-of d-instance))
-        (for prev-d-instance previous d-instance)
-        (for t-value = (when (typep h-instance 'time-dependent-object) (time-of h-instance)))
-        (for prev-d-value previous t-value)
-        (for validity-begin = (when (typep h-instance 'validity-dependent-object)
-                                (timestamp-maximum (validity-begin-of h-instance) *validity-begin*)))
-        (for validity-end = (when (typep h-instance 'validity-dependent-object)
-                              (timestamp-minimum (validity-end-of h-instance) *validity-end*)))
-        (assert (or (null prev-d-value) (and t-value (timestamp<= prev-d-value t-value))))
-        (iter (for slot :in (class-slots d-class))
-              (unless (typep slot 'persistent-slot-definition-d) (next-iteration))
-              (when (typep slot 'persistent-association-end-slot-definition) (next-iteration))
-              (for slot-name = (slot-definition-name slot))
-              (for slot-value = (if (slot-boundp h-instance slot-name)
-                                    (slot-value h-instance slot-name)
-                                    +unbound-slot-marker+))
-              (when (eq slot-value +h-unused-slot-marker+) (next-iteration))
-              #+nil
-              (if (time-dependent-p slot)
-                  (bind (((:values cached-p d-slot-value) (slot-value-cached-p d-instance slot)))
-                    (unless cached-p
-                      (setf d-slot-value
-                            (make-empty-d-value)
-                            (underlying-slot-boundp-or-value-using-class d-class d-instance slot)
-                            d-slot-value))
-                    (setf (value-at-coordinates d-slot-value validity-begin validity-end)
-                          slot-value))
-                  (setf (underlying-slot-boundp-or-value-using-class d-class d-instance slot) slot-value)))))
+        #| TODO
+        (for inheriting-coordinate = (when inheriting-dimension
+                                       (coordinate-range-begin
+                                        (get-coordinate-from-h-instance h-instance inheriting-dimension))))
+        (for prev-inheriting-coordinate :previous inheriting-coordinate)
+        ;; check that h-instances are ordered according to the inheriting dimension
+        (assert (or (null inheriting-coordinate)
+                    (and inheriting-coordinate (coordinate<= prev-inheriting-coordinate
+                                                             inheriting-coordinate))))
+        |#
+        (iter (for slot :in (dimensional-slots-of (class-of d-instance)))
+              (unless (typep slot 'persistent-association-end-slot-definition)
+                (set-cached-slot-value-from-h-instance d-instance h-instance (slot-definition-name slot))))))
+
+(def function set-cached-slot-value-from-h-instance (d-instance h-instance slot-name)
+  (bind ((slot-value (if (slot-boundp h-instance slot-name) (slot-value h-instance slot-name) +unbound-slot-marker+)))
+    (unless (eq slot-value +h-unused-slot-marker+)
+      (bind ((d-class (class-of d-instance))
+             (d-slot (find-slot d-class slot-name))
+             (dimensions (dimensions-of d-slot))
+             (coordinates (coordinates-intersection
+                           (get-coordinates-from-h-instance h-instance dimensions)
+                           (collect-coordinates-from-variables dimensions)))
+             ((:values cached-p cached-slot-value) (slot-value-cached-p d-instance d-slot)))
+        (if cached-p
+            (progn
+              (assert (d-value-p cached-slot-value))
+              (setf (value-at-coordinates cached-slot-value coordinates) slot-value))
+            (setf (underlying-slot-boundp-or-value-using-class d-class d-instance d-slot)
+                  (make-single-d-value dimensions coordinates slot-value)))))))
+
+(def (function io) get-coordinates-from-h-instance (h-instance dimensions)
+  (mapcar [get-coordinate-from-h-instance h-instance !1] dimensions))
+
+(def function get-coordinate-from-h-instance (h-instance dimension)
+  (etypecase dimension
+    (inheriting-dimension
+     (make-empty-coordinate-range
+      (slot-value h-instance (slot-name-of dimension))))
+    (ordering-dimension
+     (make-ie-coordinate-range
+      (slot-value h-instance (begin-slot-name-of dimension))
+      (slot-value h-instance (end-slot-name-of dimension))))
+    (dimension
+     (bind ((value (slot-value h-instance (slot-name-of dimension))))
+       (if value
+           (list value)
+           +whole-domain-marker+)))))
