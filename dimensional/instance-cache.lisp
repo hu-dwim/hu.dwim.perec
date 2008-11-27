@@ -71,6 +71,7 @@
              (d-slot (find-slot d-class slot-name))
              (dimensions (dimensions-of d-slot))
              (coordinates (coordinates-intersection
+                           dimensions
                            (get-coordinates-from-h-instance h-instance dimensions)
                            (collect-coordinates-from-variables dimensions)))
              ((:values cached-p cached-slot-value) (slot-value-cached-p d-instance d-slot)))
