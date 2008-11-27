@@ -38,7 +38,10 @@
 (defcclass* persistent-slot-definition-d (persistent-slot-definition)
   ((dimensions
     nil
-    :type (list dimension))))
+    :type (list dimension))
+   (inheriting-dimension-index
+    (compute-as (position-if (of-type 'inheriting-dimension) (dimensions-of -self-)))
+    :type (or null integer))))
 
 (defcclass* persistent-direct-slot-definition-d (persistent-slot-definition-d persistent-direct-slot-definition)
   ()
