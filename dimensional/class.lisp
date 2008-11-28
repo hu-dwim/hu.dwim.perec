@@ -28,8 +28,10 @@
     (compute-as (collect-if [and (not (typep !1 'persistent-effective-slot-definition-d)) (prefetch-p !1)]
                             (persistent-effective-slots-of -self-))))
    (dimensional-slots
-    (compute-as (collect-if (of-type 'persistent-slot-definition-d)
-                            (persistent-effective-slots-of -self-)))))
+    (compute-as (compute-dimensional-slots -self-)))
+   (slot-dimensions
+    (compute-as (compute-slot-dimensions -self-))
+    :documentation "Dimensions of the all normal (not association-end) slots in undefined order. H-instances of the class depends on these dimensions."))
   (:documentation "A dimensional slot value is cached in the underlying slot in d-value."))
 
 (defcclass* persistent-class-h (persistent-class)
@@ -103,6 +105,14 @@
 
 ;;;;;;;;;;;;
 ;;; Computed
+(def function compute-dimensional-slots (d-class)
+  (collect-if (of-type 'persistent-slot-definition-d)
+              (persistent-effective-slots-of d-class)))
+
+(def function compute-slot-dimensions (d-class)
+  (iter (for slot :in (dimensional-slots-of d-class))
+        (unless (typep slot 'persistent-association-end-slot-definition-d)
+          (unioning (dimensions-of slot)))))
 
 (def method compute-primary-class ((slot persistent-effective-slot-definition-d))
   nil)
@@ -115,6 +125,8 @@
 
 (def method compute-data-table-slot-p ((slot persistent-effective-slot-definition-d))
   nil)
+
+
 
 ;;;;;;;;;;;
 ;;; Utility

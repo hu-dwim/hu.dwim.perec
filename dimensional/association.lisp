@@ -12,7 +12,9 @@
 (defcclass* persistent-association-d (persistent-association)
   ((h-class
     (compute-as (find-class (name-of -self-)))
-    :type persistent-class)))
+    :type persistent-class)
+   (dimensions
+    (compute-as (mapcar #'lookup-dimension (dimensions-of (primary-association-end-of -self-)))))))
 
 (def method compute-primary-table ((association persistent-association-d) current-table)
   nil)
