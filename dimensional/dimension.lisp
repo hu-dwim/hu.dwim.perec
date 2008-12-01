@@ -60,6 +60,7 @@
 ;;; Defining
 
 (def (definer :available-flags "e") dimension (name &key (type name) ordered inherit external
+                                                    (bind-coordinate-variables #t)
                                                     (default-coordinate nil default-coordinate?)
                                                     (default-begin-coordinate nil default-begin-coordinate?)
                                                     (default-end-coordinate nil default-end-coordinate?)
@@ -134,8 +135,14 @@
                                ,(coerce-to-coordinate-end ,name ',type)
                                (lambda () ,@forms))
                              `(,',call-with-fn-name ,,name (lambda () ,@forms))))
-                       (def (special-variable e) ,begin-special-name)
-                       (def (special-variable e) ,end-special-name)
+                       (def (special-variable e) ,begin-special-name
+                           ,@(when (and bind-coordinate-variables
+                                        default-begin-coordinate?)
+                               (list default-begin-coordinate)))
+                       (def (special-variable e) ,end-special-name
+                           ,@(when (and bind-coordinate-variables
+                                        default-end-coordinate?)
+                               (list default-end-coordinate)))
                        (def (symbol-macro e) ,coordinate-name
                            (coordinate (find-dimension ',name)))
                        (def (function e) ,call-with-fn-name (,name thunk)
@@ -161,7 +168,11 @@
                          `(,',call-with-fn-name
                            ,(coerce-to-coordinate ,name ',type)
                            (lambda () ,@forms)))
-                       (def (special-variable e) ,coordinate-name)
+                       (def (special-variable e) ,coordinate-name
+                           ,@(when bind-coordinate-variables
+                               (list (if default-coordinate?
+                                         default-coordinate
+                                         +whole-domain-marker+))))
                        (def (function e) ,call-with-fn-name (,name thunk)
                          (bind ((,coordinate-name (ensure-list ,name)))
                            (funcall thunk)))))))))
@@ -307,6 +318,7 @@
 (def (dimension e) time
   :type timestamp
   :inherit :ascending
+  :bind-coordinate-variables #f
   :default-begin-coordinate (transaction-timestamp)
   :default-end-coordinate (transaction-timestamp)
   :minimum-coordinate +beginning-of-time+
@@ -325,6 +337,5 @@
 
 ;;;;;;
 ;;; Enumerated
-(def (dimension e) enumerated
-  :type symbol
-  :default-coordinate t)
+
+(def (dimension e) enumerated :type symbol)
