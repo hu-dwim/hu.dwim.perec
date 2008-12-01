@@ -190,6 +190,10 @@
        (coordinate= (coordinate-range-begin range)
                     (coordinate-range-end range))))
 
+(def (function e) single-coordinate-range-value (range)
+  (assert (coordinate-range-empty-p range))
+  (coordinate-range-begin range))
+
 (def function in-coordinate-range-p (coordinate range)
   (ecase (coordinate-range-bounds range)
     (ii (and (coordinate<= (coordinate-range-begin range) coordinate)
@@ -610,15 +614,25 @@
             (setf (value-at-coordinates d-value coordinates) value))
           coordinates-list values)))
 
-(def (function e) single-d-value (d-value)
-  (assert (single-d-value-p d-value))
-  (value-of (first (c-values-of d-value))))
-
 (def (function e) empty-d-value-p (d-value)
   (null (c-values-of d-value)))
 
 (def (function e) single-d-value-p (d-value)
   (length= 1 (c-values-of d-value)))
+
+(def (function e) single-d-value (d-value)
+  (assert (single-d-value-p d-value))
+  (value-of (first (c-values-of d-value))))
+
+(def (function e) single-d-value-coordinate (d-value dimension)
+  (assert (single-d-value-p d-value))
+  (elt (coordinates-of (first (c-values-of d-value)))
+       (position (if (symbolp dimension)
+                     dimension
+                     (name-of dimension))
+                 (dimensions-of d-value)
+                 :key #'name-of)))
+
 
 (def (function e) d-values-have-same-dimensions-p (d-values)
   (bind ((dimensions (dimensions-of (first d-values))))
