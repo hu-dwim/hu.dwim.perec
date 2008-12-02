@@ -156,6 +156,7 @@
 (def (function ioe) make-coordinate-range (bounds begin end)
   (debug-only
     (assert (typep bounds 'bounds))
+    (assert (and (coordinate-p begin) (coordinate-p end)))
     (assert (coordinate<= begin end))
     (assert (or (coordinate< begin end) (eq bounds 'ii))))
   (cons bounds (cons begin end)))
@@ -168,6 +169,7 @@
     (cons bounds (cons begin end))))
 
 (def (function ioe) make-empty-coordinate-range (coordinate)
+  (debug-only (assert (coordinate-p coordinate)))
   (cons 'ii (cons coordinate coordinate)))
 
 (def (function ioe) make-ie-coordinate-range (begin &optional (end begin))
