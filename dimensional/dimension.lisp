@@ -15,19 +15,15 @@
 (def (load-time-constant e) +end-of-time+ (parse-timestring "3000-01-01TZ")
   "All timestamps are equal or less than the end of time.")
 
-(eval-always
-  (def (load-time-constant e) +whole-domain-marker+
-      (progn
-        (defstruct whole-domain-marker
-          "Type of the special value that marks the whole domain of the dimension.")
-        (def method make-load-form ((self whole-domain-marker) &optional environment)
-          (declare (ignore environment))
-          '%%%+whole-domain-marker+)
-        (make-whole-domain-marker))
-    "The special value that marks the whole domain of non-ordering dimensions."))
-
-(def (function ioe) whole-domain-marker-p (coordinate)
-  (eq coordinate +whole-domain-marker+))
+(def (load-time-constant e) +whole-domain-marker+
+  (progn
+    (defstruct whole-domain-marker
+      "Type of the special value that marks the whole domain of the dimension.")
+    (def method make-load-form ((self whole-domain-marker) &optional environment)
+      (declare (ignore environment))
+      '%%%+whole-domain-marker+)
+    (make-whole-domain-marker))
+  "The special value that marks the whole domain of non-ordering dimensions.")
 
 ;;;;;;
 ;;; Dimension

@@ -206,6 +206,7 @@
            #:print-persistent-instance
            #:copy-persistent-instance
            #:copy-into-transaction-cache
+           #:unbound-slot-marker-p
 
            ;; most of the collection API is inherited from cl-containers 
            #:insert-item
@@ -301,6 +302,8 @@
            #:dimension
            #:ordering-dimension
            #:inheriting-dimension
+           #:whole-domain-marker-p
+           #:h-unused-slot-marker-p
            #:time
            #:with-coordinate
            #:with-coordinates

@@ -83,16 +83,14 @@
 ;;; unbound -> NULL
 ;;; t -> type-error
 
-(eval-always
-  ;; This value is used to signal unbound slot value returned from database.
-  (def (load-time-constant e) +unbound-slot-marker+
-      (progn
-        (defstruct unbound-slot-marker
-          "This structure is used for the unbound slot value marker. The type for that marker must be a subtype of t and cannot be a subtype of any other type.")
-        (defmethod make-load-form ((self unbound-slot-marker) &optional environment)
-          (declare (ignore environment))
-          '%%%+unbound-slot-marker+)
-        (make-unbound-slot-marker))))
+(def (load-time-constant e) +unbound-slot-marker+
+  (progn
+    (defstruct unbound-slot-marker
+      "This structure is used for the unbound slot value marker. The type for that marker must be a subtype of t and cannot be a subtype of any other type.")
+    (defmethod make-load-form ((self unbound-slot-marker) &optional environment)
+      (declare (ignore environment))
+      '%%%+unbound-slot-marker+)
+    (make-unbound-slot-marker)))
 
 (defptype eql (value)
   `(eql ,value))
