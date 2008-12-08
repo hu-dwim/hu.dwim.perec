@@ -128,7 +128,11 @@
                           (setf (value-at-coordinates cached-parent coordinates) nil)))
               (setf (value-at-coordinates cached-children coordinates) nil))
             (when child                 ; clear parent
-              (delete-at-coordinates cached-children coordinates child)
+              (iter (for (coordinates parent)
+                         :in-d-value (value-at-coordinates cached-parent coordinates))
+                    (unless parent (next-iteration))
+                    (for cached-children = (underlying-slot-value parent secondary-slot-name))
+                    (delete-at-coordinates cached-children coordinates child))
               (setf (value-at-coordinates cached-parent coordinates) nil))
             )
            (#.+t-delete+
