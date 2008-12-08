@@ -272,7 +272,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
     (bind ((class (find-class type-name #f)))
       (typecase class
         (persistent-class (sql-table-reference-for-type* class referenced-slots alias))
-        (otherwise nil))))              ; FIXME signal error
+        (otherwise (error "No persistent class with name ~S." type-name)))))
 
   (:method ((type literal-value) referenced-slots alias)
     (sql-table-reference-for-type* (value-of type) referenced-slots alias))
