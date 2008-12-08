@@ -61,9 +61,9 @@
         (for primary-d-instance = (slot-value h-instance (h-slot-name-of primary-association-end)))
         (for secondary-d-instance = (slot-value h-instance (h-slot-name-of secondary-association-end)))
         (when primary-d-instance
-          (setf (slot-value primary-d-instance primary-slot-name) (make-empty-d-value dimensions)))
+          (setf (underlying-slot-value primary-d-instance primary-slot-name) (make-empty-d-value dimensions)))
         (when secondary-d-instance
-          (setf (slot-value secondary-d-instance secondary-slot-name) (make-empty-d-value dimensions)))))
+          (setf (underlying-slot-value secondary-d-instance secondary-slot-name) (make-empty-d-value dimensions)))))
 
 (def function set-cached-association-ends-from-h-instances (h-instances d-association dimensions coordinates)
   (iter (for h-instance :in h-instances)

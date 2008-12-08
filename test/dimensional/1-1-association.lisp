@@ -103,7 +103,6 @@
                          (make-coordinate-range 'ie (parse-datestring "2003-01-01") +end-of-time+)))
                   (list nil brother-2 nil brother-1))))))))))
 
-#+nil
 (def test test/dimensional/association/1-1/cache ()
   (test/dimensional/association/cache
    (find-association

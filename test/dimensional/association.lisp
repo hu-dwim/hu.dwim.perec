@@ -46,7 +46,7 @@
          (secondary-slot-name (slot-definition-name (prc::secondary-association-end-of association))))
     (labels ((check (instances slot-name)
                (iter (for instance :in instances)
-                     (for cached-value = (slot-value instance slot-name))
+                     (for cached-value = (prc::underlying-slot-value instance slot-name))
                      (for loaded-instance = (load-instance instance))
                      (for loaded-value = (slot-value loaded-instance slot-name))
                      (is (equal-sets cached-value loaded-value)))))
