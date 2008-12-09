@@ -35,7 +35,6 @@
            (collect (coordinate dimension)))
           (t
            (bind ((coordinate (coordinate dimension)))
-             (assert coordinate () "~A coordinate is bound to NIL." (coordinate-name-of dimension))
              (collect (if (whole-domain-marker-p coordinate)
                           coordinate
                           (ensure-list coordinate))))))))

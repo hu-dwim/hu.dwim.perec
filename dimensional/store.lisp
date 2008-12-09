@@ -422,6 +422,7 @@
                             (slot-value h-instance ',(end-slot-name-of dimension)))))
 
             (dimension
+             (assert coordinate () "~A coordinate is bound to NIL." (coordinate-name-of dimension))
              (add-collect query `(or (and (null (slot-value h-instance ',(slot-name-of dimension)))
                                           +whole-domain-marker+) ; FIXME if
                                      (list (slot-value h-instance ',(slot-name-of dimension)))))
@@ -471,6 +472,7 @@
 
           (finally
            ;; generate condition for version check
+           (assert coordinate () "~A coordinate is bound to NIL." (coordinate-name-of dimension))
            (add-assert query `(eq h-instance (select ((max (oid-of h-instance-2)))
                                                (from (h-instance-2 ,(class-name h-class)))
                                                (where (and (eq (d-instance-of h-instance-2) d-instance))))))
@@ -499,6 +501,7 @@
                      (collect (initarg-of (end-slot-name-of dimension)))
                      (collect (coordinate-range-end coordinate)))
                     (dimension
+                     (assert coordinate () "~A coordinate is bound to NIL." (coordinate-name-of dimension))
                      (collect (initarg-of (slot-name-of dimension)))
                      (collect (if (whole-domain-marker-p coordinate) nil coordinate)))))))))
 
@@ -579,6 +582,7 @@
                             (slot-value h-instance ',(end-slot-name-of dimension)))))
 
             (dimension
+             (assert coordinate () "~A coordinate is bound to NIL." (coordinate-name-of dimension))
              (add-collect query `(or (and (null (slot-value h-instance ',(slot-name-of dimension))) ;FIXME if
                                           +whole-domain-marker+)
                                      (list (slot-value h-instance ',(slot-name-of dimension)))))
@@ -624,6 +628,7 @@
                           (collect (initarg-of (end-slot-name-of dimension)))
                           (collect (coordinate-range-end coordinate)))
                          (dimension
+                          (assert coordinate () "~A coordinate is bound to NIL." (coordinate-name-of dimension))
                           (collect (initarg-of (slot-name-of dimension)))
                           (collect (if (whole-domain-marker-p coordinate) nil coordinate))))))))
        dimensions coordinates))))
