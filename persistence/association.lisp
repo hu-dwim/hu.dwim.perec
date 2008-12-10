@@ -96,9 +96,10 @@
                       1
                       0))))
    (max-cardinality
-    (compute-as (if (set-type-p* (canonical-type-of -self-))
-                    :n
-                    1)))
+    (compute-as (bind ((canonical-type (canonical-type-of -self-)))
+                  (cond ((persistent-class-type-p* canonical-type) 1)
+                        ((set-type-p* canonical-type) :n)
+                        (t (error "The type ~A is not a valid persistent association end type." canonical-type))))))
    (other-association-end
     (compute-as (if (primary-association-end-p -self-)
                     (secondary-association-end-of (association-of -self-))
