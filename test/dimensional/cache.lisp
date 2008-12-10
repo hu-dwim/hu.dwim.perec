@@ -13,13 +13,9 @@
    (validity-dependent-string :type string :dimensions (validity))))
 
 (defassociation*
-  ((:class dimensional-cache-test :slot time-dependent-parent :type (or null dimensional-cache-test))
-   (:class dimensional-cache-test :slot time-dependent-children :type (set dimensional-cache-test)))
+  ((:class dimensional-cache-test :slot time-dependent-parent :type (or null dimensional-cache-test) :cache #t)
+   (:class dimensional-cache-test :slot time-dependent-children :type (set dimensional-cache-test) :cache #t))
   (:dimensions (time)))
-
-(setf ; TODO specify cache usage in the definition of the association
- (cache-p (find-slot 'dimensional-cache-test 'time-dependent-parent)) #t
- (cache-p (find-slot 'dimensional-cache-test 'time-dependent-children)) #t)
 
 (def test test/dimensional/cache/tree ()
   (with-transaction
