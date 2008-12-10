@@ -88,7 +88,6 @@
                                  (underlying-slot-value primary-instance primary-slot-name)))
          (secondary-cached-value (when secondary-instance
                                    (underlying-slot-value secondary-instance secondary-slot-name))))
-
     (assert coordinates)
     (assert (or (null primary-cached-value) (d-value-p primary-cached-value)))
     (assert (or (null secondary-cached-value) (d-value-p secondary-cached-value)))
@@ -177,9 +176,9 @@
 ;;;;;;
 ;;; Cache multiple slot values
 
-(def function cache-dimensional-slots (d-class)
+(def (function e) cache-dimensional-slots (d-class)
   "Cache the dimensional slots of each instances of D-CLASS using one select."
-  (bind ((dimensions (dimensions-of d-class))
+  (bind ((dimensions (slot-dimensions-of d-class))
          (coordinates (collect-coordinates-from-variables dimensions))
          (h-instances (select-h-instances-of-d-class d-class dimensions coordinates)))
     (set-cached-slot-values-from-h-instances h-instances)))
@@ -225,8 +224,9 @@
 (def function get-coordinate-from-h-instance (h-instance dimension)
   (etypecase dimension
     (inheriting-dimension
-     (make-empty-coordinate-range
-      (slot-value h-instance (slot-name-of dimension))))
+     (make-ii-coordinate-range
+      (slot-value h-instance (slot-name-of dimension))
+      (maximum-coordinate-of dimension)))
     (ordering-dimension
      (make-ie-coordinate-range
       (slot-value h-instance (begin-slot-name-of dimension))
