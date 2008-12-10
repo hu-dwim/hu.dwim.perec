@@ -6,6 +6,31 @@
 
 (in-package :cl-perec)
 
+;;;
+;;;
+(def (function e) ensure-cached-tree-d (bulk d-class-name d-association-name)
+  (or (cached-bulk-of bulk)
+      (setf (cached-bulk-of bulk)
+            (bind ((d-class (find-class d-class-name))
+                   (d-association (find-association d-association-name))
+                   (parent-association-end (primary-association-end-of d-association))
+                   (instances (select (instance)
+                                (from instance)
+                                (where (typep instance d-class)))))
+              (assert (eq :1-n (association-kind-of d-association)))
+              (cache-dimensional-slots d-class)
+              (cache-dimensional-association d-association)
+              (find-root (first instances) d-class parent-association-end)))))
+
+(def function find-root (instance class parent-association-end)
+  (declare (ignore class))
+  (when instance
+    (iter (for current :initially instance :then parent)
+          (for parent = (single-d-value (slot-value current (slot-definition-name parent-association-end))))
+          (while parent)
+          (finally (return current)))))
+
+
 ;;;;;;
 ;;; Association end cache
 

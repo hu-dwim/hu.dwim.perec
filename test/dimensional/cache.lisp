@@ -30,6 +30,17 @@
       (walk-dimensional-cache-test-tree tree)
       (is (= (current-select-counter) (+ select-counter 2))))))
 
+(def test test/dimensional/cache/tree/2 ()
+  (with-transaction
+    (create-dimensional-cache-test-tree)
+    (bind ((root (ensure-cached-tree-d
+                  'cache-test
+                  'dimensional-cache-test
+                  'dimensional-cache-test~time-dependent-parent~dimensional-cache-test~time-dependent-children))
+           (select-counter (current-select-counter)))
+      (walk-dimensional-cache-test-tree root)
+      (is (= (current-select-counter) select-counter)))))
+
 (def function create-dimensional-cache-test-tree ()
   (purge-instances 'dimensional-cache-test)
   (purge-instances 'dimensional-cache-test-h)
