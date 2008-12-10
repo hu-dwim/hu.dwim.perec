@@ -56,7 +56,7 @@
 
 (def function equal-sets (value-1 value-2)
   (or (and (listp value-1) (listp value-2)
-           (prc::every* #'p-eq value-1 value-2))
+           (null (set-exclusive-or value-1 value-2 :test #'p-eq)))
       (and (prc::persistent-object-p value-1) (prc::persistent-object-p value-2)
            (p-eq value-1 value-2))
       (and (d-value-p value-1) (d-value-p value-2)

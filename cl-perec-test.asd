@@ -91,6 +91,7 @@
                (:file "time")
                (:file "validity")
                (:file "dimensional")
+               (:file "cache")
                (:file "complex")
                (:file "association")
                (:file "slot" :depends-on ("complex"))

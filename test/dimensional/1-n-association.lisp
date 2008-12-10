@@ -51,3 +51,8 @@
 (def test test/dimensional/association/1-n/time-and-validity-dependent ()
   (run-complex-tests :class-names '(dimensional-parent-test dimensional-child-test)
                      :slot-names '(time-and-validity-dependent-parent time-and-validity-dependent-children)))
+
+(def test test/dimensional/association/1-n/cache ()
+  (test/dimensional/association/cache
+   (find-association
+    'dimensional-child-test~validity-dependent-parent~dimensional-parent-test~validity-dependent-children)))

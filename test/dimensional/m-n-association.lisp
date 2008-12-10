@@ -51,3 +51,8 @@
 (def test test/dimensional/association/m-n/time-and-validity-dependent ()
   (run-complex-tests :class-names '(dimensional-student-test dimensional-course-test)
                      :slot-names '(time-and-validity-dependent-students time-and-validity-dependent-courses)))
+
+(def test test/dimensional/association/m-n/cache ()
+  (test/dimensional/association/cache
+   (find-association
+    'dimensional-course-test~validity-dependent-students~dimensional-student-test~validity-dependent-courses)))
