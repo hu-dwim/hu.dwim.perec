@@ -87,21 +87,25 @@
   (bind ((d-value (make-single-d-value dimensions coordinates default-value)))
     (iter (for record :in records)
           (for value = (first record))
-          (for coords = (iter (for dimension :in dimensions)
-                              (generating coordinate :in (rest record))
-                              (collect (etypecase dimension
-                                         (inheriting-dimension
-                                          (make-coordinate-range
-                                           'ii
-                                           (next coordinate)
-                                           (maximum-coordinate-of dimension)))
-                                         (ordering-dimension
-                                          (make-coordinate-range
-                                           'ie (next coordinate) (next coordinate)))
-                                         (dimension
-                                          (next coordinate))))))
+          (for coords = (coordinates-intersection ;; NOTE: intersect within the iter
+                         dimensions               ;; to avoid (domain ...) calls when the record
+                         coordinates              ;; contains whole-domain-marker, but the coordinates not
+                         (iter (for dimension :in dimensions) ;; TODO refine intersection in inheriting coord
+                               (generating coordinate :in (rest record))
+                               (collect (etypecase dimension
+                                          (inheriting-dimension
+                                           (make-coordinate-range
+                                            'ii
+                                            (next coordinate)
+                                            (maximum-coordinate-of dimension)))
+                                          (ordering-dimension
+                                           (make-coordinate-range
+                                            'ie (next coordinate) (next coordinate)))
+                                          (dimension
+                                           (next coordinate)))))))
+          (assert coords)
           (setf (value-at-coordinates d-value coords) value))
-    (value-at-coordinates d-value coordinates))) ; TODO refine cut in inheriting dimension
+    d-value))
 
 ;;;
 ;;; Association-end access
