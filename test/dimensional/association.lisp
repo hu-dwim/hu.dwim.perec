@@ -38,8 +38,8 @@
             (for secondary-instance = (random-elt secondary-instances))
             (ecase (prc::cardinality-kind-of primary-association-end)
               (:1 (setf (slot-value primary-instance primary-slot-name) secondary-instance))
-              (:n (unless (find-item (slot-value primary-instance primary-slot-name) secondary-instance)
-                    (insert-item (slot-value primary-instance primary-slot-name) secondary-instance))))))))
+              (:n (bind ((prc::*lazy-slot-value-collections* #t))
+                    (ensure-item (slot-value primary-instance primary-slot-name) secondary-instance))))))))
 
 (def function check-graphs-are-equal (primary-instances secondary-instances association)
   (bind ((primary-slot-name (slot-definition-name (prc::primary-association-end-of association)))
