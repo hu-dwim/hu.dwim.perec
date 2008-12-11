@@ -33,10 +33,26 @@
                                                    (dimensions-of (slot-of set)))))
 
 (def method find-item ((set persistent-association-end-set-container-d) (item persistent-object))
-  (not-yet-implemented))
+  ;; TODO optimize
+  (bind ((instance (instance-of set))
+         (dimensions (dimensions-of (slot-of set)))
+         (d-value (bind ((*lazy-slot-value-collections* #f))
+                    (restore-slot (class-of instance) instance (slot-of set)
+                                 :coordinates (collect-coordinates-from-variables dimensions)))))
+    (iter (for (coordinates set) :in-d-value d-value)
+          (collect-d-value (find item set :test #'p-eq) :dimensions dimensions :coordinates coordinates))))
 
 (def method ensure-item ((set persistent-association-end-set-container-d) (item persistent-object))
-  (not-yet-implemented))
+  ;; TODO optimize
+  (bind ((instance (instance-of set))
+         (association-end (slot-of set))
+         (dimensions (dimensions-of association-end))
+         (d-value (bind ((*lazy-slot-value-collections* #f))
+                    (restore-slot (class-of instance) instance association-end
+                                  :coordinates (collect-coordinates-from-variables dimensions)))))
+    (iter (for (coordinates set) :in-d-value d-value)
+          (unless (find item set :test #'p-eq)
+            (insert-into-association-end-set-d instance association-end item :coordinates coordinates)))))
 
 (def method size ((set persistent-association-end-set-container-d))
   (not-yet-implemented))
