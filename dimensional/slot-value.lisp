@@ -54,17 +54,13 @@
                 (return-from slot-boundp-or-value-using-class-d (simplify-d-value d-value))))))
       (if persistent
           (bind ((d-value (restore-slot class instance slot :coordinates coordinates))) ;; FIXME returns ii
-            (when (or (not persistent) cache-p)
-              (if (d-value-p cached-value)
-                  (setf (into-d-value cached-value) d-value)
-                  (setf (underlying-slot-value-using-class class instance slot) d-value)))
+            (update-cache class instance slot :get d-value)
             (simplify-d-value d-value))
           (return-from slot-boundp-or-value-using-class-d +unbound-slot-marker+)))))
 
 (def (function io) (setf slot-boundp-or-value-using-class-d) (new-value class instance slot)
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance))
-         (cache-p (and *cache-slot-values* (cache-p slot)))
          (new-value (if (not (d-value-p new-value))
                         (make-single-d-value (dimensions-of slot)
                                              (collect-coordinates-from-variables (dimensions-of slot))
@@ -73,14 +69,7 @@
     (assert-instance-access instance persistent)
     (when persistent
       (store-slot class instance slot new-value))
-    (when (or (not persistent) cache-p)
-      (if (inheriting-dimension-index-of slot)
-          ;; TODO update the cache (needs selects) instead of overwriting it
-          (setf (underlying-slot-value-using-class class instance slot) new-value)
-          (bind (((:values slot-value-cached cached-value) (slot-value-cached-p instance slot)))
-            (if (and slot-value-cached (d-value-p cached-value))
-                (setf (into-d-value cached-value) new-value) 
-                (setf (underlying-slot-value-using-class class instance slot) new-value))))))
+    (update-cache class instance slot :set new-value))
   new-value)
 
 (defmethod slot-value-using-class ((class persistent-class)
