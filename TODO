@@ -1,6 +1,31 @@
-- eliminate superfluous dependencies
-- eliminate duplicates
-- sqlite support:
-  - there are no sequences
-  - no reflection on the column level
-  - no date, time, timestamp data type
+Columns
+=======
+Status Priority Description 
+
+Status
+======
+- todo
++ done
+
+Priorities
+==========
+0 - highest
+1 - high
+2 - normal
+3 - low
+4 - lowest
+
+Entries
+=======
+use M-x sort-lines to keep the order
+
+-0 subclassing a dimensional class does not make the subclass dimensional if there are no dimensional slots in the subclass
+-1 change-class, add-class, remove-class, ensure-class, desure-class (support anonymous persistent classes)
+-1 add delayed updates using mark dirty-slots and provide a flush function
+-1 revise perec persistent-p/debug-persistent-p 
+-2 add asserts in update/select statements for the number of affected rows in store
+-2 prefetching 1-1 association does not always work due to not knowing that both ends are persistent (why do we assume broken references there) and thus executing a query upon persistent-p
+-3 finish sqlite support (issues: there are no sequences; no reflection on the column level; no date, time, timestamp data type)
+-3 what about purge-instance making references broken?
+-4 eliminate barely used (by increasing duplicates) system and package dependencies
+-4 eliminate superfluous duplicates (which are covered by other systems)
