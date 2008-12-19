@@ -193,7 +193,7 @@
                                          default-coordinate
                                          +whole-domain-marker+))))
                        (def (function e) ,call-with-fn-name (,name thunk)
-                         (bind ((,coordinate-name (ensure-list ,name)))
+                         (bind ((,coordinate-name ,name))
                            (funcall thunk)))))))))
 
 (def function dependent-object-name (dimension-name)
