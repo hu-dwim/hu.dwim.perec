@@ -517,7 +517,8 @@
 ;;;;;;;;
 ;;; Type
 
-(def special-variable *mapped-types* (make-hash-table :test #'equal))
+;; TODO proper thread safety
+(def special-variable *mapped-types* (make-hash-table :test #'equal :synchronized #t))
 
 (def function mapped-type-for (type)
   "Returns the smalleset supertype which is directly mapped to RDBMS based on *MAPPED-TYPE-PRECEDENCE-LIST*."
