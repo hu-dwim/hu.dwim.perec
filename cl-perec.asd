@@ -152,6 +152,7 @@
              (:file "dimension")
              (:file "type")
              (:file "value" :depends-on ("dimension"))
+             (:file "standard-dimension" :depends-on ("dimension" "value"))
              (:file "class" :depends-on ("type" "dimension"))
              (:file "association" :depends-on ("class" "value"))
              (:file "mop" :depends-on ("class" "association"))

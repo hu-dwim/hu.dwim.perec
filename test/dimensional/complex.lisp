@@ -366,15 +366,15 @@
            (assert (coordinate-range-empty-p (coordinate dimension)))
            (collect (make-coordinate-range
                      'ii
-                     (begin-coordinate dimension)
+                     (coordinate-begin dimension)
                      (prc::maximum-coordinate-of dimension))))
           (ordering-dimension
-           (assert (coordinate< (begin-coordinate dimension)
-                                (end-coordinate dimension)))
+           (assert (coordinate< (coordinate-begin dimension)
+                                (coordinate-end dimension)))
            (collect (make-coordinate-range
                      'ie
-                     (begin-coordinate dimension)
-                     (end-coordinate dimension))))
+                     (coordinate-begin dimension)
+                     (coordinate-end dimension))))
           (t
            (collect (coordinate dimension))))))
 

@@ -23,49 +23,63 @@
       (declare (ignore environment))
       '%%%+whole-domain-marker+)
     (make-whole-domain-marker))
-  "The special value that marks the whole domain of non-ordering dimensions.")
+  "The special value that means the whole domain of non-ordering dimensions.")
+
+(def (load-time-constant e) +default-coordinate-marker+
+  (progn
+    (defstruct default-coordinate-marker
+      "Type of the special value that marks the default coordinate of the dimension.")
+    (def method make-load-form ((self default-coordinate-marker) &optional environment)
+      (declare (ignore environment))
+      '%%%+default-coordinate-marker+)
+    (make-default-coordinate-marker))
+  "The special value that means the default coordinate of dimensions.")
 
 ;;;;;;
 ;;; Dimension
 
-(def class* abstract-dimension ()
+(def class* dimension ()
   ((name
-    :type symbol)
+    :type symbol
+    :documentation "The name of the dimension.")
    (dependent-object-name
-    :type symbol)
+    :type symbol
+    :documentation "The name of the persistent class used to hold instances with coordinates in this dimension.")
    (type
-    :accessor the-type-of)))
-
-(def class* dimension (abstract-dimension)
-  ((coordinate-name
-    :type symbol)
+    :accessor the-type-of
+    :documentation "The type of coordinate system in this the dimension.")
+   (coordinate-name
+    :type symbol
+    :documentation "The name of the special variable that holds the current coordinate for this dimension.")
    (default-coordinate
-     nil
-    :type function)))
+    nil
+    :type (or null function)
+    :documentation "A function which computes the default coordinate value for this dimension when the special variable is unbound.")))
 
-(def class* ordering-dimension (abstract-dimension)
-  ((coordinate-name
+(def class* ordering-dimension (dimension)
+  ((coordinate-begin-name
     :type symbol)
-   (begin-coordinate-name
+   (coordinate-end-name
     :type symbol)
-   (end-coordinate-name
-    :type symbol)
-   (default-begin-coordinate
+   (default-coordinate-begin
      nil
-    :type function)
-   (default-end-coordinate
+    :type (or null function))
+   (default-coordinate-end
      nil
-    :type function)
+    :type (or null function))
    (minimum-coordinate
-    nil)
+    nil
+    :type t)
    (maximum-coordinate
-    nil)))
+    nil
+    :type t)))
 
 (def class* inheriting-dimension (ordering-dimension)
   ((direction
-    :type (member :ascending :descending))))
+    :type (member :ascending :descending)
+    :documentation "The direction along which values assigned to different coordinates are inherited.")))
 
-(def print-object abstract-dimension ()
+(def print-object dimension ()
   (princ (name-of -self-)))
 
 (def special-variable *dimensions* (make-hash-table) "The list of defined dimensions")
@@ -81,10 +95,10 @@
 ;;; Defining
 
 (def (definer :available-flags "e") dimension (name &key (type name) ordered inherit external
-                                                    (bind-coordinate-variables #t)
+                                                    (bind-default-coordinate #t)
                                                     (default-coordinate nil default-coordinate?)
-                                                    (default-begin-coordinate nil default-begin-coordinate?)
-                                                    (default-end-coordinate nil default-end-coordinate?)
+                                                    (default-coordinate-begin nil default-coordinate-begin?)
+                                                    (default-coordinate-end nil default-coordinate-end?)
                                                     (minimum-coordinate nil minimum-coordinate?)
                                                     (maximum-coordinate nil maximum-coordinate?))
   (when inherit
@@ -94,37 +108,35 @@
                                      (t 'dimension)))
          (dimension-variable-name (format-symbol *package* "*~A-DIMENSION*" name))
          (dependent-object-name (format-symbol *package* "~A-DEPENDENT-OBJECT" name))
-         (dependent-instances-name (format-symbol *package* "~A-DEPENDENT-INSTANCES" name))
          (begin-variable-name (format-symbol *package* "~A-BEGIN" name))
          (begin-special-name (format-symbol *package* "*~A*" begin-variable-name))
          (end-variable-name (format-symbol *package* "~A-END" name))
          (end-special-name (format-symbol *package* "*~A*" end-variable-name))
          (coordinate-name (format-symbol *package* "*~A*" name))
          (with-macro-name (format-symbol *package* "WITH-~A" name))
-         (with-range-macro-name (format-symbol *package* "WITH-~A-RANGE" name))
-         (with-range-from-macro-name (format-symbol *package* "WITH-~A-FROM" name))
-         (with-range-to-macro-name (format-symbol *package* "WITH-~A-TO" name))
          (call-with-fn-name (format-symbol *package* "CALL-~A" with-macro-name))
-         (call-with-range-fn-name (format-symbol *package* "CALL-~A" with-range-macro-name))
          (dimension-args (if ordered
                              `(:coordinate-name ',coordinate-name
-                               :begin-coordinate-name ',begin-special-name
-                               :end-coordinate-name ',end-special-name
-                               ,@(when default-begin-coordinate?
-                                       `(:default-begin-coordinate (lambda () ,default-begin-coordinate)))
-                               ,@(when default-end-coordinate?
-                                       `(:default-end-coordinate (lambda () ,default-end-coordinate)))
-                               ,@(when minimum-coordinate?
-                                       `(:minimum-coordinate ,minimum-coordinate))
-                               ,@(when maximum-coordinate?
-                                       `(:maximum-coordinate ,maximum-coordinate))
-                               ,@(when inherit (list :direction inherit)))
+                                                :coordinate-begin-name ',begin-special-name
+                                                :coordinate-end-name ',end-special-name
+                                                ,@(when (and default-coordinate-begin?
+                                                             default-coordinate-end?)
+                                                        `(:default-coordinate (lambda () (make-dimension-coordinate-range ,dimension-variable-name ,default-coordinate-begin ,default-coordinate-end))))
+                                                ,@(when default-coordinate-begin?
+                                                        `(:default-coordinate-begin (lambda () ,default-coordinate-begin)))
+                                                ,@(when default-coordinate-end?
+                                                        `(:default-coordinate-end (lambda () ,default-coordinate-end)))
+                                                ,@(when minimum-coordinate?
+                                                        `(:minimum-coordinate ,minimum-coordinate))
+                                                ,@(when maximum-coordinate?
+                                                        `(:maximum-coordinate ,maximum-coordinate))
+                                                ,@(when inherit (list :direction inherit)))
                              `(:coordinate-name ',coordinate-name
-                               ,@(cond
-                                  (default-coordinate?
-                                      `(:default-coordinate (lambda () ,default-coordinate)))
-                                  (t
-                                   `(:default-coordinate (lambda () +whole-domain-marker+)))))))
+                                                ,@(cond
+                                                   (default-coordinate?
+                                                       `(:default-coordinate (lambda () ,default-coordinate)))
+                                                   (t
+                                                    `(:default-coordinate (lambda () +whole-domain-marker+)))))))
          (slots (unless (persistent-class-name-p type)
                   (if (and ordered (not inherit))
                       `((,begin-variable-name :type (or unbound ,type))
@@ -145,56 +157,56 @@
          (:abstract #t)
          (:direct-store :push-down))
        ,@(when (persistent-class-name-p type)
-               `((defassociation*
-                   ((:class ,dependent-object-name :slot ,name :type (or null ,type))
-                    (:class ,type :slot ,dependent-instances-name :type (set ,dependent-object-name))))))
+               (bind ((dependent-instances-name (format-symbol *package* "~A-DEPENDENT-INSTANCES" name)))
+                 `((defassociation*
+                     ((:class ,dependent-object-name :slot ,name :type (or null ,type))
+                      (:class ,type :slot ,dependent-instances-name :type (set ,dependent-object-name)))))))
        ,@(unless external
                  (if ordered
-                     `((def (macro e) ,with-macro-name (,name &body forms)
-                         (if (stringp ,name)
-                             `(,',call-with-range-fn-name
-                               ,(coerce-to-coordinate-begin ,name ',type)
-                               ,(coerce-to-coordinate-end ,name ',type)
-                               (lambda () ,@forms))
-                             `(,',call-with-fn-name ,,name (lambda () ,@forms))))
-                       (def (special-variable e) ,begin-special-name
-                           ,@(when (and bind-coordinate-variables
-                                        default-begin-coordinate?)
-                               (list default-begin-coordinate)))
-                       (def (special-variable e) ,end-special-name
-                           ,@(when (and bind-coordinate-variables
-                                        default-end-coordinate?)
-                               (list default-end-coordinate)))
-                       (def (symbol-macro e) ,coordinate-name
-                           (coordinate (find-dimension ',name)))
-                       (def (function e) ,call-with-fn-name (,name thunk)
-                         (bind ((,begin-special-name ,name)
-                                (,end-special-name ,name))
-                           (funcall thunk)))
-                       (def (macro e) ,with-range-macro-name (,begin-variable-name ,end-variable-name &body forms)
-                         `(,',call-with-range-fn-name
-                           ,(coerce-to-coordinate-begin ,begin-variable-name ',type)
-                           ,(coerce-to-coordinate-end ,end-variable-name ',type)
-                           (lambda () ,@forms)))
-                       ,@(when maximum-coordinate?
-                               `((def (macro e) ,with-range-from-macro-name (begin &body forms)
-                                   `(,',with-range-macro-name ,begin ,,maximum-coordinate ,@forms))))
-                       ,@(when minimum-coordinate?
-                               `((def (macro e) ,with-range-to-macro-name (end &body forms)
-                                   `(,',with-range-macro-name ,,minimum-coordinate ,end ,@forms))))
-                       (def (function e) ,call-with-range-fn-name (,begin-variable-name ,end-variable-name thunk)
-                         (bind ((,begin-special-name ,begin-variable-name)
-                                (,end-special-name ,end-variable-name))
-                           (funcall thunk))))
-                     `((def (macro e) ,with-macro-name (,name &body forms)
-                         `(,',call-with-fn-name
-                           ,(coerce-to-coordinate ,name ',type)
-                           (lambda () ,@forms)))
-                       (def (special-variable e) ,coordinate-name
-                           ,@(when bind-coordinate-variables
-                               (list (if default-coordinate?
-                                         default-coordinate
-                                         +whole-domain-marker+))))
+                     (bind ((with-range-macro-name (format-symbol *package* "WITH-~A-RANGE" name))
+                            (with-range-from-macro-name (format-symbol *package* "WITH-~A-FROM" name))
+                            (with-range-to-macro-name (format-symbol *package* "WITH-~A-TO" name))
+                            (call-with-range-fn-name (format-symbol *package* "CALL-~A" with-range-macro-name)))
+                       `((def (macro e) ,with-macro-name (,name &body forms)
+                           (if (coordinate-range-p ,name)
+                               `(,',call-with-fn-name ,,name (lambda () ,@forms))
+                               `(,',call-with-range-fn-name
+                                 ,(coerce-to-coordinate-begin ,name ',type)
+                                 ,(coerce-to-coordinate-end ,name ',type)
+                                 (lambda () ,@forms))))
+                         (def (symbol-macro e) ,begin-special-name
+                             (coordinate-begin ,dimension-variable-name))
+                         (def (symbol-macro e) ,end-special-name
+                             (coordinate-end ,dimension-variable-name))
+                         (def (special-variable e) ,coordinate-name
+                             ,(if (and bind-default-coordinate
+                                       default-coordinate-begin?
+                                       default-coordinate-end?)
+                                  `(make-dimension-coordinate-range ,dimension-variable-name ,default-coordinate-begin ,default-coordinate-end)
+                                  +default-coordinate-marker+))
+                         (def (function e) ,call-with-fn-name (,name thunk)
+                           (bind ((,coordinate-name ,name))
+                             (funcall thunk)))
+                         (def (macro e) ,with-range-macro-name (,begin-variable-name ,end-variable-name &body forms)
+                           `(,',call-with-range-fn-name
+                             ,(coerce-to-coordinate-begin ,begin-variable-name ',type)
+                             ,(coerce-to-coordinate-end ,end-variable-name ',type)
+                             (lambda () ,@forms)))
+                         ,@(when maximum-coordinate?
+                                 `((def (macro e) ,with-range-from-macro-name (begin &body forms)
+                                     `(,',with-range-macro-name ,begin ,,maximum-coordinate ,@forms))))
+                         ,@(when minimum-coordinate?
+                                 `((def (macro e) ,with-range-to-macro-name (end &body forms)
+                                     `(,',with-range-macro-name ,,minimum-coordinate ,end ,@forms))))
+                         (def (function e) ,call-with-range-fn-name (,begin-variable-name ,end-variable-name thunk)
+                           (bind ((,coordinate-name (make-dimension-coordinate-range ,dimension-variable-name ,begin-variable-name ,end-variable-name)))
+                             (funcall thunk)))))
+                     `((def (special-variable e) ,coordinate-name
+                           ,(if default-coordinate?
+                                default-coordinate
+                                +whole-domain-marker+))
+                       (def (macro e) ,with-macro-name (,name &body forms)
+                         `(,',call-with-fn-name ,,name (lambda () ,@forms)))
                        (def (function e) ,call-with-fn-name (,name thunk)
                          (bind ((,coordinate-name ,name))
                            (funcall thunk)))))))))
@@ -206,18 +218,12 @@
                        (bind ((dimensions-position (position '&coordinate arguments)))
                          (assert dimensions-position)
                          (append (subseq arguments 0 dimensions-position)
-                                 (list* '&key (mappend (lambda (dimension-name)
-                                                         (bind ((dimension (find-dimension dimension-name))
-                                                                (coordinate-name (coordinate-name-of dimension)))
-                                                           (etypecase dimension
-                                                             (ordering-dimension
-                                                              ;; TODO: implement
-                                                              nil)
-                                                             (dimension
-                                                              `(((,(intern (symbol-name dimension-name) :keyword)
-                                                                   ,coordinate-name)
-                                                                 ,coordinate-name))))))
-                                                       (subseq arguments (1+ dimensions-position))))))
+                                 (list* '&key (mapcar (lambda (dimension-name)
+                                                        (bind ((coordinate-name (format-symbol *package* "*~A*" dimension-name)))
+                                                          `((,(intern (symbol-name dimension-name) :keyword)
+                                                              ,coordinate-name)
+                                                            ,coordinate-name)))
+                                                      (subseq arguments (1+ dimensions-position))))))
                        (nthcdr 4 -whole-))))
     (cl-def::function-like-definer -definer- 'defun whole -environment- -options-)))
 
@@ -253,31 +259,32 @@
       (find-dimension dimension)
       dimension))
 
-(def (generic e) coordinate (dimension)
-  (:method ((dimension symbol))
-    (coordinate (lookup-dimension dimension)))
-
-  (:method ((dimension dimension))
-    (lookup-coordinate dimension #'coordinate-name-of #'default-coordinate-of))
-
-  (:method ((dimension ordering-dimension))
-    (bind ((begin (begin-coordinate dimension))
-           (end (end-coordinate dimension)))
-      (if (coordinate= begin end)
-          (make-empty-coordinate-range begin)
-          (make-ie-coordinate-range begin end)))))
+(def (function e) coordinate (dimension)
+  (bind ((dimension (lookup-dimension dimension))
+         (name (coordinate-name-of dimension))
+         (value (symbol-value name)))
+    (if (default-coordinate-marker-p value)
+        (aif (default-coordinate-of dimension)
+             (funcall it)
+             (error "The coordinate for ~A is unspecified" dimension))
+        value)))
 
 (def (function e) make-dimension-coordinate-range (dimension begin-or-range &optional (end begin-or-range))
   (bind ((dimension (lookup-dimension dimension))
          (type (the-type-of dimension)))
-    (make-ie-coordinate-range (coerce-to-coordinate-begin begin-or-range type)
-                              (coerce-to-coordinate-end end type))))
+    (etypecase dimension
+      (inheriting-dimension
+       (make-ii-coordinate-range (coerce-to-coordinate-begin begin-or-range type)
+                                 (coerce-to-coordinate-end end type)))
+      (ordering-dimension
+       (make-ie-coordinate-range (coerce-to-coordinate-begin begin-or-range type)
+                                 (coerce-to-coordinate-end end type))))))
 
-(def (function e) begin-coordinate (dimension)
-  (lookup-coordinate dimension #'begin-coordinate-name-of #'default-begin-coordinate-of))
+(def (function e) coordinate-begin (dimension)
+  (coordinate-range-begin (coordinate dimension)))
 
-(def (function e) end-coordinate (dimension)
-  (lookup-coordinate dimension #'end-coordinate-name-of #'default-end-coordinate-of))
+(def (function e) coordinate-end (dimension)
+  (coordinate-range-end (coordinate dimension)))
 
 (def (function e) domain (dimension)
   ;; TODO domain of ordering-dimensions is the range: [min,max]
@@ -288,75 +295,20 @@
           (from (instance))
           (where (typep instance (the-type-of dimension)))))
 
-(def function lookup-coordinate (dimension name-provider default-provider)
-  (bind ((dimension (lookup-dimension dimension))
-         (name (funcall name-provider dimension)))
-    (if (boundp name)
-        (symbol-value name)
-        (aif (funcall default-provider dimension)
-             (funcall it)
-             (error "The coordinate for ~A is unspecified" dimension)))))
-
 (def (function e) call-with-coordinate (dimension coordinate thunk)
-  (if (typep dimension 'ordering-dimension)
-      (progv
-          (list (begin-coordinate-name-of dimension)
-                (end-coordinate-name-of dimension))
-          (list (coordinate-range-begin coordinate)
-                (coordinate-range-end coordinate))
-        (funcall thunk))
-      (progv
-          (list (coordinate-name-of dimension))
-          (list coordinate)
-        (funcall thunk))))
+  (progv
+      (list (coordinate-name-of dimension))
+      (list coordinate)
+    (funcall thunk)))
 
 (def (macro e) with-coordinate (dimension coordinate &body forms)
   `(call-with-coordinate ,dimension ,coordinate (lambda () ,@forms)))
 
 (def (function e) call-with-coordinates (dimensions coordinates thunk)
-  (iter (for dimension :in dimensions)
-        (for coordinate :in coordinates)
-        (if (typep dimension 'ordering-dimension)
-            (progn
-              (collect (begin-coordinate-name-of dimension) :into variables)
-              (collect (coordinate-range-begin coordinate) :into values)
-              (collect (end-coordinate-name-of dimension) :into variables)
-              (collect (coordinate-range-end coordinate) :into values))
-            (progn
-              (collect (coordinate-name-of dimension) :into variables)
-              (collect coordinate :into values)))
-        (finally
-         (return
-           (progv variables values
-             (funcall thunk))))))
+  (progv
+      (mapcar #'coordinate-name-of dimensions)
+      coordinates
+    (funcall thunk)))
 
 (def (macro e) with-coordinates (dimensions coordinates &body forms)
   `(call-with-coordinates (mapcar #'lookup-dimension ,dimensions) ,coordinates (lambda () ,@forms)))
-
-;;;;;;
-;;; Time dimension
-
-(def (dimension e) time
-  :type timestamp
-  :inherit :ascending
-  :bind-coordinate-variables #f
-  :default-begin-coordinate (transaction-timestamp)
-  :default-end-coordinate (transaction-timestamp)
-  :minimum-coordinate +beginning-of-time+
-  :maximum-coordinate +end-of-time+)
-
-;;;;;;
-;;; Validity dimension
-
-(def (dimension e) validity
-  :type timestamp
-  :ordered #t
-  :default-begin-coordinate +beginning-of-time+
-  :default-end-coordinate +end-of-time+
-  :minimum-coordinate +beginning-of-time+
-  :maximum-coordinate +end-of-time+)
-
-;;;;;;
-;;; Enumerated
-
-(def (dimension e) enumerated :type symbol)

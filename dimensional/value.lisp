@@ -351,73 +351,73 @@
 ;;; Dimension coordinate
 
 (def (generic e) covering-coordinate-p (dimension cover coordinate)
-  (:method ((dimension abstract-dimension) (cover (eql +whole-domain-marker+)) (coordinate t))
+  (:method ((dimension dimension) (cover (eql +whole-domain-marker+)) (coordinate t))
     #t)
 
-  (:method ((dimension abstract-dimension) (cover list) (coordinate (eql +whole-domain-marker+)))
+  (:method ((dimension dimension) (cover list) (coordinate (eql +whole-domain-marker+)))
     (coordinate= cover (domain dimension)))
   
-  (:method ((dimension abstract-dimension) (cover cons) (coordinate cons))
+  (:method ((dimension dimension) (cover cons) (coordinate cons))
     (subsetp coordinate cover :test #'coordinate=))
 
   (:method ((dimension ordering-dimension) (cover cons) (coordinate cons))
     (covering-range-p cover coordinate)))
 
 (def (generic e) coordinate-intersection (dimension coordinate-1 coordinate-2)
-  (:method ((dimension abstract-dimension) (coordinate-1 null) (coordinate-2 cons))
+  (:method ((dimension dimension) (coordinate-1 null) (coordinate-2 cons))
     nil)
 
-  (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 null))
+  (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 null))
     nil)
 
-  (:method ((dimension abstract-dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 t))
+  (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 t))
     coordinate-2)
 
-  (:method ((dimension abstract-dimension) (coordinate-1 t) (coordinate-2 (eql +whole-domain-marker+)))
+  (:method ((dimension dimension) (coordinate-1 t) (coordinate-2 (eql +whole-domain-marker+)))
     coordinate-1)
   
-  (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 cons))
+  (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 cons))
     (intersection coordinate-1 coordinate-2 :test #'coordinate=))
 
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (range-intersection coordinate-1 coordinate-2)))
 
 (def (generic e) coordinate-union (dimension coordinate-1 coordinate-2)
-  (:method ((dimension abstract-dimension) (coordinate-1 null) (coordinate-2 cons))
+  (:method ((dimension dimension) (coordinate-1 null) (coordinate-2 cons))
     coordinate-2)
 
-  (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 null))
+  (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 null))
     coordinate-1)
 
-  (:method ((dimension abstract-dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 t))
+  (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 t))
     +whole-domain-marker+)
 
-  (:method ((dimension abstract-dimension) (coordinate-1 t) (coordinate-2 (eql +whole-domain-marker+)))
+  (:method ((dimension dimension) (coordinate-1 t) (coordinate-2 (eql +whole-domain-marker+)))
     +whole-domain-marker+)
   
-  (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 cons))
+  (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 cons))
     (union coordinate-1 coordinate-2 :test #'coordinate=))
 
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (range-union coordinate-1 coordinate-2)))
 
 (def (generic e) coordinate-difference (dimension coordinate-1 coordinate-2)
-  (:method ((dimension abstract-dimension) (coordinate-1 null) (coordinate-2 null))
+  (:method ((dimension dimension) (coordinate-1 null) (coordinate-2 null))
     nil)
 
-  (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 null))
+  (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 null))
     (list coordinate-1))
 
-  (:method ((dimension abstract-dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 null))
+  (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 null))
     (list coordinate-1))
 
-  (:method ((dimension abstract-dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 cons))
+  (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 cons))
     (coordinate-difference dimension (domain dimension) coordinate-2))
 
-  (:method ((dimension abstract-dimension) (coordinate-1 t) (coordinate-2 (eql +whole-domain-marker+)))
+  (:method ((dimension dimension) (coordinate-1 t) (coordinate-2 (eql +whole-domain-marker+)))
     nil)
 
-  (:method ((dimension abstract-dimension) (coordinate-1 cons) (coordinate-2 cons))
+  (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 cons))
     (awhen (set-difference coordinate-1 coordinate-2 :test #'coordinate=)
       (list it)))
 

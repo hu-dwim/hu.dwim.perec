@@ -298,8 +298,8 @@
            #:persistent-association-end-effective-slot-definition-d
            #:coordinate
            #:&coordinate
-           #:begin-coordinate
-           #:end-coordinate
+           #:coordinate-begin
+           #:coordinate-end
            #:dimension
            #:ordering-dimension
            #:inheriting-dimension

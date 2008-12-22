@@ -27,17 +27,17 @@
          :instance instance
          :coordinates coordinates))
 
-(def (function io) collect-coordinates-from-variables (dimensions)
+(def (function o) collect-coordinates-from-variables (dimensions)
   ;; TODO asserts for read/write
   (iter (for dimension :in dimensions)
+        (for coordinate = (coordinate dimension))
         (typecase dimension
           (ordering-dimension
-           (collect (coordinate dimension)))
+           (collect coordinate))
           (t
-           (bind ((coordinate (coordinate dimension)))
-             (collect (if (whole-domain-marker-p coordinate)
-                          coordinate
-                          (ensure-list coordinate))))))))
+           (collect (if (whole-domain-marker-p coordinate)
+                        coordinate
+                        (ensure-list coordinate)))))))
 
 (def (function io) slot-boundp-or-value-using-class-d (class instance slot coordinates)
   (assert-instance-slot-correspondence)

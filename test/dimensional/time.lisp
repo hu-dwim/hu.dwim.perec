@@ -65,7 +65,7 @@
       (bind (((:values instance time)
               (with-transaction
                 (values (make-instance *time-dependent-class-name* :population 1000)
-                        (coordinate-range-begin *time*)))))
+                        *time-begin*))))
         (with-transaction
           (with-revived-instance instance
             (setf (population-of instance) 2000)))
@@ -86,10 +86,10 @@
                 (make-instance *time-dependent-class-name* :population 1000))))
         (with-transaction
           (with-revived-instance instance
-            (with-time-from (coordinate-range-begin *time*)
+            (with-time-from *time-begin*
               (population-of instance))
             (setf (population-of instance) 2000)
-            (with-time (adjust-timestamp (coordinate-range-begin *time*) (offset :sec 1))
+            (with-time (adjust-timestamp *time-begin* (offset :sec 1))
               (is (= 2000 (population-of instance))))))))))
 
 (defpclass* time-dependent-complex-test ()
