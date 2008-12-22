@@ -44,7 +44,9 @@
     :type function)))
 
 (def class* ordering-dimension (abstract-dimension)
-  ((begin-coordinate-name
+  ((coordinate-name
+    :type symbol)
+   (begin-coordinate-name
     :type symbol)
    (end-coordinate-name
     :type symbol)
@@ -105,23 +107,24 @@
          (call-with-fn-name (format-symbol *package* "CALL-~A" with-macro-name))
          (call-with-range-fn-name (format-symbol *package* "CALL-~A" with-range-macro-name))
          (dimension-args (if ordered
-                             `(:begin-coordinate-name ',begin-special-name
-                                                      :end-coordinate-name ',end-special-name
-                                                      ,@(when default-begin-coordinate?
-                                                              `(:default-begin-coordinate (lambda () ,default-begin-coordinate)))
-                                                      ,@(when default-end-coordinate?
-                                                              `(:default-end-coordinate (lambda () ,default-end-coordinate)))
-                                                      ,@(when minimum-coordinate?
-                                                              `(:minimum-coordinate ,minimum-coordinate))
-                                                      ,@(when maximum-coordinate?
-                                                              `(:maximum-coordinate ,maximum-coordinate))
-                                                      ,@(when inherit (list :direction inherit)))
                              `(:coordinate-name ',coordinate-name
-                                                ,@(cond
-                                                   (default-coordinate?
-                                                       `(:default-coordinate (lambda () ,default-coordinate)))
-                                                   (t
-                                                    `(:default-coordinate (lambda () +whole-domain-marker+)))))))
+                               :begin-coordinate-name ',begin-special-name
+                               :end-coordinate-name ',end-special-name
+                               ,@(when default-begin-coordinate?
+                                       `(:default-begin-coordinate (lambda () ,default-begin-coordinate)))
+                               ,@(when default-end-coordinate?
+                                       `(:default-end-coordinate (lambda () ,default-end-coordinate)))
+                               ,@(when minimum-coordinate?
+                                       `(:minimum-coordinate ,minimum-coordinate))
+                               ,@(when maximum-coordinate?
+                                       `(:maximum-coordinate ,maximum-coordinate))
+                               ,@(when inherit (list :direction inherit)))
+                             `(:coordinate-name ',coordinate-name
+                               ,@(cond
+                                  (default-coordinate?
+                                      `(:default-coordinate (lambda () ,default-coordinate)))
+                                  (t
+                                   `(:default-coordinate (lambda () +whole-domain-marker+)))))))
          (slots (unless (persistent-class-name-p type)
                   (if (and ordered (not inherit))
                       `((,begin-variable-name :type (or unbound ,type))
