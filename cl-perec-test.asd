@@ -27,8 +27,6 @@
 
 (in-package :cl-perec-system)
 
-(setf *load-as-production-p* nil)
-
 (defsystem :cl-perec-test
   :description "Tests for cl-perec."
   :depends-on (:cl-perec
@@ -98,6 +96,9 @@
                (:file "1-1-association" :depends-on ("complex" "association"))
                (:file "1-n-association" :depends-on ("complex" "association"))
                (:file "m-n-association" :depends-on ("complex" "association"))))))))
+
+(defmethod perform :before ((o load-op) (c (eql (find-system :cl-perec-test))))
+  (setf *load-as-production-p* nil))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-perec-test))))
   (in-package :cl-perec-test)
