@@ -212,6 +212,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CLOS MOP slot-value-using-class and friends
 
+;; TODO: this svuc slows down slot access of standard slots, should solve this some other way (maybe specialize persistent slot?)
 (defmethod slot-value-using-class ((class persistent-class)
                                    (instance persistent-object)
                                    (slot standard-effective-slot-definition))
