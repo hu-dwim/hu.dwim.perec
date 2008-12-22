@@ -90,13 +90,18 @@
 (def function persistent-object-p (instance)
   (typep instance 'persistent-object))
 
-(def function p-eq (instance-1 instance-2)
+(def (function o) p-eq (instance-1 instance-2)
   "Tests if two instances are the same persistent instance. Normally there is at most one persistent instance for each oid in a transaction so eq may be safely used. On the other hand huge transactions may require to throw away instances form the instance cache which results in several instances for the same oid within the same transaction."
+  (declare (type persistent-object instance-1 instance-2))
   (or (eq instance-1 instance-2)
-      (and (not (null instance-1))
-           (not (null instance-2))
-           (= (oid-of instance-1)
-              (oid-of instance-2)))))
+      (and instance-1
+           instance-2
+           ;; NOTE: this is somewhat faster than comparing the two oids
+           (eq (class-of instance-1)
+               (class-of instance-2))
+           ;; TODO: oid-of is a full call to svuc due to specializing on standard slots for the computation of persistent flag
+           (= (the integer (oid-of instance-1))
+              (the integer (oid-of instance-2))))))
 
 (def function print-persistent-instance (instance)
   (declare (type persistent-object instance))
