@@ -199,6 +199,28 @@
                          (bind ((,coordinate-name ,name))
                            (funcall thunk)))))))))
 
+(def (definer e :available-flags "ioed") dimensional-function ()
+  (bind ((name (elt -whole- 2))
+         (arguments (elt -whole- 3))
+         (whole (list* 'def 'dimensional-function name
+                       (bind ((dimensions-position (position '&coordinate arguments)))
+                         (assert dimensions-position)
+                         (append (subseq arguments 0 dimensions-position)
+                                 (list* '&key (mappend (lambda (dimension-name)
+                                                         (bind ((dimension (find-dimension dimension-name))
+                                                                (coordinate-name (coordinate-name-of dimension)))
+                                                           (etypecase dimension
+                                                             (ordering-dimension
+                                                              ;; TODO: implement
+                                                              nil)
+                                                             (dimension
+                                                              `(((,(intern (symbol-name dimension-name) :keyword)
+                                                                   ,coordinate-name)
+                                                                 ,coordinate-name))))))
+                                                       (subseq arguments (1+ dimensions-position))))))
+                       (nthcdr 4 -whole-))))
+    (cl-def::function-like-definer -definer- 'defun whole -environment- -options-)))
+
 (def function dependent-object-name (dimension-name)
   (format-symbol *package* "~A-DEPENDENT-OBJECT" dimension-name))
 

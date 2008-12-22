@@ -297,6 +297,7 @@
            #:persistent-association-end-direct-slot-definition-d
            #:persistent-association-end-effective-slot-definition-d
            #:coordinate
+           #:&coordinate
            #:begin-coordinate
            #:end-coordinate
            #:dimension
