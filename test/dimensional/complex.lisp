@@ -208,6 +208,11 @@
            (he-coordinates (he-coordinates entry))
            (he-slot-name (he-slot-name entry))
            (he-action (he-action entry)))
+
+      (assert (prc::persistent-object-p he-instance))
+      (assert (or (not (member he-action '(:insert :delete)))
+                  (prc::persistent-object-p he-value)))
+
       (ecase association-kind
         (:1-1
          ;;  A----EV       EI: he-instance
@@ -223,21 +228,23 @@
               he-value))
            ;; set other-slot of some other instance to this instance (I=EV)
            ((and (eq other-slot-name he-slot-name)
-                 he-value
+                 (prc::persistent-object-p he-value)
                  (p-eq instance he-value))
             (lift-values-having-validity (slot-value (he-instance he-coordinates))
               he-instance))
            ;; set slot of some other instance to the same value as this instance had-> clear slot value (I=A)
            ((and (eq slot-name he-slot-name)
-                 he-value)
+                 (prc::persistent-object-p he-value))
             (lift-values-having-validity (slot-value (he-value he-coordinates))
-              (if (p-eq slot-value he-value)
+              (if (and (prc::persistent-object-p slot-value)
+                       (p-eq slot-value he-value))
                   nil
                   slot-value)))
            ;; set other slot of the value this instance had -> clear slot value (I=B)
            ((eq other-slot-name he-slot-name)
             (lift-values-having-validity (slot-value (he-instance he-coordinates))
-              (if (p-eq slot-value he-instance)
+              (if (and (prc::persistent-object-p slot-value)
+                       (p-eq slot-value he-instance))
                   nil
                   slot-value)))
            (t
@@ -294,11 +301,11 @@
                (lift-values-having-validity (slot-value (he-value he-coordinates))
                  he-value))
               ;; set children
-              ((and (eq other-slot-name he-slot-name)
-                    slot-value)
+              ((eq other-slot-name he-slot-name)
                (lift-values-having-validity (slot-value (he-instance he-coordinates)
                                                         (he-value he-coordinates))
-                 (if (p-eq slot-value he-instance)
+                 (if (and (prc::persistent-object-p slot-value)
+                          (p-eq slot-value he-instance))
                      ;; set/remove children of the current parent -> clear parent (I=B)
                      (ecase he-action
                        (:set (if (member instance he-value :test #'p-eq) slot-value nil))
@@ -309,14 +316,6 @@
                        (:set (if (member instance he-value :test #'p-eq) he-instance slot-value))
                        (:insert (if (p-eq instance he-value) he-instance slot-value))
                        (:delete slot-value)))))
-              ;; set/insert this child to some other parent (I=EV)
-              ((and (eq other-slot-name he-slot-name)
-                    he-value)
-               (lift-values-having-validity (slot-value (he-value he-coordinates))
-                 (ecase he-action
-                   (:set (if (member instance he-value :test #'p-eq) he-instance slot-value))
-                   (:insert (if (p-eq instance he-value) he-instance slot-value))
-                   (:delete slot-value))))
               (t
                slot-value)))))
         (:m-n
