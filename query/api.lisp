@@ -154,7 +154,7 @@
 
 (defmacro select-instance (&optional variable &body body)
   `(let ((result (simple-select (:flatp #t) ,variable ,@body (limit 2))))
-     (assert (<= (length result) 1) nil "Query did return multiple result.")
+     (assert (<= (length result) 1) nil "Query returned multiple result.")
      (first result)))
 
 (defmacro select-instances (&optional variable &body body)
@@ -164,7 +164,8 @@
 (defmacro select-the-only-one (&whole select-form (&rest select-list) &body clauses)
   (declare (ignore clauses select-list))
   `(let ((result (select (:flatp #t) ,@(rest select-form) (limit 2))))
-     (assert (<= (length result) 1) nil "Query did return multiple result.")
+     (assert (<= (length result) 1) nil "Query returned multiple result.")
+     (assert (not (zerop (length result))) nil "Query did not return anything.")
      (first result)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
