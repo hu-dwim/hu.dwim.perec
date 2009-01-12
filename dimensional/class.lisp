@@ -72,6 +72,14 @@
               options)))
     (call-next-method metaclass defclass-macro name superclasses slots processed-options)))
 
+(def function h-class-accessor-name-transformer (name definition)
+  "Transform (or h-unused boolean) as boolean, to keep the name consistent with the d-slot accessor."
+  (bind ((type (getf definition :type)))
+    (when (equal type '(or h-unused boolean))
+      (setf definition (copy-list definition)
+            (getf definition :type) 'boolean))
+    (default-accessor-name-transformer name definition)))
+
 (def method expand-defpclass-form ((metaclass persistent-class-d) defclass-macro name superclasses slots options)
   (flet ((slot-options-of (slot-definition)
            (if (oddp (length slot-definition))
@@ -97,7 +105,9 @@
                                slot-options)))
                     (collect-if [getf (slot-options-of !1) :dimensions] slots))
            (:metaclass ,h-metaclass-name)
-           ,@processed-options)
+           (:accessor-name-transformer #'h-class-accessor-name-transformer)
+           ,@processed-options
+           )
          (defassociation
            ((:class ,h-class-name :slot d-instance :type ,d-class-name)
             (:class ,d-class-name :slot h-instances :type (set ,h-class-name))))
