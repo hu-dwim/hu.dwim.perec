@@ -84,28 +84,30 @@
 ;;; d-value builders
 ;;;
 (def function make-d-value-from-records (records default-value dimensions coordinates)
-  (bind ((d-value (make-single-d-value dimensions coordinates default-value)))
-    (iter (for record :in records)
-          (for value = (first record))
-          (for coords = (coordinates-intersection ;; NOTE: intersect within the iter
-                         dimensions               ;; to avoid (domain ...) calls when the record
-                         coordinates              ;; contains whole-domain-marker, but the coordinates not
-                         (iter (for dimension :in dimensions) ;; TODO refine intersection in inheriting coord
-                               (generating coordinate :in (rest record))
-                               (collect (etypecase dimension
-                                          (inheriting-dimension
-                                           (make-coordinate-range
-                                            'ii
-                                            (next coordinate)
-                                            (maximum-coordinate-of dimension)))
-                                          (ordering-dimension
-                                           (make-coordinate-range
-                                            'ie (next coordinate) (next coordinate)))
-                                          (dimension
-                                           (next coordinate)))))))
-          (assert coords)
-          (setf (value-at-coordinates d-value coords) value))
-    d-value))
+  (iter (for record :in records)
+        (for value = (first record))
+        (for coords = (coordinates-intersection ;; NOTE: intersect within the iter
+                       dimensions               ;; to avoid (domain ...) calls when the record
+                       coordinates              ;; contains whole-domain-marker, but the coordinates not
+                       (iter (for dimension :in dimensions) ;; TODO refine intersection in inheriting coord
+                             (generating coordinate :in (rest record))
+                             (collect (etypecase dimension
+                                        (inheriting-dimension
+                                         (make-coordinate-range
+                                          'ii
+                                          (next coordinate)
+                                          (maximum-coordinate-of dimension)))
+                                        (ordering-dimension
+                                         (make-coordinate-range
+                                          'ie (next coordinate) (next coordinate)))
+                                        (dimension
+                                         (next coordinate)))))))
+        (assert coords)
+        (collect value :into value-list)
+        (collect coords :into coordinates-list)
+        (finally (return (make-d-value dimensions
+                                       (list* coordinates coordinates-list)
+                                       (list* default-value value-list))))))
 
 ;;;
 ;;; Association-end access

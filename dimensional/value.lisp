@@ -8,6 +8,15 @@
 
 ;;;;;;
 ;;; Coordinate
+(def generic key-for (element)
+  (:method (element)
+    element)
+
+  (:method ((instance persistent-object))
+    (oid-of instance))
+
+  (:method ((oid-and-instance cons))
+    (car oid-and-instance)))
 
 (def (type e) coordinate ()
   t)
@@ -20,6 +29,7 @@
   (:method (coordinate-1 coordinate-2)
     (eq coordinate-1 coordinate-2))
 
+  ;; sets
   (:method ((coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 (eql +whole-domain-marker+)))
     #t)
 
@@ -31,31 +41,52 @@
     (assert #f () "Unable to compare ~A and ~A. Consider using COORDINATE-EQUAL."
             coordinate-1 coordinate-2))
 
+  ;; sets and ranges
   (:method ((coordinate-1 cons) (coordinate-2 cons))
     (if (or (coordinate-range-p coordinate-1)
             (coordinate-range-p coordinate-2))
         (coordinate-range= coordinate-1 coordinate-2)
-        (null (set-exclusive-or coordinate-1 coordinate-2 :test #'coordinate=))))
+        (and (subsetp* coordinate-1 coordinate-2 :key #'key-for)
+             (subsetp* coordinate-2 coordinate-1 :key #'key-for))))
 
-  (:method ((coordinate-1 number) (coordinate-2 number))
-    (= coordinate-1 coordinate-2))
+  ;; set as hash-table
+  (:method ((coordinate-1 hash-table) (coordinate-2 (eql +whole-domain-marker+)))
+    (assert #f () "Unable to compare ~A and ~A. Consider using COORDINATE-EQUAL."
+            coordinate-1 coordinate-2))
+  
+  (:method ((coordinate-1 hash-table) (coordinate-2 hash-table))
+    (and (hashtable-subset coordinate-1 coordinate-2)
+         (hashtable-subset coordinate-2 coordinate-1)))
 
-  (:method ((coordinate-1 timestamp) (coordinate-2 timestamp))
-    (timestamp= coordinate-1 coordinate-2))
+  (:method ((coordinate-1 cons) (coordinate-2 hash-table))
+    (coordinate= (set-as-hashtable coordinate-1 :key #'key-for) coordinate-2))
 
-  (:method ((coordinate-1 persistent-object) (coordinate-2 persistent-object))
-    (p-eq coordinate-1 coordinate-2)))
+  (:method ((coordinate-1 hash-table) (coordinate-2 cons))
+    (coordinate= coordinate-1 (set-as-hashtable coordinate-2 :key #'key-for))))
 
 (def (generic e) coordinate-equal (dimension coordinate-1 coordinate-2)
 
   (:method (dimension coordinate-1 coordinate-2)
     (coordinate= coordinate-1 coordinate-2))
 
-  (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 cons))
+  (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 (eql +whole-domain-marker+)))
+    #t)
+
+  (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) coordinate-2)
     (coordinate= (domain dimension) coordinate-2))
 
-  (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 (eql +whole-domain-marker+)))
+  (:method ((dimension dimension) coordinate-1 (coordinate-2 (eql +whole-domain-marker+)))
     (coordinate= coordinate-1 (domain dimension))))
+
+(def (generic e) ordering-coordinate= (coordinate-1 coordinate-2)
+  (:method (coordinate-1 coordinate-2)
+    (eql coordinate-1 coordinate-2))
+
+  (:method ((coordinate-1 number) (coordinate-2 number))
+    (= coordinate-1 coordinate-2))
+
+  (:method ((coordinate-1 timestamp) (coordinate-2 timestamp))
+    (timestamp= coordinate-1 coordinate-2)))
 
 (def (generic e) coordinate< (coordinate-1 coordinate-2)
   (:method ((coordinate-1 number) (coordinate-2 number))
@@ -163,7 +194,7 @@
 
 (def (function io) make-coordinate-range* (bounds begin end)
   (when (or (coordinate< begin end)
-            (and (coordinate= begin end)
+            (and (ordering-coordinate= begin end)
                  (eq bounds 'ii)))
     (debug-only (assert (typep bounds 'bounds)))
     (cons bounds (cons begin end))))
@@ -189,8 +220,8 @@
 
 (def (function ioe) coordinate-range-empty-p (range)
   (and (eq 'ii (coordinate-range-bounds range))
-       (coordinate= (coordinate-range-begin range)
-                    (coordinate-range-end range))))
+       (ordering-coordinate= (coordinate-range-begin range)
+                             (coordinate-range-end range))))
 
 (def (function e) single-coordinate-range-value (range)
   (assert (coordinate-range-empty-p range))
@@ -211,10 +242,10 @@
   (debug-only (assert-coordinate-ranges range-1 range-2))
   (and (eq (coordinate-range-bounds range-1)
            (coordinate-range-bounds range-2))
-       (coordinate= (coordinate-range-begin range-1)
-                    (coordinate-range-begin range-2))
-       (coordinate= (coordinate-range-end range-1)
-                    (coordinate-range-end range-2))))
+       (ordering-coordinate= (coordinate-range-begin range-1)
+                             (coordinate-range-begin range-2))
+       (ordering-coordinate= (coordinate-range-end range-1)
+                             (coordinate-range-end range-2))))
 
 (def (function e) overlapping-range-p (range-1 range-2)
   (debug-only (assert-coordinate-ranges range-1 range-2))
@@ -284,12 +315,12 @@
 (def function range-union (range-1 range-2)
   (debug-only (assert-coordinate-ranges range-1 range-2))
   (when (or (overlapping-range-p range-1 range-2)
-            (and (coordinate= (coordinate-range-end range-1)
-                              (coordinate-range-begin range-2))
+            (and (ordering-coordinate= (coordinate-range-end range-1)
+                                       (coordinate-range-begin range-2))
                  (or (end-inclusive-p (coordinate-range-bounds range-1))
                      (begin-inclusive-p (coordinate-range-bounds range-2))))
-            (and (coordinate= (coordinate-range-end range-2)
-                              (coordinate-range-begin range-1))
+            (and (ordering-coordinate= (coordinate-range-end range-2)
+                                       (coordinate-range-begin range-1))
                  (or (end-inclusive-p (coordinate-range-bounds range-2))
                      (begin-inclusive-p (coordinate-range-bounds range-1)))))
     (bind ((begin-range (cond
@@ -358,7 +389,10 @@
     (coordinate= cover (domain dimension)))
   
   (:method ((dimension dimension) (cover cons) (coordinate cons))
-    (subsetp coordinate cover :test #'coordinate=))
+    (subsetp* coordinate cover :key #'key-for))
+
+  (:method ((dimension dimension) (cover hash-table) (coordinate hash-table))
+    (hashtable-subset coordinate cover))
 
   (:method ((dimension ordering-dimension) (cover cons) (coordinate cons))
     (covering-range-p cover coordinate)))
@@ -377,7 +411,10 @@
     coordinate-1)
   
   (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 cons))
-    (intersection coordinate-1 coordinate-2 :test #'coordinate=))
+    (intersection* coordinate-1 coordinate-2 :key #'key-for))
+
+  (:method ((dimension dimension) (coordinate-1 hash-table) (coordinate-2 hash-table))
+    (hashtable-intersection coordinate-1 coordinate-2))
 
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (range-intersection coordinate-1 coordinate-2)))
@@ -396,7 +433,10 @@
     +whole-domain-marker+)
   
   (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 cons))
-    (union coordinate-1 coordinate-2 :test #'coordinate=))
+    (union* coordinate-1 coordinate-2 :key #'key-for))
+
+  (:method ((dimension dimension) (coordinate-1 hash-table) (coordinate-2 hash-table))
+    (hashtable-union coordinate-1 coordinate-2))  
 
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (range-union coordinate-1 coordinate-2)))
@@ -418,7 +458,11 @@
     nil)
 
   (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 cons))
-    (awhen (set-difference coordinate-1 coordinate-2 :test #'coordinate=)
+    (awhen (set-difference* coordinate-1 coordinate-2 :key #'key-for)
+      (list it)))
+
+  (:method ((dimension dimension) (coordinate-1 hash-table) (coordinate-2 hash-table))
+    (awhen (hashtable-difference coordinate-1 coordinate-2)
       (list it)))
 
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
@@ -610,11 +654,39 @@
                  :c-values (list (make-c-value coordinates value))))
 
 (def (function e) make-d-value (dimensions coordinates-list values)
-  (prog1-bind d-value
-      (make-empty-d-value dimensions)
-    (mapc (lambda (coordinates value)
-            (setf (value-at-coordinates d-value coordinates) value))
-          coordinates-list values)))
+  (labels ((cook-coordinates (coordinates)
+             (iter (for dimension :in dimensions)
+                   (for coordinate :in coordinates)
+                   (etypecase (lookup-dimension dimension)
+                     (ordering-dimension (collect coordinate))
+                     (dimension (collect #+nil(set-as-hashtable coordinate :key #'key-for)
+                                         (if (and (consp coordinate)
+                                                  (persistent-object-p (first coordinate)))
+                                             (mapcar [cons (oid-of !1) !1] coordinate)
+                                             coordinate))))))
+           (uncook-coordinates (coordinates)
+             (iter (for dimension :in dimensions)
+                   (for coordinate :in coordinates)
+                   (etypecase (lookup-dimension dimension)
+                     (ordering-dimension (collect coordinate))
+                     (dimension (collect #+nil(set-as-list coordinate)
+                                         (if (and (consp coordinate)
+                                                  (consp (first coordinate))
+                                                  (persistent-object-p (cdr (first coordinate))))
+                                             (mapcar #'cdr coordinate)
+                                             coordinate))))))
+           (uncook-d-value (d-value)
+             (iter (for c-value :in (c-values-of d-value))
+                   (setf (coordinates-of c-value)
+                         (uncook-coordinates (coordinates-of c-value))))))
+
+    (prog1-bind d-value (make-empty-d-value dimensions)
+      (setf coordinates-list (mapcar #'cook-coordinates coordinates-list))
+      
+      (mapc (lambda (coordinates value)
+              (setf (value-at-coordinates d-value coordinates) value))
+            coordinates-list values)
+      (uncook-d-value d-value))))
 
 (def (function e) empty-d-value-p (d-value)
   (null (c-values-of d-value)))
