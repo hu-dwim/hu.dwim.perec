@@ -97,7 +97,7 @@ with the result of the naively compiled query.")
                    `(if (and ,@asserts) ,action)
                    action)))
     (with-unique-names (objects result-list)
-      `(lambda ,lexical-variables
+      `(named-lambda trivial-query ,lexical-variables
         (declare (ignorable ,@lexical-variables))
         (let ((,objects (map 'list 'cache-instance
                              (execute ,(sql-select-oids-for-class 'persistent-object))))
@@ -138,7 +138,7 @@ with the result of the naively compiled query.")
          (lexical-variables (lexical-variables-of query)))
     (with-unique-names (result expected result-list expected-list)
       (unparse-query-syntax
-       `(lambda ,lexical-variables
+       `(named-lambda debug-query ,lexical-variables
          (declare (ignorable ,@lexical-variables))
          (bind ((,result (funcall ,compiled-form ,@lexical-variables))
                 (,expected (funcall ,predicate-form ,@lexical-variables))
@@ -162,7 +162,7 @@ with the result of the naively compiled query.")
 
 (defmethod emit-query ((compiler simple-query-compiler) (query query))
   (bind ((lexical-variables (lexical-variables-of query)))
-    `(lambda ,lexical-variables
+    `(named-lambda simple-query ,lexical-variables
       (declare (ignorable ,@lexical-variables))
       ,(with-reloading-persistent-objects
         (compile-plan (optimize-plan (generate-plan query)))))))
