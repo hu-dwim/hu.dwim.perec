@@ -23,8 +23,12 @@
   (eq +not-cached-slot-marker+ value))
 
 (def (function io) assert-instance-access (instance persistent)
-  (assert (or (not persistent) (instance-in-current-transaction-p instance)) nil
-          "Accessing a persistent ~A while it is not attached to the current transaction." instance))
+  (unless (or (not persistent)
+              (in-transaction-p))
+    (error "Accessing a persistent ~A while there's no transaction in progress." instance))
+  (unless (or (not persistent)
+              (instance-in-current-transaction-p instance))
+    (error "Accessing a persistent ~A while it is not attached to the current transaction." instance)))
 
 (def macro assert-instance-slot-correspondence ()
   `(debug-only
