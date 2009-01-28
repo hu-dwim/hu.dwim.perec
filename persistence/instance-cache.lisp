@@ -59,7 +59,7 @@
   (bind ((oid (oid-of instance))
          (key (oid-instance-id oid)))
     (debug-only
-      (assert (instance-in-transaction-p instance))
+      (assert (instance-in-current-transaction-p instance))
       (assert (cached-instance-of oid)))
     (setf (transaction-of instance) nil)
     (remhash key (instances-of *transaction*))))

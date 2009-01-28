@@ -70,22 +70,27 @@
       (bind (((:values cached-p old-value) (slot-value-cached-p old-instance slot)))
         (when (and cached-p
                    (not (slot-value-cached-p new-instance slot)))
-          (bind ((association-end-p (typep slot 'persistent-association-end-effective-slot-definition))
-                 (to-one-association-end-p (and association-end-p
-                                                (to-one-association-end-p slot)))
-                 (persistent-object-old-value-p (and old-value
-                                                     (not (unbound-slot-marker-p old-value))))
-                 (new-value (cond (to-one-association-end-p
-                                   (when persistent-object-old-value-p
+          (bind ((association-end? (typep slot 'persistent-association-end-effective-slot-definition))
+                 (to-one-association-end? (and association-end?
+                                               (to-one-association-end-p slot)))
+                 (old-value-is-a-persistent-object? (or (and to-one-association-end?
+                                                        old-value
+                                                        (not (unbound-slot-marker-p old-value)))
+                                                   ;; or the slow path...
+                                                   (typep old-value 'persistent-object)))
+                 (new-value (cond (to-one-association-end?
+                                   (when old-value-is-a-persistent-object?
                                      (load-instance old-value :skip-existence-check #t)))
-                                  ((not association-end-p)
+                                  ((not old-value-is-a-persistent-object?)
+                                   ;; protect against the non-association situation: (slot-name :type some-persistent-class)
+                                   (debug-only (assert (not (typep old-value 'persistent-object))))
                                    old-value))))
-            (when (or (not association-end-p)
-                      to-one-association-end-p)
+            (when (or (not association-end?)
+                      to-one-association-end?)
               (setf (underlying-slot-boundp-or-value-using-class class new-instance slot) new-value))
             ;; recurse after new-value is already cached
-            (when to-one-association-end-p
-              (when persistent-object-old-value-p
+            (when to-one-association-end?
+              (when old-value-is-a-persistent-object?
                 (setf (persistent-p new-value) (persistent-p old-value))
                 (copy-cached-slot-values old-value new-value)))))))))
 
