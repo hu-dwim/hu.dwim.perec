@@ -24,6 +24,7 @@
   (unwind-protect
        (call-next-method)
     (map-cached-instances (lambda (instance)
+			    (debug-only (assert (eq (transaction-of instance) transaction)))
                             (setf (transaction-of instance) nil)))))
 
 (def function instance-in-transaction-p (instance)
