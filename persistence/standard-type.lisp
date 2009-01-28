@@ -468,6 +468,12 @@
   `(unsigned-byte ,size))
 
 ;;;;;;;;;;
+;;; simple-array
+
+(defptype simple-array (&optional (element-type '*) (size '*))
+  `(simple-array ,element-type ,size))
+
+;;;;;;;;;;
 ;;; Vector
 
 (defptype vector (&optional (element-type '*) (size '*))
@@ -493,10 +499,10 @@
 ;;;;;;;;;;;;;;
 ;;; IP address
 
-(defptype ip-address ()
-  '(or (vector (unsigned-byte 8) 4)
-       (vector (unsigned-byte 16) 8)))
+(def (persistent-type e) ip-address-vector ()
+  '(or (simple-array (unsigned-byte 8) (4))
+       (simple-array (unsigned-byte 16) (8))))
 
-(defmapping ip-address (sql-binary-large-object-type :size 16)
-  'unsigned-byte-array->ip-address-reader
-  'ip-address->unsigned-byte-array-writer)
+(defmapping ip-address-vector (sql-binary-large-object-type :size 16)
+  'unsigned-byte-vector->ip-address-vector-reader
+  'ip-address-vector->unsigned-byte-vector-writer)

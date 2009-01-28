@@ -314,7 +314,7 @@
 ;;;;;;;;;;;;;;
 ;;; IP address
 
-(def (function o) unsigned-byte-array->ip-address-reader (rdbms-values index)
+(def (function o) unsigned-byte-vector->ip-address-vector-reader (rdbms-values index)
   (bind ((bytes (elt rdbms-values index)))
     (cond ((= (length bytes) 4)
            bytes)
@@ -330,12 +330,12 @@
               :finally (return result)))
           (t +type-error-marker+))))
 
-(def (function o) ip-address->unsigned-byte-array-writer (slot-value rdbms-values index)
-  (assert (and (typep slot-value 'vector)
-               (or (and (= (length slot-value) 4)
-                        (subtypep (array-element-type slot-value) '(unsigned-byte 8)))
-                   (and (= (length slot-value) 8)
-                        (subtypep (array-element-type slot-value) '(unsigned-byte 16))))))
+(def (function o) ip-address-vector->unsigned-byte-vector-writer (slot-value rdbms-values index)
+  (check-type slot-value vector)
+  (assert (or (and (= (length slot-value) 4)
+                   (subtypep (array-element-type slot-value) '(unsigned-byte 8)))
+              (and (= (length slot-value) 8)
+                   (subtypep (array-element-type slot-value) '(unsigned-byte 16)))))
   (bind ((result))
     (cond ((= (length slot-value) 4)
            (setf result (coerce slot-value 'unsigned-byte-vector)))

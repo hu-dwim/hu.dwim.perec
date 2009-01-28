@@ -171,6 +171,12 @@
   ((:module "integration"
             :components ((:file "swank-integration")))))
 
+(defsystem-connection cl-perec-and-iolib
+  :requires (:cl-perec :net.sockets)
+  :components
+  ((:module "integration"
+            :components ((:file "iolib-integration")))))
+
 (defmethod perform ((op test-op) (system (eql (find-system :cl-perec))))
   (operate 'load-op :cl-perec-test)
   (in-package :cl-perec-test)
