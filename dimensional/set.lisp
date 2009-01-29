@@ -74,16 +74,14 @@
            (inline member))
   (when (and testp notp)
     (error ":TEST and :TEST-NOT were both supplied."))
-  ;; We have to possibilities here: for shortish lists we pick up the
-  ;; shorter one as the result, and add the other one to it. For long
-  ;; lists we use a hash-table when possible.
+
   (let ((n1 (length list1))
         (n2 (length list2))
-        (key (and key (sb-kernel:%coerce-callable-to-fun key)))
+        (key (and key (ensure-function key)))
         (test (if notp
-                  (let ((test-not-fun (sb-kernel:%coerce-callable-to-fun test-not)))
+                  (let ((test-not-fun (ensure-function test-not)))
                     (lambda (x y) (not (funcall test-not-fun x y))))
-                  (sb-kernel:%coerce-callable-to-fun test))))
+                  (ensure-function test))))
     (multiple-value-bind (short long n-short)
         (if (< n1 n2)
             (values list1 list2 n1)
@@ -112,15 +110,13 @@
            (inline member))
   (when (and testp notp)
     (error ":TEST and :TEST-NOT were both supplied."))
-  ;; We have to possibilities here: for shortish lists we pick up the
-  ;; shorter one as the result, and add the other one to it. For long
-  ;; lists we use a hash-table when possible.
+
   (let ((n2 (length list2))
-        (key (and key (sb-kernel:%coerce-callable-to-fun key)))
+        (key (and key (ensure-function key)))
         (test (if notp
-                  (let ((test-not-fun (sb-kernel:%coerce-callable-to-fun test-not)))
+                  (let ((test-not-fun (ensure-function test-not)))
                     (lambda (x y) (not (funcall test-not-fun x y))))
-                  (sb-kernel:%coerce-callable-to-fun test))))
+                  (ensure-function test))))
     (if (or (< n2 +list-based-difference-limit+)
             (not (member test (list #'eq #'eql #'equal #'equalp))))
 
@@ -149,16 +145,14 @@
            (inline member))
   (when (and testp notp)
     (error ":TEST and :TEST-NOT were both supplied."))
-  ;; We have to possibilities here: for shortish lists we pick up the
-  ;; shorter one as the result, and add the other one to it. For long
-  ;; lists we use a hash-table when possible.
+
   (let ((n1 (length list1))
         (n2 (length list2))
-        (key (and key (sb-kernel:%coerce-callable-to-fun key)))
+        (key (and key (ensure-function key)))
         (test (if notp
-                  (let ((test-not-fun (sb-kernel:%coerce-callable-to-fun test-not)))
+                  (let ((test-not-fun (ensure-function test-not)))
                     (lambda (x y) (not (funcall test-not-fun x y))))
-                  (sb-kernel:%coerce-callable-to-fun test))))
+                  (ensure-function test))))
     (declare (type function test))
     (prog1-bind result nil
       (cond ((or (and (< n1 +list-based-set-exclusive-or-limit+)
@@ -223,15 +217,13 @@
            (inline member))
   (when (and testp notp)
     (error ":TEST and :TEST-NOT were both supplied."))
-  ;; We have to possibilities here: for shortish lists we pick up the
-  ;; shorter one as the result, and add the other one to it. For long
-  ;; lists we use a hash-table when possible.
+
   (let ((n2 (length list2))
-        (key (and key (sb-kernel:%coerce-callable-to-fun key)))
+        (key (and key (ensure-function key)))
         (test (if notp
-                  (let ((test-not-fun (sb-kernel:%coerce-callable-to-fun test-not)))
+                  (let ((test-not-fun (ensure-function test-not)))
                     (lambda (x y) (not (funcall test-not-fun x y))))
-                  (sb-kernel:%coerce-callable-to-fun test))))
+                  (ensure-function test))))
     (if (or (null list1) (length= 1 list1)
             (< n2 +list-based-subsetp-limit+)
             (not (member test (list #'eq #'eql #'equal #'equalp))))
