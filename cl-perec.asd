@@ -172,7 +172,7 @@
             :components ((:file "swank-integration")))))
 
 (defsystem-connection cl-perec-and-iolib
-  :requires (:cl-perec :net.sockets)
+  :requires (:cl-perec :iolib.sockets)
   :components
   ((:module "integration"
             :components ((:file "iolib-integration")))))
