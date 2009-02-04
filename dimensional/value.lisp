@@ -738,6 +738,8 @@
         (with dimensions-2 = (dimensions-of d-value-2))
         (unless (equal dimensions-1 dimensions-2)
           (return-from d-value-equal #f))
+        (when (empty-d-value-p d-value-1)
+          (return-from d-value-equal (empty-d-value-p d-value-2)))
         (for c-value-1 :in (c-values-of d-value-1))
         (for d-value-1-part = (make-single-d-value dimensions-1 (coordinates-of c-value-1) (value-of c-value-1)))
         (for d-value-2-part = (value-at-coordinates d-value-2 (coordinates-of c-value-1)))

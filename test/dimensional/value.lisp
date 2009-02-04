@@ -203,8 +203,8 @@
    `(((a) (ie ,+beginning-of-time+ . ,(parse-datestring "2008-01-01")))
      ((a) (ie ,(parse-datestring "2009-01-01") . ,+end-of-time+)))))
 
-(def test test/dimensional/value/d-value-equal ()
-  (is (not (d-value-equal
+(def test test/dimensional/value/d-value-equal/positive ()
+  (is (d-value-equal
             (make-single-d-value
              '(time validity)
              (list
@@ -216,7 +216,37 @@
              (list
               (make-empty-coordinate-range +end-of-time+)
               (make-coordinate-range 'ie +beginning-of-time+ +end-of-time+))
-             2)))))
+             1)))
+  (is (d-value-equal
+       (make-empty-d-value '(time validity))
+       (make-empty-d-value '(time validity)))))
+
+(def test test/dimensional/value/d-value-equal/negative ()
+  (is (not (d-value-equal
+            (make-single-d-value '(time validity)
+                                 (list
+                                  (make-empty-coordinate-range +end-of-time+)
+                                  (make-coordinate-range 'ie +beginning-of-time+ +end-of-time+))
+                                 1)
+            (make-single-d-value '(time validity)
+                                 (list
+                                  (make-empty-coordinate-range +end-of-time+)
+                                  (make-coordinate-range 'ie +beginning-of-time+ +end-of-time+))
+                                 2))))
+  (is (not (d-value-equal
+            (make-empty-d-value '(time validity))
+            (make-single-d-value '(time validity)
+                                 (list
+                                  (make-empty-coordinate-range +end-of-time+)
+                                  (make-coordinate-range 'ie +beginning-of-time+ +end-of-time+))
+                                 2))))
+  (is (not (d-value-equal
+            (make-single-d-value '(time validity)
+                                 (list
+                                  (make-empty-coordinate-range +end-of-time+)
+                                  (make-coordinate-range 'ie +beginning-of-time+ +end-of-time+))
+                                 1)
+            (make-empty-d-value '(time validity))))))
 
 (def test test/dimensional/value/iter-in-d-values (d-value-1 d-value-2 expected-d-values)
   (iter (with dimensions = (prc::dimensions-of d-value-1))
