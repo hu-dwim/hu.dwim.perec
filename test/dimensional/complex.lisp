@@ -849,8 +849,8 @@
               (with-transaction
                 (format t "Starting new transaction~%")
                 (incf *transaction-counter*)
-                (with-random-coordinates dimensions (:for-writing-p #t :choices random-coordinates)
-                  (iter (repeat operation-count)
+                (iter (repeat operation-count)
+                      (with-random-coordinates dimensions (:for-writing-p #t :choices random-coordinates)
                         (do-random-operation instances :slot-names slot-names))))
               (finally
                (setf *history-entries* (nreverse *history-entries*))
