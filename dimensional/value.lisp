@@ -554,7 +554,7 @@
     
     (cond
       ((null dimensions)
-       (list nil))
+       nil)
       ((coordinates-intersection dimensions coordinates-1 coordinates-2)
        (recurse dimensions coordinates-1 coordinates-2))
       (t (list coordinates-1)))))
@@ -810,7 +810,7 @@
            (iter (with dimensions = (dimensions-of d-value))
                  (for c-value :in (c-values-of d-value))
                  (for intersection = (coordinates-intersection dimensions (coordinates-of c-value) coordinates))
-                 (when intersection
+                 (when (or intersection (null dimensions)) ; FIXME
                    (collect (make-c-value intersection
                                           (value-of c-value)))))))))
 
@@ -994,6 +994,24 @@
                                          (return (list remaining-coordinates-list values)))))
                            :dimensions projection-dimensions
                            :coordinates projection-coordinates))))
+
+(def (function e) d-fold (function folded-dimensions d-value &key initial-value)
+  (if folded-dimensions
+      (iter (with dimensions = (dimensions-of d-value))
+            (with unfolded-dimensions = (remove-if [member !1 folded-dimensions] (dimensions-of d-value)))
+            (with result = (make-empty-d-value unfolded-dimensions))
+            (for (coordinates value) :in-d-value d-value)
+            (for folded-coordinates = (collect-subcoordinates dimensions folded-dimensions coordinates))
+            (for unfolded-coordinates = (collect-subcoordinates dimensions unfolded-dimensions coordinates))
+            (for accumulated-d-value = (aprog1 (make-single-d-value
+                                                unfolded-dimensions unfolded-coordinates initial-value)
+                                         (setf (into-d-value it)
+                                               (value-at-coordinates result unfolded-coordinates))))
+            (iter (for (unfolded-coordinates-2 accumulated-value) :in-d-value accumulated-d-value)
+                  (setf (value-at-coordinates result unfolded-coordinates-2)
+                        (funcall function accumulated-value folded-coordinates value)))
+            (finally (return result)))
+      d-value))
 
 (def (function e) d-equal (d-value-1 d-value-2)
   (d-apply #'equal (list d-value-1 d-value-2)))
