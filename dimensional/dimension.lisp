@@ -168,12 +168,12 @@
                             (with-range-to-macro-name (format-symbol *package* "WITH-~A-TO" name))
                             (call-with-range-fn-name (format-symbol *package* "CALL-~A" with-range-macro-name)))
                        `((def (macro e) ,with-macro-name (,name &body forms)
-                           (if (coordinate-range-p ,name)
-                               `(,',call-with-fn-name ,,name (lambda () ,@forms))
+                           (if (stringp ,name)
                                `(,',call-with-range-fn-name
                                  ,(coerce-to-coordinate-begin ,name ',type)
                                  ,(coerce-to-coordinate-end ,name ',type)
-                                 (lambda () ,@forms))))
+                                 (lambda () ,@forms))
+                               `(,',call-with-fn-name ,,name (lambda () ,@forms))))
                          (def (symbol-macro e) ,begin-special-name
                              (coordinate-begin ,dimension-variable-name))
                          (def (symbol-macro e) ,end-special-name
