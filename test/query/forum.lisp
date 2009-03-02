@@ -273,18 +273,20 @@
 
 (deftest test/query/select/member-3 ()
   (test-query (:select-count 0 :record-count 0 :fixture forum-data)
-    (select (m)
-      (from (m message-test))
-      (where (member (subject-of m) nil)))))
+    (bind ((*enable-partial-eval* #t))
+      (select (m)
+       (from (m message-test))
+       (where (member (subject-of m) nil))))))
 
 (deftest test/query/select/member-4 ()
   (test-query (:select-count 1 :record-count 0 :fixture forum-data)
-    (let ((topics (select-instances topic-test)))
-      (execute-query
-       (make-query
-        `(select (m)
-          (from (m message-test))
-          (where (member m ',topics))))))))
+    (bind ((*enable-partial-eval* #t))
+      (let ((topics (select-instances topic-test)))
+       (execute-query
+        (make-query
+         `(select (m)
+            (from (m message-test))
+            (where (member m ',topics)))))))))
 
 (deftest test/query/select/member-5 ()
   (test-query (:select-count 3 :record-count 1 :fixture forum-data)

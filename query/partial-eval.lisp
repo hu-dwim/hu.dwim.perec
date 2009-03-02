@@ -8,7 +8,7 @@
 
 (enable-pattern-reader #\M)
 
-(defvar *enable-partial-eval* #t)
+(def (special-variable e) *enable-partial-eval* #f)
 
 ;;;
 ;;; Partial eval
