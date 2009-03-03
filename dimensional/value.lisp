@@ -573,7 +573,15 @@
   (princ (value-of -self-)))
 
 (def (function e) print-c-value (c-value &optional (stream t))
-  (format stream "~A : (~{~A~^ ~})" (value-of c-value) (coordinates-of c-value)))
+  (format stream "(~A (~{~A~^ ~}))" (value-of c-value) (coordinates-of c-value)))
+
+(def function pprint-c-value (stream c-value)
+  (pprint-logical-block (stream nil :prefix "(" :suffix ")")
+    (princ (value-of c-value) stream)
+    (write-char #\Space stream)
+    (pprint-linear stream (coordinates-of c-value))))
+
+(set-pprint-dispatch 'c-value 'pprint-c-value)
 
 (def (function e) make-c-value (coordinates value)
   (make-instance 'c-value
@@ -613,19 +621,22 @@
 (def (special-variable e) *print-d-value-details* #t)
 
 (def print-object d-value ()
-  (cond
-    ((not *print-d-value-details*)
-     (format t "(~{~A~^, ~})" (mapcar #'name-of (dimensions-of -self-))))
-    (*print-pretty*
-     (format t "(~{~A~^, ~})" (mapcar #'name-of (dimensions-of -self-)))
-     (mapc (lambda (c-value)
-             (pprint-newline :mandatory)
-             (pprint-indent :block 2)
-             (print-c-value c-value))
-           (c-values-of -self-)))
-    (t
-     (format t "(~{~A~^, ~})" (mapcar #'name-of (dimensions-of -self-)))
-     (mapc [progn (princ " ") (print-c-value !1)] (c-values-of -self-)))))
+  (format t "(~{~A~^, ~})" (mapcar #'name-of (dimensions-of -self-)))
+  (when *print-d-value-details*
+    (iter (for c-values-tail :on (c-values-of -self-))
+          (princ " ")
+          (print-c-value (first c-values-tail))
+          (unless (null (rest c-values-tail)) ;last-iteration-p
+            (terpri)))))
+
+(def function pprint-d-value (stream d-value)
+  (pprint-logical-block (stream nil :prefix "#<D-VALUE " :suffix ">")
+    (pprint-fill stream (mapcar #'name-of (dimensions-of d-value)))
+    (write-char #\Space stream)
+    (pprint-newline :linear stream)
+    (pprint-linear stream (c-values-of d-value) #f)))
+
+(set-pprint-dispatch 'd-value 'pprint-d-value)
 
 (def (function e) print-d-value (d-value &optional (stream t))
   (bind ((*print-d-value-details* #t))
