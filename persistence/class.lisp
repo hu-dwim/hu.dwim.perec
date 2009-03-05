@@ -641,7 +641,8 @@
 (def function effective-slots-for-slot-name (slot-name)
   (iter (for (class-name class) in-hashtable *persistent-classes*)
         (for slot = (find-slot (ensure-finalized class) slot-name :otherwise nil))
-        (when slot (collect slot))))
+        (when (typep slot 'persistent-effective-slot-definition)
+          (collect slot))))
 
 (def function slot-definer-superclass (slot)
   (slot-definition-class (last-elt (direct-slots-of slot))))
