@@ -40,9 +40,11 @@
 
 (def (function o) restore-slot-set (instance slot)
   "Restores the non lazy list without local side effects from the database."
-  (map 'list #L(object-reader !1 0)
+  (map 'list [object-reader !1 0]
        (select-records +oid-column-names+
-                       (list (name-of (association-end-view-of (other-association-end-of slot))))
+                       (bind ((other-association-end (other-association-end-of slot)))
+                         (assert other-association-end () "RESTORE-SLOT-SET: other-association-end is NIL for instance ~A, slot ~A" instance slot)
+                         (list (name-of other-association-end)))
                        :where (make-oid-matcher-where-clause instance (oid-column-of slot))
                        :order-by (bind ((type (canonical-type-of slot)))
                                    (if (ordered-set-type-p type)
