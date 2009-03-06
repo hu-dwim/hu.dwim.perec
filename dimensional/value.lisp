@@ -67,6 +67,9 @@
 (def (generic e) coordinate-equal (dimension coordinate-1 coordinate-2)
 
   (:method (dimension coordinate-1 coordinate-2)
+    (when (or (typep coordinate-1 'persistent-object)
+              (typep coordinate-2 'persistent-object))
+      (error "COORDINATE-EQUAL must be called with list of coordinates, but it was called with the coordinates ~S ~S" coordinate-1 coordinate-2))
     (coordinate= coordinate-1 coordinate-2))
 
   (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 (eql +whole-domain-marker+)))
