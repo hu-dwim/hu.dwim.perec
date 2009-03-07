@@ -44,7 +44,9 @@
        (select-records +oid-column-names+
                        (bind ((other-association-end (other-association-end-of slot)))
                          (assert other-association-end () "RESTORE-SLOT-SET: other-association-end is NIL for instance ~A, slot ~A" instance slot)
-                         (list (name-of other-association-end)))
+                         (bind ((other-association-end-view (association-end-view-of other-association-end)))
+                           (assert other-association-end-view () "RESTORE-SLOT-SET: other-association-end-view is NIL for instance ~A, slot ~A" instance slot)
+                           (list (name-of other-association-end-view))))
                        :where (make-oid-matcher-where-clause instance (oid-column-of slot))
                        :order-by (bind ((type (canonical-type-of slot)))
                                    (if (ordered-set-type-p type)
