@@ -241,7 +241,7 @@
     (otherwise #t)))
 
 (defun find-slot-definition (owner slot-name)
-  (find-slot-by-owner-type owner (effective-slots-for-slot-name slot-name)))
+  (find-slot-by-owner-type owner (persistent-effective-slots-for-slot-name slot-name)))
 
 (def function emit-sql-literal (syntax)
   (bind ((type (persistent-type-of syntax))

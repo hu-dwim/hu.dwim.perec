@@ -638,7 +638,7 @@
           (collect (prog1 (find-slot class (slot-definition-name it))
                      (assert it))))))
 
-(def function effective-slots-for-slot-name (slot-name)
+(def function persistent-effective-slots-for-slot-name (slot-name)
   (iter (for (class-name class) in-hashtable *persistent-classes*)
         (for slot = (find-slot (ensure-finalized class) slot-name :otherwise nil))
         (when (typep slot 'persistent-effective-slot-definition)

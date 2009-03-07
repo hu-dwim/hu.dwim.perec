@@ -302,7 +302,7 @@
           (consp (third form))
           (eq (first (third form)) 'quote)
           (symbolp (second (third form))))
-     (bind ((slots (effective-slots-for-slot-name (second (third form))))
+     (bind ((slots (persistent-effective-slots-for-slot-name (second (third form))))
             (accessor (when slots (reader-name-of (first slots))))) ; KLUDGE bad, bad, bad...
        (cond
          ((some [not (eq accessor (reader-name-of !1))] (rest slots))
