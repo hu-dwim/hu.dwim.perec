@@ -10,6 +10,7 @@
   'iolib.sockets:inet-address)
 
 (pushnew 'ip-address *canonical-types*)
+;; TODO do we need to add 'ip-address also to *mapped-type-precedence-list*?
 
 (defmapping ip-address (sql-binary-large-object-type :size 16)
   'unsigned-byte-array->ip-address-reader
