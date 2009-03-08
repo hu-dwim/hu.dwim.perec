@@ -209,7 +209,7 @@
       timestamp
       date
       time
-      ip-address
+      ip-address-vector
       unsigned-byte-vector
       member
       symbol*

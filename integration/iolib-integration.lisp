@@ -9,6 +9,8 @@
 (def (persistent-type e) ip-address ()
   'iolib.sockets:inet-address)
 
+(pushnew 'ip-address *canonical-types*)
+
 (defmapping ip-address (sql-binary-large-object-type :size 16)
   'unsigned-byte-array->ip-address-reader
   'ip-address->unsigned-byte-vector-writer)
