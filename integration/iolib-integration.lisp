@@ -10,7 +10,11 @@
   'iolib.sockets:inet-address)
 
 (pushnew 'ip-address *canonical-types*)
-;; TODO do we need to add 'ip-address also to *mapped-type-precedence-list*?
+
+;; insert ip-address before ip-address-vector in *mapped-type-precedence-list*
+(bind ((cell-index (position 'ip-address-vector *mapped-type-precedence-list*))
+       (cell (nthcdr (1- cell-index) *mapped-type-precedence-list*)))
+  (setf (cdr cell) (cons 'ip-address (cdr cell))))
 
 (defmapping ip-address (sql-binary-large-object-type :size 16)
   'unsigned-byte-array->ip-address-reader
