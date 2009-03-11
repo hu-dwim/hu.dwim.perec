@@ -290,10 +290,13 @@
   ;; TODO domain of ordering-dimensions is the range: [min,max]
   (assert (not (typep dimension 'ordering-dimension)))
   (assert (persistent-class-name-p (the-type-of dimension)))
-  ;; TODO cache the result in the transaction
-  (select (:prefetch-mode :none) (instance)
-          (from (instance))
-          (where (typep instance (the-type-of dimension)))))
+  (bind ((name (name-of dimension))
+         (bulk-name (format-symbol (symbol-package name) "~A-DOMAIN" name)))
+    (or (cached-bulk-of bulk-name)
+        (setf (cached-bulk-of bulk-name)
+              (select (:prefetch-mode :none) (instance)
+                      (from (instance))
+                      (where (typep instance (the-type-of dimension))))))))
 
 (def (function e) call-with-coordinate (dimension coordinate thunk)
   (progv
