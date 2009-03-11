@@ -346,3 +346,6 @@
   (bind ((first-length (length first-sequence)))
     (and (every [length= first-length !1] other-sequences)
          (apply #'every predicate first-sequence other-sequences))))
+
+(defmacro swap (place-1 place-2)
+  `(rotatef ,place-1 ,place-2))

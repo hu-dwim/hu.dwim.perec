@@ -138,9 +138,15 @@
          (setf (value-at-coordinates secondary-cached-value coordinates) primary-instance)))
       (:1-n
        (bind ((child primary-instance)
+              (parent-slot-name primary-slot-name)
               (cached-parent primary-cached-value)
               (parent secondary-instance)
+              (children-slot-name secondary-slot-name)
               (cached-children secondary-cached-value))
+         (unless (eq :1 (cardinality-kind-of primary-association-end))
+             (swap child parent)
+             (swap parent-slot-name children-slot-name)
+             (swap cached-parent cached-children))
          (ecase action
            (#.+t-clear+
             (assert (or parent child))  ; TODO xor
@@ -148,14 +154,14 @@
               (iter (for (coordinates children)
                          :in-d-value (value-at-coordinates cached-children coordinates))
                     (iter (for child :in children)
-                          (for cached-parent = (underlying-slot-value child primary-slot-name))
+                          (for cached-parent = (underlying-slot-value child parent-slot-name))
                           (setf (value-at-coordinates cached-parent coordinates) nil)))
               (setf (value-at-coordinates cached-children coordinates) nil))
             (when child                 ; clear parent
               (iter (for (coordinates parent)
                          :in-d-value (value-at-coordinates cached-parent coordinates))
                     (unless parent (next-iteration))
-                    (for cached-children = (underlying-slot-value parent secondary-slot-name))
+                    (for cached-children = (underlying-slot-value parent children-slot-name))
                     (delete-at-coordinates cached-children coordinates child))
               (setf (value-at-coordinates cached-parent coordinates) nil))
             )
@@ -167,8 +173,7 @@
            (#.+t-insert+
             (assert (and parent child))
             (insert-at-coordinates cached-children coordinates child)
-            (setf (value-at-coordinates cached-parent coordinates) parent))))
-       )
+            (setf (value-at-coordinates cached-parent coordinates) parent)))))
       (:m-n
        (ecase action
          (#.+t-clear+
