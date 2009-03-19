@@ -721,6 +721,14 @@
                  (dimensions-of d-value)
                  :key #'name-of)))
 
+(def (function e) d-value-dimension-coordinate-list (d-value dimension &key (mode :union))
+  (funcall (ecase mode
+             (:union 'coordinate-list-union)
+             (:intersection 'overlapping-coordinate-list-self-intersection))
+           dimension
+           (iter (with index = (position (lookup-dimension dimension) (dimensions-of d-value)))
+                 (for c-value :in (c-values-of d-value))
+                 (collect (elt (coordinates-of c-value) index)))))
 
 (def (function e) d-values-have-same-dimensions-p (d-values)
   (bind ((dimensions (dimensions-of (first d-values))))
@@ -931,6 +939,46 @@
                            (single-value-at-coordinates d-value coordinates :otherwise unspecified-value))
                          d-values)))
         (split-d-values-coordinates-lists d-values)))
+
+(def function coordinate-list-difference (dimension coordinate-list-1 coordinate-list-2)
+  (when (null coordinate-list-2)
+    (return-from coordinate-list-difference coordinate-list-1))
+  (iter outer
+        (for coordinate-1 :in coordinate-list-1)
+        (for differences = (iter (for coordinate-2 :in coordinate-list-2)
+                                 (collect (coordinate-difference dimension coordinate-1 coordinate-2))))
+        (when differences
+          (appending (reduce (lambda (coordinate-list-1 coordinate-list-2)
+                               (coordinate-list-intersection dimension coordinate-list-1 coordinate-list-2))
+                             differences)))))
+
+(def function coordinate-list-intersection (dimension coordinate-list-1 coordinate-list-2)
+  (iter outer
+        (for coordinate-1 :in coordinate-list-1)
+        (iter (for coordinate-2 :in coordinate-list-2)
+              (awhen (coordinate-intersection dimension coordinate-1 coordinate-2)
+                (in outer (collect it))))))
+
+(def function split-coordinate-lists (dimension coordinate-list-1 coordinate-list-2)
+  (bind ((intersections (coordinate-list-intersection dimension coordinate-list-1 coordinate-list-2)))
+    (append intersections
+            (coordinate-list-difference dimension coordinate-list-1 intersections)
+            (coordinate-list-difference dimension coordinate-list-2 intersections))))
+
+(def (function e) coordinate-list-union (dimension coordinate-list)
+  (iter (for coordinate :in coordinate-list)
+        (unless (iter inner
+                      (for coordinate-cell :on result)
+                      (awhen (coordinate-union dimension coordinate (car coordinate-cell))
+                        (setf (car coordinate-cell) it)
+                        (return-from inner #t)))
+          (collect coordinate :into result))
+        (finally (return result))))
+
+(def (function e) overlapping-coordinate-list-self-intersection (dimension coordinate-list)
+  (reduce (lambda (coordinate-list-1 coordinate-list-2)
+            (split-coordinate-lists dimension coordinate-list-1 coordinate-list-2))
+          (mapcar 'list coordinate-list)))
 
 (def function coordinates-list-difference (dimensions coordinates-list-1 coordinates-list-2)
   (when (null coordinates-list-2)
