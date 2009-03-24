@@ -297,6 +297,13 @@
           (from (m message-test))
           (where (member m ',list))))))))
 
+(deftest test/query/select/member-6 ()
+  (signals error
+    (run-queries
+      (select (s)
+        (from (s spam-test))
+        (where (eq (spam-type-of s) 'no-such-member))))))
+
 (deftest test/query/select/lisp-expr ()
   (test-query (:record-count 1 :fixture forum-data)
     (let ((num "1"))
