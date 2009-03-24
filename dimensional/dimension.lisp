@@ -298,20 +298,15 @@
                       (from (instance))
                       (where (typep instance (the-type-of dimension))))))))
 
-(def (function e) call-with-coordinate (dimension coordinate thunk)
+(def (with-macro e) with-coordinate (dimension coordinate)
   (progv
       (list (coordinate-name-of dimension))
       (list coordinate)
-    (funcall thunk)))
+    (-body-)))
 
-(def (macro e) with-coordinate (dimension coordinate &body forms)
-  `(call-with-coordinate ,dimension ,coordinate (lambda () ,@forms)))
-
-(def (function e) call-with-coordinates (dimensions coordinates thunk)
+(def (with-macro e) with-coordinates (dimensions coordinates)
   (progv
       (mapcar #'coordinate-name-of dimensions)
       coordinates
-    (funcall thunk)))
+    (-body-)))
 
-(def (macro e) with-coordinates (dimensions coordinates &body forms)
-  `(call-with-coordinates (mapcar #'lookup-dimension ,dimensions) ,coordinates (lambda () ,@forms)))
