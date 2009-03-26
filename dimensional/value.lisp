@@ -1028,7 +1028,7 @@
 
 (def (function e) d-project (function projection-dimensions d-value)
   (bind ((dimensions (dimensions-of d-value))
-         (remaining-dimensions (set-difference dimensions projection-dimensions))
+         (remaining-dimensions (remove-if [member !1 projection-dimensions] (dimensions-of d-value)))
          (projection-coordinates-list (remove-duplicates (mapcar-d-value d-value
                                                                          (lambda (coordinates value)
                                                                            (declare (ignorable value))
