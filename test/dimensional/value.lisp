@@ -11,7 +11,28 @@
 
 (defsuite* (test/dimensional/value :in test/dimensional))
 
-(def special-variable *test-dimensions* (mapcar #'lookup-dimension '(time validity enumerated)))
+(def (dimension e) inherited
+  :type fixnum
+  :inherit :ascending
+  :bind-default-coordinate #f
+  :default-coordinate-begin 0
+  :default-coordinate-end 0
+  :minimum-coordinate most-negative-fixnum
+  :maximum-coordinate most-positive-fixnum)
+
+;;;;;;
+;;; Validity dimension
+
+(def (dimension e) ordered
+  :type fixnum
+  :ordered #t
+  :default-coordinate-begin most-negative-fixnum
+  :default-coordinate-end most-positive-fixnum
+  :minimum-coordinate most-negative-fixnum
+  :maximum-coordinate most-positive-fixnum)
+
+
+(def special-variable *test-dimensions* (mapcar #'lookup-dimension '(inherited ordered enumerated)))
 
 (def function is-not-null (value)
   (is (not (null value)) "The value should not be nil here")
@@ -21,7 +42,7 @@
 ;;; Range
 
 (def test test/dimensional/value/range-intersection ()
-  (bind ((dimension (find-dimension 'validity)))
+  (bind ((dimension (find-dimension 'ordered)))
     (is (null (coordinate-intersection dimension '(ie 0 . 10) '(ie 10 . 20))))
     (is (null (coordinate-intersection dimension '(ie 0 . 10) '(ii 10 . 10))))
     (is (equal '(ii 0 . 0) (coordinate-intersection dimension '(ie 0 . 10) '(ii 0 . 0))))
@@ -30,7 +51,7 @@
     (is (equal '(ie 0 . 10) (coordinate-intersection dimension '(ie 0 . 10) '(ie -5 . 15))))))
 
 (def test test/dimensional/value/range-union ()
-  (bind ((dimension (find-dimension 'validity)))
+  (bind ((dimension (find-dimension 'ordered)))
     (is (equal '(ie 0 . 20) (coordinate-union dimension '(ie 0 . 10) '(ie 10 . 20))))
     (is (equal '(ii 0 . 10) (coordinate-union dimension '(ie 0 . 10) '(ii 10 . 10))))
     (is (equal '(ie 0 . 10) (coordinate-union dimension '(ie 0 . 10) '(ii 0 . 0))))
@@ -39,7 +60,7 @@
     (is (equal '(ie -5 . 15) (coordinate-union dimension '(ie 0 . 10) '(ie -5 . 15))))))
 
 (def test test/dimensional/value/range-difference ()
-  (bind ((dimension (find-dimension 'validity)))
+  (bind ((dimension (find-dimension 'ordered)))
     (is (equal '((ie 0 . 10)) (coordinate-difference dimension '(ie 0 . 10) '(ie 10 . 20))))
     (is (equal '((ie 0 . 10)) (coordinate-difference dimension '(ie 0 . 10) '(ii 10 . 10))))
     (is (equal '((ee 0 . 10)) (coordinate-difference dimension '(ie 0 . 10) '(ii 0 . 0))))
@@ -190,63 +211,63 @@
      ((ie 10 . 20) (ie 90 . 100) (a))))
 
   (test/dimensional/value/coordinates-difference
-   (mapcar 'find-dimension '(enumerated validity))
+   (mapcar 'find-dimension '(enumerated ordered))
    `((a) (ie 0 . 100))
    `((a) (ie 10 . 90))
    `(((a) (ie 0 . 10))
      ((a) (ie 90 . 100))))
   
   (test/dimensional/value/coordinates-difference
-   (mapcar 'find-dimension '(enumerated validity))
-   `((a) (ie ,+beginning-of-time+ . ,+end-of-time+))
-   `((a) (ie ,(parse-datestring "2008-01-01") . ,(parse-datestring "2009-01-01")))
-   `(((a) (ie ,+beginning-of-time+ . ,(parse-datestring "2008-01-01")))
-     ((a) (ie ,(parse-datestring "2009-01-01") . ,+end-of-time+)))))
+   (mapcar 'find-dimension '(enumerated ordered))
+   `((a) (ie ,most-negative-fixnum . ,most-positive-fixnum))
+   `((a) (ie 2008 . 2009))
+   `(((a) (ie ,most-negative-fixnum . 2008))
+     ((a) (ie 2009 . ,most-positive-fixnum)))))
 
 (def test test/dimensional/value/d-value-equal/positive ()
   (is (d-value-equal
             (make-single-d-value
-             '(time validity)
+             '(inherited ordered)
              (list
-              (make-empty-coordinate-range +end-of-time+)
-              (make-coordinate-range 'ie +beginning-of-time+ +end-of-time+))
+              (make-empty-coordinate-range most-positive-fixnum)
+              (make-coordinate-range 'ie most-negative-fixnum most-positive-fixnum))
              1)
             (make-single-d-value
-             '(time validity)
+             '(inherited ordered)
              (list
-              (make-empty-coordinate-range +end-of-time+)
-              (make-coordinate-range 'ie +beginning-of-time+ +end-of-time+))
+              (make-empty-coordinate-range most-positive-fixnum)
+              (make-coordinate-range 'ie most-negative-fixnum most-positive-fixnum))
              1)))
   (is (d-value-equal
-       (make-empty-d-value '(time validity))
-       (make-empty-d-value '(time validity)))))
+       (make-empty-d-value '(inherited ordered))
+       (make-empty-d-value '(inherited ordered)))))
 
 (def test test/dimensional/value/d-value-equal/negative ()
   (is (not (d-value-equal
-            (make-single-d-value '(time validity)
+            (make-single-d-value '(inherited ordered)
                                  (list
-                                  (make-empty-coordinate-range +end-of-time+)
-                                  (make-coordinate-range 'ie +beginning-of-time+ +end-of-time+))
+                                  (make-empty-coordinate-range most-positive-fixnum)
+                                  (make-coordinate-range 'ie most-negative-fixnum most-positive-fixnum))
                                  1)
-            (make-single-d-value '(time validity)
+            (make-single-d-value '(inherited ordered)
                                  (list
-                                  (make-empty-coordinate-range +end-of-time+)
-                                  (make-coordinate-range 'ie +beginning-of-time+ +end-of-time+))
+                                  (make-empty-coordinate-range most-positive-fixnum)
+                                  (make-coordinate-range 'ie most-negative-fixnum most-positive-fixnum))
                                  2))))
   (is (not (d-value-equal
-            (make-empty-d-value '(time validity))
-            (make-single-d-value '(time validity)
+            (make-empty-d-value '(inherited ordered))
+            (make-single-d-value '(inherited ordered)
                                  (list
-                                  (make-empty-coordinate-range +end-of-time+)
-                                  (make-coordinate-range 'ie +beginning-of-time+ +end-of-time+))
+                                  (make-empty-coordinate-range most-positive-fixnum)
+                                  (make-coordinate-range 'ie most-negative-fixnum most-positive-fixnum))
                                  2))))
   (is (not (d-value-equal
-            (make-single-d-value '(time validity)
+            (make-single-d-value '(inherited ordered)
                                  (list
-                                  (make-empty-coordinate-range +end-of-time+)
-                                  (make-coordinate-range 'ie +beginning-of-time+ +end-of-time+))
+                                  (make-empty-coordinate-range most-positive-fixnum)
+                                  (make-coordinate-range 'ie most-negative-fixnum most-positive-fixnum))
                                  1)
-            (make-empty-d-value '(time validity))))))
+            (make-empty-d-value '(inherited ordered))))))
 
 (def test test/dimensional/value/iter-in-d-values (d-value-1 d-value-2 expected-d-values)
   (iter (with dimensions = (prc::dimensions-of d-value-1))
@@ -294,25 +315,26 @@
 
 (def test test/dimensional/value/d-project (d-value projecting-dimensions expected-d-value)
   (is (d-value-equal
-       (break "~S ~S" expected-d-value (d-project
-         (lambda (dimensions coordinates-list values)
-           (iter (for dimension :in dimensions)
-                 (for coordinates :in coordinates-list)
-                 (for value :in values)
-                 (for volume = (reduce #'* coordinates
-                                       :initial-value 1
-                                       :key (lambda (coordinate)
-                                              (etypecase dimension
-                                                (ordering-dimension (- (coordinate-range-end coordinate)
-                                                                       (coordinate-range-begin coordinate)))
-                                                (dimension (length coordinate))))))
-                 (summing (* volume value))))
-         (mapcar #'lookup-dimension projecting-dimensions)
-         d-value))
+       (d-project
+        (lambda (dimensions coordinates-list values)
+          (iter (for coordinates :in coordinates-list)
+                (for value :in values)
+                (for volume = (reduce #'*
+                                      (mapcar (lambda (coordinate dimension)
+                                                (etypecase dimension
+                                                  (ordering-dimension (- (coordinate-range-end coordinate)
+                                                                         (coordinate-range-begin coordinate)))
+                                                  (dimension (length coordinate))))
+                                              coordinates dimensions)
+                                      :initial-value 1))
+                (summing (* volume value))))
+        (mapcar #'lookup-dimension projecting-dimensions)
+        d-value)
        expected-d-value)))
 
 (def test test/dimensional/value/d-project/1 ()
   (bind ((d-value (make-d-value *test-dimensions*
+                                ;; inherited ordered enumerated
                                 '(((ie 0 . 1) (ie 0 . 1) (a))
                                   ((ie 0 . 1) (ie 1 . 2) (a))
                                   ((ie 1 . 2) (ie 0 . 2) (a))
@@ -321,44 +343,44 @@
                                   ((ie 1 . 2) (ie 1 . 2) (b)))
                                 '(1 2 3 4 5 6))))
     ;;(test/dimensional/value/d-project d-value '() d-value)
-    (test/dimensional/value/d-project d-value '(time)
-                                      (make-d-value '(validity enumerated)
+    (test/dimensional/value/d-project d-value '(ordered enumerated)
+                                      (make-d-value '(ordered enumerated)
                                                     '(((ie 0 . 1) (a)) ((ie 1 . 2) (a)) ((ie 0 . 1) (b)) ((ie 1 . 2) (b)))
                                                     `(,(+ (* 1 1) (* 1 3))
                                                       ,(+ (* 1 2) (* 1 3))
                                                       ,(+ (* 1 4) (* 1 5))
                                                       ,(+ (* 1 4) (* 1 6)))))
-    (test/dimensional/value/d-project d-value '(validity)
-                                      (make-d-value '(time enumerated)
+    (test/dimensional/value/d-project d-value '(inherited enumerated)
+                                      (make-d-value '(inherited enumerated)
                                                     '(((ie 0 . 1) (a)) ((ie 1 . 2) (a)) ((ie 0 . 1) (b)) ((ie 1 . 2) (b)))
                                                     `(,(+ (* 1 1) (* 1 2))
                                                       ,(+ (* 2 3))
                                                       ,(+ (* 2 4))
                                                       ,(+ (* 1 5) (* 1 6)))))
-    (test/dimensional/value/d-project d-value '(enumerated)
-                                      (make-d-value '(time validity)
+    (test/dimensional/value/d-project d-value '(inherited ordered)
+                                      (make-d-value '(inherited ordered)
                                                     '(((ie 0 . 1) (ie 0 . 1)) ((ie 0 . 1) (ie 1 . 2))
                                                       ((ie 1 . 2) (ie 0 . 1)) ((ie 1 . 2) (ie 1 . 2)))
                                                     `(,(+ (* 1 1) (* 1 4))
                                                       ,(+ (* 1 2) (* 1 4))
                                                       ,(+ (* 1 3) (* 1 5))
                                                       ,(+ (* 1 3) (* 1 6)))))
-    (test/dimensional/value/d-project d-value '(validity enumerated)
-                                      (make-d-value '(time)
+    (test/dimensional/value/d-project d-value '(inherited)
+                                      (make-d-value '(inherited)
                                                     '(((ie 0 . 1)) ((ie 1 . 2)))
                                                     `(,(+ (* 1 1) (* 1 2) (* 2 4))
                                                       ,(+ (* 2 3) (* 1 5) (* 1 6)))))
-    (test/dimensional/value/d-project d-value '(time enumerated)
-                                      (make-d-value '(validity)
+    (test/dimensional/value/d-project d-value '(ordered)
+                                      (make-d-value '(ordered)
                                                     '(((ie 0 . 1)) ((ie 1 . 2)))
                                                     `(,(+ (* 1 1) (* 1 3) (* 1 4) (* 1 5))
                                                       ,(+ (* 1 2) (* 1 3) (* 1 4) (* 1 6)))))
-    (test/dimensional/value/d-project d-value '(time validity)
+    (test/dimensional/value/d-project d-value '(enumerated)
                                       (make-d-value '(enumerated)
                                                     '(((a)) ((b)))
                                                     `(,(+ (* 1 1) (* 1 2) (* 2 3))
                                                       ,(+ (* 2 4) (* 1 5) (* 1 6)))))
-    (test/dimensional/value/d-project d-value '(time validity enumerated)
+    (test/dimensional/value/d-project d-value '()
                                       (make-d-value '()
                                                     '(())
                                                     `(,(+ (* 1 1) (* 1 2) (* 2 3) (* 2 4) (* 1 5) (* 1 6)))))))
@@ -395,44 +417,44 @@
                                   ((ie 1 . 2) (ie 1 . 2) (b)))
                                 '(1 2 3 4 5 6))))
     (test/dimensional/value/d-fold d-value '() d-value)
-    (test/dimensional/value/d-fold d-value '(time)
-                                         (make-d-value '(validity enumerated)
+    (test/dimensional/value/d-fold d-value '(inherited)
+                                         (make-d-value '(ordered enumerated)
                                                        '(((ie 0 . 1) (a)) ((ie 1 . 2) (a)) ((ie 0 . 1) (b)) ((ie 1 . 2) (b)))
                                                        `(,(+ (* 1 1) (* 1 3))
                                                           ,(+ (* 1 2) (* 1 3))
                                                           ,(+ (* 1 4) (* 1 5))
                                                           ,(+ (* 1 4) (* 1 6)))))
-    (test/dimensional/value/d-fold d-value '(validity)
-                                         (make-d-value '(time enumerated)
+    (test/dimensional/value/d-fold d-value '(ordered)
+                                         (make-d-value '(inherited enumerated)
                                                        '(((ie 0 . 1) (a)) ((ie 1 . 2) (a)) ((ie 0 . 1) (b)) ((ie 1 . 2) (b)))
                                                        `(,(+ (* 1 1) (* 1 2))
                                                           ,(+ (* 2 3))
                                                           ,(+ (* 2 4))
                                                           ,(+ (* 1 5) (* 1 6)))))
     (test/dimensional/value/d-fold d-value '(enumerated)
-                                         (make-d-value '(time validity)
+                                         (make-d-value '(inherited ordered)
                                                        '(((ie 0 . 1) (ie 0 . 1)) ((ie 0 . 1) (ie 1 . 2))
                                                          ((ie 1 . 2) (ie 0 . 1)) ((ie 1 . 2) (ie 1 . 2)))
                                                        `(,(+ (* 1 1) (* 1 4))
                                                           ,(+ (* 1 2) (* 1 4))
                                                           ,(+ (* 1 3) (* 1 5))
                                                           ,(+ (* 1 3) (* 1 6)))))
-    (test/dimensional/value/d-fold d-value '(validity enumerated)
-                                         (make-d-value '(time)
+    (test/dimensional/value/d-fold d-value '(ordered enumerated)
+                                         (make-d-value '(inherited)
                                                        '(((ie 0 . 1)) ((ie 1 . 2)))
                                                        `(,(+ (* 1 1) (* 1 2) (* 2 4))
                                                           ,(+ (* 2 3) (* 1 5) (* 1 6)))))
-    (test/dimensional/value/d-fold d-value '(time enumerated)
-                                         (make-d-value '(validity)
+    (test/dimensional/value/d-fold d-value '(inherited enumerated)
+                                         (make-d-value '(ordered)
                                                        '(((ie 0 . 1)) ((ie 1 . 2)))
                                                        `(,(+ (* 1 1) (* 1 3) (* 1 4) (* 1 5))
                                                           ,(+ (* 1 2) (* 1 3) (* 1 4) (* 1 6)))))
-    (test/dimensional/value/d-fold d-value '(time validity)
+    (test/dimensional/value/d-fold d-value '(inherited ordered)
                                          (make-d-value '(enumerated)
                                                        '(((a)) ((b)))
                                                        `(,(+ (* 1 1) (* 1 2) (* 2 3))
                                                           ,(+ (* 2 4) (* 1 5) (* 1 6)))))
-    (test/dimensional/value/d-fold d-value '(time validity enumerated)
+    (test/dimensional/value/d-fold d-value '(inherited ordered enumerated)
                                          (make-d-value '()
                                                        '(())
                                                        `(,(+ (* 1 1) (* 1 2) (* 2 3) (* 2 4) (* 1 5) (* 1 6)))))))
