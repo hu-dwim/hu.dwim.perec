@@ -145,20 +145,12 @@
             (declare (dynamic-extent rdbms-values))
             (case (funcall writer value rdbms-values 0)
               (#.+type-error-marker+ (error "~S is not a valid value for type ~S." value type))
-              ;; KLUDGE: oddly enough, the current writer for boolean -> sql-boolean-type mapping
-              ;; creates "TRUE" or "FALSE". (should be #t or #f)
-              (t (bind ((rdbms-values (iter (for rdbms-type in rdbms-types)
-                                            (for rdbms-value in-vector rdbms-values)
-                                            (collect (if (and (typep rdbms-type 'sql-boolean-type)
-                                                              (typep rdbms-value 'string))
-                                                         (if value #t #f)
-                                                         rdbms-value)))))
-                   (ecase column-count
-                     (1 rdbms-values)
-                     (2 (cond
-                          ((persistent-class-type-p type) (list (first rdbms-values))) ; only id column used
-                          ((tagged-p mapping) (nreverse rdbms-values)) ; TAG value is the second
-                          (t (error "unsupported multi-column type: ~A" type)))))))))))))
+              (t (ecase column-count
+                   (1 (list (elt rdbms-values 0)))
+                   (2 (cond
+                        ((persistent-class-type-p type) (list (elt rdbms-values 0))) ; only id column used
+                        ((tagged-p mapping) (list (elt rdbms-values 1) (elt rdbms-values 0))) ; TAG value is the second
+                        (t (error "unsupported multi-column type: ~A" type))))))))))))
 
 ;;;
 ;;; Conversion between lisp and sql values

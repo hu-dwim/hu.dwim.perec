@@ -676,25 +676,47 @@
   (declare (persistent-type (forall ((a string)) (function (a integer-32 &optional integer-32) a))))
   (sql-subseq string start end))
 
-(def query-function like (string pattern &key (start 0) end (case-sensitive-p #t))
+(def (query-function :lisp-args #t) like (string pattern &key (start 0) end (case-sensitive-p #t))
   ""
   (declare (persistent-type (forall ((a (or null string)))
                                     (function (a a &key (:start integer-32)
                                                  (:end (or null integer-32)) (:case-sensitive-p boolean))
                                               boolean))))
-  (sql-like :string (sql-subseq string start end)
-            :pattern pattern
-            :case-sensitive-p (sql-boolean->boolean case-sensitive-p)))
+  (bind ((string (syntax-to-sql string))
+         (pattern (syntax-to-sql pattern))
+         (start (typecase start
+                  (syntax-object (syntax-to-sql start))
+                  (t start)))
+         (end (typecase end
+                (syntax-object (syntax-to-sql end))
+                (t end)))
+         (case-sensitive-p (typecase case-sensitive-p
+                             (literal-value (value-of case-sensitive-p))
+                             (t case-sensitive-p))))
+    (sql-like :string (sql-subseq string start end)
+              :pattern pattern
+              :case-sensitive-p case-sensitive-p)))
 
-(def query-function re-like (string pattern &key (start 0) end (case-sensitive-p #t))
+(def (query-function :lisp-args #t) re-like (string pattern &key (start 0) end (case-sensitive-p #t))
   ""
   (declare (persistent-type (forall ((a (or null string)))
                                     (function (a a &key (:start integer-32)
                                                  (:end (or null integer-32)) (:case-sensitive-p boolean))
                                               boolean))))
-  (sql-regexp-like :string (sql-subseq string start end)
-                   :pattern pattern
-                   :case-sensitive-p (sql-boolean->boolean case-sensitive-p)))
+  (bind ((string (syntax-to-sql string))
+         (pattern (syntax-to-sql pattern))
+         (start (typecase start
+                  (syntax-object (syntax-to-sql start))
+                  (t start)))
+         (end (typecase end
+                (syntax-object (syntax-to-sql end))
+                (t end)))
+         (case-sensitive-p (typecase case-sensitive-p
+                             (literal-value (value-of case-sensitive-p))
+                             (t case-sensitive-p))))
+    (sql-regexp-like :string (sql-subseq string start end)
+                    :pattern pattern
+                    :case-sensitive-p case-sensitive-p)))
 
 
 ;;;

@@ -640,13 +640,6 @@ value is equal, when they represent the NIL lisp value)."
 (defun sql-substring (str start length)
   (sql-function-call :name "substr" :arguments (list str start length)))
 
-(defun sql-boolean->boolean (val)
-  "TODO eliminate this fn"
-  (typecase val
-    (null #f)
-    (sql-literal (cl-rdbms::value-of val))
-    (t #t)))
-
 (defun sql-length (str)
   (sql-function-call :name "length" :arguments (list str)))
 
@@ -718,18 +711,8 @@ value is equal, when they represent the NIL lisp value)."
 (defun sql-null-literal ()
   (sql-literal :value :null))
 
-(defun sql-false-literal-p (sql)
-  (and (typep sql 'sql-literal)
-       (eq (rdbms::value-of sql) #f)
-       (typep (rdbms::type-of sql) 'rdbms::sql-boolean-type)))
-
 (defun sql-false-literal ()
   (sql-literal :value #f :type (make-instance 'cl-rdbms::sql-boolean-type)))
-
-(defun sql-true-literal-p (sql)
-  (and (typep sql 'sql-literal)
-       (eq (rdbms::value-of sql) #t)
-       (typep (rdbms::type-of sql) 'rdbms::sql-boolean-type)))
 
 (defun sql-true-literal ()
   (sql-literal :value #t :type (make-instance 'cl-rdbms::sql-boolean-type)))
