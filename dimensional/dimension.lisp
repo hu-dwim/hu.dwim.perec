@@ -185,7 +185,9 @@
                                   `(make-dimension-coordinate-range ,dimension-variable-name ,default-coordinate-begin ,default-coordinate-end)
                                   +default-coordinate-marker+))
                          (def (function e) ,call-with-fn-name (,name thunk)
-                           (bind ((,coordinate-name ,name))
+                           (bind ((,coordinate-name (if (coordinate-range-p ,name)
+                                                        ,name
+                                                        (make-dimension-coordinate-range ,dimension-variable-name ,name))))
                              (funcall thunk)))
                          (def (macro e) ,with-range-macro-name (,begin-variable-name ,end-variable-name &body forms)
                            `(,',call-with-range-fn-name
