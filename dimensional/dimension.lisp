@@ -216,16 +216,26 @@
 (def (definer e :available-flags "ioed") dimensional-function ()
   (bind ((name (elt -whole- 2))
          (arguments (elt -whole- 3))
+         (key-start-position (position '&key arguments))
+         (key-end-position (position '&aux arguments))
+         (key-arguments (when key-start-position
+                          (subseq arguments (1+ key-start-position) key-end-position)))
+         (coordinates-start-position (aprog1 (position '&coordinate arguments) (assert it)))
+         (coordinates-end-position (or key-start-position key-end-position))
+         (coordinate-arguments (subseq arguments (1+ coordinates-start-position) coordinates-end-position))
+         (new-key-arguments (mapcar (lambda (dimension-name)
+                                      (bind ((coordinate-name (format-symbol *package* "*~A*" dimension-name)))
+                                        `((,(intern (symbol-name dimension-name) :keyword)
+                                            ,coordinate-name)
+                                          ,coordinate-name)))
+                                    coordinate-arguments))
          (whole (list* 'def 'dimensional-function name
-                       (bind ((dimensions-position (position '&coordinate arguments)))
-                         (assert dimensions-position)
-                         (append (subseq arguments 0 dimensions-position)
-                                 (list* '&key (mapcar (lambda (dimension-name)
-                                                        (bind ((coordinate-name (format-symbol *package* "*~A*" dimension-name)))
-                                                          `((,(intern (symbol-name dimension-name) :keyword)
-                                                              ,coordinate-name)
-                                                            ,coordinate-name)))
-                                                      (subseq arguments (1+ dimensions-position))))))
+                       (append (subseq arguments 0 coordinates-start-position)
+                               (list '&key)
+                               new-key-arguments
+                               key-arguments
+                               (when key-end-position
+                                 (subseq arguments key-end-position)))
                        (nthcdr 4 -whole-))))
     (cl-def::function-like-definer -definer- 'defun whole -environment- -options-)))
 
