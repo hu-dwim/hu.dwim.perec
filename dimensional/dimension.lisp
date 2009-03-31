@@ -318,7 +318,7 @@
 
 (def (with-macro e) with-coordinates (dimensions coordinates)
   (progv
-      (mapcar #'coordinate-name-of dimensions)
+      (mapcar [coordinate-name-of (lookup-dimension !1)] dimensions)
       coordinates
     (-body-)))
 
