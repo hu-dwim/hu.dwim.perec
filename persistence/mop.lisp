@@ -49,8 +49,8 @@
   (mapc #L(pushnew association (depends-on-of !1))
         (associated-classes-of association)))
 
-(def method validate-superclass ((class persistent-class) (superclass standard-class))
-  t)
+(def method validate-superclass ((subclass persistent-class) (superclass standard-class))
+  (subtypep (class-of subclass) (class-of superclass)))
 
 (def method direct-slot-definition-class ((class persistent-class)
                                          &rest args &key instance persistent association &allow-other-keys)

@@ -9,12 +9,6 @@
 ;;;;;;;;;;;;;;;
 ;;; MOP methods 
 
-(def method validate-superclass ((class persistent-class-d) (superclass persistent-class))
-  t)
-
-(def method validate-superclass ((class persistent-class-h) (superclass persistent-class))
-  t)
-
 (def method direct-slot-definition-class ((class persistent-class-d)
                                          &key instance persistent association dimensions &allow-other-keys)
   (cond (instance
