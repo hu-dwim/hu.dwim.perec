@@ -49,9 +49,6 @@
   (mapc #L(pushnew association (depends-on-of !1))
         (associated-classes-of association)))
 
-(def method validate-superclass ((class standard-class) (superclass persistent-class))
-  t)
-
 (def method validate-superclass ((class persistent-class) (superclass standard-class))
   t)
 
