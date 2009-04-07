@@ -623,7 +623,7 @@
                                   dimensions choices)
                           (mapcar [random-coordinate !1 for-writing-p]
                                   dimensions))))
-    (call-with-coordinates dimensions coordinates thunk)))
+    (call-with-coordinates thunk dimensions coordinates)))
 
 (def macro with-random-coordinates (dimensions (&rest options) &body forms)
   `(call-with-random-coordinates
