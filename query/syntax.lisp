@@ -272,7 +272,7 @@ Be careful when using in different situations, because it modifies *readtable*."
     (bind ((form (substitute-syntax (form-of unparsed) subs)))
       (if (eq form (form-of unparsed))
           unparsed
-          (aprog1 (copy-shallow form)
+          (aprog1 (copy-shallow unparsed)
             (setf (form-of it) form)))))
 
   (:method ((compound compound-form) (subs cons))
