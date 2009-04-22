@@ -4,7 +4,6 @@
 ;;;
 ;;; See LICENCE for details.
 
-
 (in-package :cl-perec)
 
 ;;(declaim-debug)
