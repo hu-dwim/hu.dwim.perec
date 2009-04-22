@@ -31,7 +31,20 @@
          ,@body)
        (values)))
 
-(defun setup-readtable ()
+(def constant +encoding+ :utf-8)
+
+(def special-variable *xml-stream*)
+
+(def function make-xml-transformation-pipeline ()
+  (cl-quasi-quote-xml:make-quasi-quoted-xml-to-form-emitting-transformation-pipeline
+   '*xml-stream*
+   :binary t
+   :encoding +encoding+
+   :with-inline-emitting t
+   :indentation-width 2))
+
+(def function setup-readtable ()
   (enable-sharp-boolean-syntax)
   (enable-sharp-l-syntax)
-  (enable-lambda-with-bang-args-syntax :start-character #\[ :end-character #\]))
+  (enable-lambda-with-bang-args-syntax :start-character #\[ :end-character #\])
+  (cl-quasi-quote-xml:enable-quasi-quoted-xml-syntax :transformation-pipeline (make-xml-transformation-pipeline)))
