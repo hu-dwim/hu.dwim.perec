@@ -9,7 +9,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CLOS MOP extension for association ends
 
-(defmethod propagate-cache-changes ((class persistent-class)
+(def method propagate-cache-changes ((class persistent-class)
                                     (instance persistent-object)
                                     (slot persistent-association-end-effective-slot-definition) new-value)
   (bind ((association-kind (association-kind-of (association-of slot))))
@@ -52,7 +52,7 @@
                (setf (underlying-slot-value child other-slot-name) instance))))))))
 
 ;; TODO: this is hell slow for huge transactions, what if this kind of caching is turned off after some limit?
-(defun invalidate-cached-1-n-association-end-set-slot (slot)
+(def function invalidate-cached-1-n-association-end-set-slot (slot)
   (bind ((class (slot-definition-class slot)))
     (map-cached-instances
      #L(when (typep !1 class)
@@ -70,24 +70,24 @@
 (defclass* persistent-1-n-association-end-set-container (persistent-association-end-set-container)
   ())
 
-(defmethod insert-item :after ((set persistent-1-n-association-end-set-container) item)
+(def method insert-item :after ((set persistent-1-n-association-end-set-container) item)
   (bind ((slot (slot-of set))
          (class (class-of item))
          (other-slot (other-effective-association-end-for class slot)))
     (setf (underlying-slot-value-using-class class item other-slot) (instance-of set))))
 
-(defmethod delete-item :after ((set persistent-1-n-association-end-set-container) item)
+(def method delete-item :after ((set persistent-1-n-association-end-set-container) item)
   (bind ((class (class-of item))
          (other-slot (other-effective-association-end-for class (slot-of set))))
     (setf (underlying-slot-value-using-class class item other-slot) nil)))
 
-(defmethod empty! :after ((set persistent-1-n-association-end-set-container))
+(def method empty! :after ((set persistent-1-n-association-end-set-container))
   (invalidate-cached-1-n-association-end-set-slot (other-association-end-of (slot-of set))))
 
-(defmethod list-of ((set persistent-1-n-association-end-set-container))
+(def method list-of ((set persistent-1-n-association-end-set-container))
   (restore-1-n-association-end-set (instance-of set) (slot-of set)))
 
-(defmethod (setf list-of) (new-value (set persistent-1-n-association-end-set-container))
+(def method (setf list-of) (new-value (set persistent-1-n-association-end-set-container))
   (store-1-n-association-end-set (instance-of set) (slot-of set) new-value))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -96,10 +96,10 @@
 (defclass* persistent-m-n-association-end-set-container (persistent-association-end-set-container)
   ())
 
-(defmethod insert-item ((set persistent-m-n-association-end-set-container) item)
+(def method insert-item ((set persistent-m-n-association-end-set-container) item)
   (insert-into-m-n-association-end-set (instance-of set) (slot-of set) item))
 
-(defmethod delete-item ((set persistent-m-n-association-end-set-container) item)
+(def method delete-item ((set persistent-m-n-association-end-set-container) item)
   (bind ((slot (slot-of set))
          (other-slot (other-association-end-of slot))
          (instance (instance-of set)))
@@ -108,7 +108,7 @@
                     (sql-and (make-oid-matcher-where-clause item (oid-column-of slot))
                              (make-oid-matcher-where-clause instance (oid-column-of other-slot))))))
 
-(defmethod find-item ((set persistent-m-n-association-end-set-container) (item persistent-object))
+(def method find-item ((set persistent-m-n-association-end-set-container) (item persistent-object))
   (bind ((association-end (slot-of set))
          (other-association-end (other-association-end-of association-end)))
     (not (zerop (select-count-* (list (name-of (table-of association-end)))
@@ -117,17 +117,17 @@
                                          (make-oid-matcher-where-clause item
                                                                         (oid-column-of association-end))))))))
 
-(defmethod size ((set persistent-m-n-association-end-set-container))
+(def method size ((set persistent-m-n-association-end-set-container))
   (bind ((slot (slot-of set))
          (other-slot (other-association-end-of slot)))
     (select-count-* (list (name-of (table-of (slot-of set))))
                     (make-oid-matcher-where-clause (instance-of set) (oid-column-of other-slot)))))
 
-(defmethod empty! ((set persistent-m-n-association-end-set-container))
+(def method empty! ((set persistent-m-n-association-end-set-container))
   (delete-m-n-association-end-set (instance-of set) (slot-of set)))
 
-(defmethod list-of ((set persistent-m-n-association-end-set-container))
+(def method list-of ((set persistent-m-n-association-end-set-container))
   (restore-m-n-association-end-set (instance-of set) (slot-of set)))
 
-(defmethod (setf list-of) (new-value (set persistent-m-n-association-end-set-container))
+(def method (setf list-of) (new-value (set persistent-m-n-association-end-set-container))
   (store-m-n-association-end-set (instance-of set) (slot-of set) new-value))

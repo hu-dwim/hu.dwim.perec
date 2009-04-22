@@ -15,7 +15,7 @@
 (defptype or (&rest types)
   `(or ,@types))
 
-(defmethod shared-initialize :around ((type or-type) slot-names &rest args &key types &allow-other-keys)
+(def method shared-initialize :around ((type or-type) slot-names &rest args &key types &allow-other-keys)
   (apply #'call-next-method type slot-names :types (mapcar #'parse-type types) (remove-from-plist args :types)))
 
 ;;;;;;;
@@ -26,7 +26,7 @@
 (defptype and (&rest types)
   `(and ,@types))
 
-(defmethod shared-initialize :around ((type and-type) slot-names &rest args &key types &allow-other-keys)
+(def method shared-initialize :around ((type and-type) slot-names &rest args &key types &allow-other-keys)
   (apply #'call-next-method type slot-names :types (mapcar #'parse-type types) (remove-from-plist args :types)))
 
 ;;;;;;;
@@ -37,7 +37,7 @@
 (defptype not (negated-type)
   `(not ,negated-type))
 
-(defmethod shared-initialize :around ((type not-type) slot-names &rest args &key negated-type &allow-other-keys)
+(def method shared-initialize :around ((type not-type) slot-names &rest args &key negated-type &allow-other-keys)
   (apply #'call-next-method type slot-names :negated-type (parse-type negated-type) (remove-from-plist args :negated-type)))
 
 ;;;;;;;;;;;;;
@@ -87,7 +87,7 @@
   (progn
     (defstruct unbound-slot-marker
       "This structure is used for the unbound slot value marker. The type for that marker must be a subtype of t and cannot be a subtype of any other type.")
-    (defmethod make-load-form ((self unbound-slot-marker) &optional environment)
+    (def method make-load-form ((self unbound-slot-marker) &optional environment)
       (declare (ignore environment))
       '%%%+unbound-slot-marker+)
     (make-unbound-slot-marker)))
@@ -103,7 +103,7 @@
   'unbound-reader
   'unbound-writer)
 
-(defmethod compute-type-tag ((type (eql 'unbound)))
+(def method compute-type-tag ((type (eql 'unbound)))
   1)
 
 ;;;;;;;;
@@ -119,7 +119,7 @@
   'null-reader
   'null-writer)
 
-(defmethod compute-type-tag ((type (eql 'null)))
+(def method compute-type-tag ((type (eql 'null)))
   2)
 
 ;;;;;
@@ -143,7 +143,7 @@
 ;;; nil -> (type-error)
 ;;; other -> (byte-vector)
 
-(defun maximum-serialized-size-p (serialized)
+(def function maximum-serialized-size-p (serialized)
   (declare (ignore serialized))
   t)
 
@@ -317,7 +317,7 @@
 ;;; non string -> (type-error)
 
 ;; TODO:
-(defun maximum-length-p (string)
+(def function maximum-length-p (string)
   (declare (ignore string))
   t)
 
@@ -346,7 +346,7 @@
   'symbol->string-writer)
 
 ;; TODO:
-(defun maximum-symbol-name-length-p (symbol)
+(def function maximum-symbol-name-length-p (symbol)
   (declare (ignore symbol))
   t)
 
@@ -367,7 +367,7 @@
 ;;; non date -> (type-error)
 
 ;; TODO:
-(defun date-p (date)
+(def function date-p (date)
   (declare (ignore date))
   t)
 
@@ -385,7 +385,7 @@
 ;;; non date -> (type-error)
 
 ;; TODO:
-(defun time-p (time)
+(def function time-p (time)
   (declare (ignore time))
   t)
 
@@ -414,7 +414,7 @@
 ;;;
 ;;; non string -> (type-error)
 
-(defun duration-p (duration)
+(def function duration-p (duration)
   (declare (ignore duration))
   t)
 
@@ -445,7 +445,7 @@
 ;;; non form -> (type-error)
 
 ;; TODO:
-(defun form-p (form)
+(def function form-p (form)
   (declare (ignore form))
   t)
 

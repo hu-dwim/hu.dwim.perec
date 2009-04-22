@@ -77,21 +77,21 @@
 ;;;;;;;;;;;;;;;
 ;;; persistence
 
-(defun ensure-persistent (instance)
+(def function ensure-persistent (instance)
   (unless (persistent-p instance)
     (make-persistent instance)))
 
-(defun ensure-transient (instance)
+(def function ensure-transient (instance)
   (when (persistent-p instance)
     (make-transient instance)))
 
-(defun make-persistent (instance)
+(def function make-persistent (instance)
   "Makes an instance persistent without making its associated instances persistent."
   (if (persistent-p instance)
       (error "Instance ~A is already persistent, you may want to use ensure-persistent instead" instance)
       (make-persistent-using-class (class-of instance) instance)))
 
-(defun make-transient (instance)
+(def function make-transient (instance)
   "Makes an instance transient without making its associated instances transient."
   (if (persistent-p instance)
       (make-transient-using-class (class-of instance) instance)

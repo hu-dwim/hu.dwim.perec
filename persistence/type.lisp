@@ -377,11 +377,11 @@
                 (symbolp (second transformer))
                 (second transformer))))
     `(progn
-       (defmethod compute-rdbms-types* ((mapped-type (eql ',name)) normalized-type)
+       (def method compute-rdbms-types* ((mapped-type (eql ',name)) normalized-type)
          (declare (ignorable normalized-type))
          (ensure-list ,sql-type))
 
-       (defmethod compute-reader* ((mapped-type (eql ',name)) normalized-type)
+       (def method compute-reader* ((mapped-type (eql ',name)) normalized-type)
          (declare (ignorable normalized-type))
          ,(aif (function-designator-p reader)
                (if *load-as-production-p*
@@ -389,7 +389,7 @@
                    `',it)
                reader))
 
-       (defmethod compute-writer* ((mapped-type (eql ',name)) normalized-type)
+       (def method compute-writer* ((mapped-type (eql ',name)) normalized-type)
          (declare (ignorable normalized-type))
          ,(aif (function-designator-p writer)
                (if *load-as-production-p*

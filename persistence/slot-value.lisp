@@ -228,7 +228,7 @@
 ;;; CLOS MOP slot-value-using-class and friends
 
 ;; TODO: this svuc slows down slot access of standard slots, should solve this some other way (maybe specialize persistent slot?)
-(defmethod slot-value-using-class ((class persistent-class)
+(def method slot-value-using-class ((class persistent-class)
                                    (instance persistent-object)
                                    (slot standard-effective-slot-definition))
   "Prefetches persistent slot values when determining whether the instance is persistent or not."
@@ -306,7 +306,7 @@
       (setf (underlying-slot-boundp-or-value-using-class class instance slot) new-value))
     new-value))
 
-(defmethod slot-value-using-class ((class persistent-class)
+(def method slot-value-using-class ((class persistent-class)
                                    (instance persistent-object)
                                    (slot persistent-effective-slot-definition))
   "Reads the slot value from the database or the cache."
@@ -315,7 +315,7 @@
                                           (slot-unbound class instance (slot-definition-name slot))
                                           !1)))
 
-(defmethod (setf slot-value-using-class) (new-value
+(def method (setf slot-value-using-class) (new-value
                                           (class persistent-class)
                                           (instance persistent-object)
                                           (slot persistent-effective-slot-definition))
@@ -326,13 +326,13 @@
                      (unbound-slot-marker-p new-value)))))
   (setf (slot-boundp-or-value-using-class class instance slot) new-value))
 
-(defmethod slot-boundp-using-class ((class persistent-class)
+(def method slot-boundp-using-class ((class persistent-class)
                                     (instance persistent-object)
                                     (slot persistent-effective-slot-definition))
   "Reads boundness from the database or the cache."
   (slot-boundp-or-value-using-class class instance slot #L(not (unbound-slot-marker-p !1))))
 
-(defmethod slot-makunbound-using-class ((class persistent-class)
+(def method slot-makunbound-using-class ((class persistent-class)
                                         (instance persistent-object)
                                         (slot persistent-effective-slot-definition))
   "Writes boundness to the database and the cache."
@@ -340,7 +340,7 @@
   instance)
 
 ;; TODO: add tests
-(defmethod update-instance-for-different-class :after ((previous-instance persistent-object)
+(def method update-instance-for-different-class :after ((previous-instance persistent-object)
                                                        (current-instance persistent-object)
                                                        &rest initargs &key &allow-other-keys)
   (declare (ignore initargs))

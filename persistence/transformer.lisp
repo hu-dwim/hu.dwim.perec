@@ -108,7 +108,7 @@
 ;;;;;;;;;;;;;;
 ;;; Serialized
 
-(defvar +persistent-object-by-oid-code+ #x60)
+(def constant +persistent-object-by-oid-code+ #x60)
 
 (def (function o) deserializer-mapper (code context)
   (if (eq code +persistent-object-by-oid-code+)
