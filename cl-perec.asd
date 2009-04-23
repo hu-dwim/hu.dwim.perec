@@ -166,16 +166,22 @@
              (:file "instance-cache" :depends-on ("slot-value"))))))
 
 (defsystem-connection cl-perec-and-swank
-  :requires (:cl-perec :swank #:cl-syntax-sugar-and-swank)
+  :requires (:cl-perec :swank :cl-syntax-sugar-and-swank)
   :components
   ((:module "integration"
-            :components ((:file "swank-integration")))))
+            :components ((:file "swank")))))
 
 (defsystem-connection cl-perec-and-iolib
   :requires (:cl-perec :iolib.sockets)
   :components
   ((:module "integration"
-            :components ((:file "iolib-integration")))))
+            :components ((:file "iolib")))))
+
+(defsystem-connection cl-perec-and-cl-quasi-quote-xml
+  :requires (:cl-perec :cl-quasi-quote-xml )
+  :components
+  ((:module "integration"
+            :components ((:file "cl-quasi-quote-xml")))))
 
 (defmethod perform ((op test-op) (system (eql (find-system :cl-perec))))
   (operate 'load-op :cl-perec-test)
