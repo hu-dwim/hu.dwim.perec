@@ -9,6 +9,17 @@
 ;;;;;;
 ;;; XML
 
+(enable-sharp-boolean-syntax)
+(cl-quasi-quote-xml:enable-quasi-quoted-xml-syntax
+ :transformation-pipeline (cl-quasi-quote-xml:make-quasi-quoted-xml-to-form-emitting-transformation-pipeline
+                           '*xml-stream*
+                           :binary t
+                           :encoding +encoding+
+                           :with-inline-emitting t
+                           :indentation-width 2))
+
+(def special-variable *xml-stream*)
+
 (def method export-persistent-instances (thing (format (eql :xml)) stream &key &allow-other-keys)
   (bind ((*xml-stream* stream)
          (seen-set (make-hash-table)))
