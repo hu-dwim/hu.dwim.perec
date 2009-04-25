@@ -122,7 +122,9 @@
   (:documentation "Checks whether the constraint is violated in the current transaction and signals constraint violation errors.")
 
   (:method ((constraint persistent-constraint))
-    (map nil [error (make-constraint-violation constraint !1)]
+    (map nil (lambda (result)
+               (cerror "Ignore constraint violation and mark transaction for rollback only" (make-constraint-violation constraint result))
+               (mark-transaction-for-rollback-only))
          (execute-query (query-of constraint)))))
 
 (def (function e) check-all-constraints (&key (signal-constraint-violations *signal-constraint-violations*))
