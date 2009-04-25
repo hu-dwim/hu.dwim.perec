@@ -187,14 +187,14 @@
 		  (make-oid-matcher-where-clause instance (oid-column-of (other-association-end-of slot)))))
 
 (def (function o) insert-into-m-n-association-end-set (instance slot value)
-  (check-slot-value-type instance slot value)
-  (bind ((other-slot (other-association-end-of slot))
-         (rdbms-values (make-array (* 2 +oid-column-count+))))
-    (object-writer value rdbms-values 0)
-    (object-writer instance rdbms-values +oid-column-count+)
-    (insert-record (name-of (table-of slot))
-                   (append (columns-of slot) (columns-of other-slot))
-                   rdbms-values)))
+  (unless (check-slot-value-type instance slot value)
+    (bind ((other-slot (other-association-end-of slot))
+           (rdbms-values (make-array (* 2 +oid-column-count+))))
+      (object-writer value rdbms-values 0)
+      (object-writer instance rdbms-values +oid-column-count+)
+      (insert-record (name-of (table-of slot))
+                     (append (columns-of slot) (columns-of other-slot))
+                     rdbms-values))))
 
 (def (function o) store-m-n-association-end-set (instance slot value)
   "Stores the non lazy list association end value without local side effects into the database."
@@ -202,8 +202,8 @@
   (when value
     (mapc #L(progn
               ;; TODO: this is incorrect, add test?
-              (check-slot-value-type instance slot !1)
-              (insert-into-m-n-association-end-set instance slot !1))
+              (unless (check-slot-value-type instance slot !1)
+                (insert-into-m-n-association-end-set instance slot !1)))
           value)))
 
 (def generic store-slot (class instance slot value)
@@ -213,8 +213,7 @@
     ;; TODO this set-type-p* calls subtypep, which is expensive. search this file for other occurrances, too.
     (if (set-type-p* (canonical-type-of slot))
         (store-slot-set instance slot value)
-        (progn
-          (check-slot-value-type instance slot value)
+        (unless (check-slot-value-type instance slot value)
           (when-bind columns (columns-of slot)
             (bind ((rdbms-values (make-array (length (the list columns)))))
               (store-slot-value instance slot value rdbms-values 0)
@@ -229,8 +228,7 @@
     (ecase (association-kind-of (association-of slot))
       (:1-1
        (if (secondary-association-end-p slot)
-           (progn
-             (check-slot-value-type instance slot value)
+           (unless (check-slot-value-type instance slot value)
              (when-bind other-instance (and (persistent-p instance)
                                             (slot-boundp-using-class (class-of instance) instance slot)
                                             (slot-value-using-class (class-of instance) instance slot))
@@ -266,7 +264,8 @@
   (:method ((class persistent-class) (instance persistent-object))
     (bind ((prefetched-slots (prefetched-slots-of (class-of instance)))
            (tables (delete-duplicates (mapcar #'table-of prefetched-slots)))
-           (oid (oid-of instance)))    
+           (oid (oid-of instance))
+           (error? #f))
       (dolist (table tables)
         (bind ((slots (collect-if #L(eq (table-of !1) table) prefetched-slots))
                (slot-values (mapcar #L(underlying-slot-boundp-or-value-using-class (class-of instance) instance !1) slots))
@@ -278,14 +277,17 @@
           (iter (for slot :in slots)
                 (for slot-value :in slot-values)
                 (for index :initially 0 :then (the fixnum (+ index (length (columns-of slot)))))
-                (check-slot-value-type instance slot slot-value)
-                (store-slot-value instance slot slot-value rdbms-values index))
-          (if (persistent-p instance)
-              (update-records (name-of table) columns rdbms-values (make-oid-matcher-where-clause instance))
-              (insert-record (name-of table) (append oid-columns columns) (concatenate 'vector oid-values rdbms-values)))))
+                (setf error? (or (check-slot-value-type instance slot slot-value) error?))
+                (unless error?
+                  (store-slot-value instance slot slot-value rdbms-values index)))
+          (unless error?
+            (if (persistent-p instance)
+                (update-records (name-of table) columns rdbms-values (make-oid-matcher-where-clause instance))
+                (insert-record (name-of table) (append oid-columns columns) (concatenate 'vector oid-values rdbms-values))))))
       (unless (persistent-p instance)
         (dolist (table (set-difference (data-tables-of (class-of instance)) tables))
-          (insert-record (name-of table) (list (oid-column-of table)) (oid->rdbms-values oid)))))))
+          (unless error?
+            (insert-record (name-of table) (list (oid-column-of table)) (oid->rdbms-values oid))))))))
 
 (def (function o) store-all-slots (instance)
   "Stores all slots wihtout local side effects into the database."

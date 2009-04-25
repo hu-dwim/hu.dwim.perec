@@ -170,7 +170,7 @@
 
 ;; TODO: take care about performance
 ;; TODO: when type-check is :on-commit checks during the transaction should be debug-only and at the end do the real type-check
-(def (function io) check-slot-value-type (instance slot slot-value &optional (on-commit #f))
+(def (function o) check-slot-value-type (instance slot slot-value &optional (on-commit #f))
   (when *type-check-slot-values*
     (bind ((canonical-type (canonical-type-of slot))
            (type (if on-commit
@@ -180,7 +180,9 @@
                            (set-type-class-for canonical-type)
                            type)))
       (unless (typep slot-value check-type)
-        (cerror "Ignore type error" 'slot-type-error :instance instance :slot slot :datum slot-value :expected-type type)))))
+        (cerror "Ignore type error and mark transaction for rollback only" 'slot-type-error :instance instance :slot slot :datum slot-value :expected-type type)
+        (mark-transaction-for-rollback-only)
+        #t))))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; Canonical type
