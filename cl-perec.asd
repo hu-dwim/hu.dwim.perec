@@ -144,7 +144,8 @@
              (:file "partial-eval" :depends-on ("query"))
              (:file "mapping" :depends-on ("query" "sql" "partial-eval" "runtime"))
              (:file "plan" :depends-on ("mapping" "result-set" "runtime"))
-             (:file "compiler" :depends-on ("type" "copy" "plan" "macro"))))
+             (:file "compiler" :depends-on ("type" "copy" "plan" "macro"))
+             (:file "constraint" :depends-on ("compiler"))))
    (:module "dimensional"
             :depends-on ("persistence" "query")
             :components
