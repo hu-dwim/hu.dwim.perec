@@ -342,10 +342,10 @@
 (def special-variable *persistent-associations* (make-hash-table)
   "A mapping from association names to association instances.")
 
-(def function find-association (name)
+(def (function e) find-association (name)
   (gethash name *persistent-associations*))
 
-(def function (setf find-association) (new-value name)
+(def (function e) (setf find-association) (new-value name)
   (setf (gethash name *persistent-associations*) new-value))
 
 (def function finalize-persistent-associations ()

@@ -11,10 +11,10 @@
 
 (def special-variable *persistent-constraints* (make-hash-table))
 
-(def function find-constraint (name)
+(def (function e) find-constraint (name)
   (gethash name *persistent-constraints*))
 
-(def function (setf find-constraint) (new-value name)
+(def (function e) (setf find-constraint) (new-value name)
   (setf (gethash name *persistent-constraints*) new-value))
 
 (defcclass* persistent-constraint ()
