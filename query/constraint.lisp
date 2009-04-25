@@ -140,4 +140,5 @@
             (body))))))
 
 (def method commit-transaction :before (database (transaction transaction-mixin))
-  (check-all-constraints))
+  (unless *ignore-constraints*
+    (check-all-constraints)))
