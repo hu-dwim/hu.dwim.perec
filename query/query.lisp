@@ -403,46 +403,31 @@
              (bind ((found-clauses (remove clause-name clauses :key #'first :test-not #'eql)))
                (case (length found-clauses)
                  (0 (unless optionalp
-                      (error 'missing-query-clause-error :form form :clause clause-name)))
+                      (missing-query-clause-error form clause-name)))
                  (1 (first found-clauses))
-                 (t (error 'duplicated-query-clause-error :form form :clause clause-name)))))
+                 (t (duplicated-query-clause-error form clause-name)))))
            (check-where-clause (clause)
              (when (and clause (not (length= 1 (rest clause))))
-               (error 'malformed-query-clause-error
-                      :form form
-                      :clause-form clause
-                      :detail "One condition expected in WHERE clause."))
+               (malformed-query-clause-error form clause "One condition expected in WHERE clause."))
              clause)
            (check-group-by-clause (clause)
              clause)
            (check-having-clause (clause)
              (when (and clause (not (length= 1 (rest clause))))
-               (error 'malformed-query-clause-error
-                      :form form
-                      :clause clause
-                      :detail "One condition expected in HAVING clause."))
+               (malformed-query-clause-error form clause "One condition expected in HAVING clause."))
              clause)
            (check-order-by-clause (clause)
              (when clause
                (unless (evenp (length (rest clause)))
-                 (error 'malformed-query-clause-error
-                        :form form
-                        :clause clause
-                        :detail "Plist expected in the body of the ORDER-BY clause."))
+                 (malformed-query-clause-error form clause "Plist expected in the body of the ORDER-BY clause."))
                (iter (for (dir expr) on (rest clause) by #'cddr)
                      (unless (member dir '(:asc :ascending :desc :descending))
-                       (error 'malformed-query-clause-error
-                              :form form
-                              :clause clause
-                              :detail ":ASCENDING or :DESCENDING expected as sorting directions."))))
+                       (malformed-query-clause-error form clause ":ASCENDING or :DESCENDING expected as sorting directions."))))
              clause)
            (check-offset-limit-clause (clause)
              (when clause
                (unless (length= 1 (rest clause))
-                 (error 'malformed-query-clause-error
-                        :form form
-                        :clause clause
-                        :detail "OFFSET/LIMIT expect one integer argument.")))
+                 (malformed-query-clause-error form clause "OFFSET/LIMIT expect one integer argument.")))
              clause)
            (parse-select (options select-list clauses)
              (remf options :compile-at-macroexpand)
@@ -460,9 +445,7 @@
                                                          having-clause order-by-clause offset-clause
                                                          limit-clause))))
                (when extra-clauses
-                 (error 'unrecognized-query-clause-error
-                        :form form
-                        :clause (first (first extra-clauses))))
+                 (unrecognized-query-clause-error form (first (first extra-clauses))))
 
                `(:query-variables ,query-variables
                                   :asserts ,asserts
@@ -483,9 +466,7 @@
                     (extra-clauses (remove from-clause (remove where-clause clauses))))
 
                (when extra-clauses
-                 (error 'unrecognized-query-clause-error
-                        :form form
-                        :clause (first (first extra-clauses))))
+                 (unrecognized-query-clause-error form (first (first extra-clauses))))
 
                `(:query-variables ,query-variables
                                   :asserts ,asserts
@@ -501,9 +482,7 @@
                     (asserts (make-asserts where-clause (list* update-list (rest from-clause))))
                     (extra-clauses (set-difference clauses (list set-clause from-clause where-clause))))
                (when extra-clauses
-                 (error 'unrecognized-query-clause-error
-                        :form form
-                        :clause (first (first extra-clauses))))
+                 (unrecognized-query-clause-error form (first (first extra-clauses))))
 
                `(:query-variables ,query-variables
                                   :asserts ,asserts

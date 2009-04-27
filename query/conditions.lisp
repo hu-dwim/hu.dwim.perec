@@ -24,12 +24,18 @@
                (format stream "Missing ~:@(~A~) clause:~%~%In query:~%~W"
                        clause form)))))
 
+(def function missing-query-clause-error (form clause &optional detail)
+  (error 'missing-query-clause-error :form form :clause clause :detail detail))
+
 (defcondition* unrecognized-query-clause-error (query-syntax-error)
   ((clause))
   (:report (lambda (condition stream)
              (with-slots (form clause) condition
                (format stream "Unrecognized clause (~:@(~A~)):~%~%In query:~%~W"
                        clause form)))))
+
+(def function unrecognized-query-clause-error (form clause &optional detail)
+  (error 'unrecognized-query-clause-error :form form :clause clause :detail detail))
 
 (defcondition* duplicated-query-clause-error (query-syntax-error)
   ((clause))
@@ -38,12 +44,18 @@
                (format stream "Duplicated ~:@(~A~) clause:~%~%In query:~%~W"
                        clause form)))))
 
+(def function duplicated-query-clause-error (form clause &optional detail)
+  (error 'duplicated-query-clause-error :form form :clause clause :detail detail))
+
 (defcondition* malformed-query-clause-error (query-syntax-error)
   ((clause-form))
   (:report (lambda (condition stream)
              (with-slots (form detail clause-form) condition
                (format stream "Malformed clause~@[ (~A)~]: ~S~%~%In query:~%~W"
                        detail clause-form form)))))
+
+(def function malformed-query-clause-error (form clause-form &optional detail)
+  (error 'malformed-query-clause-error :form form :clause-form clause-form :detail detail))
 
 (defcondition* query-runtime-error (query-error)
   ((query)))
