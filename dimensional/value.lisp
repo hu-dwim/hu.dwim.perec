@@ -976,7 +976,7 @@
         (finally (return result))))
 
 (def (function e) overlapping-coordinate-list-self-intersection (dimension coordinate-list)
-  (reduce (lambda (coordinate-list-1 coordinate-list-2)
+  (reduce (lambda (&optional coordinate-list-1 coordinate-list-2)
             (split-coordinate-lists dimension coordinate-list-1 coordinate-list-2))
           (mapcar 'list coordinate-list)))
 
