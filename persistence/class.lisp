@@ -311,6 +311,23 @@
   (awhen (all-instances-data-view-of class)
     (ensure-exported it)))
 
+(def function views-of (class)
+  (prog1-bind views nil
+    (flet ((collect-if-not-nil (view) (when view (push view views))))
+      (collect-if-not-nil (direct-instances-identity-view-of class))
+      (collect-if-not-nil (direct-instances-prefetch-view-of class))
+      (collect-if-not-nil (direct-instances-data-view-of class))
+      (collect-if-not-nil (all-instances-identity-view-of class))
+      (collect-if-not-nil (all-instances-prefetch-view-of class))
+      (collect-if-not-nil (all-instances-data-view-of class)))))
+
+(def function drop-views (views)
+  (mapc
+   (lambda (view)
+     (drop-view (name-of view))
+     (invalidate-computed-slot view 'ensure-exported))
+   views))
+
 ;;;;;;;;;;;
 ;;; Mapping
 
