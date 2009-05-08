@@ -885,6 +885,22 @@
   (debug-only (assert-valid-d-value d-value))
   d-value)
 
+(def (function e) remove-dimensions (d-value dimensions)
+  (debug-only (assert-valid-d-value d-value))
+  (bind ((original-dimensions (dimensions-of d-value)))
+    (iter (for c-value :in (c-values-of d-value))
+          (setf (coordinates-of c-value)
+                (iter (for dimension :in original-dimensions)
+                      (for coordinate :in (coordinates-of c-value))
+                      (unless (member dimension dimensions)
+                        (collect coordinate)))))
+    (setf (dimensions-of d-value)
+          (iter (for dimension :in (dimensions-of d-value))
+                (unless (member dimension dimensions)
+                  (collect dimension)))))
+  (debug-only (assert-valid-d-value d-value))
+  d-value)
+
 ;;;;;;
 ;;; Iteration support
 
