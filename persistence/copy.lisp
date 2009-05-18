@@ -27,6 +27,9 @@
                                               (setf (slot-value-using-class class copy slot)
                                                     (copy-one !1 hash-table))))))))
 
+(define-copy-method (copy-one copy-persistent-instance) ((value timestamp) htable)
+  value)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Copy into transaction cache
 
