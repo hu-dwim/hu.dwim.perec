@@ -1,20 +1,23 @@
-1. PEREC
---------
+-*- outline -*-
 
-An object relational mapping from CLOS to RDBMS.
+* cl-perec: an Object Relational Mapping (ORM) from CLOS to RDBMS
 
-If you want to play with it using PostgreSQL:
+** Environment for the test suite (using the PostgreSQL backend)
+
+Create the database and user:
 
 $ createdb perec-test
 $ createuser -P perec-test
 
-When asked for the password enter 'test123'.
+Give "test123" as password.
 
-Load the test environment by:
+** Running the tests using the PostgreSQL backend
 
-(asdf:operate 'asdf:load-op :cl-perec-test.postgresql)
+(asdf:operate 'asdf:test-op :cl-perec-test.postgresql)
 
-Some simple stuff:
+or use 'asdf:load-op to merely load it (including the environment setup).
+
+** Some simple examples
 
 (defpclass foo ()
   ((bar :type integer-16)))
@@ -27,8 +30,8 @@ Some simple stuff:
     (from (i foo))
     (where (= 1 (bar-of i)))))
 
-If just want to load the system without the test environment:
+** Loading the system without the test environment
 
 (asdf:operate 'asdf:load-op :cl-perec)
 
-For PostgreSQL specific configuration see cl-perec-test.postgresql.asd file.
+For some details on how to set up the PostgreSQL specific configuration see the cl-perec-test.postgresql.asd file.
