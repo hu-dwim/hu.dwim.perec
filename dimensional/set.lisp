@@ -233,7 +233,7 @@
             (unless (member (apply-key* key elt) list2 :key key :test test)
               (return-from subsetp* #f)))
           #t)
-          
+
         (let ((table (make-hash-table :test test :size n2)))
           (dolist (elt list2)
             (setf (gethash (apply-key* key elt) table) elt))
@@ -244,6 +244,53 @@
                 (return-from subsetp* #f))))
           #t))))
 
+
+(def function sorted-set-union (list1 list2 compare)
+  (iter (cond
+          ((and list1 list2)
+           (ecase (funcall compare (car list1) (car list2))
+             (= (collect (car list1))
+                (setf list1 (cdr list1)
+                      list2 (cdr list2)))
+             (< (collect (car list1)) (setf list1 (cdr list1)))
+             (> (collect (car list2)) (setf list2 (cdr list2)))))
+          (list1
+           (collect (car list1))  (setf list1 (cdr list1)))
+          (list2
+           (collect (car list2)) (setf list2 (cdr list2)))
+          (t
+           (finish)))))
+
+(def function sorted-set-intersection (list1 list2 compare)
+  (iter (while (and list1 list2))
+        (ecase (funcall compare (car list1) (car list2))
+          (= (collect (car list1))
+             (setf list1 (cdr list1)
+                   list2 (cdr list2)))
+          (< (setf list1 (cdr list1)))
+          (> (setf list2 (cdr list2))))))
+
+(def function sorted-set-difference (list1 list2 compare)
+  (append
+   (iter :outer
+         (for element2 :in list2)
+         (iter (for element1 :in list1)
+               (ecase (funcall compare element1 element2)
+                 (< (in :outer (collect element1) (setf list1 (cdr list1))))
+                 (= (setf list1 (cdr list1)) (leave))
+                 (> (leave)))))
+   list1))
+
+(def function sorted-set-subset (list1 list2 compare)
+  (iter (for element1 :in list1)
+        (always (iter (while list2)
+                      (thereis (ecase (funcall compare element1 (car list2))
+                                 (< (leave #f))
+                                 (= (setf list2 (cdr list2)) #t)
+                                 (> (setf list2 (cdr list2)) #f)))))))
+
+(def function sorted-set-equal (list1 list2 &key (test #'eql))
+  (every* test list1 list2))
 
 #+nil
 (progn
