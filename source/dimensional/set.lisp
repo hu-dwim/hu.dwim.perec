@@ -245,7 +245,7 @@
           #t))))
 
 
-(def function sorted-set-union (list1 list2 compare)
+(def function sorted-list-union (list1 list2 compare)
   (iter (cond
           ((and list1 list2)
            (ecase (funcall compare (car list1) (car list2))
@@ -261,7 +261,7 @@
           (t
            (finish)))))
 
-(def function sorted-set-intersection (list1 list2 compare)
+(def function sorted-list-intersection (list1 list2 compare)
   (iter (while (and list1 list2))
         (ecase (funcall compare (car list1) (car list2))
           (= (collect (car list1))
@@ -270,7 +270,7 @@
           (< (setf list1 (cdr list1)))
           (> (setf list2 (cdr list2))))))
 
-(def function sorted-set-difference (list1 list2 compare)
+(def function sorted-list-difference (list1 list2 compare)
   (append
    (iter :outer
          (for element2 :in list2)
@@ -281,7 +281,7 @@
                  (> (leave)))))
    list1))
 
-(def function sorted-set-subset (list1 list2 compare)
+(def function sorted-list-subsetp (list1 list2 compare)
   (iter (for element1 :in list1)
         (always (iter (while list2)
                       (thereis (ecase (funcall compare element1 (car list2))
@@ -289,8 +289,14 @@
                                  (= (setf list2 (cdr list2)) #t)
                                  (> (setf list2 (cdr list2)) #f)))))))
 
-(def function sorted-set-equal (list1 list2 &key (test #'eql))
-  (every* test list1 list2))
+(def function sorted-list-equal (list1 list2 compare)
+  (iter (for cell1 :on list1)
+        (for cell2 :on list2)
+        (unless (eq '= (funcall compare (car cell1) (car cell2)))
+          (return-from sorted-list-equal #f))
+        (when (or (endp (cdr cell1)) (endp (cdr cell2)))
+          (return-from sorted-list-equal (and (endp (cdr cell1)) (endp (cdr cell2)))))
+        (finally (return #t))))
 
 #+nil
 (progn
