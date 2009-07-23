@@ -193,10 +193,12 @@
 
   (:method ((class persistent-class) &key (wait #t))
     (with-waiting-for-rdbms-lock wait
-      (execute (sql-select :columns +oid-column-names+
-                           :tables (list (name-of (primary-table-of class)))
-                           :for :update
-                           :wait wait))
+      (unless (primary-table-of class)
+        ;; TODO
+        (error "There's no primary-table for the class ~S, so which table to lock? This is fixable, but needs further thinking and this error is a safe bet for now..." class))
+      (execute (sql-lock-table :table (name-of (primary-table-of class))
+                               :mode :exclusive
+                               :wait wait))
       #t)))
 
 (def generic lock-instance (instance &key wait)
