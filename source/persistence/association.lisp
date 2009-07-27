@@ -225,7 +225,7 @@
 
 (def method export-to-rdbms ((association persistent-association))
   (mapc #'ensure-exported
-        (delete-if #'null
+        (remove-if #'null
                    (mapcar #'primary-table-of
                            (append (associated-classes-of association)
                                    (reduce #'union
@@ -266,7 +266,7 @@
     (bind ((other-slot (other-association-end-of slot))
            (other-slot-name (slot-definition-name other-slot))
            (other-class (slot-definition-class other-slot)))
-      (delete-duplicates
+      (remove-duplicates
        (iter (for class :in (list* other-class (persistent-effective-subclasses-of other-class)))
              (awhen (table-of (find-slot class other-slot-name))
                (collect it)))))))
@@ -375,5 +375,5 @@
 
 (def function min* (&rest args)
   (if (find-if #'numberp args)
-      (apply #'min (delete-if-not #'numberp args))
+      (apply #'min (remove-if-not #'numberp args))
       :n))

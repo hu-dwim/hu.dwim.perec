@@ -369,7 +369,7 @@
 
 (def generic compute-persistent-effective-subclasses (class)
   (:method ((class persistent-class))
-    (delete-duplicates
+    (remove-duplicates
      (append (persistent-direct-subclasses-of class)
              (iter (for subclass in (persistent-direct-subclasses-of class))
                    (appending (persistent-effective-subclasses-of subclass)))))))
@@ -500,8 +500,8 @@
 
 (def generic compute-data-tables (class)
   (:method ((class persistent-class))
-    (delete nil
-            (delete-duplicates
+    (remove nil
+            (remove-duplicates
              (append (mapcar #'table-of (data-table-slots-of class))
                      (mapcar [awhen (find-class-store-location class !1) (primary-table-of (find-class it))]
                              (list* class (persistent-effective-superclasses-of class))))))))

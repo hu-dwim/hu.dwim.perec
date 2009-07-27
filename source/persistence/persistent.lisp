@@ -130,7 +130,7 @@
 
   (:method ((class persistent-class))
     (ensure-exported class)
-    (bind ((classes (delete-if #'abstract-p (list* class (persistent-effective-subclasses-of class))))
+    (bind ((classes (remove-if #'abstract-p (list* class (persistent-effective-subclasses-of class))))
            (tables (reduce #'union (mapcar #'data-tables-of classes)))
            (where-clause (make-class-id-matcher-where-clause classes)))
       (dolist (table tables)
