@@ -199,7 +199,13 @@
       (execute (sql-lock-table :table (name-of (primary-table-of class))
                                :mode :exclusive
                                :wait wait))
-      #t)))
+      #t))
+
+  (:method ((class-name symbol) &key (wait #t))
+    (bind ((class (find-persistent-class class-name)))
+      (unless class
+        (error "~S does not name a persistent class" class-name))
+      (lock-class class :wait wait))))
 
 (def generic lock-instance (instance &key wait)
   (:documentation "Lock instance in the current transaction. If wait is false and the instance cannot be locked then returns #f otherwise returns #t.")
