@@ -54,6 +54,8 @@
     :type (list persistent-class)
     :documentation "The list of effective persistent superclasses in class precedence order.")
    (persistent-direct-subclasses
+    ;; TODO CLASS-DIRECT-SUBCLASSES is not cooperating with the dependecy tracking of computed-class, therefore redefining a class so that one of its superclasses is removed
+    ;; will not cause this slot to be recomputed. testcase: redefine a class not inheriting from audited-object anymore, export the model, export will error at some point.
     (compute-as (collect-if #'persistent-class-p (class-direct-subclasses -self-)))
     :type (list persistent-class)
     :documentation "The list of persistent direct subclasses.")
