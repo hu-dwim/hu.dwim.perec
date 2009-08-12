@@ -737,23 +737,23 @@
 (def query-function min (column)
   ""
   (declare (persistent-type (forall ((a (or unbound null number string date time timestamp)))
-                                    (function (a) (and (not unbound) a)))))
+                                    (function (a) (and (not unbound) (or null a))))))
   (sql-min column))
 
 (def query-function max (column)
   ""
   (declare (persistent-type (forall ((a (or unbound null number string date time timestamp)))
-                                    (function (a) (and (not unbound) a)))))
+                                    (function (a) (and (not unbound) (or null a))))))
   (sql-max column))
 
 (def query-function sum (column)
   ""
-  (declare (persistent-type (forall ((a (or unbound null number))) (function (a) (and (not unbound) a)))))
+  (declare (persistent-type (forall ((a (or unbound null number))) (function (a) (and (not unbound) (or null a))))))
   (sql-sum column))
 
 (def query-function avg (column)
   ""
-  (declare (persistent-type (forall ((a (or unbound null number))) (function (a) (and (not unbound) a)))))
+  (declare (persistent-type (forall ((a (or unbound null number))) (function (a) (and (not unbound) (or null a))))))
   (sql-avg column))
 
 ;;;
