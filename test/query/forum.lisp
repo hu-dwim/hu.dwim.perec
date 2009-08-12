@@ -356,3 +356,16 @@
       (where (eq (topic-of m) (select (topic)
                                 (from (topic topic-test))
                                 (where (equal (title-of topic) "topic1"))))))))
+
+
+(deftest test/query/select/equal/instance ()
+  (test-query (:select-count nil :record-count 1 :fixture forum-data)
+    (bind ((instance (with-transaction (select-instance message-test (where (equal (subject-of -instance-) "subject1")))))
+           (slot-name 'subject)
+           (pattern "subject_"))
+      (select (o)
+        (from o)
+        (where (and (typep o (class-name (class-of instance)))
+                    (not (equal o instance)) ;; this does not work, while (not (equal (oid-of o) (oid-of instance))) ok
+                                             ;; cause: executed in lisp and o and instance are not equal (p-eq only)
+                    (like (slot-value o slot-name) pattern)))))))
