@@ -1,13 +1,13 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
 ;;;
-;;; Copyright (c) 2006 by the authors.
+;;; Copyright (c) 2009 by the authors.
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :cl-perec-test)
+(in-package :hu.dwim.perec.test)
 
-(mapc #L(handler-case (drop-table !1)
-          (error (e) (declare (ignore e))))
+(mapc [handler-case (drop-table !1)
+        (error (e) (declare (ignore e))])
       '("_c1" "_c2" "_c3" "_c4"))
 
 (start-sql-recording)

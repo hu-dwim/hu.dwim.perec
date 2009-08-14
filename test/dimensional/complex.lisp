@@ -1,12 +1,12 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
 ;;;
-;;; Copyright (c) 2006 by the authors.
+;;; Copyright (c) 2009 by the authors.
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :cl-perec-test)
+(in-package :hu.dwim.perec.test)
 
-;;;;;;;;;;;
+;;;;;;
 ;;; Complex
 
 (def special-variable *history-entry-counter*)
@@ -25,16 +25,16 @@
   (action nil :type (member :set :insert :delete))
   (instance nil :type (or null persistent-object))
   (slot-name nil :type symbol)
-  (d-value nil :type prc::d-value))
+  (d-value nil :type hu.dwim.perec::d-value))
 
 (def (function io) he-dimensions (entry)
-  (prc::dimensions-of (he-d-value entry)))
+  (hu.dwim.perec::dimensions-of (he-d-value entry)))
 
 (def (function io) he-coordinates (entry)
-  (prc::coordinates-of (first (prc::c-values-of (he-d-value entry)))))
+  (hu.dwim.perec::coordinates-of (first (hu.dwim.perec::c-values-of (he-d-value entry)))))
 
 (def (function io) he-value (entry)
-  (prc::value-of (first (prc::c-values-of (he-d-value entry)))))
+  (hu.dwim.perec::value-of (first (hu.dwim.perec::c-values-of (he-d-value entry)))))
 
 (def (function i) he-time (entry)
   (bind ((index (position *time-dimension* (he-dimensions entry))))
@@ -55,14 +55,14 @@
         nil)))
 
 (def (function io) dimensions-of* (slot)
-  (if (typep slot 'prc::persistent-slot-definition-d)
-      (prc::dimensions-of slot)
+  (if (typep slot 'hu.dwim.perec::persistent-slot-definition-d)
+      (hu.dwim.perec::dimensions-of slot)
       nil))
 
 (def function collect-coordinates (instance slot-name)
   (bind ((slot (find-slot (class-of instance) slot-name))
          (dimensions (dimensions-of* slot)))
-    (prc::collect-coordinates-from-variables dimensions)))
+    (hu.dwim.perec::collect-coordinates-from-variables dimensions)))
 
 (def function sort-entries-by-step (entries &key (ascending #t))
   (sort entries (if ascending #'< #'>) :key #'he-step))
@@ -98,25 +98,25 @@
     (bind ((slot-name (slot-definition-name slot)))
       (take 1
             (sort-entries-by-step
-             (collect-if #L(and (eq slot-name (he-slot-name !1))
-                                (p-eq instance (he-instance !1)))
+             (collect-if [and (eq slot-name (he-slot-name !1))
+                              (p-eq instance (he-instance !1))]
                          *history-entries*)
              :ascending #f))))
 
   ;; normal association-end
   (:method ((instance persistent-object) (slot persistent-association-end-slot-definition) coordinates)
     (bind ((slot-name (slot-definition-name slot))
-           (other-slot-name (slot-definition-name (prc::other-association-end-of slot))))
+           (other-slot-name (slot-definition-name (hu.dwim.perec::other-association-end-of slot))))
       (sort-entries-by-step
-       (collect-if #L(or (eq slot-name (he-slot-name !1))
-                         (eq other-slot-name (he-slot-name !1)))
+       (collect-if [or (eq slot-name (he-slot-name !1))
+                       (eq other-slot-name (he-slot-name !1))]
                    *history-entries*)
        :ascending #t)))
 
   ;; d-s slot
   (:method ((instance persistent-object) (slot persistent-slot-definition-d) coordinates)
     (bind ((slot-name (slot-definition-name slot))
-           (dimensions (prc::dimensions-of slot))
+           (dimensions (hu.dwim.perec::dimensions-of slot))
            (inheriting-dimension-index (position-if [typep !1 'inheriting-dimension] dimensions))
            (entries (collect-if (lambda (entry)
                                   (and (eq slot-name (he-slot-name entry))
@@ -134,8 +134,8 @@
   ;; d-s association-end
   (:method ((instance persistent-object) (slot persistent-association-end-slot-definition-d) coordinates)
     (bind ((slot-name (slot-definition-name slot))
-           (other-slot-name (slot-definition-name (prc::other-association-end-of slot)))
-           (dimensions (prc::dimensions-of slot))
+           (other-slot-name (slot-definition-name (hu.dwim.perec::other-association-end-of slot)))
+           (dimensions (hu.dwim.perec::dimensions-of slot))
            (inheriting-dimension-index (position-if [typep !1 'inheriting-dimension] dimensions))
            (entries (collect-if (lambda (entry)
                                   (and (or (eq slot-name (he-slot-name entry))
@@ -148,10 +148,10 @@
           (sort-entries-by-step entries :ascending #t)))))
 
 (def function default-value-for-slot (slot coordinates)
-  (bind (((slot-default-value . has-default-p) (prc::default-value-for-type-of slot))
+  (bind (((slot-default-value . has-default-p) (hu.dwim.perec::default-value-for-type-of slot))
          (default-value (if has-default-p slot-default-value +unbound-slot-marker+)))
-    (if (and (typep slot 'prc::persistent-slot-definition-d))
-        (make-single-d-value (prc::dimensions-of slot) coordinates default-value)
+    (if (and (typep slot 'hu.dwim.perec::persistent-slot-definition-d))
+        (make-single-d-value (hu.dwim.perec::dimensions-of slot) coordinates default-value)
         default-value)))
 
 (def function execute-history-entries (history-entries instance slot coordinates)
@@ -167,7 +167,7 @@
          (missing-value (cons nil nil)))
     `(typecase ,slot-value
        (d-value
-        (bind ((dimensions (prc::dimensions-of ,slot-value))
+        (bind ((dimensions (hu.dwim.perec::dimensions-of ,slot-value))
                ,@(mapcar (lambda (variable-spec)
                            `(,(first variable-spec) (make-single-d-value dimensions
                                                                          ,(second variable-spec)
@@ -200,18 +200,18 @@
   ;; association-end
   (:method (entry (instance persistent-object) (slot persistent-association-end-slot-definition) slot-value coordinates)
     (bind ((slot-name (slot-definition-name slot))
-           (other-slot-name (slot-definition-name (prc::other-association-end-of slot)))
-           (association-kind (prc::association-kind-of (prc::association-of slot)))
-           (slot-cardinality-kind (prc::cardinality-kind-of slot))
+           (other-slot-name (slot-definition-name (hu.dwim.perec::other-association-end-of slot)))
+           (association-kind (hu.dwim.perec::association-kind-of (hu.dwim.perec::association-of slot)))
+           (slot-cardinality-kind (hu.dwim.perec::cardinality-kind-of slot))
            (he-instance (he-instance entry))
            (he-value (he-value entry))
            (he-coordinates (he-coordinates entry))
            (he-slot-name (he-slot-name entry))
            (he-action (he-action entry)))
 
-      (assert (prc::persistent-object-p he-instance))
+      (assert (hu.dwim.perec::persistent-object-p he-instance))
       (assert (or (not (member he-action '(:insert :delete)))
-                  (prc::persistent-object-p he-value)))
+                  (hu.dwim.perec::persistent-object-p he-value)))
 
       (ecase association-kind
         (:1-1
@@ -228,22 +228,22 @@
               he-value))
            ;; set other-slot of some other instance to this instance (I=EV)
            ((and (eq other-slot-name he-slot-name)
-                 (prc::persistent-object-p he-value)
+                 (hu.dwim.perec::persistent-object-p he-value)
                  (p-eq instance he-value))
             (lift-values-having-validity (slot-value (he-instance he-coordinates))
               he-instance))
            ;; set slot of some other instance to the same value as this instance had-> clear slot value (I=A)
            ((and (eq slot-name he-slot-name)
-                 (prc::persistent-object-p he-value))
+                 (hu.dwim.perec::persistent-object-p he-value))
             (lift-values-having-validity (slot-value (he-value he-coordinates))
-              (if (and (prc::persistent-object-p slot-value)
+              (if (and (hu.dwim.perec::persistent-object-p slot-value)
                        (p-eq slot-value he-value))
                   nil
                   slot-value)))
            ;; set other slot of the value this instance had -> clear slot value (I=B)
            ((eq other-slot-name he-slot-name)
             (lift-values-having-validity (slot-value (he-instance he-coordinates))
-              (if (and (prc::persistent-object-p slot-value)
+              (if (and (hu.dwim.perec::persistent-object-p slot-value)
                        (p-eq slot-value he-instance))
                   nil
                   slot-value)))
@@ -304,7 +304,7 @@
               ((eq other-slot-name he-slot-name)
                (lift-values-having-validity (slot-value (he-instance he-coordinates)
                                                         (he-value he-coordinates))
-                 (if (and (prc::persistent-object-p slot-value)
+                 (if (and (hu.dwim.perec::persistent-object-p slot-value)
                           (p-eq slot-value he-instance))
                      ;; set/remove children of the current parent -> clear parent (I=B)
                      (ecase he-action
@@ -366,7 +366,7 @@
            (collect (make-coordinate-range
                      'ii
                      (coordinate-begin dimension)
-                     (prc::maximum-coordinate-of dimension))))
+                     (hu.dwim.perec::maximum-coordinate-of dimension))))
           (ordering-dimension
            (assert (coordinate< (coordinate-begin dimension)
                                 (coordinate-end dimension)))
@@ -380,7 +380,7 @@
 (def function slot-value* (instance slot-name)
   (bind ((slot (find-slot (class-of instance) slot-name))
          (dimensions (dimensions-of* slot))
-         (coordinates (prc::collect-coordinates-from-variables dimensions))
+         (coordinates (hu.dwim.perec::collect-coordinates-from-variables dimensions))
          (entries (filter-and-sort-history-entries instance slot coordinates))
          (value (execute-history-entries entries instance slot coordinates)))
 
@@ -434,7 +434,7 @@
 
 (def function complex-test-slot-names (class slot-names)
   (bind ((available-slot-names
-          (iter (for slot :in (prc::persistent-effective-slots-of class))
+          (iter (for slot :in (hu.dwim.perec::persistent-effective-slots-of class))
                 (for slot-name = (slot-definition-name slot))
                 (unless (starts-with-subseq "H-" (symbol-name slot-name)) ;was (eq slot-name 'h-instances)
                   (collect slot-name)))))
@@ -513,15 +513,15 @@
              (bind ((epsilon-nsec 1000000))
                (append (list +beginning-of-time+)
                        (if add-epsilon-timestamps
-                           (mapcan #L(list (adjust-timestamp !1 (offset :nsec (- epsilon-nsec)))
-                                           !1
-                                           (adjust-timestamp !1 (offset :nsec epsilon-nsec)))
+                           (mapcan [list (adjust-timestamp !1 (offset :nsec (- epsilon-nsec)))
+                                         !1
+                                         (adjust-timestamp !1 (offset :nsec epsilon-nsec))]
                                    timestamps)
                            timestamps)
                        (list +end-of-time+))))
            (fixup-timestamps (timestamps)
-             (sort (delete-duplicates (delete-if #L(or (timestamp< !1 +beginning-of-time+)
-                                                       (timestamp< +end-of-time+ !1))
+             (sort (delete-duplicates (delete-if [or (timestamp< !1 +beginning-of-time+)
+                                                     (timestamp< +end-of-time+ !1)]
                                                  (extend-timestamps (remove nil timestamps)))
                                       :test #'timestamp=)
                    #'timestamp<)))
@@ -590,7 +590,7 @@
              (leave (cons begin end)))))))
 
 (def function random-coordinate (dimension &optional for-writing-p choices empty-interval-probability)
-  (bind ((type (prc::the-type-of dimension)))
+  (bind ((type (hu.dwim.perec::the-type-of dimension)))
    (flet ((random-coordinate ()
             (case type
               (timestamp (make-empty-coordinate-range (random-timestamp choices)))
@@ -640,9 +640,9 @@
           (cond ((primitive-type-p* slot-type)
                  (values :set (random 100)))
                 ((persistent-class-type-p* slot-type)
-                 (values :set (random-elt (cons nil (collect-if #L(typep !1 slot-type) instances)))))
+                 (values :set (random-elt (cons nil (collect-if [typep !1 slot-type] instances)))))
                 ((set-type-p* slot-type)
-                 (bind ((instances (collect-if #L(typep !1 (prc::set-type-class-for slot-type)) instances)))
+                 (bind ((instances (collect-if [typep !1 (hu.dwim.perec::set-type-class-for slot-type)] instances)))
                    (ecase (random 3)
                      (0 (values :set (subseq (shuffle instances) 0 (random (length instances)))))
                      (1 (values :insert (random-elt instances)))
@@ -698,19 +698,19 @@
   (mapcar #'format-coordinate dimensions coordinates))
 
 (def function parse-coordinate (dimension coordinate)
-  (bind ((type (prc::the-type-of dimension)))
+  (bind ((type (hu.dwim.perec::the-type-of dimension)))
     (cond
       ((eq coordinate '+whole-domain-marker+)
        +whole-domain-marker+)
-      ((prc::persistent-class-name-p type)
+      ((hu.dwim.perec::persistent-class-name-p type)
        (mapcar
         [load-instance (parse-integer (subseq (symbol-name !1) 2))]
         coordinate))
       ((coordinate-range-p coordinate)
        (make-coordinate-range
         (coordinate-range-bounds coordinate)
-        (prc::coerce-to-coordinate (coordinate-range-begin coordinate) type)
-        (prc::coerce-to-coordinate (coordinate-range-end coordinate) type)))
+        (hu.dwim.perec::coerce-to-coordinate (coordinate-range-begin coordinate) type)
+        (hu.dwim.perec::coerce-to-coordinate (coordinate-range-end coordinate) type)))
       (t
        coordinate))))
 
@@ -718,19 +718,19 @@
   (iter (for dimension-name :in dimension-names)
         (for coordinate :in coordinates)
         (for dimension = (find-dimension dimension-name))
-        (for type = (prc::the-type-of dimension))
+        (for type = (hu.dwim.perec::the-type-of dimension))
         (collect `(find-dimension ',dimension-name) :into dimensions)
         (collect
             (cond
               ((eq coordinate '+whole-domain-marker+)
                coordinate)
-              ((prc::persistent-class-name-p type)
+              ((hu.dwim.perec::persistent-class-name-p type)
                `(list ,@coordinate))
               ((coordinate-range-p coordinate)
                `',(make-coordinate-range
                    (coordinate-range-bounds coordinate)
-                   (prc::coerce-to-coordinate (coordinate-range-begin coordinate) type)
-                   (prc::coerce-to-coordinate (coordinate-range-end coordinate) type)))
+                   (hu.dwim.perec::coerce-to-coordinate (coordinate-range-begin coordinate) type)
+                   (hu.dwim.perec::coerce-to-coordinate (coordinate-range-end coordinate) type)))
               (t coordinate))
           :into coords)
         (finally (return `(with-coordinates (list ,@dimensions) (list ,@coords) ,@body)))))
@@ -755,8 +755,8 @@
 
 (def function generate-persistent-object-coordinate-bindings (dimensions)
   (iter (for dimension :in dimensions)
-        (for type = (prc::the-type-of dimension))
-        (when (prc::persistent-class-name-p type)
+        (for type = (hu.dwim.perec::the-type-of dimension))
+        (when (hu.dwim.perec::persistent-class-name-p type)
           (bind ((instances (with-transaction (domain dimension))))
             (collect
                 `(,(mapcar [format-coordinate dimension !1] instances)
@@ -794,7 +794,7 @@
                                                       (make-instance* ',(class-name (class-of instance)))))))
                                 ,@(generate-persistent-object-coordinate-bindings dimensions))
                            ,@(iter (for transaction-counter :from 0 :to *transaction-counter*)
-                                   (for history-entries = (collect-if #L(= transaction-counter (he-transaction-index !1)) *history-entries*))
+                                   (for history-entries = (collect-if [= transaction-counter (he-transaction-index !1)] *history-entries*))
                                    (when history-entries
                                      (appending
                                       `((with-transaction
@@ -823,7 +823,7 @@
                                         (incf *transaction-counter*)))))
                            (setf *history-entries* (nreverse *history-entries*))
                            ,@(when (and instance-variable-name slot-name)
-                                   (bind ((coordinates (prc::collect-coordinates-from-variables dimensions)))
+                                   (bind ((coordinates (hu.dwim.perec::collect-coordinates-from-variables dimensions)))
                                      `((with-transaction
                                         (with-revived-instance ,instance-variable-name
                                           (with-coordinates*

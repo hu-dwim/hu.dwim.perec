@@ -1,12 +1,12 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
 ;;;
-;;; Copyright (c) 2006 by the authors.
+;;; Copyright (c) 2009 by the authors.
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :cl-perec-test)
+(in-package :hu.dwim.perec.test)
 
-;;;;;;;;;;;;;
+;;;;;;
 ;;; Canonical
 
 (defsuite* (test/persistence/canonical :in test/persistence))
@@ -71,7 +71,7 @@
        t2)
   (member a b c))
 
-;;;;;;;;;;;;;;
+;;;;;;
 ;;; Normalized
 
 (defsuite* (test/persistence/normalized :in test/persistence))
@@ -127,7 +127,7 @@
 
 (def-normalized-type-test set/1 (set persistent-object) (set persistent-object))
 
-;;;;;;;;;;
+;;;;;;
 ;;; Mapped
 
 (defsuite* (test/persistence/mapped :in test/persistence))
@@ -164,13 +164,13 @@
 
 (defmacro def-mapped-type-test (type)
   `(progn
-    (deftest ,(concatenate-symbol (find-package :cl-perec-test) "test/persistence/mapped/" type "/1") ()
+    (deftest ,(concatenate-symbol (find-package :hu.dwim.perec.test) "test/persistence/mapped/" type "/1") ()
       (test/persistence/mapped/type ',type ',type))
-    (deftest ,(concatenate-symbol (find-package :cl-perec-test) "test/persistence/mapped/" type "/2") ()
+    (deftest ,(concatenate-symbol (find-package :hu.dwim.perec.test) "test/persistence/mapped/" type "/2") ()
       (test/persistence/mapped/type '(or unbound ,type) ',type))
-    (deftest ,(concatenate-symbol (find-package :cl-perec-test) "test/persistence/mapped/" type "/3") ()
+    (deftest ,(concatenate-symbol (find-package :hu.dwim.perec.test) "test/persistence/mapped/" type "/3") ()
       (test/persistence/mapped/type '(or null ,type) ',type))
-    (deftest ,(concatenate-symbol (find-package :cl-perec-test) "test/persistence/mapped/" type "/4") ()
+    (deftest ,(concatenate-symbol (find-package :hu.dwim.perec.test) "test/persistence/mapped/" type "/4") ()
       (test/persistence/mapped/type '(or null ,type) ',type))))
 
 (def-mapped-type-test boolean)
@@ -190,7 +190,7 @@
 (deftest test/persistence/mapped/or-null-unbound ()
   (test/persistence/mapped/type '(or null unbound) nil))
 
-;;;;;;;;;;;;;;
+;;;;;;
 ;;; Type check
 
 (defsuite* (test/persistence/type-check :in test/persistence))
@@ -233,7 +233,7 @@
   (is (not (primitive-type-p '(or null primitive-type-test))))
   (is (not (primitive-type-p '(or null unbound primitive-type-test)))))
 
-;;;;;;;;;;;;;;;
+;;;;;;
 ;;;; Reflection
 
 (defsuite* (test/persistence/type-reflection :in test/persistence))

@@ -1,10 +1,10 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
 ;;;
-;;; Copyright (c) 2006 by the authors.
+;;; Copyright (c) 2009 by the authors.
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :cl-perec-test)
+(in-package :hu.dwim.perec.test)
 
 ;;;;;;
 ;;; D value (multi dimensional value)
@@ -177,7 +177,7 @@
 ;;; Coordinates difference
 
 (def test test/dimensional/value/coordinates-a-difference-empty-is-a (dimensions coordinates-a)
-  (is (prc::every* [coordinates-equal dimensions !1 !2]
+  (is (hu.dwim.perec::every* [coordinates-equal dimensions !1 !2]
                    (is-not-null (coordinates-difference dimensions
                                                         coordinates-a
                                                         (make-empty-coordinates dimensions)))
@@ -270,7 +270,7 @@
             (make-empty-d-value '(inherited ordered))))))
 
 (def test test/dimensional/value/iter-in-d-values (d-value-1 d-value-2 expected-d-values)
-  (iter (with dimensions = (prc::dimensions-of d-value-1))
+  (iter (with dimensions = (hu.dwim.perec::dimensions-of d-value-1))
         (with test = [d-value= !1 !2 :test #'equal])
         (for (coordinates values) :in-d-values (d-value-1 d-value-2) :unspecified-value nil)
         (for d-value = (make-single-d-value dimensions coordinates values))

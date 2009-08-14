@@ -1,10 +1,10 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
 ;;;
-;;; Copyright (c) 2006 by the authors.
+;;; Copyright (c) 2009 by the authors.
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :cl-perec-test)
+(in-package :hu.dwim.perec.test)
 
 (defsuite* (test/persistence/transformer :in test/persistence))
 
@@ -22,7 +22,7 @@
   (is-equal-using-reader type slot-value rdbms-values)
   (is-equal-using-writer type slot-value rdbms-values))
 
-;;;;;;;;;;;
+;;;;;;
 ;;; Boolean
 
 (deftest test/persistence/transformer/boolean/t ()
@@ -50,7 +50,7 @@
                                #f
                                (vector "FALSE")))
 
-;;;;;;;;;;;
+;;;;;;
 ;;; Integer
 
 (deftest test/persistence/transformer/integer ()
@@ -93,7 +93,7 @@
                                +transformer-integer-test-value+
                                (vector 0 +transformer-integer-test-value+)))
 
-;;;;;;;;;;
+;;;;;;
 ;;; String
 
 (deftest test/persistence/transformer/string ()
@@ -136,7 +136,7 @@
                                +transformer-string-test-value+
                                (vector 0 +transformer-string-test-value+)))
 
-;;;;;;;;;;;
+;;;;;;
 ;;; Symbol
 
 (deftest test/persistence/transformer/symbol/nil ()
@@ -147,7 +147,7 @@
 (deftest test/persistence/transformer/symbol/something ()
   (is-equal-using-transformers 'symbol
                                'something
-                               (vector "CL-PEREC-TEST::SOMETHING")))
+                               (vector "HU.DWIM.PEREC.TEST::SOMETHING")))
 
 (deftest test/persistence/transformer/or-unbound-symbol/unbound ()
   (is-equal-using-transformers '(or unbound symbol)
@@ -162,7 +162,7 @@
 (deftest test/persistence/transformer/or-unbound-symbol/something ()
   (is-equal-using-transformers '(or unbound symbol)
                                'something
-                               (vector "CL-PEREC-TEST::SOMETHING")))
+                               (vector "HU.DWIM.PEREC.TEST::SOMETHING")))
 
 ;;;;;
 ;;; t
@@ -175,9 +175,9 @@
 (deftest test/persistence/transformer/t/nil ()
   (is-equal-using-transformers t
                                nil
-                               (vector (serializer:serialize nil))))
+                               (vector (hu.dwim.serializer:serialize nil))))
 
 (deftest test/persistence/transformer/t/something ()
   (is-equal-using-transformers t
                                'something
-                               (vector (serializer:serialize 'something))))
+                               (vector (hu.dwim.serializer:serialize 'something))))

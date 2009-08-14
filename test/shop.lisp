@@ -1,12 +1,12 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
 ;;;
-;;; Copyright (c) 2006 by the authors.
+;;; Copyright (c) 2009 by the authors.
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :cl-perec-test)
+(in-package :hu.dwim.perec.test)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;
 ;;; Define the classes for the shop
 
 ;; the defpclass is used to define persistent classes
@@ -26,7 +26,7 @@
   (:abstract #t)
   (:documentation "Serves as base class for products"))
 
-;; for availabe slot type see the cl-perec home page
+;; for availabe slot type see the hu.dwim.perec home page
 (defpclass* products-in-basket ()
   ((quantity :type integer-16))
   (:documentation "Specifies the quantity of a product in a basket"))
@@ -41,7 +41,7 @@
   ((:class product :slot products-in-basket :type (set products-in-basket))
    (:class products-in-basket :slot product :type product)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;
 ;;; Define some actual products
 
 ;; subclass product
@@ -52,7 +52,7 @@
 (defpclass* bicycle (product)
   ((size :type integer-16)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;
 ;;; The following functions require a transaction context, use with-transaction
 
 (defun purge-shop ()
@@ -120,7 +120,7 @@ the provided timestamp. Returns a list of basket and total price pairs.
 This query compiles into the following SQL either at compile time or
 at runtime based on the :compile-at-macroexpand parameter. The compiled
 query is always cached, so subsequent calls reuse the result. Use macroexpand
-when the parameter is set to #t or trace cl-perec::compile-query when it is set
+when the parameter is set to #t or trace hu.dwim.perec::compile-query when it is set
 to #f to see how the query compiler compiles down parts to static SQL and how
 it leaves other parts in lisp.
 

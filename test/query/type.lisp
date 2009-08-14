@@ -1,4 +1,10 @@
-(in-package :cl-perec-test)
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;;
+;;; Copyright (c) 2006 by the authors.
+;;;
+;;; See LICENCE for details.
+
+(in-package :hu.dwim.perec.test)
 
 (defsuite* (test/query/type :in test/query))
 
@@ -132,8 +138,8 @@
 (def-query-type-test string/4 (string 20) "something           ")
 
 (def-query-type-test symbol/1 symbol 'something)
-(def-query-type-test symbol/2 symbol 'cl-perec-test::something)
-(def-query-type-test symbol/3 (symbol* 30) 'cl-user::something)
+(def-query-type-test symbol/2 symbol 'hu.dwim.perec.test::something)
+(def-query-type-test symbol/3 (symbol* 30) 'hu.dwim.perec.test::something)
 
 (def-query-type-test date/1 date (parse-timestring "2006-06-06TZ"))
 

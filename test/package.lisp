@@ -1,40 +1,33 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
 ;;;
-;;; Copyright (c) 2006 by the authors.
+;;; Copyright (c) 2009 by the authors.
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :cl-user)
+(in-package :common-lisp-user)
 
-(defpackage :cl-perec-test
-    (:nicknames :prct)
-
-  (:use :common-lisp
-        :closer-mop
-        :iterate
-        :anaphora
-        :alexandria
-        :bind
-        :defclass-star
-        :computed-class
+(defpackage :hu.dwim.perec.test
+  (:use :hu.dwim.common-lisp
+        :hu.dwim.computed-class
+        :hu.dwim.def
+        :hu.dwim.defclass-star
+        :hu.dwim.perec
+        :hu.dwim.rdbms
+        :hu.dwim.stefil
         :local-time
-        :stefil
-        :cl-def
-        :cl-rdbms
-        :cl-perec
         :cl-ppcre
         :metacopy-with-contextl)
 
   (:shadow #:name
            #:parent)
 
-  (:shadowing-import-from :cl-perec
+  (:shadowing-import-from :hu.dwim.perec
                           #:time
                           #:form
                           #:set))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (import (let ((*package* (find-package :cl-perec)))
+  (import (let ((*package* (find-package :hu.dwim.perec)))
             (read-from-string "(*persistent-classes*
                                 *persistent-associations* *cache-slot-values*
                                 *mapped-type-precedence-list* *canonical-types* *compile-query-counter*
@@ -58,4 +51,4 @@
                                 lisp-value->rdbms-values rdbms-values->lisp-value
                                 depends-on-of depends-on-me-of primary-class-of effective-store-of
                                 compile-query random-string)"))
-          :cl-perec-test))
+          :hu.dwim.perec.test))

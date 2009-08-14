@@ -1,15 +1,15 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
 ;;;
-;;; Copyright (c) 2006 by the authors.
+;;; Copyright (c) 2009 by the authors.
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :cl-perec-test)
+(in-package :hu.dwim.perec.test)
 
 (defun drop-all-test-tables ()
   (with-transaction
-    (mapc #L(drop-table !1 :cascade #t)
-          (collect-if #L(starts-with-subseq "_" !1)
+    (mapc [drop-table !1 :cascade #t]
+          (collect-if [starts-with-subseq "_" !1]
                       (list-tables)))))
 
 (defmacro with-and-without-caching-slot-values (&body forms)
@@ -56,10 +56,10 @@
   (test))
 
 ;; use some unnecessary explicit package prefixing for clarity
-(def class* transaction-mixin/test (cl-perec:transaction-mixin)
+(def class* transaction-mixin/test (hu.dwim.perec:transaction-mixin)
   ())
 
-(def class* postgresql-postmodern/test (cl-perec:database-mixin cl-rdbms:postgresql-postmodern)
+(def class* postgresql-postmodern/test (hu.dwim.perec:database-mixin hu.dwim.rdbms:postgresql-postmodern)
   ())
 
 (def method transaction-mixin-class list ((self postgresql-postmodern/test))

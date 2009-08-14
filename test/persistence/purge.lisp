@@ -1,4 +1,10 @@
-(in-package :cl-perec-test)
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;;
+;;; Copyright (c) 2006 by the authors.
+;;;
+;;; See LICENCE for details.
+
+(in-package :hu.dwim.perec.test)
 
 (defsuite* (test/persistence/purge :in test/persistence))
 
@@ -39,11 +45,11 @@
     (with-transaction
       (let ((last-delete-counter (delete-counter-of (command-counter-of *transaction*)))
             (total-instance-counter (length (select-instances purge-a-test)))
-            (purged-instance-counter (count-if #L(typep !1 class-name) (select-instances purge-a-test))))
+            (purged-instance-counter (count-if [typep !1 class-name] (select-instances purge-a-test))))
         (purge-instances class-name)
         (is (= (- (delete-counter-of (command-counter-of *transaction*)) last-delete-counter)
                delete-counter))
-        (is (= (count-if #L(typep !1 class-name) (select-instances purge-a-test))
+        (is (= (count-if [typep !1 class-name] (select-instances purge-a-test))
                0))
         (is (= (- total-instance-counter purged-instance-counter)
                (length (select-instances purge-a-test))))))))

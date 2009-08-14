@@ -1,4 +1,10 @@
-(in-package :cl-perec-test)
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;;
+;;; Copyright (c) 2006 by the authors.
+;;;
+;;; See LICENCE for details.
+
+(in-package :hu.dwim.perec.test)
 
 (defsuite* (test/query/select/order-by :in test/query/select))
 

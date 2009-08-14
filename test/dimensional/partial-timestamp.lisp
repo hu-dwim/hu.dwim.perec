@@ -1,12 +1,12 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
 ;;;
-;;; Copyright (c) 2006 by the authors.
+;;; Copyright (c) 2009 by the authors.
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :cl-perec-test)
+(in-package :hu.dwim.perec.test)
 
-;;;;;;;;;;;;;;;;;;;;;
+;;;;;;
 ;;; Partial timestamp
 
 (defsuite* (test/dimensional/partial-timestamp :in test/dimensional))

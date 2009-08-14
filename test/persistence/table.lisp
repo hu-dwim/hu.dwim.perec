@@ -1,4 +1,10 @@
-(in-package :cl-perec-test)
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;;
+;;; Copyright (c) 2006 by the authors.
+;;;
+;;; See LICENCE for details.
+
+(in-package :hu.dwim.perec.test)
 
 (defsuite* (test/persistence/table :in test/persistence))
 
@@ -12,8 +18,8 @@
   ((name)))
 
 (def test test/persistence/table/inheritance ()
-  (is (not (null (find "_name" (columns-of (primary-table-of (find-class 'table-t1-test))) :key #'rdbms::name-of :test #'string=))))
-  (is (null (find "_name" (columns-of (primary-table-of (find-class 'table-t2-test))) :key #'rdbms::name-of :test #'string=))))
+  (is (not (null (find "_name" (columns-of (primary-table-of (find-class 'table-t1-test))) :key #'hu.dwim.rdbms::name-of :test #'string=))))
+  (is (null (find "_name" (columns-of (primary-table-of (find-class 'table-t2-test))) :key #'hu.dwim.rdbms::name-of :test #'string=))))
 
 (def test test/persistence/table/view (instances)
   (bind ((classes (delete-duplicates (mapcar #'class-of instances)))
@@ -84,7 +90,7 @@
       (is (eq (primary-class-of x2-s1-slot) x2-class))
       (is (eq (primary-class-of x2-s2-slot) x2-class))
       (is (not (null x2-table)))
-      (is (equal (mapcar 'rdbms::name-of (columns-of x2-table))
+      (is (equal (mapcar 'hu.dwim.rdbms::name-of (columns-of x2-table))
                  '("_oid" "_s1" "_s2")))
       (finishes (make-instance 'table-x2-test)))))
 
@@ -102,7 +108,7 @@
       (is (eq (primary-class-of x3-s2-slot) x2-class))
       (is (eq (primary-class-of x3-s3-slot) x3-class))
       (is (not (null x3-table)))
-      (is (equal (mapcar 'rdbms::name-of (columns-of x3-table))
+      (is (equal (mapcar 'hu.dwim.rdbms::name-of (columns-of x3-table))
                  '("_oid" "_s3")))
       (finishes (make-instance 'table-x3-test)))))
 
@@ -130,7 +136,7 @@
       (is (eq (primary-class-of x5-s2-slot) x5-class))
       (is (eq (primary-class-of x5-s3-slot) x5-class))
       (is (not (null x5-table)))
-      (is (equal (mapcar 'rdbms::name-of (columns-of x5-table))
+      (is (equal (mapcar 'hu.dwim.rdbms::name-of (columns-of x5-table))
                  '("_oid" "_s1" "_s2" "_s3")))
       (finishes (make-instance 'table-x5-test)))))
 
@@ -145,7 +151,7 @@
       (is (eq (primary-class-of x6-s1-slot) x6-class))
       (is (eq (primary-class-of x6-s2-slot) x6-class))
       (is (not (null x6-table)))
-      (is (equal (mapcar 'rdbms::name-of (columns-of x6-table))
+      (is (equal (mapcar 'hu.dwim.rdbms::name-of (columns-of x6-table))
                  '("_oid" "_s1" "_s2"))))))
 
 (def test test/persistence/table/x/7 ()
@@ -162,7 +168,7 @@
       (is (eq (primary-class-of x7-s2-slot) x6-class))
       (is (eq (primary-class-of x7-s3-slot) x7-class))
       (is (not (null x7-table)))
-      (is (equal (mapcar 'rdbms::name-of (columns-of x7-table))
+      (is (equal (mapcar 'hu.dwim.rdbms::name-of (columns-of x7-table))
                  '("_oid" "_s3")))
       (finishes (make-instance 'table-x7-test)))))
 
@@ -198,7 +204,7 @@
                  '((table-y1-test table-y1-test) (persistent-object table-y1-test))))
       (is (eq (primary-class-of y1-s1-slot) y1-class))
       (is (not (null y1-table)))
-      (is (equal (mapcar 'rdbms::name-of (columns-of y1-table))
+      (is (equal (mapcar 'hu.dwim.rdbms::name-of (columns-of y1-table))
                  '("_oid" "_s1"))))))
 
 (def test test/persistence/table/y/2 ()
@@ -237,7 +243,7 @@
       (is (eq (primary-class-of y4-s1-slot) y1-class))
       (is (eq (primary-class-of y4-s2-slot) y4-class))
       (is (not (null y4-table)))
-      (is (equal (mapcar 'rdbms::name-of (columns-of y4-table))
+      (is (equal (mapcar 'hu.dwim.rdbms::name-of (columns-of y4-table))
                  '("_oid" "_s2")))
       (finishes (make-instance 'table-y4-test)))))
 
@@ -277,7 +283,7 @@
       (is (null (effective-store-of z1-class)))
       (is (null (primary-class-of z1-s1-slot)))
       (is (not (null z1-table)))
-      (is (equal (mapcar 'rdbms::name-of (columns-of z1-table))
+      (is (equal (mapcar 'hu.dwim.rdbms::name-of (columns-of z1-table))
                  '("_oid" "_s1"))))))
 
 (def test test/persistence/table/z/2 ()
@@ -292,7 +298,7 @@
       (is (eq (primary-class-of z2-s1-slot) z1-class))
       (is (eq (primary-class-of z2-s2-slot) z2-class))
       (is (not (null z2-table)))
-      (is (equal (mapcar 'rdbms::name-of (columns-of z2-table))
+      (is (equal (mapcar 'hu.dwim.rdbms::name-of (columns-of z2-table))
                  '("_oid" "_s2")))
       (finishes (make-instance 'table-z2-test)))))
 
@@ -308,7 +314,7 @@
       (is (eq (primary-class-of z3-s1-slot) z1-class))
       (is (eq (primary-class-of z3-s2-slot) z3-class))
       (is (not (null z3-table)))
-      (is (equal (mapcar 'rdbms::name-of (columns-of z3-table))
+      (is (equal (mapcar 'hu.dwim.rdbms::name-of (columns-of z3-table))
                  '("_oid" "_s2")))
       (finishes (make-instance 'table-z3-test)))))
 
@@ -327,7 +333,7 @@
       (is (eq (primary-class-of z4-s2-slot) z3-class))
       (is (eq (primary-class-of z4-s3-slot) z4-class))
       (is (not (null z4-table)))
-      (is (equal (mapcar 'rdbms::name-of (columns-of z4-table))
+      (is (equal (mapcar 'hu.dwim.rdbms::name-of (columns-of z4-table))
                  '("_oid" "_s3")))
       (finishes (make-instance 'table-z4-test)))))
 
@@ -342,7 +348,7 @@
       (is (eq (primary-class-of z5-s1-slot) z5-class))
       (is (eq (primary-class-of z5-s2-slot) z5-class))
       (is (not (null z5-table)))
-      (is (equal (mapcar 'rdbms::name-of (columns-of z5-table))
+      (is (equal (mapcar 'hu.dwim.rdbms::name-of (columns-of z5-table))
                  '("_oid" "_s1" "_s2")))
       (finishes (make-instance 'table-z5-test)))))
 
@@ -390,7 +396,7 @@
       (is (eq (primary-class-of v2-s1-slot) v2-class))
       (is (eq (primary-class-of v2-s2-slot) v2-class))
       (is (not (null v2-table)))
-      (is (set-equal (mapcar 'rdbms::name-of (columns-of v2-table))
+      (is (set-equal (mapcar 'hu.dwim.rdbms::name-of (columns-of v2-table))
                      '("_oid" "_s1" "_s2")
                      :test #'equal))
       (finishes (make-instance 'table-v2-test)))))
@@ -406,7 +412,7 @@
       (is (eq (primary-class-of v3-s1-slot) v3-class))
       (is (eq (primary-class-of v3-s2-slot) v3-class))
       (is (not (null v3-table)))
-      (is (set-equal (mapcar 'rdbms::name-of (columns-of v3-table))
+      (is (set-equal (mapcar 'hu.dwim.rdbms::name-of (columns-of v3-table))
                      '("_oid" "_s1" "_s2")
                      :test #'equal))
       (finishes (make-instance 'table-v3-test)))))
@@ -425,7 +431,7 @@
       (is (eq (primary-class-of v4-s2-slot) v3-class))
       (is (eq (primary-class-of v4-s3-slot) v4-class))
       (is (not (null v4-table)))
-      (is (equal (mapcar 'rdbms::name-of (columns-of v4-table))
+      (is (equal (mapcar 'hu.dwim.rdbms::name-of (columns-of v4-table))
                  '("_oid" "_s3")))
       (finishes (make-instance 'table-v4-test)))))
 

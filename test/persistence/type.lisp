@@ -1,10 +1,10 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
 ;;;
-;;; Copyright (c) 2006 by the authors.
+;;; Copyright (c) 2009 by the authors.
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :cl-perec-test)
+(in-package :hu.dwim.perec.test)
 
 (defsuite* (test/persistence/type :in test/persistence))
 
@@ -65,7 +65,7 @@
               (defpclass* type-test ()
                 ((,name :type ,type))))))
          (flet ((make-object ()
-                  (delete-records (rdbms::sql-table-alias :name (rdbms-name-for 'type-test)))
+                  (delete-records (hu.dwim.rdbms::sql-table-alias :name (rdbms-name-for 'type-test)))
                   (setf object
                         (apply #'make-instance
                                'type-test
@@ -77,13 +77,13 @@
                   ,(when (and test-value-p test-value)
                          `(is (= 0 (first-elt
                                     (first-elt
-                                     (execute (rdbms::sql-select
-                                                :columns (list (rdbms::sql-count-*))
+                                     (execute (hu.dwim.rdbms::sql-select
+                                                :columns (list (hu.dwim.rdbms::sql-count-*))
                                                 :tables (list (rdbms-name-for 'type-test))
-                                                :where (rdbms::sql-is-null
-                                                        (rdbms::sql-identifier
+                                                :where (hu.dwim.rdbms::sql-is-null
+                                                        (hu.dwim.rdbms::sql-identifier
                                                           :name
-                                                          (rdbms::name-of
+                                                          (hu.dwim.rdbms::name-of
                                                            (last-elt
                                                             (columns-of
                                                              (find-slot
@@ -190,8 +190,8 @@
 (def-type-test text/4 (text 20) "something")
 
 (def-type-test symbol/1 symbol 'something)
-(def-type-test symbol/2 symbol 'cl-perec-test::something)
-(def-type-test symbol/3 (symbol* 30) 'cl-user::something)
+(def-type-test symbol/2 symbol 'hu.dwim.perec.test::something)
+(def-type-test symbol/3 (symbol* 30) 'hu.dwim.perec.test::something)
 
 (def-type-test date/1 date (parse-datestring "2006-06-06"))
 

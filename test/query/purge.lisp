@@ -1,4 +1,10 @@
-(in-package :cl-perec-test)
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;;
+;;; Copyright (c) 2006 by the authors.
+;;;
+;;; See LICENCE for details.
+
+(in-package :hu.dwim.perec.test)
 
 (defsuite* (test/query/purge :in test/query))
 
@@ -9,8 +15,8 @@
         ;; TODO: eliminate coerce
         (for records-in-database = (sort
                                     (apply 'concatenate 'list
-                                           (coerce (select-records (list (rdbms::sql-column :name column-name))
-                                                                   (list (rdbms::sql-table-alias :name table-name))) 'list))
+                                           (coerce (select-records (list (hu.dwim.rdbms::sql-column :name column-name))
+                                                                   (list (hu.dwim.rdbms::sql-table-alias :name table-name))) 'list))
                                     #'<=))
         (is (equal records-in-database expected-records)
             "Table ~S: expected ~S, but found ~S" table-name expected-records records-in-database)))

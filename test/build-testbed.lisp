@@ -1,16 +1,16 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
 ;;;
-;;; Copyright (c) 2006 by the authors.
+;;; Copyright (c) 2009 by the authors.
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :cl-user)
+(in-package :common-lisp-user)
 
 (load (merge-pathnames "workspace/environment/environment.lisp" (user-homedir-pathname)))
 
 (push (merge-pathnames "workspace/_slime-cvs" (user-homedir-pathname)) asdf:*central-registry*)
 (asdf:oos 'asdf:load-op :swank)
-(asdf:oos 'asdf:load-op :cl-rdbms)
+(asdf:oos 'asdf:load-op :hu.dwim.rdbms)
 
 (defvar *file-name* "perec-testbed")
 
@@ -26,7 +26,7 @@
     (eval (read-from-string "(setf (swank:swank-print-right-margin) 150
                                    swank:*globally-redirect-io* t)")))
 
-  (asdf:oos 'asdf:load-op :cl-perec-test.postgresql)
+  (asdf:oos 'asdf:load-op :hu.dwim.perec.test.postgresql)
 
   (if (probe-file *file-name*)
       (delete-file *file-name*))
@@ -60,7 +60,7 @@
                             (when message
                               (apply #'format *error-output* message args))
                             (sb-ext:quit :unix-status 1)))
-                     (let* ((connection-specification (rdbms::connection-specification-of rdbms::*database*))
+                     (let* ((connection-specification (hu.dwim.rdbms::connection-specification-of hu.dwim.rdbms::*database*))
                             (host (or (get-argument "--host" t)
                                       (getf connection-specification :host)))
                             (port (or (let ((port (get-argument "--port" t)))
@@ -74,7 +74,7 @@
                                            (getf connection-specification :user-name)))
                             (password (or (get-argument "--password" t)
                                           (getf connection-specification :password))))
-                       (setf (rdbms::connection-specification-of rdbms::*database*)
+                       (setf (hu.dwim.rdbms::connection-specification-of hu.dwim.rdbms::*database*)
                              `(:host ,host :port ,port :database ,database :user-name ,user-name :password ,password)))))
                  (format *debug-io*
 "Testbed Usage:
@@ -102,8 +102,8 @@ In emacs do:
    M-x slime-connect
    ;; 'localhost' and default port 4005 should be ok
 
-To test cl-perec:
-   (in-package :cl-perec-test) ; this is the default when you connect
+To test hu.dwim.perec:
+   (in-package :hu.dwim.perec.test) ; this is the default when you connect
    (retest) ; should print a lot of dots and stuff and takes a while
 
 To play around:
@@ -137,24 +137,24 @@ To play around:
    (with-transaction
      (select (:compile-at-macroexpand t) (instance)
        (from (instance persistent-object))))
-   ;; see the tests in the repository at http://common-lisp.net/cgi-bin/darcsweb/darcsweb.cgi?r=cl-perec-cl-perec;a=tree;f=/test
-   ;; see a somewhat more complicated example at: http://common-lisp.net/project/cl-perec/shop.html
-   ;; and also check the showcase on the website at http://common-lisp.net/project/cl-perec/showcase.html
+   ;; see the tests in the repository at http://common-lisp.net/cgi-bin/darcsweb/darcsweb.cgi?r=hu.dwim.perec-hu.dwim.perec;a=tree;f=/test
+   ;; see a somewhat more complicated example at: http://common-lisp.net/project/hu.dwim.perec/shop.html
+   ;; and also check the showcase on the website at http://common-lisp.net/project/hu.dwim.perec/showcase.html
 
 To read more about the project:
-   http://common-lisp.net/project/cl-perec
+   http://common-lisp.net/project/hu.dwim.perec
 
 There is some form of documentation at:)
-   http://common-lisp.net/project/cl-perec/documentation/index.html
+   http://common-lisp.net/project/hu.dwim.perec/documentation/index.html
 
 Suggestions, bug reports are welcomed at:
-   cl-perec-devel@common-lisp.net
+   hu.dwim.perec-devel@common-lisp.net
 
 The current PostgreSQL connection specification is:
    ~S
 
 To exit press Control-C.
-" (rdbms::connection-specification-of rdbms::*database*))
+" (hu.dwim.rdbms::connection-specification-of rdbms::*database*))
                  (labels ((signal-handler (signal code scp)
                             (declare (ignore signal code scp))
                             (format *debug-io* "SIGTERM/SIGINT was received, exiting~&")

@@ -1,4 +1,10 @@
-(in-package :cl-perec-test)
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;;
+;;; Copyright (c) 2006 by the authors.
+;;;
+;;; See LICENCE for details.
+
+(in-package :hu.dwim.perec.test)
 
 (in-suite test/persistence)
 
@@ -30,7 +36,7 @@
 (deftest test/persistence/make-transient/3 ()
   (with-transaction
     (let ((instance (make-instance 'persistence-test :name "the one")))
-      (delete-records (rdbms::sql-table-alias :name (rdbms-name-for 'persistence-test)))
+      (delete-records (hu.dwim.rdbms::sql-table-alias :name (rdbms-name-for 'persistence-test)))
       (slot-makunbound instance 'persistent)
       (is (not (persistent-p instance))))))
 
@@ -40,7 +46,7 @@
            (make-instance 'persistence-test :name "the one"))))
     (with-transaction
       (with-revived-instance instance
-        (prc::invalidate-cached-slot instance (find-slot 'persistence-test 'name))
+        (hu.dwim.perec::invalidate-cached-slot instance (find-slot 'persistence-test 'name))
         (make-transient instance)
         (is (equal (name-of instance) "the one"))))))
   

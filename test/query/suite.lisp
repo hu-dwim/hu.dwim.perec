@@ -1,4 +1,10 @@
-(in-package :cl-perec-test)
+;;; -*- mode: Lisp; Syntax: Common-Lisp; -*-
+;;;
+;;; Copyright (c) 2006 by the authors.
+;;;
+;;; See LICENCE for details.
+
+(in-package :hu.dwim.perec.test)
 
 (defvar *show-query* nil)
 
@@ -28,9 +34,9 @@
 (defmacro with-select-count-check (count &body body)
   (if count
       (with-unique-names (start result end)
-        `(bind ((,start (prc::select-counter-of (command-counter-of *transaction*)))
+        `(bind ((,start (hu.dwim.perec::select-counter-of (command-counter-of *transaction*)))
                 (,result (progn ,@body))
-                (,end (prc::select-counter-of (command-counter-of *transaction*))))
+                (,end (hu.dwim.perec::select-counter-of (command-counter-of *transaction*))))
           (is (= (- ,end ,start) ,count))
           ,result))
       `(progn ,@body)))
