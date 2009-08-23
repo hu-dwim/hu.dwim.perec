@@ -9,7 +9,7 @@
 (load-system :hu.dwim.asdf)
 
 (defvar *test-database-connection-specification*
-  '(:file-name "/tmp/perec-test"))
+  '(:file-name "/tmp/hu.dwim.perec.test"))
 
 (defsystem :hu.dwim.perec.sqlite.test
   :class hu.dwim.test-system

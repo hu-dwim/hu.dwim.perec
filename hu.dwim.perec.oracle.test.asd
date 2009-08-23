@@ -13,8 +13,8 @@
                    (PROTOCOL = TCP)
                    (HOST = localhost)
                    (PORT = 1521))"
-    :user-name "perec-test"
-    :password "test123"))
+    :user-name "hu.dwim.perec.test"
+    :password "engedjbe"))
 
 (defsystem :hu.dwim.perec.oracle.test
   :class hu.dwim.test-system

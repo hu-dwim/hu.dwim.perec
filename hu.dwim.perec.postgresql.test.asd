@@ -8,9 +8,6 @@
 
 (load-system :hu.dwim.asdf)
 
-(defvar *test-database-connection-specification*
-  '(:host "localhost" :database "perec-test" :user-name "perec-test" :password "test123"))
-
 (defsystem :hu.dwim.perec.postgresql.test
   :class hu.dwim.test-system
   :author ("Levente Mészáros <levente.meszaros@gmail.com>"

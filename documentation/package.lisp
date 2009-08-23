@@ -25,10 +25,10 @@
 
 Create the database and user:
 
-$ createdb perec-test
-$ createuser -P perec-test
+$ createdb hu.dwim.perec.test
+$ createuser -P hu.dwim.perec.test
 
-Give "test123" as password.
+Give "engedjbe" as password.
 
 ** Running the tests using the PostgreSQL backend
 
@@ -104,18 +104,18 @@ use M-x sort-lines to keep the order
 Testbed default parameters (port is set to PostgreSQL default port):
    host: localhost
    port: 5432
-   database: perec-test
-   user-name: perec-test
-   password: test123
+   database: hu.dwim.perec.test
+   user-name: hu.dwim.perec.test
+   password: engedjbe
 
 To install postgresql:
    sudo apt-get install postgresql
 
 To setup the test database:
    sudo su - postgres
-   createdb perec-test
-   createuser -d -r -l -P perec-test
-   ;; type in 'test123' for password
+   createdb hu.dwim.perec.test
+   createuser -d -r -l -P hu.dwim.perec.test
+   ;; type in 'engedjbe' for password
 
 In emacs do: 
    ;; the swank server uses utf-8, so
