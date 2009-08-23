@@ -12,3 +12,7 @@
 (def function setup-readtable ()
   (enable-sharp-boolean-syntax)
   (enable-lambda-with-bang-args-syntax))
+
+#+#.(cl:when (cl:find-package "SWANK") '(:and))
+(register-readtable-for-swank
+ '(:hu.dwim.perec :hu.dwim.perec.test) 'setup-readtable)

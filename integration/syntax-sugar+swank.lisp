@@ -6,9 +6,6 @@
 
 (in-package :hu.dwim.perec)
 
-(register-readtable-for-swank
- '(:hu.dwim.perec :hu.dwim.perec.test) 'setup-readtable)
-
 ;;;;;;
 ;;; Slime inspector integration
 

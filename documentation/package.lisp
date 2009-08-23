@@ -32,9 +32,9 @@ Give "test123" as password.
 
 ** Running the tests using the PostgreSQL backend
 
-(asdf:test-system :hu.dwim.perec.test.postgresql)
+(asdf:test-system :hu.dwim.perec.postgresql)
 
-or use 'asdf:load-op to merely load it (including the environment setup).
+or use 'asdf:load-op to merely load it.
 
 ** Some simple examples
 
@@ -88,4 +88,86 @@ use M-x sort-lines to keep the order
 -3 what about purge-instance making references broken?
 -4 eliminate barely used (by increasing duplicates) system and package dependencies
 -4 eliminate superfluous duplicates (which are covered by other systems)
+|#
+
+
+
+
+
+
+
+
+
+
+
+#|
+Testbed default parameters (port is set to PostgreSQL default port):
+   host: localhost
+   port: 5432
+   database: perec-test
+   user-name: perec-test
+   password: test123
+
+To install postgresql:
+   sudo apt-get install postgresql
+
+To setup the test database:
+   sudo su - postgres
+   createdb perec-test
+   createuser -d -r -l -P perec-test
+   ;; type in 'test123' for password
+
+In emacs do: 
+   ;; the swank server uses utf-8, so
+   M-S-: (setq slime-net-coding-system 'utf-8-unix)
+   M-x slime-connect
+   ;; 'localhost' and default port 4005 should be ok
+
+To test hu.dwim.perec:
+   (in-package :hu.dwim.perec.test) ; this is the default when you connect
+   (retest) ; should print a lot of dots and stuff and takes a while
+
+To play around:
+   ;; to turn on logging of SQL statements in SLIME
+   (start-sql-recording)
+   ;; to create a persistent class
+   (defpclass* test ()
+     ((name :type (text 20))
+      (age :type integer-32)
+      (flag :type boolean)))
+   ;; to make an instance 
+   ;; this should automatically create/update the tables needed for the class
+   ;; note: if you have run the test suite, this might execute several queries
+   ;;       to check all persistent classes present in your lisp image
+   (defvar p
+     (with-transaction
+        (make-instance 'test :name \"Hello\" :age 42 :flag t)))
+   ;; to reuse the instance in another transaction
+   (with-transaction
+     (with-revived-instance p
+       (describe p)))
+   ;; to query instances of the class just defined
+   (with-transaction
+     (select (instance)
+       (from (instance test))
+       (where (and (equal (name-of instance) \"Hello\")
+                   (< (age-of instance) 100)))
+       (order-by :descending (age-of instance))))
+   ;; queries are polimorph by default (this should actually return all persistent instances)
+   ;; use macroexpand to see how it compiles down to straight SQL
+   (with-transaction
+     (select (:compile-at-macroexpand t) (instance)
+       (from (instance persistent-object))))
+   ;; see the tests in the repository at http://common-lisp.net/cgi-bin/darcsweb/darcsweb.cgi?r=hu.dwim.perec-hu.dwim.perec;a=tree;f=/test
+   ;; see a somewhat more complicated example at: http://common-lisp.net/project/hu.dwim.perec/shop.html
+   ;; and also check the showcase on the website at http://common-lisp.net/project/hu.dwim.perec/showcase.html
+
+To read more about the project:
+   http://common-lisp.net/project/hu.dwim.perec
+
+There is some form of documentation at:)
+   http://common-lisp.net/project/hu.dwim.perec/documentation/index.html
+
+Suggestions, bug reports are welcomed at:
+   hu.dwim.perec-devel@common-lisp.net
 |#

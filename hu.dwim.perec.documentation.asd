@@ -15,7 +15,9 @@
            "Tamás Borbély <tomi.borbely@gmail.com>")
   :licence "BSD / Public domain"
   :description "Documentation for hu.dwim.perec"
-  :depends-on (:hu.dwim.perec.test
+  :depends-on (:hu.dwim.perec.oracle.test
+               :hu.dwim.perec.postgresql.test
+               :hu.dwim.perec.sqlite.test
                :hu.dwim.wui)
   :components ((:module "documentation"
                 :components ((:file "package")))))

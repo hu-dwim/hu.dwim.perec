@@ -16,12 +16,17 @@
     :user-name "perec-test"
     :password "test123"))
 
-(defsystem :hu.dwim.perec.test.oracle
+(defsystem :hu.dwim.perec.oracle.test
   :class hu.dwim.test-system
+  :author ("Levente Mészáros <levente.meszaros@gmail.com>"
+           "Tamás Borbély <tomi.borbely@gmail.com>"
+           "Attila Lendvai <attila.lendvai@gmail.com>")
+  :licence "BSD / Public domain"
   :description "Test suite for hu.dwim.perec with Oracle backend"
-  :depends-on (:hu.dwim.perec.test))
+  :depends-on (:hu.dwim.perec.test
+               :hu.dwim.perec.oracle))
 
-(defmethod perform ((o load-op) (c (eql (find-system :hu.dwim.perec.test.oracle))))
+(defmethod perform ((o load-op) (c (eql (find-system :hu.dwim.perec.oracle.test))))
   (eval (read-from-string
          "(setf *database*
                 (make-instance 'oracle

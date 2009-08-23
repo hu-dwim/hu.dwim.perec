@@ -11,16 +11,21 @@
 (defvar *test-database-connection-specification*
   '(:host "localhost" :database "perec-test" :user-name "perec-test" :password "test123"))
 
-(defsystem :hu.dwim.perec.test.postgresql
+(defsystem :hu.dwim.perec.postgresql.test
   :class hu.dwim.test-system
+  :author ("Levente Mészáros <levente.meszaros@gmail.com>"
+           "Tamás Borbély <tomi.borbely@gmail.com>"
+           "Attila Lendvai <attila.lendvai@gmail.com>")
+  :licence "BSD / Public domain"
   :description "Test suite for hu.dwim.perec with Postgresql backend"
-  :depends-on (:hu.dwim.perec.test))
+  :depends-on (:hu.dwim.perec.test
+               :hu.dwim.perec.postgresql))
 
-(defmethod perform :after ((o load-op) (c (eql (find-system :hu.dwim.perec.test.postgresql))))
+(defmethod perform :after ((o load-op) (c (eql (find-system :hu.dwim.perec.postgresql.test))))
   (let ((*package* (find-package :hu.dwim.perec.test)))
     (eval (read-from-string
            "(setf *database*
-                  (make-instance 'postgresql-postmodern/test
+                  (make-instance 'postgresql/perec
                                  :generated-transaction-class-name 'transaction
                                  :default-result-type 'vector
                                  :muffle-warnings t

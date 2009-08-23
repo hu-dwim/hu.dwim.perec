@@ -97,34 +97,11 @@
       :name table-name
       :temporary #t
       :columns (mapcar (lambda (column) (sql-identifier :name (slot-value column 'hu.dwim.rdbms::name))) columns)
-      :as (sql-subquery :query subselect)))
-
-  (:method (table-name columns subselect (database oracle))
-    (ensure-oracle-temporary-table-exists table-name columns)
-    (sql-insert
-       :table table-name
-       :columns columns
-       :subselect (sql-subquery :query subselect))))
-
-(defun ensure-oracle-temporary-table-exists (table-name columns)
-  (unless (oracle-temporary-table-exists-p table-name)
-    (with-transaction (execute (sql-create-table
-                                :name table-name
-                                :temporary :delete-rows
-                                :columns columns)))))
-
-(defun oracle-temporary-table-exists-p (table-name)
-  (execute (format nil
-                   "select table_name from user_tables where lower(table_name)='~A' and temporary='Y'"
-                   (string-downcase (rdbms-name-for table-name))) ;; TODO should be case sensitive
-           :result-type 'list))
+      :as (sql-subquery :query subselect))))
 
 (defgeneric drop-temporary-table (table-name database)
   (:method (table-name database)
-           (sql-drop-table :name table-name))
-
-  (:method (table-name (database oracle))
-           nil))
+    (sql-drop-table :name table-name)))
 
 ;;;----------------------------------------------------------------------------
 ;;; Alias names

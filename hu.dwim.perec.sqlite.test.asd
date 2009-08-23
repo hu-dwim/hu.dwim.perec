@@ -11,12 +11,17 @@
 (defvar *test-database-connection-specification*
   '(:file-name "/tmp/perec-test"))
 
-(defsystem :hu.dwim.perec.test.sqlite
+(defsystem :hu.dwim.perec.sqlite.test
   :class hu.dwim.test-system
+  :author ("Levente Mészáros <levente.meszaros@gmail.com>"
+           "Tamás Borbély <tomi.borbely@gmail.com>"
+           "Attila Lendvai <attila.lendvai@gmail.com>")
+  :licence "BSD / Public domain"
   :description "Test suite for hu.dwim.perec with Sqlite backend"
-  :depends-on (:hu.dwim.perec.test))
+  :depends-on (:hu.dwim.perec.test
+               :hu.dwim.perec.sqlite))
 
-(defmethod perform ((op load-op) (system (eql (find-system :hu.dwim.perec.test.sqlite))))
+(defmethod perform ((op load-op) (system (eql (find-system :hu.dwim.perec.sqlite.test))))
   (eval (read-from-string
          "(setf *database*
                 (make-instance 'sqlite
