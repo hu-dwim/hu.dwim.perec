@@ -1,3 +1,0 @@
-#!/bin/sh
-
-sbcl --noinform --userinit "./build-testbed.lisp"
