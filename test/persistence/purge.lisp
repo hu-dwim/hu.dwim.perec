@@ -43,11 +43,11 @@
 (defun purge-test (class-name delete-counter)
   (with-fixture fixture/persistent/purge
     (with-transaction
-      (let ((last-delete-counter (delete-counter-of (command-counter-of *transaction*)))
+      (let ((last-delete-counter (delete-counter-of (hu.dwim.rdbms::command-counter-of *transaction*)))
             (total-instance-counter (length (select-instances purge-a-test)))
             (purged-instance-counter (count-if [typep !1 class-name] (select-instances purge-a-test))))
         (purge-instances class-name)
-        (is (= (- (delete-counter-of (command-counter-of *transaction*)) last-delete-counter)
+        (is (= (- (delete-counter-of (hu.dwim.rdbms::command-counter-of *transaction*)) last-delete-counter)
                delete-counter))
         (is (= (count-if [typep !1 class-name] (select-instances purge-a-test))
                0))

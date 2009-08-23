@@ -11,8 +11,8 @@
 
 (enable-sharp-boolean-syntax)
 
-(cl-quasi-quote-xml:enable-quasi-quoted-xml-syntax
- :transformation-pipeline (cl-quasi-quote-xml:make-quasi-quoted-xml-to-form-emitting-transformation-pipeline
+(hu.dwim.quasi-quote.xml:enable-quasi-quoted-xml-syntax
+ :transformation-pipeline (hu.dwim.quasi-quote.xml:make-quasi-quoted-xml-to-form-emitting-transformation-pipeline
                            '*xml-stream*
                            :binary t
                            :encoding :utf-8
@@ -52,7 +52,7 @@
                                                                                                                   (:hour 2) #\: (:min 2) #\: (:sec 2) #\.
                                                                                                                   (:usec 6) :gmt-offset)
                                                                                                         :timezone +utc-zone+)))))
-                                                       (collect (cl-quasi-quote-xml:make-xml-attribute slot-name slot-value))))))
+                                                       (collect (hu.dwim.quasi-quote.xml:make-xml-attribute slot-name slot-value))))))
                                      ,(iter (for slot :in slots)
                                             (when (and (typep slot 'persistent-association-end-effective-slot-definition)
                                                        (closer-mop:slot-boundp-using-class class instance slot))

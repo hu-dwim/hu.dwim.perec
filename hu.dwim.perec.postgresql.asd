@@ -20,3 +20,9 @@
   :components ((:module "source"
                 :components ((:module "backend"
                               :components ((:file "postgresql")))))))
+
+(defmethod perform :after ((op develop-op) (system (eql (find-system :hu.dwim.perec.postgresql))))
+  (let ((database-variable (read-from-string "hu.dwim.rdbms::*database*")))
+    (unless (boundp database-variable)
+      (setf (symbol-value database-variable)
+            (symbol-value (read-from-string "hu.dwim.perec.test::*postgresql-database*"))))))

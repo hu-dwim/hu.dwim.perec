@@ -112,14 +112,14 @@
       (with-one-and-two-transactions
           (bind ((instance (make-instance *validity-dependent-class-name*)))
             (setf (population-of instance) 1000)
-            (is (= (update-counter-of (command-counter-of *transaction*)) 1))
-            (is (= (insert-counter-of (command-counter-of *transaction*)) (+ 1 1)))
+            (is (= (update-counter-of (hu.dwim.rdbms::command-counter-of *transaction*)) 1))
+            (is (= (insert-counter-of (hu.dwim.rdbms::command-counter-of *transaction*)) (+ 1 1)))
             instance)
-        (let ((update-counter (update-counter-of (command-counter-of *transaction*)))
-              (insert-counter (insert-counter-of (command-counter-of *transaction*))))
+        (let ((update-counter (update-counter-of (hu.dwim.rdbms::command-counter-of *transaction*)))
+              (insert-counter (insert-counter-of (hu.dwim.rdbms::command-counter-of *transaction*))))
           (setf (population-of -instance-) 1000)
-          (is (= (update-counter-of (command-counter-of *transaction*)) (1+ update-counter)))
-          (is (= (insert-counter-of (command-counter-of *transaction*)) insert-counter)))))))
+          (is (= (update-counter-of (hu.dwim.rdbms::command-counter-of *transaction*)) (1+ update-counter)))
+          (is (= (insert-counter-of (hu.dwim.rdbms::command-counter-of *transaction*)) insert-counter)))))))
 
 (def test test/dimensional/validity-dependent/store-value/3 ()
   (with-validity-dependent-test-classes

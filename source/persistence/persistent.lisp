@@ -23,7 +23,7 @@
       (progn
         ;; do not count this existence check as a select, because it will not execute in release code
         (when (oid-of instance)
-          (decf (select-counter-of (command-counter-of *transaction*))))
+          (decf (select-counter-of (hu.dwim.rdbms::command-counter-of *transaction*))))
         (setf (persistent-p instance) (instance-exists-in-database-p instance)))))
 
 (def generic initialize-revived-instance (instance &key &allow-other-keys)

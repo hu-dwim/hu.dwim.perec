@@ -34,9 +34,9 @@
 (defmacro with-select-count-check (count &body body)
   (if count
       (with-unique-names (start result end)
-        `(bind ((,start (hu.dwim.perec::select-counter-of (command-counter-of *transaction*)))
+        `(bind ((,start (hu.dwim.perec::select-counter-of (hu.dwim.rdbms::command-counter-of *transaction*)))
                 (,result (progn ,@body))
-                (,end (hu.dwim.perec::select-counter-of (command-counter-of *transaction*))))
+                (,end (hu.dwim.perec::select-counter-of (hu.dwim.rdbms::command-counter-of *transaction*))))
           (is (= (- ,end ,start) ,count))
           ,result))
       `(progn ,@body)))

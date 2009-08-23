@@ -17,14 +17,3 @@
   :description "Test suite for hu.dwim.perec with Postgresql backend"
   :depends-on (:hu.dwim.perec.test
                :hu.dwim.perec.postgresql))
-
-(defmethod perform :after ((o load-op) (c (eql (find-system :hu.dwim.perec.postgresql.test))))
-  (let ((*package* (find-package :hu.dwim.perec.test)))
-    (eval (read-from-string
-           "(setf *database*
-                  (make-instance 'postgresql/perec
-                                 :generated-transaction-class-name 'transaction
-                                 :default-result-type 'vector
-                                 :muffle-warnings t
-                                 :connection-specification *test-database-connection-specification*))"))
-    (warn "The global binding of *database* was set according to the test setup.")))

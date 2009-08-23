@@ -17,7 +17,9 @@
   :licence "BSD / Public domain"
   :description "Test suite for hu.dwim.perec"
   :depends-on (:hu.dwim.def+hu.dwim.stefil
-               :hu.dwim.perec+hu.dwim.syntax-sugar+swank)
+               :hu.dwim.perec+hu.dwim.syntax-sugar+swank
+               :hu.dwim.perec+iolib
+               :hu.dwim.perec+hu.dwim.quasi-quote.xml)
   :components ((:module "test"
                 :components ((:file "package")
                              (:file "suite" :depends-on ("package"))
