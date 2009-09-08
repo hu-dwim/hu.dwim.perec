@@ -4,9 +4,9 @@
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :asdf)
-
 (load-system :hu.dwim.asdf)
+
+(in-package :hu.dwim.asdf)
 
 (defsystem :hu.dwim.perec
   :class hu.dwim.system

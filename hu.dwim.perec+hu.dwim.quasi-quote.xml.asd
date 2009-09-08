@@ -4,9 +4,9 @@
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :asdf)
-
 (load-system :hu.dwim.asdf)
+
+(in-package :hu.dwim.asdf)
 
 (defsystem :hu.dwim.perec+hu.dwim.quasi-quote.xml
   :class hu.dwim.system
