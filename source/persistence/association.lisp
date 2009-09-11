@@ -254,7 +254,7 @@
         (bind ((other-slot (other-association-end-of slot))
                (class (associated-class-of other-slot))
                (slot-name (slot-definition-name slot)))
-          (make-view-for-classes-and-slots (rdbms-name-for (concatenate-string (symbol-name (class-name class))
+          (make-view-for-classes-and-slots (rdbms-name-for (string+ (symbol-name (class-name class))
                                                                                "-"
                                                                                (symbol-name slot-name)
                                                                                "-ai") :view)
@@ -320,7 +320,7 @@
                 (call-next-method)
                 (columns-of (other-association-end-of slot))))
       (:m-n (list (make-column-for-reference-slot (class-name (slot-definition-class slot))
-                                                  (concatenate-string (symbol-name (slot-definition-name slot))
+                                                  (string+ (symbol-name (slot-definition-name slot))
                                                                       "-for-"
                                                                       (symbol-name (set-type-class-for (canonical-type-of slot))))))))))
 

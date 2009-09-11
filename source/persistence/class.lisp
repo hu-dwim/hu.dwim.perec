@@ -548,7 +548,7 @@
            (rdbms-types (column-types-of slot)))
       (when type
         (cond ((set-type-p* type)
-               (list (make-column-for-reference-slot class-name (concatenate-string (symbol-name name) "-for-" (symbol-name class-name)))))
+               (list (make-column-for-reference-slot class-name (string+ (symbol-name name) "-for-" (symbol-name class-name)))))
               ((persistent-class-type-p* type)
                (append
                 (when (tagged-p mapping)
@@ -668,7 +668,7 @@
   (second (find (class-name definer-class) (effective-store-of owner-class) :key #'first)))
 
 (def function view-name-for-class (class suffix)
-  (rdbms-name-for (concatenate-string (symbol-name (class-name class)) suffix) :view))
+  (rdbms-name-for (string+ (symbol-name (class-name class)) suffix) :view))
 
 (def function make-oid-column ()
   "Creates an RDBMS column that will be used to store the oid of the instances in this table."

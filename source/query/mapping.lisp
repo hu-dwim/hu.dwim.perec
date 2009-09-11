@@ -672,7 +672,7 @@
 ;;; String manipulation
 ;;;
 
-(def query-function concatenate-string (&rest strings)
+(def query-function string+ (&rest strings)
   ""
   (declare (persistent-type (forall ((a string)) (function (&rest a) a))))
   (apply 'sql-\|\| strings))

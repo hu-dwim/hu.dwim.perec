@@ -17,7 +17,7 @@
                      (1 '(:minute ":00Z"))
                      (2 `(:sec ,(if (ends-with #\Z timestamp) "" "Z"))))
                    '(:day "T00:00:00Z"))))))
-    (values (concatenate-string timestamp completion) partial-type)))
+    (values (string+ timestamp completion) partial-type)))
 
 (def function first-moment-for-partial-timestamp (timestamp)
   (parse-timestring (complete-partial-timestamp timestamp)))
