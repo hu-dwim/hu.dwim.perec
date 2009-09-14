@@ -31,22 +31,7 @@
             (coordinate-range-p coordinate-2))
         (coordinate-range= coordinate-1 coordinate-2)
         (and (subsetp* coordinate-1 coordinate-2 :key #'key-for)
-             (subsetp* coordinate-2 coordinate-1 :key #'key-for))))
-
-  ;; set as hash-table
-  (:method ((coordinate-1 hash-table) (coordinate-2 (eql +whole-domain-marker+)))
-    (assert #f () "Unable to compare ~A and ~A. Consider using COORDINATE-EQUAL."
-            coordinate-1 coordinate-2))
-  
-  (:method ((coordinate-1 hash-table) (coordinate-2 hash-table))
-    (and (hashtable-subset coordinate-1 coordinate-2)
-         (hashtable-subset coordinate-2 coordinate-1)))
-
-  (:method ((coordinate-1 cons) (coordinate-2 hash-table))
-    (coordinate= (set-as-hashtable coordinate-1 :key #'key-for) coordinate-2))
-
-  (:method ((coordinate-1 hash-table) (coordinate-2 cons))
-    (coordinate= coordinate-1 (set-as-hashtable coordinate-2 :key #'key-for))))
+             (subsetp* coordinate-2 coordinate-1 :key #'key-for)))))
 
 (def (generic e) coordinate-equal (dimension coordinate-1 coordinate-2)
 
@@ -78,9 +63,6 @@
   (:method ((dimension dimension) (cover cons) (coordinate cons))
     (subsetp* coordinate cover :key #'key-for))
 
-  (:method ((dimension dimension) (cover hash-table) (coordinate hash-table))
-    (hashtable-subset coordinate cover))
-
   (:method ((dimension ordering-dimension) (cover cons) (coordinate cons))
     (covering-range-p cover coordinate)))
 
@@ -100,9 +82,6 @@
   (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 cons))
     (intersection* coordinate-1 coordinate-2 :key #'key-for))
 
-  (:method ((dimension dimension) (coordinate-1 hash-table) (coordinate-2 hash-table))
-    (hashtable-intersection coordinate-1 coordinate-2))
-
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (range-intersection coordinate-1 coordinate-2)))
 
@@ -121,9 +100,6 @@
   
   (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 cons))
     (union* coordinate-1 coordinate-2 :key #'key-for))
-
-  (:method ((dimension dimension) (coordinate-1 hash-table) (coordinate-2 hash-table))
-    (hashtable-union coordinate-1 coordinate-2))  
 
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (range-union coordinate-1 coordinate-2)))
@@ -146,10 +122,6 @@
 
   (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 cons))
     (awhen (set-difference* coordinate-1 coordinate-2 :key #'key-for)
-      (list it)))
-
-  (:method ((dimension dimension) (coordinate-1 hash-table) (coordinate-2 hash-table))
-    (awhen (hashtable-difference coordinate-1 coordinate-2)
       (list it)))
 
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
