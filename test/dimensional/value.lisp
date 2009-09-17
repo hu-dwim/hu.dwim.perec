@@ -271,7 +271,7 @@
 
 (def test test/dimensional/value/iter-in-d-values (d-value-1 d-value-2 expected-d-values)
   (iter (with dimensions = (hu.dwim.perec::dimensions-of d-value-1))
-        (with test = [d-value= !1 !2 :test #'equal])
+        (with test = [d-value-equal !1 !2 :test #'equal])
         (for (coordinates values) :in-d-values (d-value-1 d-value-2) :unspecified-value nil)
         (for d-value = (make-single-d-value dimensions coordinates values))
         (is (member d-value expected-d-values :test test) "Unexpected: ~S" d-value)

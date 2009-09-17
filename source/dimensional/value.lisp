@@ -10,8 +10,8 @@
 ;;; C value
 
 (def class* c-value ()
-  ((coordinates)
-   (value)))
+  ((coordinates :reader coordinates-of)
+   (value :reader value-of)))
 
 (def (function e) c-value-p (value)
   (typep value 'c-value))
@@ -39,13 +39,6 @@
   (make-instance 'c-value
                  :coordinates (coordinates-of c-value)
                  :value (value-of c-value)))
-
-(def (function e) c-value= (c-value-1 c-value-2 &key (test #'eql))
-  (and (funcall test
-                (value-of c-value-1)
-                (value-of c-value-2))
-       (coordinates= (coordinates-of c-value-1)
-                     (coordinates-of c-value-2))))
 
 (def (function e) c-value-equal (dimensions c-value-1 c-value-2 &key (test #'eql))
   (and (funcall test
@@ -163,7 +156,7 @@
                                              coordinate))))))
            (uncook-d-value (d-value)
              (iter (for c-value :in (c-values-of d-value))
-                   (setf (coordinates-of c-value)
+                   (setf (slot-value c-value 'coordinates) ;; FIXME mutating coordinates!
                          (uncook-coordinates (coordinates-of c-value))))))
 
     (prog1-bind d-value (make-empty-d-value dimensions)
@@ -210,21 +203,11 @@
 
 (def (function e) copy-d-value (d-value)
   (debug-only (assert-valid-d-value d-value))
-  (bind ((c-values (mapcar #'copy-c-value (c-values-of d-value)))) ;; FIXME c-values should be immutable
+  (bind ((c-values (copy-list (c-values-of d-value))))
     (make-instance 'd-value
                   :dimensions (dimensions-of d-value)
                   :c-values c-values
                   :index (build-index c-values))))
-
-(def (function e) d-value= (d-value-1 d-value-2 &key (test #'eql))
-  (debug-only (and (assert-valid-d-value d-value-1)
-                   (assert-valid-d-value d-value-2)))
-  (and (equal (dimensions-of d-value-1)
-              (dimensions-of d-value-2))
-       (every* (lambda (c-value-1 c-value-2)
-                 (c-value-equal (dimensions-of d-value-1) c-value-1 c-value-2 :test test))
-               (c-values-of d-value-1)
-               (c-values-of d-value-2))))
 
 (def (function e) d-value-equal (d-value-1 d-value-2 &key (test #'eql))
   (debug-only (and (assert-valid-d-value d-value-1)
@@ -238,9 +221,8 @@
         (for c-value-1 :in (c-values-of d-value-1))
         (for d-value-1-part = (make-single-d-value dimensions-1 (coordinates-of c-value-1) (value-of c-value-1)))
         (for d-value-2-part = (value-at-coordinates d-value-2 (coordinates-of c-value-1)))
-        (always (or (d-value= d-value-1-part
-                              d-value-2-part
-                              :test test)
+        (always (or (and (single-d-value-p d-value-2-part)
+                         (c-value-equal dimensions-1 c-value-1 (first (c-values-of d-value-2-part)) :test test))
                     (and
                      (not (single-d-value-p d-value-2-part))
                      (d-value-equal d-value-2-part
@@ -256,35 +238,6 @@
                 (iter (for remaining-coordinate :in remaining-coordinates)
                       (appending (coordinates-difference dimensions remaining-coordinate (coordinates-of c-value))))))
     (null remaining-coordinates)))
-
-#+nil
-(def (function e) consolidate-d-value (d-value &key (test #'eql))
-  (debug-only (assert-valid-d-value d-value))
-  (bind ((original-d-value (debug-only (copy-d-value d-value)))
-         (dimensions (dimensions-of d-value)))
-    (declare (ignorable original-d-value))
-    (tagbody
-     :restart
-       (iter outer
-             (for c-value-1-cell :on (c-values-of d-value))
-             (for c-value-1 = (car c-value-1-cell))
-             (unless (iter inner
-                           (for c-value-2 :in (cdr c-value-1-cell))
-                           (when (funcall test
-                                          (value-of c-value-1)
-                                          (value-of c-value-2))
-                             (when-bind coordinates (coordinates-union dimensions (coordinates-of c-value-1) (coordinates-of c-value-2))
-                               (setf (c-values-of d-value)
-                                     (list* (make-c-value coordinates (value-of c-value-1))
-                                            (remove-if (lambda (c-value)
-                                                         (or (eq c-value c-value-1)
-                                                             (eq c-value c-value-2)))
-                                                       (c-values-of d-value))))
-                               (go :restart))))
-               (collect c-value-1))))
-    (debug-only (and (assert-valid-d-value d-value)
-                     #+nil(d-value-equal d-value original-d-value)))
-    d-value))
 
 (def function consolidate-d-value (d-value)
   (debug-only (assert-valid-d-value d-value))
