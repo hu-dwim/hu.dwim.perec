@@ -122,6 +122,13 @@
       `(progn
          ,@forms)) )
 
+(def macro dopairs ((var1 var2 list) &body body)
+  (with-unique-names (cell)
+    `(iter (for ,cell :on ,list)
+           (for ,var1 = (car ,cell))
+           (iter (for ,var2 :in (cdr ,cell))
+                 ,@body))))
+
 (def function lessp (obj1 obj2)
   (typecase obj1
     (real (< obj1 obj2))

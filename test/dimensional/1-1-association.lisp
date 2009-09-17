@@ -29,8 +29,8 @@
   (:dimensions (time)))
 
 (defassociation*
-  ((:class dimensional-sister-test :slot validity-dependent-brother :type (or null dimensional-brother-test))
-   (:class dimensional-brother-test :slot validity-dependent-sister :type (or null dimensional-sister-test)))
+  ((:class dimensional-sister-test :slot validity-dependent-brother :type (or null dimensional-brother-test) :cache #t)
+   (:class dimensional-brother-test :slot validity-dependent-sister :type (or null dimensional-sister-test) :cache #t))
   (:dimensions (validity)))
 
 (defassociation*
@@ -103,7 +103,19 @@
                          (make-coordinate-range 'ie (parse-datestring "2003-01-01") +end-of-time+)))
                   (list nil brother-2 nil brother-1))))))))))
 
-(def test test/dimensional/association/1-1/cache ()
+(def test test/dimensional/association/1-1/cache/validity-dependent ()
   (test/dimensional/association/cache
    (find-association
     'dimensional-sister-test~validity-dependent-brother~dimensional-brother-test~validity-dependent-sister)))
+
+#+nil
+(def test test/dimensional/association/1-1/cache/time-dependent ()
+  (test/dimensional/association/cache
+   (find-association
+    'dimensional-sister-test~time-dependent-brother~dimensional-brother-test~time-dependent-sister)))
+
+#+nil
+(def test test/dimensional/association/1-1/cache/time-and-validity-dependent ()
+  (test/dimensional/association/cache
+   (find-association
+    'dimensional-sister-test~time-and-validity-dependent-brother~dimensional-brother-test~time-and-validity-dependent-sister)))

@@ -60,7 +60,8 @@
 
 (def class* d-value ()
   ((dimensions)
-   (c-values)))
+   (c-values)
+   (index :type hash-table)))
 
 (def (function e) d-value-p (value)
   (typep value 'd-value))
@@ -99,17 +100,46 @@
         (iter (for c-value-2 :in (cdr c-value-1-cell))
               (assert (not (coordinates-intersection dimensions (coordinates-of c-value-1) (coordinates-of c-value-2)))
                       nil "Invalid d-value due to overlapping coordinates found in c-values of ~A" d-value)))
+  ;; TODO check index
   d-value)
+
+(def function consolidate-c-value (c-value d-value)
+  (iter (with dimensions = (dimensions-of d-value))
+        (with c-value-coordinates = (coordinates-of c-value))
+        (with value = (value-of c-value))
+        (for other-c-value :in (gethash value (index-of d-value)))
+        (for other-c-value-coordinates = (coordinates-of other-c-value))
+        (when-bind coordinates (coordinates-union dimensions c-value-coordinates other-c-value-coordinates)
+          (remove-c-value d-value other-c-value)
+          (return-from consolidate-c-value (consolidate-c-value (make-c-value coordinates value) d-value)))
+        (finally (return c-value))))
+
+(def function add-c-value (d-value c-value)
+  (bind ((c-value (consolidate-c-value c-value d-value)))
+    (push c-value (c-values-of d-value))
+    (push c-value (gethash (value-of c-value) (index-of d-value)))))
+
+
+(def function remove-c-value (d-value c-value)
+  (deletef (c-values-of d-value) c-value)
+  (deletef (gethash (value-of c-value) (index-of d-value)) c-value))
+
+(def function build-index (c-values)
+  (prog1-bind index (make-hash-table :test #'equal)
+    (mapc [push !1 (gethash (value-of !1) index)] c-values)))
 
 (def (function e) make-empty-d-value (dimensions)
   (make-instance 'd-value
                  :dimensions (mapcar #'lookup-dimension dimensions)
-                 :c-values nil))
+                 :c-values nil
+                 :index (build-index nil)))
 
 (def (function e) make-single-d-value (dimensions coordinates value)
-  (make-instance 'd-value
-                 :dimensions (mapcar #'lookup-dimension dimensions)
-                 :c-values (list (make-c-value coordinates value))))
+  (bind ((c-values (list (make-c-value coordinates value))))
+    (make-instance 'd-value
+                   :dimensions (mapcar #'lookup-dimension dimensions)
+                   :c-values c-values
+                   :index (build-index c-values))))
 
 (def (function e) make-d-value (dimensions coordinates-list values)
   (labels ((cook-coordinates (coordinates)
@@ -154,21 +184,20 @@
   (assert (single-d-value-p d-value))
   (value-of (first (c-values-of d-value))))
 
+(def (function e) dimension-position (d-value dimension)
+  (position (lookup-dimension dimension) (dimensions-of d-value)))
+
 (def (function e) single-d-value-coordinate (d-value dimension)
   (assert (single-d-value-p d-value))
   (elt (coordinates-of (first (c-values-of d-value)))
-       (position (if (symbolp dimension)
-                     dimension
-                     (name-of dimension))
-                 (dimensions-of d-value)
-                 :key #'name-of)))
+       (dimension-position d-value dimension)))
 
 (def (function e) d-value-dimension-coordinate-list (d-value dimension &key (mode :union))
   (funcall (ecase mode
              (:union 'coordinate-list-union)
              (:intersection 'overlapping-coordinate-list-self-intersection))
            dimension
-           (iter (with index = (position (lookup-dimension dimension) (dimensions-of d-value)))
+           (iter (with index = (dimension-position d-value dimension))
                  (for c-value :in (c-values-of d-value))
                  (collect (elt (coordinates-of c-value) index)))))
 
@@ -181,9 +210,11 @@
 
 (def (function e) copy-d-value (d-value)
   (debug-only (assert-valid-d-value d-value))
-  (make-instance 'd-value
-                 :dimensions (dimensions-of d-value)
-                 :c-values (mapcar #'copy-c-value (c-values-of d-value))))
+  (bind ((c-values (mapcar #'copy-c-value (c-values-of d-value)))) ;; FIXME c-values should be immutable
+    (make-instance 'd-value
+                  :dimensions (dimensions-of d-value)
+                  :c-values c-values
+                  :index (build-index c-values))))
 
 (def (function e) d-value= (d-value-1 d-value-2 &key (test #'eql))
   (debug-only (and (assert-valid-d-value d-value-1)
@@ -226,6 +257,7 @@
                       (appending (coordinates-difference dimensions remaining-coordinate (coordinates-of c-value))))))
     (null remaining-coordinates)))
 
+#+nil
 (def (function e) consolidate-d-value (d-value &key (test #'eql))
   (debug-only (assert-valid-d-value d-value))
   (bind ((original-d-value (debug-only (copy-d-value d-value)))
@@ -254,6 +286,22 @@
                      #+nil(d-value-equal d-value original-d-value)))
     d-value))
 
+(def function consolidate-d-value (d-value)
+  (debug-only (assert-valid-d-value d-value))
+  (bind ((dimensions (dimensions-of d-value))
+         (index (index-of d-value)))
+    (flet ((consolidate-c-values (d-value value)
+            (tagbody
+             :restart
+               (dopairs (c-value-1 c-value-2 (gethash value index))
+                 (when-bind coordinates (coordinates-union dimensions (coordinates-of c-value-1) (coordinates-of c-value-2))
+                             (remove-c-value d-value c-value-1)
+                             (remove-c-value d-value c-value-2)
+                             (add-c-value d-value (make-c-value coordinates value))
+                             (go :restart))))))
+      (maphash-keys [consolidate-c-values d-value !1] index)
+      d-value)))
+
 (def (function e) single-value-at-coordinates (d-value coordinates &key (otherwise :signal-default-error))
   (debug-only (assert-valid-d-value d-value))
   (iter (with dimensions = (dimensions-of d-value))
@@ -268,26 +316,28 @@
 
 (def (function e) value-at-coordinates (d-value coordinates)
   (debug-only (assert-valid-d-value d-value))
-  (consolidate-d-value
+  (progn ;;consolidate-d-value
    (prog1-bind result-d-value (make-empty-d-value (dimensions-of d-value))
-     (setf (c-values-of result-d-value)
-           (iter (with dimensions = (dimensions-of d-value))
-                 (for c-value :in (c-values-of d-value))
-                 (for intersection = (coordinates-intersection dimensions (coordinates-of c-value) coordinates))
-                 (when (or intersection (null dimensions)) ; FIXME
-                   (collect (make-c-value intersection
-                                          (value-of c-value)))))))))
+     (iter (with dimensions = (dimensions-of d-value))
+           (for c-value :in (c-values-of d-value))
+           (for intersection = (coordinates-intersection dimensions (coordinates-of c-value) coordinates))
+           (when (or intersection (null dimensions)) ; FIXME
+             (add-c-value result-d-value
+                          (make-c-value intersection
+                                        (value-of c-value))))))))
 
 (def (function e) (setf value-at-coordinates) (new-value d-value coordinates)
   (debug-only (assert-valid-d-value d-value))
-  (setf (c-values-of d-value)
-        (list* (make-c-value coordinates new-value)
-               (iter (with dimensions = (dimensions-of d-value))
-                     (for c-value :in (c-values-of d-value))
-                     (mapc (lambda (coordinates)
-                             (collect (make-c-value coordinates (value-of c-value))))
-                           (coordinates-difference dimensions (coordinates-of c-value) coordinates)))))
-  (consolidate-d-value d-value))
+  (iter (with dimensions = (dimensions-of d-value))
+        (for c-value :in (c-values-of d-value))
+        (for old-coordinates = (coordinates-of c-value))
+        (when (or (coordinates-intersection dimensions old-coordinates coordinates) (null dimensions)) ;; FIXME
+          (remove-c-value d-value c-value)
+          (mapc [add-c-value d-value (make-c-value !1 (value-of c-value))]
+                (coordinates-difference dimensions old-coordinates coordinates))))
+  (add-c-value d-value (make-c-value coordinates new-value))
+  ;;(consolidate-d-value d-value)
+  d-value)
 
 (def (function e) (setf into-d-value) (new-d-value d-value)
   (debug-only (and (assert-valid-d-value new-d-value)
@@ -295,51 +345,6 @@
   (iter (for c-value :in (c-values-of new-d-value))
         (setf (value-at-coordinates d-value (coordinates-of c-value))
               (value-of c-value)))
-  (debug-only (assert-valid-d-value d-value))
-  d-value)
-
-(def (function e) insert-at-coordinates (d-value coordinates value)
-  (debug-only (assert-valid-d-value d-value))
-  ;; TODO: this is suboptimal
-  (bind ((new-d-value (value-at-coordinates d-value coordinates)))
-    (iter (for c-value :in (c-values-of new-d-value))
-          (pushnew value (value-of c-value)))
-    (setf (into-d-value d-value) new-d-value))
-  (debug-only (assert-valid-d-value d-value))
-  d-value)
-
-(def (function e) delete-at-coordinates (d-value coordinates value)
-  (debug-only (assert-valid-d-value d-value))
-  (bind ((new-d-value (value-at-coordinates d-value coordinates)))
-    (iter (for c-value :in (c-values-of new-d-value))
-          (removef (value-of c-value) value))
-    (setf (into-d-value d-value) new-d-value))
-  (debug-only (assert-valid-d-value d-value))
-  d-value)
-
-(def (function e) clear-at-coordinates (d-value coordinates value)
-  (debug-only (assert-valid-d-value d-value))
-  (bind ((new-d-value (value-at-coordinates d-value coordinates)))
-    (iter (for c-value :in (c-values-of new-d-value))
-          (when (eq (value-of c-value) value)
-            (setf (value-of c-value) nil)))
-    (setf (into-d-value d-value) new-d-value))
-  (debug-only (assert-valid-d-value d-value))
-  d-value)
-
-(def (function e) remove-dimensions (d-value dimensions)
-  (debug-only (assert-valid-d-value d-value))
-  (bind ((original-dimensions (dimensions-of d-value)))
-    (iter (for c-value :in (c-values-of d-value))
-          (setf (coordinates-of c-value)
-                (iter (for dimension :in original-dimensions)
-                      (for coordinate :in (coordinates-of c-value))
-                      (unless (member dimension dimensions)
-                        (collect coordinate)))))
-    (setf (dimensions-of d-value)
-          (iter (for dimension :in (dimensions-of d-value))
-                (unless (member dimension dimensions)
-                  (collect dimension)))))
   (debug-only (assert-valid-d-value d-value))
   d-value)
 
@@ -392,26 +397,6 @@
                (setf (value-at-coordinates ,collect-variable ,coordinates) ,expr))))))
 
 (export 'collect-d-value)
-
-(def (function e) map-d-value (d-value function)
-  (mapc (lambda (c-value)
-          (funcall function (coordinates-of c-value) (value-of c-value)))
-        (c-values-of d-value)))
-
-(def (function e) mapcar-d-value (d-value function)
-  (mapcar (lambda (c-value)
-            (funcall function (coordinates-of c-value) (value-of c-value)))
-          (c-values-of d-value)))
-
-(def (function e) map-d-values (function d-values &key unspecified-value)
-  (assert (d-values-have-same-dimensions-p d-values))
-  (mapc (lambda (coordinates)
-          (apply function
-                 coordinates
-                 (mapcar (lambda (d-value)
-                           (single-value-at-coordinates d-value coordinates :otherwise unspecified-value))
-                         d-values)))
-        (split-d-values-coordinates-lists d-values)))
 
 (def function coordinate-list-difference (dimension coordinate-list-1 coordinate-list-2)
   (when (null coordinate-list-2)
@@ -486,8 +471,53 @@
             :key (lambda (d-value)
                    (mapcar #'coordinates-of (c-values-of d-value))))))
 
+;;;
+;;; Set-valued d-value operations
+;;;
+(def (function e) insert-at-coordinates (d-value coordinates value &key (test #'eql))
+  (debug-only (assert-valid-d-value d-value))
+  (iter (for (coordinates set) :in-d-value (value-at-coordinates d-value coordinates))
+        (setf (value-at-coordinates d-value coordinates) (adjoin value set :test test)))
+  (debug-only (assert-valid-d-value d-value))
+  d-value)
+
+(def (function e) delete-at-coordinates (d-value coordinates value &key (test #'eql))
+  (debug-only (assert-valid-d-value d-value))
+  (iter (for (coordinates set) :in-d-value (value-at-coordinates d-value coordinates))
+        (setf (value-at-coordinates d-value coordinates) (remove value set :test test)))
+  (debug-only (assert-valid-d-value d-value))
+  d-value)
+
+(def (function e) clear-at-coordinates (d-value coordinates value &key (test #'eql))
+  (debug-only (assert-valid-d-value d-value))
+  (iter (for (coordinates value1) :in-d-value (value-at-coordinates d-value coordinates))
+        (when (funcall test value1 value)
+          (setf (value-at-coordinates d-value coordinates) nil)))
+  (debug-only (assert-valid-d-value d-value))
+  d-value)
+
 ;;;;;;
 ;;; D operations
+
+(def (function e) map-d-value (d-value function)
+  (mapc (lambda (c-value)
+          (funcall function (coordinates-of c-value) (value-of c-value)))
+        (c-values-of d-value)))
+
+(def (function e) mapcar-d-value (d-value function)
+  (mapcar (lambda (c-value)
+            (funcall function (coordinates-of c-value) (value-of c-value)))
+          (c-values-of d-value)))
+
+(def (function e) map-d-values (function d-values &key unspecified-value)
+  (assert (d-values-have-same-dimensions-p d-values))
+  (mapc (lambda (coordinates)
+          (apply function
+                 coordinates
+                 (mapcar (lambda (d-value)
+                           (single-value-at-coordinates d-value coordinates :otherwise unspecified-value))
+                         d-values)))
+        (split-d-values-coordinates-lists d-values)))
 
 (def (function e) d-apply (function d-values &key (unspecified-value :signal-default-error))
   (assert (d-values-have-same-dimensions-p d-values))
@@ -499,6 +529,7 @@
                                           (list coordinates)
                                           coordinates))))
 
+;; TODO remove this
 (def (function e) d-project (function projection-dimensions d-value)
   (bind ((dimensions (dimensions-of d-value))
          (remaining-dimensions (remove-if [member !1 projection-dimensions] (dimensions-of d-value)))
@@ -552,6 +583,28 @@
                         (funcall function accumulated-value folded-coordinates value)))
             (finally (return result)))
       d-value))
+
+;; TODO remove (remove-dimensions)
+;; it was (mutating c-values!):
+;;
+;;(def (function e) remove-dimensions (d-value dimensions)
+;;  (debug-only (assert-valid-d-value d-value))
+;;  (bind ((original-dimensions (dimensions-of d-value)))
+;;    (iter (for c-value :in (c-values-of d-value))
+;;          (setf (coordinates-of c-value)
+;;                (iter (for dimension :in original-dimensions)
+;;                      (for coordinate :in (coordinates-of c-value))
+;;                      (unless (member dimension dimensions)
+;;                        (collect coordinate)))))
+;;    (setf (dimensions-of d-value)
+;;          (iter (for dimension :in (dimensions-of d-value))
+;;                (unless (member dimension dimensions)
+;;                  (collect dimension)))))
+;;  (debug-only (assert-valid-d-value d-value))
+;;  d-value)
+
+(def (function e) remove-dimensions (d-value dimensions)
+  (d-fold (lambda (x y z) (declare (ignore x y)) z) dimensions d-value))
 
 (def (function e) d-equal (d-value-1 d-value-2)
   (d-apply #'equal (list d-value-1 d-value-2)))
