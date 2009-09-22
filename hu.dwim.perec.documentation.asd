@@ -20,4 +20,5 @@
                :hu.dwim.perec.sqlite.test
                :hu.dwim.wui)
   :components ((:module "documentation"
-                :components ((:file "package")))))
+                :components ((:file "package")
+                             (:file "perec" :depends-on ("package"))))))
