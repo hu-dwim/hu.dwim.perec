@@ -94,6 +94,8 @@
 ;;;;;;
 ;;; Defining
 
+;; TODO the with-... macros here assume that the coordinate specification is a literal, therefore things like
+;; (with-validity validity-in-a-variable ...) doesn't work
 (def (definer :available-flags "e") dimension (name &key (type name) ordered inherit external
                                                     (bind-default-coordinate #t)
                                                     (default-coordinate nil default-coordinate?)

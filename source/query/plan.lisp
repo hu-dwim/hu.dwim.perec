@@ -480,7 +480,7 @@
       (with-unique-names (scroll-offset scroll-limit)
         `(open-result-set
           ',result-type
-          (lambda (,scroll-offset ,scroll-limit)
+          (named-lambda result-set-visitor (,scroll-offset ,scroll-limit)
             (declare (ignorable ,scroll-offset ,scroll-limit))
             ,(hu.dwim.rdbms::expand-sql-ast-into-lambda-form ;; TODO export
               (sql-select

@@ -904,6 +904,21 @@
 ;;;;;;
 ;;; Iteration support
 
+;; TODO make the coordinates variable optional. the order should (?) be (value coordinates), check all usages, rethink in-d-values also based on this
+#+nil
+(defmacro-clause (for variables :in-d-value d-value)
+  (setf variables (ensure-list variables))
+  (assert (<= (length variables) 2))
+  (bind ((value-variable (first variables))
+         (coordinates-variable (second variables)))
+    (with-unique-names (d-value-variable c-value-variable)
+      `(progn
+         (with ,d-value-variable = ,d-value)
+         (for ,c-value-variable :in (c-values-of ,d-value-variable))
+         (for ,value-variable = (value-of ,c-value-variable))
+         ,@(when coordinates-variable
+             `((for ,coordinates-variable = (coordinates-of ,c-value-variable))))))))
+
 (defmacro-clause (for variables :in-d-value d-value)
   (assert (length= 2 variables))
   (with-unique-names (d-value-variable c-value-variable)

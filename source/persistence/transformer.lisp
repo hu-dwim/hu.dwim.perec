@@ -181,6 +181,8 @@
 ;;;;;;
 ;;; List
 
+;; FIXME these are kinda useless in this form, because their results depend on a dosen of special variables, and they accept non-list values, read-from-string is not safe, etc...
+;; at the very least rename them to suggest read-from-string being called
 (def function string->list-reader (rdbms-values index)
   (read-from-string (elt rdbms-values index)))
 
