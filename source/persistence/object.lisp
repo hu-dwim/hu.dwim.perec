@@ -92,7 +92,7 @@
 
 (def (function o) p-eq (instance-1 instance-2)
   "Tests if two instances are the same persistent instance. Normally there is at most one persistent instance for each oid in a transaction so eq may be safely used. On the other hand huge transactions may require to throw away instances form the instance cache which results in several instances for the same oid within the same transaction."
-  (declare (type persistent-object instance-1 instance-2))
+  (declare (type (or null persistent-object) instance-1 instance-2))
   (or (eq instance-1 instance-2)
       (and instance-1
            instance-2
