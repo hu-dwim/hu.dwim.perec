@@ -4,7 +4,7 @@
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :cl-perec)
+(in-package :hu.dwim.perec)
 
 ;;;;;;
 ;;; Coordinate range
