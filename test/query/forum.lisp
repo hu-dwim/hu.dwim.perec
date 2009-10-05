@@ -369,3 +369,9 @@
                     (not (equal o instance)) ;; this does not work, while (not (equal (oid-of o) (oid-of instance))) ok
                                              ;; cause: executed in lisp and o and instance are not equal (p-eq only)
                     (like (slot-value o slot-name) pattern)))))))
+
+(deftest test/query/select/select-instance/bug ()
+  (test-query (:select-count nil :fixture forum-data)
+    (bind ((oids (select ((oid-of instance)) (from (instance message-test)))))
+      (select-instances (o)
+        (where (member (oid-of o) oids))))))

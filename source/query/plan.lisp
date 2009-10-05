@@ -832,13 +832,13 @@
        (iter (with skipped-columns = 0)
              (for variable in variables)
              (for name in names)
-             (for type = (persistent-type-of variable))
+             (for type = (backquote-type-syntax (persistent-type-of variable)))
              (for slots = (prefetched-slots-for variable prefetch-mode))
              (for column-counts = (mapcar #'column-count-of slots))
              (for total-column-count = (reduce '+ column-counts :initial-value +oid-column-count+))
              (cond ((not (member variable referenced-variables))
                     (incf skipped-columns total-column-count))
-                   
+
                    ((zerop skipped-columns)
                     (collect
                         `(,name (prog1
