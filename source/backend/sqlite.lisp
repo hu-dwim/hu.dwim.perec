@@ -6,5 +6,5 @@
 
 (in-package :hu.dwim.perec)
 
-(def (class* e) sqlite/perec (database-mixin sqlite)
+(def (class* e) sqlite/perec (database-mixin hu.dwim.rdbms.sqlite:sqlite)
   ())

@@ -6,5 +6,5 @@
 
 (in-package :hu.dwim.perec)
 
-(def (class* e) postgresql/perec (database-mixin postgresql)
+(def (class* e) postgresql/perec (database-mixin hu.dwim.rdbms.postgresql:postgresql)
   ())

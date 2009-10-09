@@ -6,7 +6,7 @@
 
 (in-package :hu.dwim.perec)
 
-(def (class* e) oracle/perec (database-mixin oracle)
+(def (class* e) oracle/perec (database-mixin hu.dwim.rdbms.oracle:oracle)
   ())
 
 (def method create-temporary-table (table-name columns subselect (database oracle))

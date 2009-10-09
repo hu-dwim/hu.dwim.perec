@@ -10,10 +10,15 @@
 
 (defsystem :hu.dwim.perec.oracle.test
   :class hu.dwim.test-system
+  :setup-readtable-function-name "hu.dwim.perec::setup-readtable"
+  :package-name :hu.dwim.perec.test
   :author ("Levente Mészáros <levente.meszaros@gmail.com>"
            "Tamás Borbély <tomi.borbely@gmail.com>"
            "Attila Lendvai <attila.lendvai@gmail.com>")
   :licence "BSD / Public domain"
   :description "Test suite for hu.dwim.perec with Oracle backend"
   :depends-on (:hu.dwim.perec.test
-               :hu.dwim.perec.oracle))
+               :hu.dwim.perec.oracle)
+  :components ((:module "test"
+                :components ((:module "backend"
+                              :components ((:file "oracle")))))))

@@ -15,5 +15,5 @@
                                                                                        :password "engedjbe")))
 
 (def test (test/postgresql :in test) ()
-  (with-database *postresql-database*
+  (with-database *postgresql-database*
     (test)))
