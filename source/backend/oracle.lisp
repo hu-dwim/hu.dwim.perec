@@ -9,7 +9,7 @@
 (def (class* e) oracle/perec (database-mixin hu.dwim.rdbms.oracle:oracle)
   ())
 
-(def method create-temporary-table (table-name columns subselect (database oracle))
+(def method create-temporary-table (table-name columns subselect (database hu.dwim.rdbms.oracle:oracle))
   (labels ((ensure-oracle-temporary-table-exists (table-name columns)
              (unless (oracle-temporary-table-exists-p table-name)
                (with-transaction (execute (sql-create-table
@@ -27,5 +27,5 @@
       :columns columns
       :subselect (sql-subquery :query subselect))))
 
-(def method drop-temporary-table (table-name (database oracle))
+(def method drop-temporary-table (table-name (database hu.dwim.rdbms.oracle:oracle))
   nil)
