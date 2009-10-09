@@ -25,8 +25,7 @@
         :metacopy-with-contextl
         :parse-number)
 
-  (:shadow #:log
-           #:name
+  (:shadow #:name
            #:set
            #:time
            #:form

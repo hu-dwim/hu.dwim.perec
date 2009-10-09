@@ -124,7 +124,7 @@
 
   (:method :around ((query query))
            (aprog1 (call-next-method)
-             (qlog.dribble "Initial plan:~%~<~S~:>" it)))
+             (perec.dribble "Initial plan:~%~<~S~:>" it)))
 
   (:method ((query query))
 
@@ -298,7 +298,7 @@
 
 (defun optimize-plan (plan)
   (aprog1 (%optimize-plan plan)
-    (qlog.dribble "Improved plan:~%~<~S~:>" it)))
+    (perec.dribble "Improved plan:~%~<~S~:>" it)))
 
 (defgeneric %optimize-plan (plan)
 
@@ -464,7 +464,7 @@
 
 (defun compile-plan (plan)
   (aprog1 (%compile-plan plan)
-    (qlog.dribble "Compiled plan:~%~S" it)))
+    (perec.dribble "Compiled plan:~%~S" it)))
 
 
 (defgeneric %compile-plan (plan)

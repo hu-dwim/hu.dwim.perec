@@ -20,9 +20,9 @@
                :cl-ppcre
                :hu.dwim.common-lisp
                :hu.dwim.def+hu.dwim.delico
-               :hu.dwim.def+hu.dwim.logger
                :hu.dwim.defclass-star+hu.dwim.computed-class
                :hu.dwim.defclass-star+hu.dwim.def
+               :hu.dwim.logger
                :hu.dwim.rdbms
                :hu.dwim.serializer
                :hu.dwim.syntax-sugar+hu.dwim.walker
