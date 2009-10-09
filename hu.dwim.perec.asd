@@ -18,7 +18,6 @@
   :depends-on (:babel
                :cl-containers
                :cl-ppcre
-               :contextl
                :hu.dwim.common-lisp
                :hu.dwim.def+hu.dwim.delico
                :hu.dwim.def+hu.dwim.logger
@@ -31,7 +30,7 @@
                :hu.dwim.walker
                :ironclad
                :local-time
-               :metacopy
+               :metacopy-with-contextl
                :parse-number)
   :components ((:module "source"
                 :components ((:file "package")
