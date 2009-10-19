@@ -370,7 +370,7 @@
     :type list))
   (:documentation "Describes hte mapping of a lisp type to RDBMS."))
 
-;; TODO use -normalized-type- naming convention
+;; TODO use -normalized-type- naming convention, export stuff
 (def macro defmapping (name sql-type reader writer)
   "A mapping specifies how a type is mapped to RDBMS. It defines the transformers to convert between the rdbms values and the slot value."
   (flet ((function-designator-p (transformer)
@@ -466,7 +466,7 @@
         (case (length unit-types)
           (0 (make-mapping
               :tagged #f
-              :rdbms-types (compute-rdbms-types* mapped-type normalized-type)
+              :rdbms-types rdbms-types
               :nullable-types (list #f)
               :reader reader
               :writer writer))
@@ -520,6 +520,7 @@
 ;;; Type
 
 ;; TODO proper thread safety
+;; TODO clear when certain stuff is cc'd
 (def special-variable *mapped-types* (make-hash-table :test #'equal :synchronized #t))
 
 (def function mapped-type-for (type)
@@ -543,8 +544,7 @@
   "Returns a type which does not include unit types which are mapped to :null column values."
   (bind ((type (canonical-type-for type)))
     (if (or-type-p type)
-        (bind ((subtypes
-                (remove-if 'unit-type-p (cdr type))))
+        (bind ((subtypes (remove-if 'unit-type-p (cdr type))))
           (if (<= (length subtypes) 1)
               (first subtypes)
               (cons 'or subtypes)))
