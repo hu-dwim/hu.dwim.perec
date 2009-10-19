@@ -147,11 +147,10 @@ with the result of the naively compiled query.")
            ;; TODO: set-exclusive-or is not ok for comparing the results, because
            ;;       the result is not a set and (set-exclusive-or '(a b b) '(a a b))
            ;;       returns NIL.
-           (when (set-exclusive-or ,result-list ,expected-list :test 'equal)
+           (when (set-exclusive-or ,result-list ,expected-list :test 'generic-equal)
              (cerror "Return the expected result." 'query-result-mismatch-error
                      :query ,query :result ,result-list :expected ,expected-list))
            ,expected))))))
-
 
 ;;;;---------------------------------------------------------------------------
 ;;;; Simple query compiler
