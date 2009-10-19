@@ -443,8 +443,11 @@
         available-slot-names)))
 
 (def function generate-instances (class-names count &key (slot-names nil))
-  (iter (repeat count)
-        (for class-name = (random-elt class-names))
+  (iter (with class-count = (length class-names))
+        (for i :from 0 :below count)
+        (for class-name = (if (< i class-count)
+                              (elt class-names i)
+                              (random-elt class-names)))
         (for instance = (make-instance* class-name :slot-names slot-names))
         (format t "Generated instance ~A~%" instance)
         (collect instance)))
