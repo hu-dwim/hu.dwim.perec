@@ -379,7 +379,6 @@
        grouping)))
 
   (:method ((projection projection-operation))
-    ;; TODO eliminate projection if each rdbms value is mapped by identity-reader
     (call-next-method)
     (typecase (input-of projection)
       (sql-query-node
@@ -750,7 +749,7 @@
      syntax*) ; expressions that use the bindings
     ;; ->
     (values
-     list       ; list of let-bindings (updating index)
+     list       ; list of let-bindings (updating the index variable)
      syntax*))) ; expressions in which the bound expressions are substituted by the variables
 
 (defun binder-append (binder1 binder2)
@@ -794,40 +793,42 @@
       (values
        (iter (for name in names) ;; TODO generate binding for referenced exprs only
              (for expr in exprs)
-             (bind (((:values reader column-count) (compute-column-reader-form (persistent-type-of expr))))
-               (collect `(,name (prog1 (funcall ,reader ,row ,i) (incf ,i ,column-count))))))
+             (bind ((reader-and-count (compute-column-reader (persistent-type-of expr))))
+               (etypecase reader-and-count
+                 (syntax-object (collect `(,name (bind (((reader . column-count) ,reader-and-count)) (prog1 (funcall reader ,row ,i) (incf ,i column-count))))))
+                 (cons (collect `(,name (prog1 (funcall ',(car reader-and-count) ,row ,i) (incf ,i ,(cdr reader-and-count)))))))))
        (substitute-syntax referenced-by substitutions)))))
 
-(defcfun (compute-column-reader-form :memoize-test-fn equalp :computed-in compute-as) (type)
+(defun or-null-identity-reader (rdbms-values index)
+  (acase (elt rdbms-values index)
+    (:null nil)
+    (t it)))
+
+(defun reverse-columns (reader column-count)
+  (lambda (rdbms-values index)
+    (funcall reader (nreverse (subseq rdbms-values index (+ index column-count))) 0)))
+
+(defcfun (compute-column-reader :memoize-test-fn equalp :computed-in compute-as) (type)
   (cond
     ((eq type +unknown-type+)
-     (values
-      (lambda (row index)
-        (bind ((element (elt row index)))
-          (if (eq element :null) nil element)))
-      1))
+     (cons #'or-null-identity-reader 1)) ;; FIXME unsafe
     ((contains-syntax-p type)
-     (values ;; TODO optimize: do not call compute-column-reader-form twice
-      `(nth-value 0 (eval (compute-column-reader-form ,(backquote-type-syntax type))))
-      `(nth-value 1 (compute-column-reader-form ,(backquote-type-syntax type)))))
+     (make-function-call :fn 'compute-column-reader :args (list (backquote-type-syntax type))))
     ((~persistent-class-type-p type)
-     (values
-      '(quote object-reader)
-      +oid-column-count+))
+     (cons #'object-reader +oid-column-count+))
     (t (bind ((mapping (compute-mapping (canonical-type-for type)))
-              (reader (reader-of mapping)))
+              (reader (reader-of mapping))
+              (column-count (length (rdbms-types-of mapping))))
+         ;; FIXME columns generated in reversed order for tagged types
          (if (tagged-p mapping)
-             (values ;; FIXME columns generated in reversed order for tagged types
-              (lambda (row index)
-                (funcall reader (nreverse (subseq row index (+ index 2))) 0))
-              2)
-             (values
-              `(quote ,reader)
-              (length (rdbms-types-of mapping))))))))
+             (cons (reverse-columns reader column-count) column-count)
+             (cons reader (length (rdbms-types-of mapping))))))))
 
 (defun has-identity-reader-p (type)
   (and (not (set-type-p* type))
-       (member (compute-column-reader-form type) (list ''identity-reader `',#'identity-reader) :test #'equal)))
+       (bind ((form (compute-column-reader type)))
+         (and (consp form)
+              (member (car form) (list 'identity-reader #'identity-reader) :test #'equal)))))
 
 (defun ~persistent-class-type-p (type)
   "KLUDGE because (subtypep '(and persistent-class-1 persistent-class-2) 'persistent-object) does not work."
