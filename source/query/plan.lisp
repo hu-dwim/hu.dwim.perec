@@ -389,13 +389,20 @@
               (query (query-of projection))
               (collects (collects-of query))
               ((:values sql-exprs lisp-exprs) (to-sql* collects)))
-         (if (and (null lisp-exprs)
-                  (or (typep query 'subselect)
-                      (every [or (sql-text-p !1) (has-identity-reader-p (persistent-type-of !1))] collects)))
-             (progn
-               (setf (binder-of sql-query) (field-binder collects)
-                     (columns-of sql-query) sql-exprs)
-               sql-query)
+         (if (null lisp-exprs)
+             (cond
+               ((or (typep query 'subselect)
+                    (every [or (sql-text-p !1) (has-identity-reader-p (persistent-type-of !1))] collects))
+                (setf (binder-of sql-query) (field-binder collects)
+                      (columns-of sql-query) sql-exprs)
+                sql-query)
+               ((every [not (set-type-p* (persistent-type-of !1))] collects)
+                (setf (binder-of sql-query) (field-binder collects)
+                      (columns-of sql-query) sql-exprs
+                      (binder-of projection) (identity-binder collects))
+                projection)
+               (t
+                projection))
              projection))) ;; all needed table is joined?
       (t
        projection)))
@@ -764,13 +771,25 @@
      `((,index 0) ,@bindings)
      exprs)))
 
+(defun generate-lexical-variable-name (expr)
+  (if (function-call-p expr)
+      (gensym (symbol-name (fn-of expr)))
+      (gensym "VAR")))
+
+(defun generate-lexical-variable-names (exprs)
+  (mapcar #'generate-lexical-variable-name exprs))
+
+(defun identity-binder (exprs)
+  (lambda (row i referenced-by)
+    (bind ((names (generate-lexical-variable-names exprs)))
+      (values
+       (mapcar (lambda (name) `(,name (prog1 (elt ,row ,i) (incf ,i))))
+               names)
+       referenced-by))))
+
 (defun field-binder (exprs)
   (lambda (row i referenced-by)
-    (bind ((names (mapcar (lambda (expr)
-                            (if (function-call-p expr)
-                                (gensym (symbol-name (fn-of expr)))
-                                (gensym "VAR")))
-                          exprs))
+    (bind ((names (generate-lexical-variable-names exprs))
            (substitutions (mapcar #'cons exprs names)))
       (values
        (iter (for name in names) ;; TODO generate binding for referenced exprs only
@@ -789,7 +808,7 @@
       1))
     ((contains-syntax-p type)
      (values ;; TODO optimize: do not call compute-column-reader-form twice
-      `(nth-value 0 (compute-column-reader-form ,(backquote-type-syntax type)))
+      `(nth-value 0 (eval (compute-column-reader-form ,(backquote-type-syntax type))))
       `(nth-value 1 (compute-column-reader-form ,(backquote-type-syntax type)))))
     ((~persistent-class-type-p type)
      (values

@@ -350,9 +350,10 @@
                                       ;;(if (slot-boundp h-instance ',h-slot-name) KLUDGE fix query compiler
                                       ;;    (slot-value h-instance ',h-slot-name)
                                       ;;    ,+unbound-slot-marker+)
-                                      (or (and (not (slot-boundp h-instance ',h-slot-name))
-                                               ,+unbound-slot-marker+)
-                                          (slot-value h-instance ',h-slot-name)))
+                                      (identity ;; this is not mapped to sql
+                                       (or (and (not (slot-boundp h-instance ',h-slot-name))
+                                                ,+unbound-slot-marker+)
+                                           (slot-value h-instance ',h-slot-name))))
                                (from (h-instance ,h-class-name))
                                (where (and (eq (d-instance-of h-instance) d-instance)
                                            (or
