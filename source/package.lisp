@@ -11,7 +11,7 @@
         :cl-containers
         :cl-ppcre
         :hu.dwim.asdf
-        :hu.dwim.common-lisp
+        :hu.dwim.common
         :hu.dwim.computed-class
         :hu.dwim.def
         :hu.dwim.defclass-star
