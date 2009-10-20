@@ -10,9 +10,9 @@
 
 (defsystem :hu.dwim.perec.documentation
   :class hu.dwim.documentation-system
-  :author ("Attila Lendvai <attila.lendvai@gmail.com>"
-           "Levente Mészáros <levente.meszaros@gmail.com>"
-           "Tamás Borbély <tomi.borbely@gmail.com>")
+  :author ("Levente Mészáros <levente.meszaros@gmail.com>"
+           "Tamás Borbély <tomi.borbely@gmail.com>"
+           "Attila Lendvai <attila.lendvai@gmail.com>")
   :licence "BSD / Public domain"
   :description "Documentation for hu.dwim.perec"
   :depends-on (:hu.dwim.perec.oracle.test
