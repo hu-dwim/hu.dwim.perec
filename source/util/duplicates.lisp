@@ -44,7 +44,7 @@
         (intern symbol-name package)
         (intern symbol-name))))
 
-(def (constant :test 'equalp) +ascii-alphabet+ "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+(def constant +ascii-alphabet+ "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 (def function random-string (&optional (length 32) (alphabet +ascii-alphabet+))
   (loop with id = (make-string length)

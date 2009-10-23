@@ -12,25 +12,25 @@
 (def constant +oid-class-id-bit-size+ 16
   "Size of the class id in bits. These are the lower bits in the oid.")
 
-(def (constant :test #'=) +oid-maximum-class-id+ (1- (expt 2 +oid-class-id-bit-size+))
+(def constant +oid-maximum-class-id+ (1- (expt 2 +oid-class-id-bit-size+))
   "Maximum class id available.")
 
 (def constant +oid-instance-id-bit-size+ 48
   "Size of the life time unique identifier called instance id in bits. These are the higher bits in the oid. As long as there are not too many instances the oid will be a fixnum.")
 
-(def (constant :test #'=) +oid-maximum-instance-id+ (1- (expt 2 +oid-instance-id-bit-size+))
+(def constant +oid-maximum-instance-id+ (1- (expt 2 +oid-instance-id-bit-size+))
   "Maximum instance id available.")
 
 (def constant +oid-bit-size+ (+ +oid-class-id-bit-size+ +oid-instance-id-bit-size+)
   "Size of the oid in bits.")
 
-(def (constant :test #'string=) +oid-instance-id-sequence-name+ "_instance_id"
+(def constant +oid-instance-id-sequence-name+ "_instance_id"
   "The name of the instance id sequence in the relational database used to generate life time unique identifiers for all persistent instances.")
 
-(def (constant :test #'string=) +oid-column-name+ "_oid"
+(def constant +oid-column-name+ "_oid"
   "The RDBMS column name for the oid of the instance.")
 
-(def (constant :test #'equal) +oid-column-names+ (list +oid-column-name+)
+(def constant +oid-column-names+ (list +oid-column-name+)
   "List of RDBMS column names for the oid.")
 
 (def constant +oid-column-count+ (length +oid-column-names+)

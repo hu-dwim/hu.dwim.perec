@@ -121,7 +121,7 @@
 (def constant +t-insert+ 2
   "Constant used to mark RDBMS records for association slots.")
 
-(def (constant :test 'equal) +missing-value+ (cons t t))
+(def constant +missing-value+ (cons t t))
 
 
 (defmethod restore-slot ((d-class persistent-class-d) (d-instance persistent-object-d) (d-association-end persistent-association-end-effective-slot-definition-d) &key coordinates)
