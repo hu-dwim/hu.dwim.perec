@@ -283,6 +283,8 @@
   (bind ((persistent (persistent-p instance))
          (cache (cache-p slot)))
     (assert-instance-access instance persistent)
+    (when (persistent-object-p new-value)
+      (assert-instance-access new-value (persistent-p new-value)))
     ;; always store the slot into the database
     (when persistent
       (bind (((:values slot-value-cached cached-value)

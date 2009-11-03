@@ -827,19 +827,19 @@
                            ,@(when (and instance-variable-name slot-name)
                                    (bind ((coordinates (hu.dwim.perec::collect-coordinates-from-variables dimensions)))
                                      `((with-transaction
-                                        (with-revived-instance ,instance-variable-name
-                                          (with-coordinates*
-                                              ,(format-dimensions dimensions)
-                                              ,(format-coordinates dimensions coordinates)
-                                            (bind ((persistent-value
-                                                    (if (slot-boundp ,instance-variable-name ',slot-name)
-                                                        (slot-value ,instance-variable-name ',slot-name)
-                                                        +unbound-slot-marker+))
-                                                   (test-value
-                                                    (slot-value* ,instance-variable-name ',slot-name)))
-                                              (assert-persistent-and-test-values
-                                               ,instance-variable-name ',slot-name
-                                               persistent-value test-value)))))))))))))
+                                         (with-revived-instance ,instance-variable-name
+                                           (with-coordinates*
+                                               ,(format-dimensions dimensions)
+                                               ,(format-coordinates dimensions coordinates)
+                                             (bind ((persistent-value
+                                                     (if (slot-boundp ,instance-variable-name ',slot-name)
+                                                         (slot-value ,instance-variable-name ',slot-name)
+                                                         +unbound-slot-marker+))
+                                                    (test-value
+                                                     (slot-value* ,instance-variable-name ',slot-name)))
+                                               (assert-persistent-and-test-values
+                                                ,instance-variable-name ',slot-name
+                                                persistent-value test-value)))))))))))))
            :report-function (lambda (stream)
                               (format stream "Print a specific test case for this error"))))
       (handler-bind
@@ -849,11 +849,12 @@
         (iter (with random-coordinates = (generate-random-coordinate-sets dimensions timestamp-count))
               (repeat transaction-count)
               (with-transaction
-                (format t "Starting new transaction~%")
-                (incf *transaction-counter*)
-                (iter (repeat operation-count)
-                      (with-random-coordinates dimensions (:for-writing-p #t :choices random-coordinates)
-                        (do-random-operation instances :slot-names slot-names))))
+                (bind ((instances (mapcar #'load-instance instances)))
+                  (format t "Starting new transaction~%")
+                  (incf *transaction-counter*)
+                  (iter (repeat operation-count)
+                        (with-random-coordinates dimensions (:for-writing-p #t :choices random-coordinates)
+                          (do-random-operation instances :slot-names slot-names)))))
               (finally
                (setf *history-entries* (nreverse *history-entries*))
                (when full-test

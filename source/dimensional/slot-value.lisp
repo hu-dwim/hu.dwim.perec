@@ -37,7 +37,27 @@
           (t
            (collect (if (whole-domain-marker-p coordinate)
                         coordinate
-                        (ensure-list coordinate)))))))
+                        (mapcar
+                         ;; make sure that coordinates are in the current transaction
+                         ;; because they might be stored in the cache
+                         [if (persistent-object-p !1) (load-instance !1) !1]
+                         (ensure-list coordinate))))))))
+
+(def (function io) assert-d-value-instance-access (d-value)
+  (declare (ignorable d-value))
+  (debug-only
+    (iter (with dimensions = (dimensions-of d-value))
+          (for (coordinates value) :in-d-value d-value)
+          (iter (for dimension :in dimensions)
+                (for coordinate :in coordinates)
+                (when (and (not (typep dimensions 'ordering-dimension))
+                           (listp coordinate))
+                  (mapc (lambda (coordinate-value)
+                          (when (persistent-object-p coordinate-value)
+                            (assert-instance-access coordinate-value (persistent-p coordinate-value))))
+                        coordinate)))
+          (when (persistent-object-p value)
+            (assert-instance-access value (persistent-p value))))))
 
 (def (function io) slot-boundp-or-value-using-class-d (class instance slot coordinates)
   (assert-instance-slot-correspondence)
@@ -61,15 +81,20 @@
 (def (function io) (setf slot-boundp-or-value-using-class-d) (new-value class instance slot)
   (assert-instance-slot-correspondence)
   (bind ((persistent (persistent-p instance))
-         (new-value (if (not (d-value-p new-value))
-                        (make-single-d-value (dimensions-of slot)
-                                             (collect-coordinates-from-variables (dimensions-of slot))
-                                             new-value)
-                        new-value)))
+         (new-d-value (cond
+                        ((d-value-p new-value)
+                         (assert-d-value-instance-access new-value)
+                         new-value)
+                        (t
+                         (when (persistent-object-p new-value)
+                           (assert-instance-access new-value (persistent-p new-value)))
+                         (make-single-d-value (dimensions-of slot)
+                                              (collect-coordinates-from-variables (dimensions-of slot))
+                                              new-value)))))
     (assert-instance-access instance persistent)
     (when persistent
-      (store-slot class instance slot new-value))
-    (update-cache class instance slot :set new-value))
+      (store-slot class instance slot new-d-value))
+    (update-cache class instance slot :set new-d-value))
   new-value)
 
 (defmethod slot-value-using-class ((class persistent-class)

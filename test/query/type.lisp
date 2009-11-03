@@ -62,6 +62,8 @@
                                    (from (o query-type-test))
                                    (where (not (slot-boundp o ',',name)))))))))))
             (with-transaction
+              (when (prc::persistent-object-p ,value)
+                (revive-instance ,value))
               (make-object)
               (test-object))))))))
 
