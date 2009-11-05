@@ -77,17 +77,17 @@
           (make-query ',select-form ',lexical-variables)
           ,@lexical-variables))))
 
-(defwalker-handler select (form parent env)
-  (let ((lexical-variables (remove-duplicates (append (collect-variables-in-lexenv (cdr env))
+(defwalker-handler select
+  (let ((lexical-variables (remove-duplicates (append (collect-variables-in-lexenv (hu.dwim.walker::env/lexical-environment -environment-))
                                                       ;; TODO: walker sux when accessing environment
-                                                      (iter (for entry :in (car env))
+                                                      (iter (for entry :in (hu.dwim.walker::env/walked-environment -environment-))
                                                             (when (eq :variable (first entry))
                                                               (collect (second entry))))))))
     (walk-form `(execute-query
-                 (make-query ',form ',lexical-variables)
+                 (make-query ',-form- ',lexical-variables)
                  ,@lexical-variables)
-               parent
-               env)))
+               :parent -parent-
+               :environment -environment-)))
 
 (defmacro purge (&whole purge-form (&rest purge-list) &body clauses &environment env)
   "TODO"
