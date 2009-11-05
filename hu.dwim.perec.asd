@@ -103,3 +103,8 @@
                                            (:file "transformer" :depends-on ("type"))
                                            (:file "association-end-set" :depends-on ("value"))
                                            (:file "instance-cache" :depends-on ("slot-value"))))))))
+
+(defmethod perform :after ((op develop-op) (system (eql (find-system :hu.dwim.perec))))
+  (eval (let ((*package* (find-package :hu.dwim.perec)))
+          (read-from-string "(setf *compiled-query-cache* (make-compiled-query-cache))")))
+  (warn "The global value of *compiled-query-cache* was initialized."))

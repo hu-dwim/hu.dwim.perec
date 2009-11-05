@@ -79,7 +79,3 @@
                                            (:file "1-n-association" :depends-on ("complex" "association"))
                                            (:file "m-n-association" :depends-on ("complex" "association"))))))))
 
-(defmethod perform :after ((op load-op) (system (eql (find-system :hu.dwim.perec.test))))
-  (eval (let ((*package* (find-package :hu.dwim.perec)))
-          (read-from-string "(setf *compiled-query-cache* (make-compiled-query-cache))")))
-  (warn "The global value of *compiled-query-cache* was initialized."))
