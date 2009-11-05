@@ -16,10 +16,12 @@
   :licence "BSD / Public domain"
   :description "RDBMS based persistent CLOS, an object relational mapping (ORM)"
   :depends-on (:babel
+               :contextl
                :cl-containers
                :cl-ppcre
                :hu.dwim.common
                :hu.dwim.def+hu.dwim.delico
+               :hu.dwim.def+contextl
                :hu.dwim.defclass-star+hu.dwim.computed-class
                :hu.dwim.defclass-star+hu.dwim.def
                :hu.dwim.logger
