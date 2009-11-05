@@ -193,11 +193,10 @@ Be careful when using in different situations, because it modifies *readtable*."
          (return
            `(progn
               (defparameter *query-walker-ast-node-type-mapping* (alexandria:alist-hash-table ',ast-node-type-mappings :test 'eq))
+              (def layered-method hu.dwim.walker::ast-node-type-for (type)
+                (or (gethash type *query-walker-ast-node-type-mapping*)
+                    (call-next-layered-method)))
               ,@class-definitions))))
-
-(defmacro with-query-walker-configuration (&body body)
-  `(with-walker-configuration (:ast-node-type-mapping *query-walker-ast-node-type-mapping*)
-     ,@body))
 |#
 
 
