@@ -12,29 +12,34 @@
 #+hu.dwim.slime
 (progn
 
-(defmethod swank::inspect-slot-for-emacs ((class persistent-class)
-                                          (instance persistent-object)
-                                          (slot persistent-effective-slot-definition))
+(defmethod swank::slot-value-for-inspector ((class persistent-class)
+                                            (instance persistent-object)
+                                            (slot persistent-effective-slot-definition))
   (if (debug-persistent-p instance)
       `(,@(if (slot-value-cached-p instance slot)
-              `("Cached, value is " (:value ,(standard-instance-access instance (slot-definition-location slot)))
-                                    " "
-                                    (:action "[invalidate cache]" ,(lambda () (invalidate-cached-slot instance slot))))
-              `("Not cached"
+              `((:value ,(standard-instance-access instance (slot-definition-location slot)))
                 " "
-                (:action "[read in]" ,(lambda () (slot-value-using-class class instance slot)))))
-          " "
-          (:action "[make unbound]" ,(lambda () (slot-makunbound-using-class class instance slot))))
+                (:action "[invalidate cache]" ,(lambda () (invalidate-cached-slot instance slot))))
+              `("#<not cached>"
+                " "
+                (:action "[read in]" ,(lambda () (slot-value-using-class class instance slot))))))
       (call-next-method)))
 
-(defmethod swank::inspect-for-emacs ((instance persistent-object) inspector)
-  (bind ((result (multiple-value-list (call-next-method))))
-    (setf result (first result))
-    (bind ((content (getf result :content)))
-          (setf (getf result :content)
-                (append `("Transaction: " (:value ,(when (instance-in-transaction-p instance) (transaction-of instance))) (:newline))
-                        content))
-          (setf (getf result :title)
-                (if (debug-persistent-p instance) "A persistent instance" "A transient instance"))
-          result)))
+(defmethod swank::emacs-inspect ((instance persistent-object))
+  (flet ((annotate (content)
+           (append (if (debug-persistent-p instance)
+                       (if (instance-in-transaction-p instance)
+                           `("A persistent instance in transaction " (:value ,(transaction-of instance)) ".")
+                           `("A detached persistent instance."))
+                       "A transient instance")
+                   `((:newline) (:newline))
+                   content)))
+    (bind ((result (call-next-method)))
+      (if (and (consp result)
+               (keywordp (first result)))
+          (progn
+            (setf result (copy-list result))
+            (setf (getf result :content) (annotate (getf result :content))))
+          (setf result (annotate result)))
+      result)))
 )
