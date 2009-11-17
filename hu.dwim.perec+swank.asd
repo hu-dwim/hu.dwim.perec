@@ -8,14 +8,13 @@
 
 (in-package :hu.dwim.asdf)
 
-(defsystem :hu.dwim.perec+hu.dwim.syntax-sugar+swank
+(defsystem :hu.dwim.perec+swank
   :class hu.dwim.system
   :author ("Attila Lendvai <attila.lendvai@gmail.com>"
            "Tamás Borbély <tomi.borbely@gmail.com>"
            "Levente Mészáros <levente.meszaros@gmail.com>")
   :licence "BSD / Public domain"
   :depends-on (:hu.dwim.perec
-               :hu.dwim.syntax-sugar
                :swank)
   :components ((:module "integration"
-                :components ((:file "syntax-sugar+swank")))))
+                :components ((:file "swank")))))
