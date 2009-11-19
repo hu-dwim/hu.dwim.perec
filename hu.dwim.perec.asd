@@ -20,6 +20,7 @@
                :cl-containers
                :cl-ppcre
                :hu.dwim.common
+               :hu.dwim.def+hu.dwim.common
                :hu.dwim.def+hu.dwim.delico
                :hu.dwim.def+contextl
                :hu.dwim.defclass-star+hu.dwim.computed-class
@@ -28,7 +29,7 @@
                :hu.dwim.rdbms
                :hu.dwim.serializer
                :hu.dwim.syntax-sugar+hu.dwim.walker
-               :hu.dwim.util
+               :hu.dwim.util.mop
                :hu.dwim.walker
                :ironclad
                :local-time
@@ -36,10 +37,9 @@
                :parse-number)
   :components ((:module "source"
                 :components ((:file "package")
-                             (:file "configuration" :depends-on ("package"))
                              (:file "logger" :depends-on ("package"))
                              (:module "util"
-                              :depends-on ("configuration" "logger")
+                              :depends-on ("package" "logger")
                               :components ((:file "duplicates")
                                            (:file "pattern-matcher")
                                            (:file "logic")))

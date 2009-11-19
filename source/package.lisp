@@ -4,9 +4,9 @@
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :common-lisp-user)
+(in-package :hu.dwim.util)
 
-(defpackage :hu.dwim.perec
+(def package :hu.dwim.perec
   (:use :babel
         :cl-containers
         :cl-ppcre
@@ -350,7 +350,11 @@
 
            ;; export,import
            #:write-persistent-object-by-oid
-           #:read-persistent-object-by-oid))
+           #:read-persistent-object-by-oid)
+
+  (:readtable-setup
+   (enable-standard-hu.dwim-syntaxes)
+   (hu.dwim.syntax-sugar:enable-lambda-with-bang-args-syntax)))
 
 (in-package :hu.dwim.perec)
 

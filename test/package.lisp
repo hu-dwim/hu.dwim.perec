@@ -4,9 +4,9 @@
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :common-lisp-user)
+(in-package :hu.dwim.util)
 
-(defpackage :hu.dwim.perec.test
+(def package :hu.dwim.perec.test
   (:use :hu.dwim.common
         :hu.dwim.computed-class
         :hu.dwim.def
@@ -24,7 +24,9 @@
   (:shadowing-import-from :hu.dwim.perec
                           #:time
                           #:form
-                          #:set))
+                          #:set)
+
+  (:readtable-setup (setup-readtable/same-as-package :hu.dwim.perec)))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (import (let ((*package* (find-package :hu.dwim.perec)))

@@ -16,10 +16,10 @@
            "Attila Lendvai <attila.lendvai@gmail.com>")
   :licence "BSD / Public domain"
   :description "Test suite for hu.dwim.perec"
-  :depends-on (:hu.dwim.def+hu.dwim.stefil
-               :hu.dwim.perec+hu.dwim.syntax-sugar+swank
+  :depends-on (:hu.dwim.perec+swank
                :hu.dwim.perec+iolib
-               :hu.dwim.perec+hu.dwim.quasi-quote.xml)
+               :hu.dwim.perec+hu.dwim.quasi-quote.xml
+               :hu.dwim.util.test)
   :components ((:module "test"
                 :components ((:file "package")
                              (:file "suite" :depends-on ("package"))
