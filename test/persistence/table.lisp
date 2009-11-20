@@ -11,10 +11,10 @@
 (def test test/persistence/table/persistent-object ()
   (is (not (primary-table-of (find-class 'persistent-object)))))
 
-(def pclass* table-t1-test ()
+(def persistent-class* table-t1-test ()
   ((name :type string)))
    
-(def pclass* table-t2-test (table-t1-test)
+(def persistent-class* table-t2-test (table-t1-test)
   ((name)))
 
 (def test test/persistence/table/inheritance ()
@@ -44,30 +44,30 @@
 
 (defsuite* (test/persistence/table/x :in test/persistence/table))
 
-(def pclass* table-x1-test ()
+(def persistent-class* table-x1-test ()
   ((s1 #f :type boolean))
   (:abstract #t)
   (:direct-store :push-down))
 
-(def pclass* table-x2-test (table-x1-test)
+(def persistent-class* table-x2-test (table-x1-test)
   ((s2 #t :type boolean)))
 
-(def pclass* table-x3-test (table-x2-test)
+(def persistent-class* table-x3-test (table-x2-test)
   ((s3 #f :type boolean)))
 
-(def pclass* table-x4-test (table-x1-test)
+(def persistent-class* table-x4-test (table-x1-test)
   ((s2 #f :type boolean))
   (:abstract #t)
   (:direct-store :push-down))
 
-(def pclass* table-x5-test (table-x4-test)
+(def persistent-class* table-x5-test (table-x4-test)
   ((s3 #f :type boolean)))
 
-(def pclass* table-x6-test (table-x1-test)
+(def persistent-class* table-x6-test (table-x1-test)
   ((s2 #f :type boolean))
   (:abstract #t))
 
-(def pclass* table-x7-test (table-x6-test)
+(def persistent-class* table-x7-test (table-x6-test)
   ((s3 #f :type boolean)))
 
 (def test test/persistence/table/x/1 ()
@@ -182,17 +182,17 @@
 
 (defsuite* (test/persistence/table/y :in test/persistence/table))
 
-(def pclass* table-y1-test ()
+(def persistent-class* table-y1-test ()
   ((s1 #f :type boolean))
   (:abstract #t))
 
-(def pclass* table-y2-test (table-y1-test)
+(def persistent-class* table-y2-test (table-y1-test)
   ())
 
-(def pclass* table-y3-test (table-y1-test)
+(def persistent-class* table-y3-test (table-y1-test)
   ())
 
-(def pclass* table-y4-test (table-y2-test table-y3-test)
+(def persistent-class* table-y4-test (table-y2-test table-y3-test)
   ((s2 #t :type boolean)))
 
 (def test test/persistence/table/y/1 ()
@@ -256,23 +256,23 @@
 
 (defsuite* (test/persistence/table/z :in test/persistence/table))
 
-(def pclass* table-z1-test ()
+(def persistent-class* table-z1-test ()
   ((s1 #f :type boolean))
   (:abstract #t)
   (:direct-store :push-down))
 
-(def pclass* table-z2-test (table-z1-test)
+(def persistent-class* table-z2-test (table-z1-test)
   ((s2 #f :type boolean))
   (:direct-store (table-z1-test table-z1-test)))
 
-(def pclass* table-z3-test (table-z1-test)
+(def persistent-class* table-z3-test (table-z1-test)
   ((s2 #f :type boolean))
   (:direct-store (table-z1-test table-z1-test)))
 
-(def pclass* table-z4-test (table-z2-test table-z3-test)
+(def persistent-class* table-z4-test (table-z2-test table-z3-test)
   ((s3 #t :type boolean)))
 
-(def pclass* table-z5-test (table-z1-test)
+(def persistent-class* table-z5-test (table-z1-test)
   ((s2 #t :type boolean)))
 
 (def test test/persistence/table/z/1 ()
@@ -362,18 +362,18 @@
 
 (defsuite* (test/persistence/table/v :in test/persistence/table))
 
-(def pclass* table-v1-test ()
+(def persistent-class* table-v1-test ()
   ((s1 #f :type boolean))
   (:abstract #t)
   (:direct-store :push-down))
 
-(def pclass* table-v2-test (table-v1-test)
+(def persistent-class* table-v2-test (table-v1-test)
   ((s2 #f :type boolean)))
 
-(def pclass* table-v3-test (table-v1-test)
+(def persistent-class* table-v3-test (table-v1-test)
   ((s2 #f :type boolean)))
 
-(def pclass* table-v4-test (table-v2-test table-v3-test)
+(def persistent-class* table-v4-test (table-v2-test table-v3-test)
   ((s3 #t :type boolean)))
 
 (def test test/persistence/table/v/1 ()

@@ -24,11 +24,11 @@
 ;;; h-unused -> NULL
 ;;; t -> type-error
 
-(defptype eql (value)
+(def persistent-type eql (value)
   `(eql ,value))
 
 ;; this type must be used to mark slots which might be h-unused (e.g. (or h-unused integer))
-(defptype h-unused ()
+(def persistent-type h-unused ()
   `(eql ,+h-unused-slot-marker+))
 
 (defmapping h-unused :null

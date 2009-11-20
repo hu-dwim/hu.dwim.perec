@@ -27,14 +27,13 @@
    (substituter
     :type function)))
 
-(def macro defptype (name args &body body)
-  `(def (persistent-type e) ,name ,args
+(def (definer e :available-flags "e") persistent-type (name args &body body)
+  `(defptype ,name ,args
      ,@body))
 
-(def (definer e :available-flags "e") ptype (name args &body body)
-  `(defptype ,name ,args ,@body))
-
-(def (definer e :available-flags "e") persistent-type (name args &body body)
+;; TODO: this persistent-type stuff is superfluous as soon as there's a portable? typeexpand-1
+;;       the generated type class may be not needed too, see where parse-type is used
+(def macro defptype (name args &body body)
   (bind ((common-lisp-type-p (eq (symbol-package name) #.(find-package :common-lisp)))
          (allow-nil-args-p (or (null args)
                                (member (first args) '(&rest &optional))))

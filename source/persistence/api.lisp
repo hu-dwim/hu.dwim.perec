@@ -27,10 +27,10 @@
   "Same as defpclass but uses defclass*."
   (expand-defpclass-form nil 'defclass* name superclasses slots options))
 
-(def (definer e) pclass (name superclasses slots &rest options)
+(def (definer e) persistent-class (name superclasses slots &rest options)
   `(defpclass ,name ,superclasses ,slots ,@options))
 
-(def (definer e) pclass* (name superclasses slots &rest options)
+(def (definer e) persistent-class* (name superclasses slots &rest options)
   `(defpclass* ,name ,superclasses ,slots ,@options))
 
 ;;;;;;

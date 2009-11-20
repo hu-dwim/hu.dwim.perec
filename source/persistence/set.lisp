@@ -12,7 +12,7 @@
 ;; TODO: enforce disjunct-set in defassociation for 1-N associations mapped as foreign keys in the RDBMS?
 
 ;; TODO: set types need some refactoring, to have a common base type and to be less fragile
-(defptype set (&optional element-type)
+(def persistent-type set (&optional element-type)
   (declare (ignore element-type))
   '(or list persistent-slot-set-container))
 
@@ -21,7 +21,7 @@
 
 ;; TODO: distinguish between set type and disjunct set type (the latter used in 1-n associations for example)
 ;; TODO: assert 1-n associations use disjunct-set type
-(defptype disjunct-set (&optional element-type)
+(def persistent-type disjunct-set (&optional element-type)
   (declare (ignore element-type))
   '(or list persistent-slot-set-container))
 
@@ -32,7 +32,7 @@
   (declare (ignore instance))
   #t)
 
-(defptype ordered-set (&optional element-type by)
+(def persistent-type ordered-set (&optional element-type by)
   (declare (ignore element-type by))
   '(and (satisfies ordered-set-p)
         (or list persistent-slot-set-container)))

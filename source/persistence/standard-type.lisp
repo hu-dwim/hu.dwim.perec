@@ -12,7 +12,7 @@
 ;;; May be used to combine null and unbound with a primitive type and may generate an extra column.
 ;;; See compute-reader and compute-writer generic function definitions
 
-(defptype or (&rest types)
+(def persistent-type or (&rest types)
   `(or ,@types))
 
 (def method shared-initialize :around ((type or-type) slot-names &rest args &key types &allow-other-keys)
@@ -23,7 +23,7 @@
 ;;;
 ;;; Not supported
 
-(defptype and (&rest types)
+(def persistent-type and (&rest types)
   `(and ,@types))
 
 (def method shared-initialize :around ((type and-type) slot-names &rest args &key types &allow-other-keys)
@@ -34,7 +34,7 @@
 ;;;
 ;;; Not supported
 
-(defptype not (negated-type)
+(def persistent-type not (negated-type)
   `(not ,negated-type))
 
 (def method shared-initialize :around ((type not-type) slot-names &rest args &key negated-type &allow-other-keys)
@@ -43,7 +43,7 @@
 ;;;;;;
 ;;; Satisfies
 
-(defptype satisfies (function)
+(def persistent-type satisfies (function)
   `(satisfies ,function))
 
 ;;;;;;
@@ -51,7 +51,7 @@
 ;;;
 ;;; other -> (type-error)
 
-(defptype nil ()
+(def persistent-type nil ()
   nil)
 
 (defmapping nil nil
@@ -63,7 +63,7 @@
 ;;;
 ;;; not found in members -> (type-error)
 
-(defptype member (&rest members)
+(def persistent-type member (&rest members)
   `(member ,@members))
 
 (defmapping member (sql-integer-type :bit-size 16)
@@ -71,7 +71,7 @@
   (member->integer-writer normalized-type))
 
 (defmacro def-member-type (name &body members)
-  `(defptype ,name ()
+  `(def persistent-type ,name ()
     `(member ,@',members)))
 
 (def (definer e) member-type (name &body members)
@@ -92,11 +92,11 @@
       '%%%+unbound-slot-marker+)
     (make-unbound-slot-marker)))
 
-(defptype eql (value)
+(def persistent-type eql (value)
   `(eql ,value))
 
 ;; this type must be used to mark slots which might be unbound (e.g. (or unbound integer))
-(defptype unbound ()
+(def persistent-type unbound ()
   `(eql ,+unbound-slot-marker+))
 
 (defmapping unbound :null
@@ -112,7 +112,7 @@
 ;;; nil -> NULL
 ;;; t -> (type-error)
 
-(defptype null ()
+(def persistent-type null ()
   'null)
 
 (defmapping null :null
@@ -129,7 +129,7 @@
 ;;; nil -> true, NULL
 ;;; other -> true, (byte-vector)
 
-(defptype t ()
+(def persistent-type t ()
   t)
 
 (defmapping t (sql-binary-large-object-type)
@@ -147,7 +147,7 @@
   (declare (ignore serialized))
   t)
 
-(defptype serialized (&optional byte-size)
+(def persistent-type serialized (&optional byte-size)
   (declare (ignore byte-size))
   '(and (not unbound)
         (not null)
@@ -166,7 +166,7 @@
 ;;; t -> true
 ;;; other -> (type-error)
 
-(defptype boolean ()
+(def persistent-type boolean ()
   'boolean)
 
 (defmapping boolean (sql-boolean-type)
@@ -178,7 +178,7 @@
 ;;;
 ;;; non integer -> (type-error)
 
-(defptype integer (&optional minimum-value maximum-value bit-size)
+(def persistent-type integer (&optional minimum-value maximum-value bit-size)
   (declare (ignore bit-size))
   `(integer ,minimum-value ,maximum-value))
 
@@ -191,7 +191,7 @@
 ;;;
 ;;; non integer -> (type-error)
 
-(defptype integer-8 ()
+(def persistent-type integer-8 ()
   `(integer ,(- (expt 2 7)) ,(1- (expt 2 7))))
 
 (defmapping integer-8 (sql-integer-type :bit-size 8)
@@ -203,7 +203,7 @@
 ;;;
 ;;; non integer -> (type-error)
 
-(defptype integer-16 ()
+(def persistent-type integer-16 ()
   `(integer ,(- (expt 2 15)) ,(1- (expt 2 15))))
 
 (defmapping integer-16 (sql-integer-type :bit-size 16)
@@ -215,7 +215,7 @@
 ;;;
 ;;; non integer -> (type-error)
 
-(defptype integer-32 ()
+(def persistent-type integer-32 ()
   `(integer ,(- (expt 2 31)) ,(1- (expt 2 31))))
 
 (defmapping integer-32 (sql-integer-type :bit-size 32)
@@ -227,7 +227,7 @@
 ;;;
 ;;; non integer -> (type-error)
 
-(defptype integer-64 ()
+(def persistent-type integer-64 ()
   `(integer ,(- (expt 2 63)) ,(1- (expt 2 63))))
 
 (defmapping integer-64 (sql-integer-type :bit-size 64)
@@ -239,7 +239,7 @@
 ;;;
 ;;; non float -> (type-error)
 
-(defptype float (&optional minimum-value maximum-value)
+(def persistent-type float (&optional minimum-value maximum-value)
   `(or integer (float ,minimum-value ,maximum-value)))
 
 (defmapping float (sql-float-type :bit-size 64)
@@ -252,7 +252,7 @@
 ;;; non float -> (type-error)
 
 ;; TODO: minimum-value maximum-value
-(defptype float-32 ()
+(def persistent-type float-32 ()
   '(or integer float))
 
 (defmapping float-32 (sql-float-type :bit-size 32)
@@ -265,7 +265,7 @@
 ;;; non float -> (type-error)
 
 ;; TODO: minimum-value maximum-value
-(defptype float-64 ()
+(def persistent-type float-64 ()
   '(or integer float))
 
 (defmapping float-64 (sql-float-type :bit-size 64)
@@ -277,7 +277,7 @@
 ;;;
 ;;; non double -> (type-error)
 
-(defptype double ()
+(def persistent-type double ()
   'double-float)
 
 (defmapping double (sql-float-type :bit-size 64)
@@ -289,7 +289,7 @@
 ;;;
 ;;; non number -> (type-error)
 
-(defptype number ()
+(def persistent-type number ()
   'number)
 
 (defmapping number (sql-numeric-type)
@@ -301,7 +301,7 @@
 ;;;
 ;;; non string -> (type-error)
 
-(defptype string (&optional length acceptable-characters)
+(def persistent-type string (&optional length acceptable-characters)
   (declare (ignore acceptable-characters))
   `(string ,length))
 
@@ -321,7 +321,7 @@
   (declare (ignore string))
   t)
 
-(defptype text (&optional maximum-length minimum-length acceptable-characters)
+(def persistent-type text (&optional maximum-length minimum-length acceptable-characters)
   (declare (ignore maximum-length minimum-length acceptable-characters))
   '(and string
         (satisfies maximum-length-p)))
@@ -338,7 +338,7 @@
 ;;;
 ;;; non symbol -> (type-error)
 
-(defptype symbol ()
+(def persistent-type symbol ()
   'symbol)
 
 (defmapping symbol (sql-character-large-object-type)
@@ -350,7 +350,7 @@
   (declare (ignore symbol))
   t)
 
-(defptype symbol* (&optional maximum-length)
+(def persistent-type symbol* (&optional maximum-length)
   (declare (ignore maximum-length))
   '(and symbol
         (satisfies maximum-symbol-name-length-p)))
@@ -419,7 +419,7 @@
   (declare (ignore duration))
   t)
 
-(defptype duration ()
+(def persistent-type duration ()
   '(and number
         (satisfies duration-p)))
 
@@ -432,7 +432,7 @@
 ;;;
 ;;; non form -> (type-error)
 
-(defptype list (&optional byte-size)
+(def persistent-type list (&optional byte-size)
   (declare (ignore byte-size))
   'list)
 
@@ -450,7 +450,7 @@
   (declare (ignore form))
   t)
 
-(defptype form (&optional byte-size)
+(def persistent-type form (&optional byte-size)
   (declare (ignore byte-size))
   '(and (not unbound)
         (or atom list)
@@ -464,25 +464,25 @@
 ;;;;;;
 ;;; Unsigned byte
 
-(defptype unsigned-byte (&optional size)
+(def persistent-type unsigned-byte (&optional size)
   `(unsigned-byte ,size))
 
 ;;;;;;
 ;;; simple-array
 
-(defptype simple-array (&optional (element-type '*) (size '*))
+(def persistent-type simple-array (&optional (element-type '*) (size '*))
   `(simple-array ,element-type ,size))
 
 ;;;;;;
 ;;; Vector
 
-(defptype vector (&optional (element-type '*) (size '*))
+(def persistent-type vector (&optional (element-type '*) (size '*))
   `(vector ,element-type ,size))
 
 ;;;;;;
 ;;; Unsigned byte vector
 
-(defptype unsigned-byte-vector (&optional maximum-size minimum-size)
+(def persistent-type unsigned-byte-vector (&optional maximum-size minimum-size)
   `(vector (unsigned-byte 8) ,@(when (eql maximum-size minimum-size)
                                  (list maximum-size))))
 

@@ -67,7 +67,7 @@
 (defsuite* (test/dimensional :in test))
 
 ;; test dimension
-(def pclass* dimension-test ()
+(def persistent-class* dimension-test ()
   ())
 
 (def dimension test :type dimension-test)

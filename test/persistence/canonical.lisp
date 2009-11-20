@@ -45,7 +45,7 @@
 
 (def-canonical-type-test member/1 (member a b c) (member a b c))
 
-(defptype t1 ()
+(def persistent-type t1 ()
     ()
   '(member a b c))
 
@@ -61,7 +61,7 @@
        (or null unbound t1))
   (member a b c))
 
-(defptype t2 ()
+(def persistent-type t2 ()
     ()
   '(or null unbound t1))
 
@@ -278,7 +278,7 @@
     (is (typep type 'text-type))
     (is (subtypep 'text-type 'string-type))))
 
-(defptype member-test ()
+(def persistent-type member-test ()
   '(member a b c))
 
 (deftest test/persistence/type-reflection/member ()
@@ -288,7 +288,7 @@
     (is (equal (members-of type)
                '(a b c)))))
 
-(defptype integer-test ()
+(def persistent-type integer-test ()
   'integer-32)
 
 (deftest test/persistence/type-reflection/integer ()

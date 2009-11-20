@@ -6,20 +6,28 @@
 
 (in-package :hu.dwim.perec)
 
-;;;;;;
+;;;;;;;;
 ;;;; Transformers
 ;;;;
-;;;; A transformer is a function. There are reader and writer transformers. The slot value is the value
-;;;; that will be returned and might be passed in to slot-value, slot-value-using-class and their friends.
-;;;; The rdbms values is a sequence sent or received from the RDBMS backend at once.
+;;;; A transformer is a function. There are reader and writer
+;;;; transformers. The slot value refers the value that will be
+;;;; returned, or has been passed in to slot-value,
+;;;; slot-value-using-class and their friends.  The rdbms values is a
+;;;; sequence sent or received from the RDBMS backend, that is a
+;;;; tuple.
 ;;;;
-;;;; A reader transformer returns the slot value by reading the sequence of rdbms values starting from the given index.
-;;;; It may read one or multiple elements from the sequence, may parse or interpret the received data.
-;;;; If the reader is unable to determine the slot value it must return +type-error-marker+.
+;;;; A reader transformer returns the slot value by reading the
+;;;; sequence of rdbms values starting from the given index.  It may
+;;;; read one or multiple elements from the sequence according to the
+;;;; type mapping, may parse or interpret the received data.  If the
+;;;; reader is unable to determine the slot value it must return
+;;;; +type-error-marker+.
 ;;;;
-;;;; A writer transformer writes the rdbms values corresponding to a slot value into a sequence starting at the given index.
-;;;; It may write one or multiple elements into the sequence. If the writer is unable to determine the rdbms values it must
-;;;; return +type-error-marker+.
+;;;; A writer transformer writes the rdbms values corresponding to a
+;;;; slot value into a sequence starting at the given index.  It may
+;;;; write one or multiple elements into the sequence according to the
+;;;; type mapping. If the writer is unable to determine the rdbms
+;;;; values it must return +type-error-marker+.
 
 ;;;;;;
 ;;; Unbound

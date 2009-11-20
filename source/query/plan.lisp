@@ -811,7 +811,7 @@
        (member (compute-column-reader-form type) (list ''identity-reader `',#'identity-reader) :test #'equal)))
 
 (defun ~persistent-class-type-p (type)
-  "KLUDGE because (subtypep '(and pclass-1 pclass-2) 'persistent-object) does not work."
+  "KLUDGE because (subtypep '(and persistent-class-1 persistent-class-2) 'persistent-object) does not work."
   (flet ((type-equal (type-1 type-2)
            (bind (((:values subtype-p-1 valid-p-1) (subtypep type-1 type-2))
                   ((:values subtype-p-2 valid-p-2) (subtypep type-2 type-1)))
