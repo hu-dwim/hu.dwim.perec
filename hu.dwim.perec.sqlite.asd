@@ -25,4 +25,7 @@
   (let ((database-variable (read-from-string "hu.dwim.rdbms::*database*")))
     (unless (boundp database-variable)
       (setf (symbol-value database-variable)
-            (symbol-value (read-from-string "hu.dwim.perec.test::*sqlite-database*"))))))
+            (symbol-value (read-from-string "hu.dwim.perec.test::*sqlite-database*")))))
+  (eval (let ((*package* (find-package :hu.dwim.perec)))
+          (read-from-string "(setf *compiled-query-cache* (make-compiled-query-cache))")))
+  (warn "The global value of *compiled-query-cache* was initialized."))
