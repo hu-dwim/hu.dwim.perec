@@ -10,11 +10,6 @@
 
 (defsystem :hu.dwim.perec.test
   :class hu.dwim.test-system
-  :setup-readtable-function-name "hu.dwim.perec::setup-readtable"
-  :author ("Levente Mészáros <levente.meszaros@gmail.com>"
-           "Tamás Borbély <tomi.borbely@gmail.com>"
-           "Attila Lendvai <attila.lendvai@gmail.com>")
-  :licence "BSD / Public domain"
   :description "Test suite for hu.dwim.perec"
   :depends-on (:hu.dwim.perec+swank
                :hu.dwim.perec+iolib

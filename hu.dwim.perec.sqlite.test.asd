@@ -10,12 +10,7 @@
 
 (defsystem :hu.dwim.perec.sqlite.test
   :class hu.dwim.test-system
-  :setup-readtable-function-name "hu.dwim.perec::setup-readtable"
   :package-name :hu.dwim.perec.test
-  :author ("Levente Mészáros <levente.meszaros@gmail.com>"
-           "Tamás Borbély <tomi.borbely@gmail.com>"
-           "Attila Lendvai <attila.lendvai@gmail.com>")
-  :licence "BSD / Public domain"
   :description "Test suite for hu.dwim.perec with Sqlite backend"
   :depends-on (:hu.dwim.perec.test
                :hu.dwim.perec.sqlite)
