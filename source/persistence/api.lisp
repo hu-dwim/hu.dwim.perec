@@ -123,21 +123,21 @@
 ;;;;;;
 ;;; cache
 
-(def with-macro with-caching-slot-values ()
-  (bind ((*cache-slot-values* #t))
-    (-body-)))
+(def macro with-caching-slot-values (&body forms)
+  `(bind ((*cache-slot-values* #t))
+     ,@forms))
 
-(def with-macro without-caching-slot-values ()
-  (bind ((*cache-slot-values* #f))
-    (-body-)))
+(def macro without-caching-slot-values (&body forms)
+  `(bind ((*cache-slot-values* #f))
+     ,@forms))
 
 ;;;;;;
 ;;; laziness
 
-(def with-macro with-lazy-slot-value-collections ()
-  (bind ((*lazy-slot-value-collections* #t))
-    (-body-)))
+(def macro with-lazy-slot-value-collections (&body forms)
+  `(bind ((*lazy-slot-value-collections* #t))
+     ,@forms))
 
-(def with-macro without-lazy-slot-value-collections ()
-  (bind ((*lazy-slot-value-collections* #f))
-    (-body-)))
+(def macro without-lazy-slot-value-collections (&body forms)
+  `(bind ((*lazy-slot-value-collections* #f))
+     ,@forms))
