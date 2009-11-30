@@ -140,8 +140,8 @@
               (hu.dwim.serializer::read-integer context)))
 
 (def hu.dwim.serializer::serializer-deserializer persistent-object-by-oid +persistent-object-by-oid-code+ persistent-object
-  (write-persistent-object-oid (oid-of hu.dwim.serializer::object) hu.dwim.serializer::context)
-  (hu.dwim.serializer::announce-identity (load-instance (read-persistent-object-oid hu.dwim.serializer::context) :skip-existence-check #t) hu.dwim.serializer::context))
+  (write-persistent-object-oid (oid-of hu.dwim.serializer::-object-) hu.dwim.serializer::-context-)
+  (hu.dwim.serializer::announce-identity (load-instance (read-persistent-object-oid hu.dwim.serializer::-context-) :skip-existence-check #t) hu.dwim.serializer::-context-))
 
 (def function byte-vector->object-reader (rdbms-values index)
   (deserialize (elt rdbms-values index) :deserializer-mapper #'deserializer-mapper))
