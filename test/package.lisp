@@ -7,7 +7,8 @@
 (in-package :hu.dwim.util)
 
 (def package :hu.dwim.perec.test
-  (:use :hu.dwim.common
+  (:use :cl-ppcre
+        :hu.dwim.common
         :hu.dwim.computed-class
         :hu.dwim.def
         :hu.dwim.defclass-star
@@ -15,7 +16,6 @@
         :hu.dwim.rdbms
         :hu.dwim.stefil
         :local-time
-        :cl-ppcre
         :metacopy-with-contextl)
 
   (:shadow #:name
