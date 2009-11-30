@@ -10,10 +10,10 @@
 ;;; Caching slot values in instances
 
 (def (constant e :documentation "This value is stored in slots to indicate that the slot value is not cached.")
-    +not-cached-slot-marker+ '+not-cached-slot-marker+)
+  +not-cached-slot-marker+ '+not-cached-slot-marker+)
 
 (def (special-variable :documentation "True means slot values will be cached in the slots of the persistent instances. Writing a slot still goes directly to the database but it will be also stored in the instance. If the instance's state is modified in the database it is up to the modifier to clear the list of cached slots from the instance using the invalidate functions. The purpose of the slot value cache is to increase performance and reduce the number of database interactions during a transaction.")
-    *cache-slot-values* #t)
+  *cache-slot-values* #t)
 
 (def special-variable *skip-storing-equal-slot-values* #f)
 
