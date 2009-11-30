@@ -6,19 +6,19 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/persistence/instance :in test/persistence))
+(def suite* (test/persistence/instance :in test/persistence))
 
-(defpclass* instance-test ()
+(def persistent-class* instance-test ()
   ((code :type (or null integer-16))))
 
-(deftest test/persistence/instance/created/1 ()
+(def test test/persistence/instance/created/1 ()
   (with-transaction
     (let ((instance (make-instance 'instance-test)))
       (is (created-p instance))
       (is (not (modified-p instance)))
       (is (not (deleted-p instance))))))
 
-(deftest test/persistence/instance/created/2 ()
+(def test test/persistence/instance/created/2 ()
   (with-transaction
     (let ((instance (make-instance 'instance-test)))
       (purge-instance instance)
@@ -26,7 +26,7 @@
       (is (not (modified-p instance)))
       (is (not (deleted-p instance))))))
 
-(deftest test/persistence/instance/created/3 ()
+(def test test/persistence/instance/created/3 ()
   (with-transaction
     (let ((instance (make-instance 'instance-test)))
       (make-transient instance)
@@ -34,7 +34,7 @@
       (is (not (modified-p instance)))
       (is (not (deleted-p instance))))))
 
-(deftest test/persistence/instance/not-modified/1 ()
+(def test test/persistence/instance/not-modified/1 ()
   (let ((instance
          (with-transaction
            (make-instance 'instance-test))))
@@ -44,7 +44,7 @@
       (is (not (modified-p instance)))
       (is (not (deleted-p instance))))))
 
-(deftest test/persistence/instance/modified/1 ()
+(def test test/persistence/instance/modified/1 ()
   (let ((instance
          (with-transaction
            (make-instance 'instance-test))))
@@ -55,7 +55,7 @@
       (is (modified-p instance))
       (is (not (deleted-p instance))))))
 
-(deftest test/persistence/instance/modified/2 ()
+(def test test/persistence/instance/modified/2 ()
   (let ((instance
          (with-transaction
            (make-instance 'instance-test))))
@@ -67,7 +67,7 @@
       (is (not (modified-p instance)))
       (is (deleted-p instance)))))
 
-(deftest test/persistence/instance/deleted/1 ()
+(def test test/persistence/instance/deleted/1 ()
   (let ((instance
          (with-transaction
            (make-instance 'instance-test))))

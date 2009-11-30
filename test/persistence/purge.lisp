@@ -6,31 +6,31 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/persistence/purge :in test/persistence))
+(def suite* (test/persistence/purge :in test/persistence))
 
-(defpclass* purge-a-test ()
+(def persistent-class* purge-a-test ()
   ())
 
-(defpclass* purge-b-test (purge-a-test)
+(def persistent-class* purge-b-test (purge-a-test)
   ())
 
-(defpclass* purge-c-test (purge-a-test)
+(def persistent-class* purge-c-test (purge-a-test)
   ())
 
-(defpclass* purge-d-test (purge-b-test purge-c-test)
+(def persistent-class* purge-d-test (purge-b-test purge-c-test)
   ()
   (:abstract #t))
 
-(defpclass* purge-e-test (purge-d-test)
+(def persistent-class* purge-e-test (purge-d-test)
   ())
 
-(defpclass* purge-f-test (purge-d-test)
+(def persistent-class* purge-f-test (purge-d-test)
   ())
 
-(defpclass* purge-g-test (purge-b-test)
+(def persistent-class* purge-g-test (purge-b-test)
   ())
 
-(defixture fixture/persistent/purge
+(def fixture fixture/persistent/purge
   (with-transaction
     (purge-instances 'purge-a-test)
     (make-instance 'purge-a-test)
@@ -40,7 +40,7 @@
     (make-instance 'purge-f-test)
     (make-instance 'purge-g-test)))
 
-(defun purge-test (class-name delete-counter)
+(def function purge-test (class-name delete-counter)
   (with-fixture fixture/persistent/purge
     (with-transaction
       (let ((last-delete-counter (delete-counter-of (hu.dwim.rdbms::command-counter-of *transaction*)))
@@ -54,23 +54,23 @@
         (is (= (- total-instance-counter purged-instance-counter)
                (length (select-instances purge-a-test))))))))
 
-(defmacro def-purge-test (name class-name delete-counter)
-  `(deftest ,name ()
+(def definer purge-test (name class-name delete-counter)
+  `(def test ,name ()
     (purge-test ',class-name ,delete-counter)))
 
-(def-purge-test test/persistence/purge/a purge-a-test 7)
+(def purge-test test/persistence/purge/a purge-a-test 7)
 
-(def-purge-test test/persistence/purge/b purge-b-test 7)
+(def purge-test test/persistence/purge/b purge-b-test 7)
 
-(def-purge-test test/persistence/purge/c purge-c-test 6)
+(def purge-test test/persistence/purge/c purge-c-test 6)
 
-(def-purge-test test/persistence/purge/d purge-d-test 6)
+(def purge-test test/persistence/purge/d purge-d-test 6)
 
-(def-purge-test test/persistence/purge/e purge-e-test 5)
+(def purge-test test/persistence/purge/e purge-e-test 5)
 
-(def-purge-test test/persistence/purge/f purge-f-test 5)
+(def purge-test test/persistence/purge/f purge-f-test 5)
 
-(def-purge-test test/persistence/purge/g purge-g-test 3)
+(def purge-test test/persistence/purge/g purge-g-test 3)
 
 (def test test/persistence/purge/sequence-of-instances ()
   (bind ((instances (with-transaction

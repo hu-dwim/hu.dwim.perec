@@ -9,49 +9,49 @@
 ;;;;;;
 ;;; Slot
 
-(defsuite* (test/dimensional/slot :in test/dimensional))
+(def suite* (test/dimensional/slot :in test/dimensional))
 
-(defpclass* dimensional-complex-test ()
+(def persistent-class* dimensional-complex-test ()
   ((slot 0 :type integer-32)
    (test-dimension-dependent-slot 0 :type integer-32 :dimensions (test))
    (time-dependent-slot 0 :type integer-32 :dimensions (time))
    (validity-dependent-slot 0 :type integer-32 :dimensions (validity))
    (time-and-validity-dependent-slot 0 :type integer-32 :dimensions (time validity))))
 
-(defpclass* dimensional-complex-unbound-test ()
+(def persistent-class* dimensional-complex-unbound-test ()
   ((slot :type (or unbound integer-32))
    (test-dimension-dependent-slot 0 :type (or unbound integer-32) :dimensions (test))
    (time-dependent-slot :type (or unbound integer-32) :dimensions (time))
    (validity-dependent-slot :type (or unbound integer-32) :dimensions (validity))
    (time-and-validity-dependent-slot :type (or unbound integer-32) :dimensions (time validity))))
 
-(defpclass* dimensional-complex-null-test ()
+(def persistent-class* dimensional-complex-null-test ()
   ((slot :type (or null integer-32))
    (test-dimension-dependent-slot 0 :type (or null integer-32) :dimensions (test))
    (time-dependent-slot :type (or null integer-32) :dimensions (time))
    (validity-dependent-slot :type (or null integer-32) :dimensions (validity))
    (time-and-validity-dependent-slot :type (or null integer-32) :dimensions (time validity))))
 
-(defpclass* dimensional-complex-unbound-or-null-test ()
+(def persistent-class* dimensional-complex-unbound-or-null-test ()
   ((slot :type (or unbound null integer-32))
    (test-dimension-dependent-slot 0 :type (or unbound null integer-32) :dimensions (test))
    (time-dependent-slot :type (or unbound null integer-32) :dimensions (validity))
    (validity-dependent-slot :type (or unbound null integer-32) :dimensions (validity))
    (time-and-validity-dependent-slot :type (or unbound null integer-32) :dimensions (time validity))))
 
-(defpclass* dimensional-complex-slot-test ()
+(def persistent-class* dimensional-complex-slot-test ()
   ((slot :type (or null integer-32))))
 
-(defpclass* dimensional-complex-time-dependent-slot-test ()
+(def persistent-class* dimensional-complex-time-dependent-slot-test ()
   ((time-dependent-slot :type (or null integer-32) :dimensions (time))))
 
-(defpclass* dimensional-complex-validity-dependent-slot-test ()
+(def persistent-class* dimensional-complex-validity-dependent-slot-test ()
   ((validity-dependent-slot :type (or null integer-32) :dimensions (validity))))
 
-(defpclass* dimensional-complex-time-and-validity-dependent-slot-test ()
+(def persistent-class* dimensional-complex-time-and-validity-dependent-slot-test ()
   ((time-and-validity-dependent-slot :type (or null integer-32) :dimensions (time validity))))
 
-(defpclass* dimensional-complex-inheritance-test
+(def persistent-class* dimensional-complex-inheritance-test
     (dimensional-complex-slot-test dimensional-complex-time-dependent-slot-test dimensional-complex-validity-dependent-slot-test dimensional-complex-time-and-validity-dependent-slot-test)
   ()
   (:metaclass persistent-class-d))

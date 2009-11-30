@@ -6,9 +6,9 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/query/select/association/1-n :in test/query/select/association))
+(def suite* (test/query/select/association/1-n :in test/query/select/association))
 
-(defmacro with-parent-and-child-in-transaction (&body body)
+(def macro with-parent-and-child-in-transaction (&body body)
   `(with-transaction
     (purge-instances 'child-test)
     (purge-instances 'parent-test)
@@ -16,7 +16,7 @@
            (child (make-instance 'child-test)))
       ,@body)))
 
-(deftest test/query/select/association/1-n/1 ()
+(def test test/query/select/association/1-n/1 ()
   (with-parent-and-child-in-transaction
     (is (null (select (p)
                 (from (p parent-test))
@@ -25,7 +25,7 @@
                 (from (c child-test))
                 (where (member c (children-of parent))))))))
 
-(deftest test/query/select/association/1-n/2 ()
+(def test test/query/select/association/1-n/2 ()
   (with-parent-and-child-in-transaction
     (is (equal (select (p)
                  (from (p parent-test))
@@ -36,7 +36,7 @@
                  (where (null (parent-of c))))
                (list child)))))
 
-(deftest test/query/select/association/1-n/3 ()
+(def test test/query/select/association/1-n/3 ()
   (with-parent-and-child-in-transaction
     (setf (parent-of child) parent)
     (is (equal (select (p)
@@ -48,7 +48,7 @@
                  (where (member c (children-of parent))))
                (list child)))))
 
-(deftest test/query/select/association/1-n/4 ()
+(def test test/query/select/association/1-n/4 ()
   (with-parent-and-child-in-transaction
     (setf (parent-of child) parent)
     (is (null (select (p)

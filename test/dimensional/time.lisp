@@ -11,12 +11,12 @@
 
 (def special-variable *time-dependent-class-name*)
 
-(defsuite* (test/dimensional/time-dependent :in test/dimensional))
+(def suite* (test/dimensional/time-dependent :in test/dimensional))
 
-(defpclass* time-dependent-unbound-test ()
+(def persistent-class* time-dependent-unbound-test ()
   ((population :type (or unbound integer-32) :dimensions (time))))
 
-(defpclass* time-dependent-null-test ()
+(def persistent-class* time-dependent-null-test ()
   ((population :type (or null integer-32) :dimensions (time))))
 
 (def macro with-time-dependent-test-classes (&body forms)
@@ -92,7 +92,7 @@
             (with-time (adjust-timestamp *time-begin* (offset :sec 1))
               (is (= 2000 (population-of instance))))))))))
 
-(defpclass* time-dependent-complex-test ()
+(def persistent-class* time-dependent-complex-test ()
   ((slot :type (or null integer-32))
    (slot-1 :type (or null integer-32) :dimensions (time))
    (slot-2 :type (or null integer-32) :dimensions (time))))

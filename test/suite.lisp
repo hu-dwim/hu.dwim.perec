@@ -6,7 +6,7 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defun drop-all-test-tables ()
+(def function drop-all-test-tables ()
   (with-transaction
     (mapc [drop-table !1 :cascade #t]
           (collect-if [starts-with-subseq "_" !1]
@@ -38,7 +38,7 @@
        (with-two-transactions (,instance-factory-fn)
          (,body-fn -instance-)))))
 
-(defun retest ()
+(def function retest ()
   (drop-all-test-tables)
   (clear-compiled-query-cache)
   ;; TODO should take care of possible remaining persistent-object-hs
@@ -58,13 +58,13 @@
                 (hash-table-values *persistent-associations*)))
   (test))
 
-(defsuite* (test :in root-suite))
+(def suite* (test :in root-suite))
 
-(defsuite* (test/persistence :in test))
+(def suite* (test/persistence :in test))
 
-(defsuite* (test/query :in test))
+(def suite* (test/query :in test))
 
-(defsuite* (test/dimensional :in test))
+(def suite* (test/dimensional :in test))
 
 ;; test dimension
 (def persistent-class* dimension-test ()
@@ -72,14 +72,14 @@
 
 (def dimension test :type dimension-test)
 
-(defixture test-dimension-fixture
+(def fixture test-dimension-fixture
   (with-transaction
     (purge-instances 'dimension-test)
     (make-instance 'dimension-test)
     (make-instance 'dimension-test)
     (make-instance 'dimension-test)))
 
-(defmacro with-setup (fixture &body body)
+(def macro with-setup (fixture &body body)
   (if fixture
       `(progn
         (funcall ',fixture)

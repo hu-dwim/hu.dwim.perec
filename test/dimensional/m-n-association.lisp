@@ -9,29 +9,29 @@
 ;;;;;;
 ;;; m-n association
 
-(defsuite* (test/dimensional/association/m-n :in test/dimensional/association))
+(def suite* (test/dimensional/association/m-n :in test/dimensional/association))
 
-(defpclass* dimensional-student-test ()
+(def persistent-class* dimensional-student-test ()
   ())
    
-(defpclass* dimensional-course-test ()
+(def persistent-class* dimensional-course-test ()
   ())
 
-(defassociation*
+(def association*
   ((:class dimensional-course-test :slot students :type (set dimensional-student-test))
    (:class dimensional-student-test :slot courses :type (set dimensional-course-test))))
 
-(defassociation*
+(def association*
   ((:class dimensional-course-test :slot time-dependent-students :type (set dimensional-student-test))
    (:class dimensional-student-test :slot time-dependent-courses :type (set dimensional-course-test)))
   (:dimensions (time)))
 
-(defassociation*
+(def association*
   ((:class dimensional-course-test :slot validity-dependent-students :type (set dimensional-student-test))
    (:class dimensional-student-test :slot validity-dependent-courses :type (set dimensional-course-test)))
   (:dimensions (validity)))
 
-(defassociation*
+(def association*
   ((:class dimensional-course-test :slot time-and-validity-dependent-students :type (set dimensional-student-test))
    (:class dimensional-student-test :slot time-and-validity-dependent-courses :type (set dimensional-course-test)))
   (:dimensions (time validity)))

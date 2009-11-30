@@ -6,15 +6,14 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/query/aggregate :in test/query))
+(def suite* (test/query/aggregate :in test/query))
 
-
-(defpclass* aggregate-test ()
+(def persistent-class* aggregate-test ()
   ((int-attr :type (or null integer-32))
    (str-attr :type (or unbound null (text 50)))
    (date-attr :type (or unbound null date))))
 
-(defixture aggregate-data
+(def fixture aggregate-data
   (with-transaction
     (purge-instances 'aggregate-test)
     (make-instance 'aggregate-test
@@ -36,13 +35,13 @@
     (make-instance 'aggregate-test
                    :int-attr nil)))
 
-(defmacro def-aggregate-test (name (&rest args) &body body)
-  `(deftest ,name ,args
+(def macro aggregate-test (name (&rest args) &body body)
+  `(def test ,name ,args
     (with-setup aggregate-data
       (with-transaction
         ,@body))))
 
-(def-aggregate-test test/query/aggregate/int ()
+(def aggregate-test test/query/aggregate/int ()
   (is
    (equal
     (select ((count (int-attr-of o))
@@ -53,7 +52,7 @@
       (from (o aggregate-test)))
     '((3 6 1 3 2)))))
 
-(def-aggregate-test test/query/aggregate/int/2 ()
+(def aggregate-test test/query/aggregate/int/2 ()
   (is
    (equal
     (select ((+ (count (int-attr-of o))
@@ -64,7 +63,7 @@
       (from (o aggregate-test)))
     '(15))))
 
-(def-aggregate-test test/query/aggregate/string ()
+(def aggregate-test test/query/aggregate/string ()
   (is
    (equal
     (select ((count (str-attr-of o))
@@ -73,7 +72,7 @@
       (from (o aggregate-test)))
     '((3 "1" "3")))))
 
-(def-aggregate-test test/query/aggregate/date ()
+(def aggregate-test test/query/aggregate/date ()
   (bind ((result (first (select ((count (date-attr-of o))
                                  (min (date-attr-of o))
                                  (max (date-attr-of o)))
@@ -83,7 +82,7 @@
           (timestamp= (second result) (parse-datestring "2001-01-01"))
           (timestamp= (third result) (parse-datestring "2001-01-03"))))))
 
-(def-aggregate-test test/query/aggregate/empty ()
+(def aggregate-test test/query/aggregate/empty ()
   (is
    (equal
     (select ((max (int-attr-of o)))

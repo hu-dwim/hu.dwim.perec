@@ -6,21 +6,21 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/query/group-by :in test/query))
+(def suite* (test/query/group-by :in test/query))
 
-(defpclass* group-by-test ()
+(def persistent-class* group-by-test ()
   ((int-attr :type (or null integer-32))
    (str-attr :type (or null (text 50)))
    (date-attr :type (or null date))))
 
-(defpclass* group-by-child-test ()
+(def persistent-class* group-by-child-test ()
   ((int-attr :type (or null integer-32))))
 
-(defassociation*
+(def association*
   ((:class group-by-test :slot children :type (set group-by-child-test))
    (:class group-by-child-test :slot parent :type (or null group-by-test))))
 
-(defixture group-by-data
+(def fixture group-by-data
   (with-transaction
     (purge-instances 'group-by-test)
     (purge-instances 'group-by-child-test)
@@ -45,13 +45,13 @@
                    :date-attr nil
                    :children nil )))
 
-(defmacro def-group-by-test (name (&rest args) &body body)
-  `(deftest ,name ,args
+(def definer group-by-test (name (&rest args) &body body)
+  `(def test ,name ,args
     (with-setup group-by-data
       (with-transaction
         ,@body))))
 
-(def-group-by-test test/query/group-by/string ()
+(def group-by-test test/query/group-by/string ()
   (is
    (null
     (set-exclusive-or
@@ -61,7 +61,7 @@
      '(0 1 1 1)
      :test 'equalp))))
 
-(def-group-by-test test/query/group-by/string/2 ()
+(def group-by-test test/query/group-by/string/2 ()
   (is
    (null
     (set-exclusive-or
@@ -71,7 +71,7 @@
      '((nil 0) ("1" 1) ("2" 1) ("3" 1))
      :test 'equalp))))
 
-(def-group-by-test test/query/group-by/parent ()
+(def group-by-test test/query/group-by/parent ()
   (bind ((p1 (select-first-matching-instance group-by-test (where (= (int-attr-of -instance-) 1))))
          (p2 (select-first-matching-instance group-by-test (where (= (int-attr-of -instance-) 2))))
          (p3 (select-first-matching-instance group-by-test (where (= (int-attr-of -instance-) 3)))))
@@ -85,7 +85,7 @@
        `((,p1 1) (,p2 2) (,p3 3))
        :test 'equalp)))))
 
-(def-group-by-test test/query/group-by/parent/2 ()
+(def group-by-test test/query/group-by/parent/2 ()
   (bind ((p1 (select-first-matching-instance group-by-test (where (= (int-attr-of -instance-) 1))))
          (p2 (select-first-matching-instance group-by-test (where (= (int-attr-of -instance-) 2))))
          (p3 (select-first-matching-instance group-by-test (where (= (int-attr-of -instance-) 3)))))

@@ -9,7 +9,7 @@
 ;;;;;;
 ;;; D value (multi dimensional value)
 
-(defsuite* (test/dimensional/value :in test/dimensional))
+(def suite* (test/dimensional/value :in test/dimensional))
 
 (def (dimension e) inherited
   :type fixnum

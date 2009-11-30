@@ -6,23 +6,22 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/query/select/association/1-1 :in test/query/select/association))
+(def suite* (test/query/select/association/1-1 :in test/query/select/association))
 
-
-(defpclass* super-brother-test ()
+(def persistent-class* super-brother-test ()
   ())
    
-(defpclass* super-sister-test ()
+(def persistent-class* super-sister-test ()
   ())
 
-(defassociation*
+(def association*
   ((:class super-brother-test :slot sister :type (or null super-sister-test))
    (:class super-sister-test :slot brother :type (or null super-brother-test))))
 
-(defpclass* sub-brother-test (super-brother-test)
+(def persistent-class* sub-brother-test (super-brother-test)
   ())
    
-(defpclass* sub-sister-test (super-sister-test)
+(def persistent-class* sub-sister-test (super-sister-test)
   ())
 
 ;; FIXME: without filnalizing here, MOP gets into infinite loop
@@ -34,11 +33,11 @@
   (ensure-finalized (find-class 'sub-brother-test))
   (ensure-finalized (find-class 'sub-sister-test)))
 
-(defassociation*
+(def association*
   ((:class sub-brother-test :slot sister :type (or null sub-sister-test))
    (:class sub-sister-test :slot brother :type (or null sub-brother-test))))
 
-(defmacro with-sister-and-brother-in-transaction (&body body)
+(def macro with-sister-and-brother-in-transaction (&body body)
   `(with-transaction
     (purge-instances 'sub-brother-test)
     (purge-instances 'sub-sister-test)
@@ -46,7 +45,7 @@
            (brother (make-instance 'sub-brother-test)))
       ,@body)))
 
-(deftest test/query/select/association/1-1/1 ()
+(def test test/query/select/association/1-1/1 ()
   (with-sister-and-brother-in-transaction
       (is (null (select (s)
                   (from (s sub-sister-test))
@@ -55,7 +54,7 @@
                   (from (b sub-brother-test))
                   (where (eq b (brother-of sister))))))))
 
-(deftest test/query/select/association/1-1/2 ()
+(def test test/query/select/association/1-1/2 ()
   (with-sister-and-brother-in-transaction
       (is (equal (select (s)
                    (from (s sub-sister-test))
@@ -66,7 +65,7 @@
                    (where (null (sister-of b))))
                  (list brother)))))
 
-(deftest test/query/select/association/1-1/3 ()
+(def test test/query/select/association/1-1/3 ()
   (with-sister-and-brother-in-transaction
     (setf (sister-of brother) sister)
     (is (equal (select (s)
@@ -78,7 +77,7 @@
                  (where (eq b (brother-of sister))))
                (list brother)))))
 
-(deftest test/query/select/association/1-1/4 ()
+(def test test/query/select/association/1-1/4 ()
   (with-sister-and-brother-in-transaction
     (setf (sister-of brother) sister)
     (is (null (select (s)
@@ -87,5 +86,3 @@
     (is (null (select (b)
                 (from (b sub-brother-test))
                 (where (null (sister-of b))))))))
-
-

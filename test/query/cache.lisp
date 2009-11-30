@@ -6,9 +6,9 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/query/cache :in test/query))
+(def suite* (test/query/cache :in test/query))
 
-(defmacro run-cache-test (&body body)
+(def macro run-cache-test (&body body)
   `(progn
      (fill-data-3)
      (with-transaction
@@ -17,20 +17,20 @@
          (symbol-macrolet ((counter *compile-query-counter*))
            ,@body)))))
 
-(defpclass* query-cache-test ()
+(def persistent-class* query-cache-test ()
   ((attr-1 :type integer-32)))
 
-(defpclass* query-cache-2-test ()
+(def persistent-class* query-cache-2-test ()
   ((attr-1 :type integer-32)))
 
 ;; PORT:
-(defixture fill-data-3
+(def fixture fill-data-3
   (with-transaction
     (purge-instances 'query-cache-test)
     (make-instance 'query-cache-test :attr-1 1)
     (make-instance 'query-cache-test :attr-1 2)))
 
-(deftest test/query/cache-1 ()
+(def test test/query/cache-1 ()
   (run-cache-test
     (is (= counter 0))
     (select (o) (from (o query-cache-test)))
@@ -38,7 +38,7 @@
     (select (o) (from (o query-cache-test)))
     (is (= counter 1))))
 
-(deftest test/query/cache-2 ()
+(def test test/query/cache-2 ()
   (run-cache-test
     (bind ((query (make-query `(select (o) (from (o query-cache-test))))))
       (is (= counter 0))
@@ -48,14 +48,14 @@
       (execute-query query)
       (is (= counter 2)))))
    
-(deftest test/query/cache-3 ()
+(def test test/query/cache-3 ()
   (run-cache-test
     (bind ((query (make-query `(select (o) (from (o query-cache-test)))))
            (result (execute-query query)))
       (add-assert query `(equal (attr-1-of o) 1))
       (is (not (equal result (execute-query query)))))))
 
-(deftest test/query/cache-4 ()
+(def test test/query/cache-4 ()
   (progn
     (fill-data-3)
     (bind ((class (find-class 'query-cache-2-test))

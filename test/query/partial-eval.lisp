@@ -6,23 +6,23 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/query/partial-eval :in test/query))
+(def suite* (test/query/partial-eval :in test/query))
 
-(defpclass* partial-eval-test ()
+(def persistent-class* partial-eval-test ()
   ((int-attr :type integer-32)))
 
-(defixture partial-eval-data
+(def fixture partial-eval-data
   (with-transaction
     (purge-instances 'partial-eval-test)
     (make-instance 'partial-eval-test :int-attr 1)
     (make-instance 'partial-eval-test :int-attr 2)))
 
-(defvar *counter* 0)
+(def special-variable *counter* 0)
 
-(defun count-one ()
+(def function count-one ()
   (incf *counter*))
 
-(deftest test/query/partial-eval/static ()
+(def test test/query/partial-eval/static ()
   (with-setup partial-eval-data
     (bind ((*enable-partial-eval* #t) 
            (query (make-query '(select ((int-attr-of o))
@@ -35,7 +35,7 @@
         (is (equal (first (execute-query query)) 1))
         (is (equal (first (execute-query query)) 1))))))
 
-(deftest test/query/partial-eval/volatile ()
+(def test test/query/partial-eval/volatile ()
   (with-setup partial-eval-data
     (bind ((*enable-partial-eval* #t)
            (query (make-query '(select ((int-attr-of o))

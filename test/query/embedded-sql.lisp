@@ -6,26 +6,26 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/query/embedded-sql :in test/query))
+(def suite* (test/query/embedded-sql :in test/query))
 
-(defpclass* embedded-sql-test ()
+(def persistent-class* embedded-sql-test ()
   ((int-attr :type integer-32)
    (string-attr :type (text 10))))
 
-(defixture embedded-sql-data
+(def fixture embedded-sql-data
   (with-transaction
     (purge-instances 'embedded-sql-test)
     (make-instance 'embedded-sql-test :int-attr 1 :string-attr "a")
     (make-instance 'embedded-sql-test :int-attr 2 :string-attr "a")
     (make-instance 'embedded-sql-test :int-attr 3 :string-attr "b")))
 
-(defmacro def-embedded-sql-test (name (&rest args) &body body)
-  `(deftest ,name ,args
+(def macro embedded-sql-test (name (&rest args) &body body)
+  `(def test ,name ,args
     (with-setup embedded-sql-data
       (with-transaction
         ,@body))))
 
-(def-embedded-sql-test test/query/embedded-sql/where ()
+(def embedded-sql-test test/query/embedded-sql/where ()
   (is (equal
        (select ((int-attr-of o))
          (from (o embedded-sql-test))
@@ -33,21 +33,21 @@
                          (sql-text "(select max(_int_attr) from _embedded_sql_test)")))))
        '(3))))
 
-(def-embedded-sql-test test/query/embedded-sql/select-form ()
+(def embedded-sql-test test/query/embedded-sql/select-form ()
   (is (equal
        (select ((string-attr-of o) (sql-text "(select max(_int_attr) from _embedded_sql_test)"))
          (from (o embedded-sql-test))
          (order-by :ascending (int-attr-of o)))
        '(("a" 3) ("a" 3) ("b" 3)))))
 
-(def-embedded-sql-test test/query/embedded-sql/order-by ()
+(def embedded-sql-test test/query/embedded-sql/order-by ()
   (is (equal
        (select ((int-attr-of o))
          (from (o embedded-sql-test))
          (order-by :descending (sql-text "_o._int_attr")))
        '(3 2 1))))
 
-(def-embedded-sql-test test/query/embedded-sql/group-by ()
+(def embedded-sql-test test/query/embedded-sql/group-by ()
   (is (equal
        (select ((max (int-attr-of o)))
          (from (o embedded-sql-test))

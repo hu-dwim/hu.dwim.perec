@@ -9,31 +9,31 @@
 ;;;;;;
 ;;; 1-1 association
 
-(defsuite* (test/dimensional/association :in test/dimensional))
+(def suite* (test/dimensional/association :in test/dimensional))
 
-(defsuite* (test/dimensional/association/1-1 :in test/dimensional/association))
+(def suite* (test/dimensional/association/1-1 :in test/dimensional/association))
 
-(defpclass* dimensional-brother-test ()
+(def persistent-class* dimensional-brother-test ()
   ())
    
-(defpclass* dimensional-sister-test ()
+(def persistent-class* dimensional-sister-test ()
   ())
 
-(defassociation*
+(def association*
   ((:class dimensional-sister-test :slot brother :type (or null dimensional-brother-test))
    (:class dimensional-brother-test :slot sister :type (or null dimensional-sister-test))))
 
-(defassociation*
+(def association*
   ((:class dimensional-sister-test :slot time-dependent-brother :type (or null dimensional-brother-test))
    (:class dimensional-brother-test :slot time-dependent-sister :type (or null dimensional-sister-test)))
   (:dimensions (time)))
 
-(defassociation*
+(def association*
   ((:class dimensional-sister-test :slot validity-dependent-brother :type (or null dimensional-brother-test) :cache #t)
    (:class dimensional-brother-test :slot validity-dependent-sister :type (or null dimensional-sister-test) :cache #t))
   (:dimensions (validity)))
 
-(defassociation*
+(def association*
   ((:class dimensional-sister-test :slot time-and-validity-dependent-brother :type (or null dimensional-brother-test))
    (:class dimensional-brother-test :slot time-and-validity-dependent-sister :type (or null dimensional-sister-test)))
   (:dimensions (time validity)))
@@ -71,7 +71,6 @@
          (sister-1 (with-transaction (make-instance 'dimensional-sister-test)))
          (sister-2 (with-transaction (make-instance 'dimensional-sister-test)))
          (brother-2 (with-transaction (make-instance 'dimensional-brother-test))))
-
     (with-transaction
       (with-revived-instances (brother-1 sister-1 sister-2 brother-2)
         (with-time (parse-datestring "2002-01-01")
@@ -83,7 +82,6 @@
         (with-time +beginning-of-time+
           (with-validity-range "2000-01-01" "2002-12-31"
             (setf (slot-value sister-1 'time-and-validity-dependent-brother) brother-2)))))
-
     (with-transaction
       (with-revived-instances (sister-1 brother-1 brother-2)
         (with-time (parse-datestring "2002-01-01")

@@ -6,7 +6,7 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/persistence/table :in test/persistence))
+(def suite* (test/persistence/table :in test/persistence))
 
 (def test test/persistence/table/persistent-object ()
   (is (not (primary-table-of (find-class 'persistent-object)))))
@@ -42,7 +42,7 @@
                 (for oid = (first-elt record))
                 (is (find oid instances :key #'oid-of) "Returned an oid ~A which is not among the given instances" oid)))))
 
-(defsuite* (test/persistence/table/x :in test/persistence/table))
+(def suite* (test/persistence/table/x :in test/persistence/table))
 
 (def persistent-class* table-x1-test ()
   ((s1 #f :type boolean))
@@ -180,7 +180,7 @@
                                        (make-instance 'table-x5-test)
                                        (make-instance 'table-x7-test)))))
 
-(defsuite* (test/persistence/table/y :in test/persistence/table))
+(def suite* (test/persistence/table/y :in test/persistence/table))
 
 (def persistent-class* table-y1-test ()
   ((s1 #f :type boolean))
@@ -254,7 +254,7 @@
                                        (make-instance 'table-y3-test)
                                        (make-instance 'table-y4-test)))))
 
-(defsuite* (test/persistence/table/z :in test/persistence/table))
+(def suite* (test/persistence/table/z :in test/persistence/table))
 
 (def persistent-class* table-z1-test ()
   ((s1 #f :type boolean))
@@ -360,7 +360,7 @@
                                        (make-instance 'table-z4-test)
                                        (make-instance 'table-z5-test)))))
 
-(defsuite* (test/persistence/table/v :in test/persistence/table))
+(def suite* (test/persistence/table/v :in test/persistence/table))
 
 (def persistent-class* table-v1-test ()
   ((s1 #f :type boolean))

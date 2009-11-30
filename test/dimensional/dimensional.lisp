@@ -11,12 +11,12 @@
 
 (def special-variable *time-dependent-validity-dependent-class-name*)
 
-(defsuite* (test/dimensional/time-dependent-validity-dependent :in test/dimensional))
+(def suite* (test/dimensional/time-dependent-validity-dependent :in test/dimensional))
 
-(defpclass* time-dependent-validity-dependent-unbound-test ()
+(def persistent-class* time-dependent-validity-dependent-unbound-test ()
   ((population :type (or unbound integer-32) :dimensions (time validity))))
 
-(defpclass* time-dependent-validity-dependent-null-test ()
+(def persistent-class* time-dependent-validity-dependent-null-test ()
   ((population :type (or null integer-32) :dimensions (time validity))))
 
 (def macro with-time-dependent-validity-dependent-test-classes (&body forms)

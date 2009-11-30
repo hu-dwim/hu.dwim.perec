@@ -6,14 +6,13 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/query/having :in test/query))
+(def suite* (test/query/having :in test/query))
 
-
-(defpclass* having-test ()
+(def persistent-class* having-test ()
   ((int-attr :type (or null integer-32))
    (str-attr :type (or null (text 50)))))
 
-(defixture having-data
+(def fixture having-data
   (with-transaction
     (purge-instances 'having-test)
     (make-instance 'having-test
@@ -29,13 +28,13 @@
                    :int-attr 4
                    :str-attr "2")))
 
-(defmacro def-having-test (name (&rest args) &body body)
-  `(deftest ,name ,args
+(def macro having-test (name (&rest args) &body body)
+  `(def test ,name ,args
     (with-setup having-data
       (with-transaction
         ,@body))))
 
-(def-having-test test/query/having/1 ()
+(def having-test test/query/having/1 ()
   (is
    (equal
     (select ((count (int-attr-of o)))
@@ -43,5 +42,3 @@
       (group-by (str-attr-of o))
       (having (> (count (int-attr-of o)) 1)))
     '(3))))
-
-

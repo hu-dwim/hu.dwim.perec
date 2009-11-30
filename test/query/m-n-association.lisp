@@ -6,9 +6,9 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/query/select/association/m-n :in test/query/select/association))
+(def suite* (test/query/select/association/m-n :in test/query/select/association))
 
-(defmacro with-student-and-course-in-transaction (&body body)
+(def macro with-student-and-course-in-transaction (&body body)
   `(with-transaction
     (purge-instances 'course-test)
     (purge-instances 'student-test)
@@ -16,7 +16,7 @@
            (course (make-instance 'course-test)))
       ,@body)))
 
-(deftest test/query/select/association/m-n/1 ()
+(def test test/query/select/association/m-n/1 ()
   (with-student-and-course-in-transaction
     (is (null (select (s)
                 (from (s student-test))
@@ -25,7 +25,7 @@
                 (from (c course-test))
                 (where (member c (courses-of student))))))))
 
-(deftest test/query/select/association/m-n/2 ()
+(def test test/query/select/association/m-n/2 ()
   (with-student-and-course-in-transaction
     (is (equal (select (s)
                  (from (s student-test))
@@ -36,7 +36,7 @@
                  (where (null (students-of c))))
                (list course)))))
 
-(deftest test/query/select/association/m-n/3 ()
+(def test test/query/select/association/m-n/3 ()
   (with-student-and-course-in-transaction
     (setf (students-of course) (list student))
     (is (equal (select (s)
@@ -48,7 +48,7 @@
                  (where (member c (courses-of student))))
                (list course)))))
 
-(deftest test/query/select/association/m-n/4 ()
+(def test test/query/select/association/m-n/4 ()
   (with-student-and-course-in-transaction
     (setf (students-of course) (list student))
     (is (null (select (s)

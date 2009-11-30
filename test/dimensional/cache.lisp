@@ -6,13 +6,13 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/dimensional/cache :in test/dimensional))
+(def suite* (test/dimensional/cache :in test/dimensional))
 
-(defpclass* dimensional-cache-test ()
+(def persistent-class* dimensional-cache-test ()
   ((time-dependent-int :type integer :dimensions (time))
    (validity-dependent-string :type string :dimensions (validity))))
 
-(defassociation*
+(def association*
   ((:class dimensional-cache-test :slot time-dependent-parent :type (or null dimensional-cache-test) :cache #t)
    (:class dimensional-cache-test :slot time-dependent-children :type (set dimensional-cache-test) :cache #t))
   (:dimensions (time)))
@@ -45,7 +45,6 @@
   (purge-instances 'dimensional-cache-test)
   (purge-instances 'dimensional-cache-test-h)
   (purge-instances 'dimensional-cache-test~time-dependent-parent~dimensional-cache-test~time-dependent-children)
-    
   (labels ((recurse (parent depth index)
              (bind ((instance (make-instance 'dimensional-cache-test
                                              :time-dependent-int depth

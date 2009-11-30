@@ -9,7 +9,7 @@
 ;;;;;;
 ;;; Partial timestamp
 
-(defsuite* (test/dimensional/partial-timestamp :in test/dimensional))
+(def suite* (test/dimensional/partial-timestamp :in test/dimensional))
 
 (def test test/dimensional/partial-timestamp/first-moment ()
   (iter (for (expected actual)

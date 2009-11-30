@@ -6,9 +6,9 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/query/select/scroll :in test/query/select))
+(def suite* (test/query/select/scroll :in test/query/select))
 
-(defun check-page (page start end)
+(def function check-page (page start end)
   "Checks if PAGE contains the integers from START (inclusive) to END (exclusive)."
   (is
    (and (= (length page) (- end start))
@@ -16,22 +16,22 @@
               (for v from start below end)
               (always (= (elt page i) v))))))
 
-(defpclass* scroll-test ()
+(def persistent-class* scroll-test ()
   ((attr-1 :type integer-32)))
 
-(defixture fill-data-5
+(def fixture fill-data-5
   (with-transaction
     (purge-instances 'scroll-test)
     (iter (for i from 0 below 10)
           (make-instance 'scroll-test :attr-1 i))))
 
-(defmacro run-scroll-test (&body body)
+(def macro run-scroll-test (&body body)
   `(progn
     (fill-data-5)
     (run-queries
       ,@body)))
 
-(deftest test/query/select/scroll/counts ()
+(def test test/query/select/scroll/counts ()
   (run-scroll-test
     (bind ((scroll (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test)))))
       (is (= (element-count scroll) 10))
@@ -42,7 +42,7 @@
       (setf (page-size scroll) 11)
       (is (= (page-count scroll) 1)))))
    
-(deftest test/query/select/scroll/forward ()
+(def test test/query/select/scroll/forward ()
   (run-scroll-test
     (bind ((scroll (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test)))))
       (setf (page-size scroll) 3)
@@ -51,7 +51,7 @@
             (check-page (elements scroll) i (min (+ i 3) 10))
             (next-page! scroll)))))
 
-(deftest test/query/select/scroll/backward ()
+(def test test/query/select/scroll/backward ()
   (run-scroll-test
     (bind ((scroll (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test)))))
       (setf (page-size scroll) 3)
@@ -60,7 +60,7 @@
             (check-page (elements scroll) i (min (+ i 3) 10))
             (previous-page! scroll)))))
 
-(deftest test/query/select/scroll/random ()
+(def test test/query/select/scroll/random ()
   (run-scroll-test
     (bind ((scroll (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test)))))
       (setf (page-size scroll) 3)
@@ -73,7 +73,7 @@
       (setf (page scroll) 0)
       (check-page (elements scroll) 0 3))))
 
-(deftest test/query/select/scroll/transactions ()
+(def test test/query/select/scroll/transactions ()
   (with-fixture fill-data-5
       (bind ((scroll (with-transaction
                        (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test))))))
@@ -84,7 +84,7 @@
           (last-page! scroll)
           (check-page (elements scroll) 9 10)))))
 
-(deftest test/query/select/scroll/modify ()
+(def test test/query/select/scroll/modify ()
   (run-scroll-test
     (bind ((scroll (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test)))))
       (setf (page-size scroll) 3)

@@ -6,13 +6,13 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/persistence/association :in test/persistence))
+(def suite* (test/persistence/association :in test/persistence))
 
-(defvar *association-1-1-brother-class-name* 'brother-test)
+(def special-variable *association-1-1-brother-class-name* 'brother-test)
 
-(defvar *association-1-1-sister-class-name* 'sister-test)
+(def special-variable *association-1-1-sister-class-name* 'sister-test)
 
-(defsuite* test/persistence/association/1-1 ()
+(def suite* test/persistence/association/1-1 ()
   (flet ((body ()
            (with-and-without-caching-slot-values
              (run-child-tests))))
@@ -32,70 +32,70 @@
            (*association-1-1-sister-class-name* 'concrete-sister-test))
       (body))))
 
-(defpclass* brother-test ()
+(def persistent-class* brother-test ()
   ())
    
-(defpclass* sister-test ()
+(def persistent-class* sister-test ()
   ())
 
-(defassociation*
+(def association*
   ((:class brother-test :slot sister :type (or null sister-test))
    (:class sister-test :slot brother :type (or null brother-test))))
 
-(defpclass* strict-brother-test ()
+(def persistent-class* strict-brother-test ()
   ())
    
-(defpclass* strict-sister-test ()
+(def persistent-class* strict-sister-test ()
   ())
 
-(defassociation*
+(def association*
   ((:class strict-brother-test :slot sister :type strict-sister-test)
    (:class strict-sister-test :slot brother :type strict-brother-test)))
 
-(defpclass* unbound-brother-test ()
+(def persistent-class* unbound-brother-test ()
   ())
    
-(defpclass* unbound-sister-test ()
+(def persistent-class* unbound-sister-test ()
   ())
 
-(defassociation*
+(def association*
   ((:class unbound-brother-test :slot sister :type (or unbound unbound-sister-test))
    (:class unbound-sister-test :slot brother :type (or unbound unbound-brother-test))))
 
-(defpclass* 1-1-self-association-test ()
+(def persistent-class* 1-1-self-association-test ()
   ())
 
-(defassociation*
+(def association*
   ((:class 1-1-self-association-test :slot sister :type (or null 1-1-self-association-test))
    (:class 1-1-self-association-test :slot brother :type (or null 1-1-self-association-test))))
 
-(defpclass* abstract-brother-test ()
+(def persistent-class* abstract-brother-test ()
   ()
   (:abstract #t)
   (:direct-store :push-down))
 
-(defpclass* concrete-brother-test (abstract-brother-test)
+(def persistent-class* concrete-brother-test (abstract-brother-test)
   ())
    
-(defpclass* abstract-sister-test ()
+(def persistent-class* abstract-sister-test ()
   ()
   (:abstract #t)
   (:direct-store :push-down))
 
-(defpclass* concrete-sister-test (abstract-sister-test)
+(def persistent-class* concrete-sister-test (abstract-sister-test)
   ())
 
-(defassociation*
+(def association*
   ((:class abstract-brother-test :slot sister :type (or null abstract-sister-test))
    (:class abstract-sister-test :slot brother :type (or null abstract-brother-test))))
 
-(defmacro with-sister-and-brother-transaction (&body body)
+(def macro with-sister-and-brother-transaction (&body body)
   `(with-transaction
     (bind ((sister (make-instance *association-1-1-sister-class-name*))
            (brother (make-instance *association-1-1-brother-class-name*)))
       ,@body)))
 
-(deftest test/persistence/association/1-1/class ()
+(def test test/persistence/association/1-1/class ()
   (ensure-exported (find-class *association-1-1-brother-class-name*))
   (ensure-exported (find-class *association-1-1-sister-class-name*))
   (let ((sister-slot (find-slot *association-1-1-brother-class-name* 'sister))
@@ -107,60 +107,60 @@
     (is (cache-p sister-slot))
     (is (cache-p brother-slot))))
 
-(deftest test/persistence/association/1-1/initial-value/1 ()
+(def test test/persistence/association/1-1/initial-value/1 ()
   (with-sister-and-brother-transaction
     (is (eq nil (brother-of sister)))
     (is (eq nil (sister-of brother)))))
 
-(deftest test/persistence/association/1-1/initial-value/2 ()
+(def test test/persistence/association/1-1/initial-value/2 ()
   (with-transaction
     (bind ((sister (make-instance *association-1-1-sister-class-name*))
            (brother (make-instance *association-1-1-brother-class-name* :sister sister)))
       (is (eq (sister-of brother) sister))
       (is (eq (brother-of sister) brother)))))
 
-(deftest test/persistence/association/1-1/initial-value/3 ()
+(def test test/persistence/association/1-1/initial-value/3 ()
   (with-transaction
     (bind ((brother (make-instance *association-1-1-brother-class-name*))
            (sister (make-instance *association-1-1-sister-class-name* :brother brother)))
       (is (eq (brother-of sister) brother))
       (is (eq (sister-of brother) sister)))))
 
-(deftest test/persistence/association/1-1/store-value/1 ()
+(def test test/persistence/association/1-1/store-value/1 ()
   (with-sister-and-brother-transaction
     (setf (brother-of sister) brother)
     (is (eq brother (brother-of sister)))))
 
-(deftest test/persistence/association/1-1/store-value/2 ()
+(def test test/persistence/association/1-1/store-value/2 ()
   (with-sister-and-brother-transaction
     (setf (sister-of brother) sister)
     (is (eq sister (sister-of brother)))))
 
-(deftest test/persistence/association/1-1/referential-integrity/1 ()
+(def test test/persistence/association/1-1/referential-integrity/1 ()
   (with-sister-and-brother-transaction
     (setf (brother-of sister) brother)
     (is (eq sister (sister-of brother)))))
 
-(deftest test/persistence/association/1-1/referential-integrity/2 ()
+(def test test/persistence/association/1-1/referential-integrity/2 ()
   (with-sister-and-brother-transaction
     (setf (sister-of brother) sister)
     (is (eq brother (brother-of sister)))))
 
-(deftest test/persistence/association/1-1/referential-integrity/3 ()
+(def test test/persistence/association/1-1/referential-integrity/3 ()
   (with-sister-and-brother-transaction
     (setf (sister-of brother) sister)
     (setf (sister-of brother) nil)
     (is (eq nil (sister-of brother)))
     (is (eq nil (brother-of sister)))))
 
-(deftest test/persistence/association/1-1/referential-integrity/4 ()
+(def test test/persistence/association/1-1/referential-integrity/4 ()
   (with-sister-and-brother-transaction
     (setf (brother-of sister) brother)
     (setf (brother-of sister) nil)
     (is (eq nil (sister-of brother)))
     (is (eq nil (brother-of sister)))))
    
-(deftest test/persistence/association/1-1/referential-integrity/5 ()
+(def test test/persistence/association/1-1/referential-integrity/5 ()
   (with-sister-and-brother-transaction
     (setf (sister-of brother) sister)
     (setf (sister-of brother) (make-instance *association-1-1-sister-class-name*))
@@ -169,7 +169,7 @@
     (setf (brother-of sister) (make-instance *association-1-1-brother-class-name*))
     (is (eq nil (sister-of brother)))))
 
-(deftest test/persistence/association/1-1/referential-integrity/6 ()
+(def test test/persistence/association/1-1/referential-integrity/6 ()
   (with-transaction
     (bind ((sister-1 (make-instance *association-1-1-sister-class-name*))
            (sister-2 (make-instance *association-1-1-sister-class-name*))
@@ -183,7 +183,7 @@
       (is (eq nil (sister-of brother-1)))
       (is (eq sister-2 (sister-of brother-2))))))
 
-(deftest test/persistence/association/1-1/referential-integrity/7 ()
+(def test test/persistence/association/1-1/referential-integrity/7 ()
   (with-transaction
     (bind ((sister-1 (make-instance *association-1-1-sister-class-name*))
            (sister-2 (make-instance *association-1-1-sister-class-name*))

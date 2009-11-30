@@ -6,52 +6,52 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/persistence/reference :in test/persistence))
+(def suite* (test/persistence/reference :in test/persistence))
 
-(defpclass* referred-test ()
+(def persistent-class* referred-test ()
   ())
 
-(defpclass* reference-test ()
+(def persistent-class* reference-test ()
   ((referred :type referred-test)))
 
-(defpclass* reference-or-unbound-test ()
+(def persistent-class* reference-or-unbound-test ()
   ((referred :type (or unbound referred-test))))
 
-(defpclass* reference-or-null-test ()
+(def persistent-class* reference-or-null-test ()
   ((referred :type (or null referred-test))))
 
-(defpclass* reference-or-unbound-null-test ()
+(def persistent-class* reference-or-unbound-null-test ()
   ((referred :type (or unbound null referred-test))))
 
-(defmacro with-reference-or-null-transaction (&body body)
+(def macro with-reference-or-null-transaction (&body body)
   `(with-transaction
     (let ((referred (make-instance 'referred-test))
           (reference (make-instance 'reference-or-null-test)))
       (declare (ignorable referred reference))
       ,@body)))
 
-(deftest test/persistence/reference/class ()
+(def test test/persistence/reference/class ()
   (let ((referred-slot (find-slot 'reference-test 'referred)))
     (is (primary-table-slot-p referred-slot))
     (is (data-table-slot-p referred-slot))
     (is (cache-p referred-slot))))
 
-(deftest test/persistence/reference/initial-value/1 ()
+(def test test/persistence/reference/initial-value/1 ()
   (with-and-without-caching-slot-values
     (with-one-and-two-transactions (make-instance 'reference-or-null-test)
       (is (eq nil (referred-of -instance-))))))
 
-(deftest test/persistence/reference/initial-value/2 ()
+(def test test/persistence/reference/initial-value/2 ()
   (with-and-without-caching-slot-values
     (with-one-and-two-transactions (make-instance 'reference-or-unbound-test)
       (is (not (slot-boundp -instance- 'referred))))))
 
-(deftest test/persistence/reference/initial-value/3 ()
+(def test test/persistence/reference/initial-value/3 ()
   (with-and-without-caching-slot-values
     (with-one-and-two-transactions (make-instance 'reference-or-unbound-test)
       (is (not (slot-boundp -instance- 'referred))))))
 
-(deftest test/persistence/reference/store-value/1 ()
+(def test test/persistence/reference/store-value/1 ()
   (with-and-without-caching-slot-values
     (with-reference-or-null-transaction
       (setf (referred-of reference) referred)

@@ -8,41 +8,41 @@
 
 ;;;; TODO: specify expected result in tests
 
-(defsuite* (test/query/select :in test/query))
+(def suite* (test/query/select :in test/query))
 
-(defpclass* topic-test ()
+(def persistent-class* topic-test ()
   ((title :type (text 50))))
 
-(defpclass* message-test ()
+(def persistent-class* message-test ()
   ((subject :type (text 50))
    (content :type (text 50))))
 
-(defpclass* ad-test (message-test)
+(def persistent-class* ad-test (message-test)
   ())
 
-(defpclass* spam-test (ad-test)
+(def persistent-class* spam-test (ad-test)
   ((score :type integer-32)
    (spam-type :type (member phishing money-from-africa viagra))))
 
-(defpclass* owner-test ()
+(def persistent-class* owner-test ()
   ((name :type (text 50)))
   (:abstract #t))
 
-(defpclass* user-test (owner-test)
+(def persistent-class* user-test (owner-test)
   ((password :type (text 50))
    (birthday :type date)
    (age 32 :persistent #f :type integer-32)))
 
-(defassociation*
+(def association*
   ((:class topic-test :slot messages :type (set message-test))
    (:class message-test :slot topic :type topic-test)))
 
-(defassociation*
+(def association*
   ((:class owner-test :slot topics :type (set topic-test))
    (:class topic-test :slot owner :type owner-test)))
 
 ;; PORT:
-(defixture forum-data
+(def fixture forum-data
   (with-transaction
     (purge-instances 'owner-test)
     (purge-instances 'topic-test)
@@ -62,41 +62,41 @@
       (make-instance 'ad-test :subject "ad1" :content "content3" :topic topic1)
       (make-instance 'spam-test :subject "spam1" :content "content4" :topic topic1 :score 10 :spam-type 'viagra))))
 
-(deftest test/query/select/simple ()
+(def test test/query/select/simple ()
   (test-query (:record-count 4 :fixture forum-data)
     (select (o)
       (from o)
       (where (typep o 'message-test)))))
 
-(deftest test/query/select/short ()
+(def test test/query/select/short ()
   (test-query (:record-count 4 :fixture forum-data)
     (select (o)
       (from (o message-test)))))
 
-(deftest test/query/select/all ()
+(def test test/query/select/all ()
   (test-query (:fixture forum-data)
     (select (o)
       (from o))))
 
-(deftest test/query/select/symbol-enum ()
+(def test test/query/select/symbol-enum ()
   (test-query (:select-count 1 :record-count 1 :fixture forum-data)
     (select (s)
       (from (s spam-test))
       (where (eq (spam-type-of s) 'viagra)))))
 
-(deftest test/query/select/slot-value ()
+(def test test/query/select/slot-value ()
   (test-query (:select-count 1 :record-count 1 :fixture forum-data)
     (select (m)
       (from (m message-test))
       (where (string= (subject-of m) "subject1")))))
 
-(deftest test/query/select/nested-ands ()
+(def test test/query/select/nested-ands ()
   (test-query (:record-count 4 :fixture forum-data)
     (select (object)
       (from object)
       (where (and t (and t (typep object 'message-test)))))))
 
-(deftest test/query/select/<= ()
+(def test test/query/select/<= ()
   (test-query (:select-count 1 :record-count 0 :fixture forum-data)
     (select (s)
       (from (s spam-test))
@@ -107,26 +107,26 @@
       (from (s spam-test))
       (where (not (<= 50 (score-of s) 100))))))
 
-(deftest test/query/select/multiple-objects ()
+(def test test/query/select/multiple-objects ()
   (test-query (:record-count (* 2 4 2) :fixture forum-data)
     (select (user message topic)
       (from (user user-test) (message message-test) (topic topic-test)))))
 
-(deftest test/query/select/with-lexical-variables-1 ()
+(def test test/query/select/with-lexical-variables-1 ()
   (test-query (:record-count 1 :fixture forum-data)
     (let ((user-name "user1"))
       (select (user)
         (from (user user-test))
         (where (equal (name-of user) user-name))))))
 
-(deftest test/query/select/with-lexical-variables-2 ()
+(def test test/query/select/with-lexical-variables-2 ()
   (test-query (:record-count 4 :fixture forum-data)
     (let ((class (find-class 'message-test)))
       (select (o)
         (from o)
         (where (typep o (class-name class)))))))
 
-(deftest test/query/select/with-dynamic-variables ()
+(def test test/query/select/with-dynamic-variables ()
   (with-fixture forum-data
       (let ((user (with-transaction (select-first-matching-instance user-test))))
         (test-query (:select-count nil :record-count 2)
@@ -135,7 +135,7 @@
             (from (o topic-test))
             (where (eq (owner-of o) user)))))))
 
-(deftest test/query/select/with-literal-object ()
+(def test test/query/select/with-literal-object ()
   (with-fixture forum-data
       (bind ((user (with-transaction (select-first-matching-instance user-test))))
         (test-query (:select-count nil :record-count 2)
@@ -145,30 +145,30 @@
               (from (o topic-test))
               (where (eq (owner-of o) (first-arg ,user o))))))))))
 
-(deftest test/query/select/polimorph-association-end ()
+(def test test/query/select/polimorph-association-end ()
   (test-query (:select-count (+ 2 1) :record-count 2 :fixture forum-data)
     (let ((topic (select-first-matching-instance topic-test)))
       (select (o)
         (from (o ad-test))
         (where (eq (topic-of o) topic))))))
 
-(deftest test/query/select/slot ()
+(def test test/query/select/slot ()
   (test-query (:record-count 2 :fixture forum-data)
     (select ((name-of user))
       (from (user user-test)))))
 
-(deftest test/query/select/simple-association ()
+(def test test/query/select/simple-association ()
   (test-query (:select-count nil :record-count 2 :fixture forum-data)
     (select ((owner-of topic))
       (from (topic topic-test)))))
 
-(deftest test/query/select/or ()
+(def test test/query/select/or ()
   (test-query (:record-count (+ 4 2) :fixture forum-data)
     (select (o)
       (from o)
       (where (or (typep o 'message-test) (typep o 'topic-test))))))
 
-(deftest test/query/select/builder ()
+(def test test/query/select/builder ()
   (test-query (:record-count 4 :fixture forum-data)
     (let ((query (make-query nil)))
       (add-query-variable query 'm)
@@ -176,13 +176,13 @@
       (add-collect query 'm)
       (execute-query query))))
 
-(deftest test/query/select/join-1 ()
+(def test test/query/select/join-1 ()
   (test-query (:record-count 4 :fixture forum-data)
     (select (message)
       (from (message message-test))
       (where (equal (title-of (topic-of message)) "topic1")))))
 
-(deftest test/query/select/join-n/collect-child ()
+(def test test/query/select/join-n/collect-child ()
   (test-query (:record-count 4 :fixture forum-data)
     (select (message)
       (from (topic topic-test) (message message-test))
@@ -190,7 +190,7 @@
               (equal (title-of topic) "topic1")
               (member message (messages-of topic)))))))
 
-(deftest test/query/select/join-n/collect-parent ()
+(def test test/query/select/join-n/collect-parent ()
   (test-query (:record-count 1 :fixture forum-data)
     (select (topic)
       (from (topic topic-test) (message message-test))
@@ -199,28 +199,28 @@
               (member message (messages-of topic))
               (equal (subject-of message) "subject1"))))))
 
-(deftest test/query/select/join-n-in-collect ()
+(def test test/query/select/join-n-in-collect ()
   (test-query (:select-count nil :record-count 1 :fixture forum-data)
     (select ((messages-of topic))
       (from (topic topic-test))
       (where (equal (title-of topic) "topic1")))))
 
 #|
-(deftest test/query/select/general ()
+(def test test/query/select/general ()
   (test-query (:select-count nil :record-count 1 :fixture forum-data)
     (select ((topic topic-test))
       (when (equal (title-of topic) "topic1")
         (collect topic)))))
 |#
 
-(deftest test/query/select/with-lisp-filter ()
+(def test test/query/select/with-lisp-filter ()
   (test-query (:select-count nil :record-count 1 :fixture forum-data)
     (let ((predicate (lambda (message) (equal (subject-of message) "subject1"))))
       (select (message)
         (from (message message-test))
         (where (funcall predicate message))))))
 
-(deftest test/query/select/cnf ()
+(def test test/query/select/cnf ()
   (test-query (:record-count 1 :fixture forum-data)
     (select (m)
       (from (m message-test))
@@ -228,7 +228,7 @@
                  (and (equal (subject-of m) "subject1")
                       (equal (content-of m) "content1")))))))
 
-(deftest test/query/select/typep-1 ()
+(def test test/query/select/typep-1 ()
   (test-query (:record-count 2 :fixture forum-data)
     (let ((subject "subject1"))
       (select (m)
@@ -237,7 +237,7 @@
                          (equal (subject-of m) subject))
                      (not (typep m 'spam-test))))))))
 
-(deftest test/query/select/typep-2 ()
+(def test test/query/select/typep-2 ()
   (test-query (:select-count nil :record-count 1 :fixture forum-data)
     (bind ((instance (select-first-matching-instance user-test)))
       (select (o)
@@ -250,7 +250,7 @@
                     (not (equal (oid-of o) (oid-of instance)))
                     ))))))
 
-(deftest test/query/select/macro ()
+(def test test/query/select/macro ()
   (define-query-macro s-of (message)
     `(subject-of ,message))
   (test-query (:record-count 1 :fixture forum-data)
@@ -258,33 +258,33 @@
       (from (m message-test))
       (where (equal (s-of m) "subject1")))))
 
-(deftest test/query/select/count ()
+(def test test/query/select/count ()
   (test-query (:record-count 1 :fixture forum-data)
     (select (topic)
       (from (topic topic-test))
       (where (>= (length (messages-of topic)) 2)))))
 
-(deftest test/query/select/member-1 ()
+(def test test/query/select/member-1 ()
   (test-query (:select-count 2 :record-count 3 :fixture forum-data)
     (let ((messages (cdr (select-instances message-test))))
       (select (m)
         (from (m message-test))
         (where (member m messages))))))
 
-(deftest test/query/select/member-2 ()
+(def test test/query/select/member-2 ()
   (test-query (:record-count 1 :fixture forum-data)
     (select (m)
       (from (m message-test))
       (where (member (subject-of m) '("subject1" "no-such-subject") :test 'equal)))))
 
-(deftest test/query/select/member-3 ()
+(def test test/query/select/member-3 ()
   (test-query (:select-count 0 :record-count 0 :fixture forum-data)
     (bind ((*enable-partial-eval* #t))
       (select (m)
        (from (m message-test))
        (where (member (subject-of m) nil))))))
 
-(deftest test/query/select/member-4 ()
+(def test test/query/select/member-4 ()
   (test-query (:select-count 1 :record-count 0 :fixture forum-data)
     (bind ((*enable-partial-eval* #t))
       (let ((topics (select-instances topic-test)))
@@ -294,7 +294,7 @@
             (from (m message-test))
             (where (member m ',topics)))))))))
 
-(deftest test/query/select/member-5 ()
+(def test test/query/select/member-5 ()
   (test-query (:select-count 3 :record-count 1 :fixture forum-data)
     (let ((list (append (select-instances topic-test) (select-instances spam-test))))
       (execute-query
@@ -303,45 +303,45 @@
           (from (m message-test))
           (where (member m ',list))))))))
 
-(deftest test/query/select/member-6 ()
+(def test test/query/select/member-6 ()
   (signals error
     (run-queries
       (select (s)
         (from (s spam-test))
         (where (eq (spam-type-of s) 'no-such-member))))))
 
-(deftest test/query/select/lisp-expr ()
+(def test test/query/select/lisp-expr ()
   (test-query (:record-count 1 :fixture forum-data)
     (let ((num "1"))
       (select (topic)
         (from (topic topic-test))
         (where (equal (title-of topic) (string+ "topic" num)))))))
 
-(deftest test/query/select/like ()
+(def test test/query/select/like ()
   (test-query (:select-count 1 :record-count 1 :fixture forum-data)
     (select (topic)
       (from (topic topic-test))
       (where (like (title-of topic) "t%pi_1")))))
 
-(deftest test/query/select/string+ ()
+(def test test/query/select/string+ ()
   (test-query (:select-count 1 :record-count 1 :fixture forum-data)
     (select (tc m u)
       (from (tc topic-test) (m message-test) (u user-test))
       (where (equal (string+ (title-of tc) ":" (subject-of m) ":" (name-of u))
                     "topic1:subject1:user1")))))
 
-(deftest test/query/select/non-persistent-slot ()
+(def test test/query/select/non-persistent-slot ()
   (test-query (:record-count 2 :fixture forum-data) ; TODO: should select 1
     (select (u)
       (from (u user-test))
       (where (> (age-of u) 30)))))
 
-(deftest test/query/select/max ()
+(def test test/query/select/max ()
   (test-query (:record-count 1 :fixture forum-data)
     (select ((max (score-of s)))
       (from (s spam-test)))))
 
-(deftest test/query/select/clash-with-lexical-variable ()
+(def test test/query/select/clash-with-lexical-variable ()
   (test-query (:record-count 4 :fixture forum-data)
     (let ((o "this should not make any headaches"))
       (select (o)
@@ -349,7 +349,7 @@
         (where (typep o 'message-test))))))
 
 #+nil
-(deftest test/query/select/subselect ()
+(def test test/query/select/subselect ()
   (test-query (:select-count 1 :record-count 4 :fixture forum-data)
     (select (m)
       (from (m message-test))
@@ -358,7 +358,7 @@
                                 (where (equal (title-of topic) "topic1"))))))))
 
 
-(deftest test/query/select/equal/instance ()
+(def test test/query/select/equal/instance ()
   (test-query (:select-count nil :record-count 1 :fixture forum-data)
     (bind ((instance (with-transaction (select-instance message-test (where (equal (subject-of -instance-) "subject1")))))
            (slot-name 'subject)

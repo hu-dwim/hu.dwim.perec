@@ -6,16 +6,16 @@
 
 (in-package :hu.dwim.perec.test)
 
-(defsuite* (test/query/update :in test/query))
+(def suite* (test/query/update :in test/query))
 
-(defpclass* update-1-test ()
+(def persistent-class* update-1-test ()
   ((int-attr :type integer-32)
    (bool-attr #f :type boolean)))
 
-(defpclass* update-2-test ()
+(def persistent-class* update-2-test ()
   ((int-attr :type integer-32)))
 
-(defixture update-query-fixture
+(def fixture update-query-fixture
   (with-transaction
     (purge-instances 'update-1-test)
     (purge-instances 'update-2-test)
@@ -23,7 +23,7 @@
     (make-instance 'update-1-test :int-attr 1)
     (make-instance 'update-2-test :int-attr 0)))
 
-(defmacro run-update-test (&body body)
+(def macro run-update-test (&body body)
   `(progn
     (update-query-fixture)
     (with-transaction* (:default-terminal-action :rollback)
@@ -31,20 +31,20 @@
         (format t "~{~&~A~}" ',body))
       ,@body)))
 
-(defun check-database-content (expected)
+(def function check-database-content (expected)
   (bind ((content (select ((int-attr-of instance))
                     (from (instance update-1-test))
                     (order-by :ascending (int-attr-of instance)))))
     (is (equal content expected))))
 
-(deftest test/query/update/all ()
+(def test test/query/update/all ()
   (run-update-test
     (is (= 2
            (update (instance update-1-test)
              (set (int-attr-of instance) 2))))
     (check-database-content '(2 2))))
 
-(deftest test/query/update/one ()
+(def test test/query/update/one ()
   (run-update-test
     (is (= 1
            (update (instance update-1-test)
@@ -52,7 +52,7 @@
              (where (= (int-attr-of instance) 0)))))
     (check-database-content '(1 2))))
 
-(deftest test/query/update/boolean ()
+(def test test/query/update/boolean ()
   (run-update-test
     (update (instance update-1-test)
       (set (bool-attr-p instance) #t))
@@ -69,7 +69,7 @@
              (set (bool-attr-p instance) #t)
              (where (= (int-attr-of instance) 0)))))))
 
-(deftest test/query/update/joined ()
+(def test test/query/update/joined ()
   (run-update-test
     (is (= 1
            (update (instance update-1-test)
@@ -77,4 +77,3 @@
              (from (instance2 update-2-test))
              (where (= (int-attr-of instance) (int-attr-of instance2))))))
     (check-database-content '(1 2))))
-

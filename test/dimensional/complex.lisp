@@ -19,7 +19,7 @@
 
 (def special-variable *test-slot-name* nil)
 
-(defstruct (history-entry (:conc-name he-))
+(def struct (history-entry (:conc-name he-))
   (step (incf *history-entry-counter*) :type integer)
   (transaction-index *transaction-counter* :type integer)
   (action nil :type (member :set :insert :delete))
@@ -91,7 +91,7 @@
                (t (recurse (1- n) (rest list) (cons (first list) result))))))
     (nreverse (recurse n list nil))))
 
-(defgeneric filter-and-sort-history-entries (instance slot coordinates)
+(def generic filter-and-sort-history-entries (instance slot coordinates)
 
   ;; normal slot
   (:method ((instance persistent-object) (slot persistent-slot-definition) coordinates)
@@ -183,7 +183,7 @@
        (t
         (progn ,@body)))))
 
-(defgeneric execute-history-entry (entry instance slot slot-value coordinates)
+(def generic execute-history-entry (entry instance slot slot-value coordinates)
   (:documentation "Returns the new slot-value.")
 
   ;; slot
@@ -333,7 +333,6 @@
            ((eq other-slot-name he-slot-name)
             (lift-values-having-validity (slot-value (he-value he-coordinates)
                                                      (he-instance he-coordinates))
-              
               (ecase he-action
                 (:set
                  (cond

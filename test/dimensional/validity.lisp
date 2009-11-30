@@ -11,12 +11,12 @@
 
 (def special-variable *validity-dependent-class-name*)
 
-(defsuite* (test/dimensional/validity-dependent :in test/dimensional))
+(def suite* (test/dimensional/validity-dependent :in test/dimensional))
 
-(defpclass* validity-dependent-unbound-test ()
+(def persistent-class* validity-dependent-unbound-test ()
   ((population :type (or unbound integer-32) :dimensions (test validity))))
 
-(defpclass* validity-dependent-null-test ()
+(def persistent-class* validity-dependent-null-test ()
   ((population :type (or null integer-32) :dimensions (test validity))))
 
 (def macro with-validity-dependent-test-classes (&body forms)
@@ -159,7 +159,7 @@
                     (is (timestamp= (parse-datestring "2007-01-01") (coordinate-range-begin validity-range)))
                     (is (timestamp= (parse-datestring "2008-01-01") (coordinate-range-end validity-range)))))))))
 
-(defpclass* validity-dependent-complex-test ()
+(def persistent-class* validity-dependent-complex-test ()
   ((slot :type (or null integer-32))
    (slot-1 :type (or null integer-32) :dimensions (validity))
    (slot-2 :type (or null integer-32) :dimensions (validity))))

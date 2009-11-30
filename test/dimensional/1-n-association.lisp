@@ -9,29 +9,29 @@
 ;;;;;;
 ;;; 1-n association
 
-(defsuite* (test/dimensional/association/1-n :in test/dimensional/association))
+(def suite* (test/dimensional/association/1-n :in test/dimensional/association))
 
-(defpclass* dimensional-parent-test ()
+(def persistent-class* dimensional-parent-test ()
   ())
    
-(defpclass* dimensional-child-test ()
+(def persistent-class* dimensional-child-test ()
   ())
 
-(defassociation*
+(def association*
   ((:class dimensional-child-test :slot parent :type (or null dimensional-parent-test))
    (:class dimensional-parent-test :slot children :type (set dimensional-child-test))))
 
-(defassociation*
+(def association*
   ((:class dimensional-child-test :slot time-dependent-parent :type (or null dimensional-parent-test))
    (:class dimensional-parent-test :slot time-dependent-children :type (set dimensional-child-test)))
   (:dimensions (time)))
 
-(defassociation*
+(def association*
   ((:class dimensional-child-test :slot validity-dependent-parent :type (or null dimensional-parent-test))
    (:class dimensional-parent-test :slot validity-dependent-children :type (set dimensional-child-test)))
   (:dimensions (validity)))
 
-(defassociation*
+(def association*
   ((:class dimensional-child-test :slot time-and-validity-dependent-parent :type (or null dimensional-parent-test))
    (:class dimensional-parent-test :slot time-and-validity-dependent-children :type (set dimensional-child-test)))
   (:dimensions (time validity)))
