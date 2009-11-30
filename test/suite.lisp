@@ -12,28 +12,31 @@
           (collect-if [starts-with-subseq "_" !1]
                       (list-tables)))))
 
-(defmacro with-and-without-caching-slot-values (&body forms)
-  `(progn
-    (without-caching-slot-values
-      ,@forms)
-    (with-caching-slot-values
-      ,@forms)))
+(def with-macro with-and-without-caching-slot-values ()
+  (without-caching-slot-values
+    (-body-))
+  (with-caching-slot-values
+    (-body-)))
 
-(defmacro with-two-transactions (form-1 &body forms-2)
-  `(let ((-instance-
-          (with-transaction
-            ,form-1)))
-    (with-transaction
-      (revive-instance -instance-)
-      ,@forms-2)))
+(def macro with-two-transactions (instance-factory &body body)
+  `(bind ((-instance- (with-transaction
+                        ,instance-factory)))
+     (with-transaction
+       (revive-instance -instance-)
+       ,@body)))
 
-(defmacro with-one-and-two-transactions (form-1 &body forms-2)
-  `(progn
-    (with-transaction
-      (let ((-instance- ,form-1))
-        (declare (ignorable -instance-))
-        ,@forms-2))
-    (with-two-transactions ,form-1 ,@forms-2)))
+(def macro with-one-and-two-transactions (instance-factory &body body)
+  (with-unique-names (instance-factory-fn body-fn)
+    `(flet ((,instance-factory-fn ()
+              ,instance-factory)
+            (,body-fn (-instance-)
+              (declare (ignorable -instance-))
+              ,@body))
+       (with-transaction
+         (bind ((-instance- (,instance-factory-fn)))
+           (,body-fn -instance-)))
+       (with-two-transactions (,instance-factory-fn)
+         (,body-fn -instance-)))))
 
 (defun retest ()
   (drop-all-test-tables)
