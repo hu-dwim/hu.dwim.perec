@@ -28,8 +28,16 @@
     :type function)))
 
 (def (definer e :available-flags "e") persistent-type (name args &body body)
-  `(defptype ,name ,args
-     ,@body))
+  (bind ((type-class-name (type-class-name-for name)))
+    `(progn
+       (defptype ,name ,args
+         ,@body)
+       ,@(when (getf -options- :export)
+          `((eval-when (:compile-toplevel :load-toplevel :execute)
+              ;; this import is needed because the name of the type class for types named by cl symbols are interned into
+              ;; the hu.dwim.perec package and therefore cannot be exported from *package*. make sure it's imported.
+              (import ',type-class-name ,*package*)
+              (export '(,name ,type-class-name) ,*package*)))))))
 
 ;; TODO: this persistent-type stuff is superfluous as soon as there's a portable? typeexpand-1
 ;;       the generated type class may be not needed too, see where parse-type is used
@@ -41,12 +49,6 @@
                           (pop body)))
          (type-class-name (type-class-name-for name)))
     `(progn
-      ,@(when (getf -options- :export)
-          `((eval-when (:compile-toplevel :load-toplevel :execute)
-              ;; this import is needed because the name of the type class for types named by cl symbols are interned into
-              ;; the hu.dwim.perec package and therefore cannot be exported from *package*. make sure it's imported.
-              (import ',type-class-name ,*package*)
-              (export '(,name ,type-class-name) ,*package*))))
       (defclass* ,type-class-name (persistent-type)
         ,(append
           `((name ',name)
