@@ -6,6 +6,15 @@
 
 (in-package :hu.dwim.util)
 
+;;;;;;
+;;; KLUDGE: Local time
+
+(eval-always
+  (shadow 'common-lisp:time :local-time))
+
+(eval-always
+  (export '(local-time::time local-time::date) :local-time))
+
 (def package :hu.dwim.perec
   (:use :babel
         :cl-containers
