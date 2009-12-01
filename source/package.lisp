@@ -6,15 +6,6 @@
 
 (in-package :hu.dwim.util)
 
-;;;;;;
-;;; KLUDGE: Local time
-
-(eval-always
-  (shadow 'common-lisp:time :local-time))
-
-(eval-always
-  (export '(local-time::time local-time::date) :local-time))
-
 (def package :hu.dwim.perec
   (:use :babel
         :cl-containers
@@ -366,14 +357,6 @@
    (hu.dwim.syntax-sugar:enable-lambda-with-bang-args-syntax)))
 
 (in-package :hu.dwim.perec)
-
-;; KLUDGE same as in wui/util.lisp, but it's needed here earlier...
-(eval-always
-  (shadow 'common-lisp:time :local-time))
-(eval-always
-  (shadowing-import 'local-time::time :hu.dwim.perec)
-  (export '(local-time::time local-time::date) :local-time))
-;; end of KLUDGE
 
 (import-sql-syntax-node-names)
 
