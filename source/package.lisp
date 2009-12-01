@@ -27,7 +27,6 @@
 
   (:shadow #:name
            #:set
-           #:time
            #:form
            #:children
            #:variable
@@ -126,7 +125,6 @@
            #:text
            #:symbol
            #:symbol*
-           #:date
            #:time
            #:timestamp
            #:duration
@@ -356,6 +354,14 @@
    (hu.dwim.syntax-sugar:enable-lambda-with-bang-args-syntax)))
 
 (in-package :hu.dwim.perec)
+
+;; KLUDGE same as in wui/util.lisp, but it's needed here earlier...
+(eval-always
+  (shadow 'common-lisp:time :local-time))
+(eval-always
+  (shadowing-import 'local-time::time :hu.dwim.perec)
+  (export '(local-time::time local-time::date) :local-time))
+;; end of KLUDGE
 
 (import-sql-syntax-node-names)
 
