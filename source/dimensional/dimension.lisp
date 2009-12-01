@@ -160,7 +160,7 @@
          (:direct-store :push-down))
        ,@(when (persistent-class-name-p type)
                (bind ((dependent-instances-name (format-symbol *package* "~A-DEPENDENT-INSTANCES" name)))
-                 `((defassociation*
+                 `((defpassociation*
                      ((:class ,dependent-object-name :slot ,name :type (or null ,type))
                       (:class ,type :slot ,dependent-instances-name :type (set ,dependent-object-name)))))))
        ,@(unless external

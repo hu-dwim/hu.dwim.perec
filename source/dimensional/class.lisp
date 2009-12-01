@@ -108,7 +108,7 @@
            (:accessor-name-transformer #'h-class-accessor-name-transformer)
            ,@processed-options
            )
-         (defassociation
+         (defpassociation
            ((:class ,h-class-name :slot d-instance :type ,d-class-name)
             (:class ,d-class-name :slot h-instances :type (set ,h-class-name))))
          (find-class ',name)))))

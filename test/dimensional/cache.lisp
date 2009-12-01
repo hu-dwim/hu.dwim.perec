@@ -12,7 +12,7 @@
   ((time-dependent-int :type integer :dimensions (time))
    (validity-dependent-string :type string :dimensions (validity))))
 
-(def association*
+(def persistent-association*
   ((:class dimensional-cache-test :slot time-dependent-parent :type (or null dimensional-cache-test) :cache #t)
    (:class dimensional-cache-test :slot time-dependent-children :type (set dimensional-cache-test) :cache #t))
   (:dimensions (time)))
@@ -24,7 +24,7 @@
       (cache-dimensional-slots (find-class 'dimensional-cache-test))
       (is (= (current-select-counter) (1+ select-counter)))
       (cache-dimensional-association
-       (find-association
+       (find-persistent-association
         'dimensional-cache-test~time-dependent-parent~dimensional-cache-test~time-dependent-children))
       (is (= (current-select-counter) (+ select-counter 2)))
       (walk-dimensional-cache-test-tree tree)

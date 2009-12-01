@@ -19,21 +19,21 @@
 (def persistent-class* dimensional-sister-test ()
   ())
 
-(def association*
+(def persistent-association*
   ((:class dimensional-sister-test :slot brother :type (or null dimensional-brother-test))
    (:class dimensional-brother-test :slot sister :type (or null dimensional-sister-test))))
 
-(def association*
+(def persistent-association*
   ((:class dimensional-sister-test :slot time-dependent-brother :type (or null dimensional-brother-test))
    (:class dimensional-brother-test :slot time-dependent-sister :type (or null dimensional-sister-test)))
   (:dimensions (time)))
 
-(def association*
+(def persistent-association*
   ((:class dimensional-sister-test :slot validity-dependent-brother :type (or null dimensional-brother-test) :cache #t)
    (:class dimensional-brother-test :slot validity-dependent-sister :type (or null dimensional-sister-test) :cache #t))
   (:dimensions (validity)))
 
-(def association*
+(def persistent-association*
   ((:class dimensional-sister-test :slot time-and-validity-dependent-brother :type (or null dimensional-brother-test))
    (:class dimensional-brother-test :slot time-and-validity-dependent-sister :type (or null dimensional-sister-test)))
   (:dimensions (time validity)))
@@ -103,17 +103,17 @@
 
 (def test test/dimensional/association/1-1/cache/validity-dependent ()
   (test/dimensional/association/cache
-   (find-association
+   (find-persistent-association
     'dimensional-sister-test~validity-dependent-brother~dimensional-brother-test~validity-dependent-sister)))
 
 #+nil
 (def test test/dimensional/association/1-1/cache/time-dependent ()
   (test/dimensional/association/cache
-   (find-association
+   (find-persistent-association
     'dimensional-sister-test~time-dependent-brother~dimensional-brother-test~time-dependent-sister)))
 
 #+nil
 (def test test/dimensional/association/1-1/cache/time-and-validity-dependent ()
   (test/dimensional/association/cache
-   (find-association
+   (find-persistent-association
     'dimensional-sister-test~time-and-validity-dependent-brother~dimensional-brother-test~time-and-validity-dependent-sister)))

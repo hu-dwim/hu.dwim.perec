@@ -12,7 +12,7 @@
   (or (cached-bulk-of bulk)
       (setf (cached-bulk-of bulk)
             (bind ((d-class (find-class d-class-name))
-                   (d-association (find-association d-association-name))
+                   (d-association (find-persistent-association d-association-name))
                    (parent-association-end (primary-association-end-of d-association))
                    (instances (select (instance)
                                 (from instance)

@@ -36,7 +36,6 @@
 
   (:shadow #:name
            #:set
-           #:time
            #:form
            #:children
            #:variable
@@ -81,9 +80,9 @@
            #:-associated-instance-
 
            ;; defining persistent associations
-           #:defassociation
-           #:defassociation*
-           #:find-association
+           #:defpassociation
+           #:defpassociation*
+           #:find-persistent-association
            #:to-one-association-end-p
            #:to-many-association-end-p
 

@@ -31,11 +31,11 @@
 (def persistent-class* 1-n-self-association-test ()
   ())
 
-(def association*
+(def persistent-association*
   ((:class 1-n-self-association-test :slot children :type (set 1-n-self-association-test))
    (:class 1-n-self-association-test :slot parent :type (or null 1-n-self-association-test))))
 
-(def association*
+(def persistent-association*
   ((:class child-test :slot parent :type (or null parent-test))
    (:class parent-test :slot children :type (set child-test))))
 
@@ -55,7 +55,7 @@
 (def persistent-class concrete-child-test (abstract-child-test)
   ())
 
-(def association*
+(def persistent-association*
   ((:class abstract-child-test :slot parent :type (or null abstract-parent-test))
    (:class abstract-parent-test :slot children :type (set abstract-child-test))))
 

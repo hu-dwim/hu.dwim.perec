@@ -34,36 +34,36 @@
   `(defpclass* ,name ,superclasses ,slots ,@options))
 
 ;;;;;;
-;;; defassociation
+;;; defpassociation
 
-(def generic expand-defassociation-form (metaclass association-ends options)
+(def generic expand-defpassociation-form (metaclass association-ends options)
   (:method ((metaclass null) association-ends options)
     (bind ((specified-metaclass (second (find :metaclass options :key #'first)))
            (metaclass (or specified-metaclass 'persistent-association)))
-      (expand-defassociation-form (class-prototype (find-class metaclass))
-                                  association-ends
-                                  (if specified-metaclass
-                                      options
-                                      (append options `((:metaclass ,metaclass))))))))
+      (expand-defpassociation-form (class-prototype (find-class metaclass))
+                                   association-ends
+                                   (if specified-metaclass
+                                       options
+                                       (append options `((:metaclass ,metaclass))))))))
 
-(def macro defassociation (&body association-ends)
-  (expand-defassociation-form nil (car association-ends) (cdr association-ends)))
+(def macro defpassociation (&body association-ends)
+  (expand-defpassociation-form nil (car association-ends) (cdr association-ends)))
 
-(def macro defassociation* (&body association-ends)
-  (expand-defassociation-form nil
-                              (mapcar [append !1
-                                              (unless (getf !1 :accessor)
-                                                `(:accessor ,(default-accessor-name-transformer (getf !1 :slot) nil)))
-                                              (unless (getf !1 :initarg)
-                                                `(:initarg ,(default-initarg-name-transformer (getf !1 :slot) nil)))]
-                                      (car association-ends))
-                              (cdr association-ends)))
+(def macro defpassociation* (&body association-ends)
+  (expand-defpassociation-form nil
+                               (mapcar [append !1
+                                               (unless (getf !1 :accessor)
+                                                 `(:accessor ,(default-accessor-name-transformer (getf !1 :slot) nil)))
+                                               (unless (getf !1 :initarg)
+                                                 `(:initarg ,(default-initarg-name-transformer (getf !1 :slot) nil)))]
+                                       (car association-ends))
+                               (cdr association-ends)))
 
-(def (definer e) association (&body association-ends)
-  `(defassociation ,@association-ends))
+(def (definer e) persistent-association (&body association-ends)
+  `(defpassociation ,@association-ends))
 
-(def (definer e) association* (&body association-ends)
-  `(defassociation* ,@association-ends))
+(def (definer e) persistent-association* (&body association-ends)
+  `(defpassociation* ,@association-ends))
 
 ;;;;;;
 ;;; types

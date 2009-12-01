@@ -14,7 +14,7 @@
 (def persistent-class* subselect-child-test ()
   ((int-attr :type (or null integer-32))))
 
-(def association*
+(def persistent-association*
   ((:class subselect-parent-test :slot children :type (set subselect-child-test))
    (:class subselect-child-test :slot parent :type subselect-parent-test)))
 

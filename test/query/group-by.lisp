@@ -16,7 +16,7 @@
 (def persistent-class* group-by-child-test ()
   ((int-attr :type (or null integer-32))))
 
-(def association*
+(def persistent-association*
   ((:class group-by-test :slot children :type (set group-by-child-test))
    (:class group-by-child-test :slot parent :type (or null group-by-test))))
 

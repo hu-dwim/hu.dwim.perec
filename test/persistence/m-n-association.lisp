@@ -28,14 +28,14 @@
 (def persistent-class* course-test ()
   ())
 
-(def association*
+(def persistent-association*
   ((:class student-test :slot courses :type (set course-test))
    (:class course-test :slot students :type (set student-test))))
 
 (def persistent-class* m-n-self-association-test ()
   ())
 
-(def association*
+(def persistent-association*
   ((:class m-n-self-association-test :slot students :type (set m-n-self-association-test))
    (:class m-n-self-association-test :slot courses :type (set m-n-self-association-test))))
 
@@ -55,7 +55,7 @@
 (def persistent-class* concrete-course-test (abstract-course-test)
   ())
 
-(def association*
+(def persistent-association*
   ((:class abstract-student-test :slot courses :type (set abstract-course-test))
    (:class abstract-course-test :slot students :type (set abstract-student-test))))
 

@@ -14,7 +14,7 @@
 (def computed-class* persistent-association (exportable)
   ((name
     :type symbol
-    :documentation "Unique name of the association. This name can be used to find the association using find-association.")
+    :documentation "Unique name of the association. This name can be used to find the association using find-persistent-association.")
    (association-end-definitions
     (compute-as nil)
     :type list
@@ -135,7 +135,7 @@
   (:documentation "This is a special table related to a persistent association."))
 
 ;;;;;;
-;;; defassociation
+;;; defpassociation
 
 (def macro with-decoded-association-ends (association-ends &body forms)
   `(bind ((primary-association-end (first ,association-ends))
@@ -167,7 +167,7 @@
                                  (remove-if [typep !1 'persistent-association-end-direct-slot-definition]
                                             (class-direct-slots class))))))
 
-(def method expand-defassociation-form ((metaclass persistent-association) association-ends options)
+(def method expand-defpassociation-form ((metaclass persistent-association) association-ends options)
   (flet ((process-association-end (association-end)
            (bind ((initarg (getf association-end :initarg))
                   (accessor (getf association-end :accessor))
@@ -207,9 +207,9 @@
                        (ensure-writer-function ',secondary-writer))))
            (eval-when (:load-toplevel :execute)
              (prog1
-                 (aif (find-association ',association-name)
+                 (aif (find-persistent-association ',association-name)
                       (reinitialize-instance it :association-end-definitions ,final-association-ends)
-                      (setf (find-association ',association-name)
+                      (setf (find-persistent-association ',association-name)
                             (make-instance ',metaclass
                                            :name ',association-name
                                            :association-end-definitions ,final-association-ends)))
@@ -343,10 +343,10 @@
 (def special-variable *persistent-associations* (make-hash-table)
   "A mapping from association names to association instances.")
 
-(def (function e) find-association (name)
+(def (function e) find-persistent-association (name)
   (gethash name *persistent-associations*))
 
-(def (function e) (setf find-association) (new-value name)
+(def (function e) (setf find-persistent-association) (new-value name)
   (setf (gethash name *persistent-associations*) new-value))
 
 (def function finalize-persistent-associations ()

@@ -38,7 +38,7 @@
 (def persistent-class* sister-test ()
   ())
 
-(def association*
+(def persistent-association*
   ((:class brother-test :slot sister :type (or null sister-test))
    (:class sister-test :slot brother :type (or null brother-test))))
 
@@ -48,7 +48,7 @@
 (def persistent-class* strict-sister-test ()
   ())
 
-(def association*
+(def persistent-association*
   ((:class strict-brother-test :slot sister :type strict-sister-test)
    (:class strict-sister-test :slot brother :type strict-brother-test)))
 
@@ -58,14 +58,14 @@
 (def persistent-class* unbound-sister-test ()
   ())
 
-(def association*
+(def persistent-association*
   ((:class unbound-brother-test :slot sister :type (or unbound unbound-sister-test))
    (:class unbound-sister-test :slot brother :type (or unbound unbound-brother-test))))
 
 (def persistent-class* 1-1-self-association-test ()
   ())
 
-(def association*
+(def persistent-association*
   ((:class 1-1-self-association-test :slot sister :type (or null 1-1-self-association-test))
    (:class 1-1-self-association-test :slot brother :type (or null 1-1-self-association-test))))
 
@@ -85,7 +85,7 @@
 (def persistent-class* concrete-sister-test (abstract-sister-test)
   ())
 
-(def association*
+(def persistent-association*
   ((:class abstract-brother-test :slot sister :type (or null abstract-sister-test))
    (:class abstract-sister-test :slot brother :type (or null abstract-brother-test))))
 

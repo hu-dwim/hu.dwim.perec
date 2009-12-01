@@ -9,16 +9,16 @@
 ;;;;;;
 ;;; Base classes
 
-(defpclass* persistent-object-d ()
+(def persistent-class* persistent-object-d ()
   ()
   (:abstract #t)
   (:direct-store :push-down))
 
-(defpclass* persistent-object-h ()
+(def persistent-class* persistent-object-h ()
   ()
   (:abstract #t)
   (:direct-store :push-down))
 
-(defassociation*
+(def persistent-association*
   ((:class persistent-object-h :slot d-instance :type persistent-object-d)
    (:class persistent-object-d :slot h-instances :type (set persistent-object-h))))

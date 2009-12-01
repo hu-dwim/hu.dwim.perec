@@ -14,7 +14,7 @@
 (def persistent-class* super-sister-test ()
   ())
 
-(def association*
+(def persistent-association*
   ((:class super-brother-test :slot sister :type (or null super-sister-test))
    (:class super-sister-test :slot brother :type (or null super-brother-test))))
 
@@ -33,7 +33,7 @@
   (ensure-finalized (find-class 'sub-brother-test))
   (ensure-finalized (find-class 'sub-sister-test)))
 
-(def association*
+(def persistent-association*
   ((:class sub-brother-test :slot sister :type (or null sub-sister-test))
    (:class sub-sister-test :slot brother :type (or null sub-brother-test))))
 

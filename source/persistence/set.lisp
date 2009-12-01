@@ -9,7 +9,7 @@
 ;;;;;;
 ;;; Set
 
-;; TODO: enforce disjunct-set in defassociation for 1-N associations mapped as foreign keys in the RDBMS?
+;; TODO: enforce disjunct-set in defpassociation for 1-N associations mapped as foreign keys in the RDBMS?
 
 ;; TODO: set types need some refactoring, to have a common base type and to be less fragile
 (def persistent-type set (&optional element-type)
@@ -128,7 +128,7 @@
 (def persistent-class persistent-set ()
   ())
 
-(def association*
+(def persistent-association*
   ((:class persistent-set :slot items :type (set persistent-set-element))
    (:class persistent-set-element :slot sets :type (set persistent-set))))
 

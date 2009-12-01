@@ -49,9 +49,9 @@
     :type list)))
 
 ;;;;;;
-;;; defassociation
+;;; defpassociation
 
-(def method expand-defassociation-form :around ((metaclass null) association-ends options)
+(def method expand-defpassociation-form :around ((metaclass null) association-ends options)
   (bind ((specified-metaclass (second (find :metaclass options :key #'first)))
          (processed-options
           (if (and (not specified-metaclass)
@@ -60,7 +60,7 @@
               options)))
     (call-next-method metaclass association-ends processed-options)))
 
-(def method expand-defassociation-form ((metaclass persistent-association-d) association-ends options)
+(def method expand-defpassociation-form ((metaclass persistent-association-d) association-ends options)
   (with-decoded-association-ends association-ends
     (bind ((dimensions (second (find :dimensions options :key #'first)))
            (superclasses
@@ -81,10 +81,10 @@
          ,(call-next-method metaclass processed-association-ends processed-options)
          (defpclass* ,association-name ,superclasses
            ,slot-definitions)
-         (defassociation*
+         (defpassociation*
            ((:class ,association-name :slot ,(concatenate-symbol "d-" secondary-slot *package*) :type (or null ,primary-class))
             (:class ,primary-class :slot ,(concatenate-symbol "h-" primary-slot *package*) :type (set ,association-name))))
-         (defassociation*
+         (defpassociation*
            ((:class ,association-name :slot ,(concatenate-symbol "d-" primary-slot *package*) :type (or null ,secondary-class))
             (:class ,secondary-class :slot ,(concatenate-symbol "h-" secondary-slot *package*) :type (set ,association-name))))))))
 

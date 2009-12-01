@@ -17,21 +17,21 @@
 (def persistent-class* dimensional-child-test ()
   ())
 
-(def association*
+(def persistent-association*
   ((:class dimensional-child-test :slot parent :type (or null dimensional-parent-test))
    (:class dimensional-parent-test :slot children :type (set dimensional-child-test))))
 
-(def association*
+(def persistent-association*
   ((:class dimensional-child-test :slot time-dependent-parent :type (or null dimensional-parent-test))
    (:class dimensional-parent-test :slot time-dependent-children :type (set dimensional-child-test)))
   (:dimensions (time)))
 
-(def association*
+(def persistent-association*
   ((:class dimensional-child-test :slot validity-dependent-parent :type (or null dimensional-parent-test))
    (:class dimensional-parent-test :slot validity-dependent-children :type (set dimensional-child-test)))
   (:dimensions (validity)))
 
-(def association*
+(def persistent-association*
   ((:class dimensional-child-test :slot time-and-validity-dependent-parent :type (or null dimensional-parent-test))
    (:class dimensional-parent-test :slot time-and-validity-dependent-children :type (set dimensional-child-test)))
   (:dimensions (time validity)))
@@ -54,5 +54,5 @@
 
 (def test test/dimensional/association/1-n/cache ()
   (test/dimensional/association/cache
-   (find-association
+   (find-persistent-association
     'dimensional-child-test~validity-dependent-parent~dimensional-parent-test~validity-dependent-children)))

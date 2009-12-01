@@ -17,21 +17,21 @@
 (def persistent-class* dimensional-course-test ()
   ())
 
-(def association*
+(def persistent-association*
   ((:class dimensional-course-test :slot students :type (set dimensional-student-test))
    (:class dimensional-student-test :slot courses :type (set dimensional-course-test))))
 
-(def association*
+(def persistent-association*
   ((:class dimensional-course-test :slot time-dependent-students :type (set dimensional-student-test))
    (:class dimensional-student-test :slot time-dependent-courses :type (set dimensional-course-test)))
   (:dimensions (time)))
 
-(def association*
+(def persistent-association*
   ((:class dimensional-course-test :slot validity-dependent-students :type (set dimensional-student-test))
    (:class dimensional-student-test :slot validity-dependent-courses :type (set dimensional-course-test)))
   (:dimensions (validity)))
 
-(def association*
+(def persistent-association*
   ((:class dimensional-course-test :slot time-and-validity-dependent-students :type (set dimensional-student-test))
    (:class dimensional-student-test :slot time-and-validity-dependent-courses :type (set dimensional-course-test)))
   (:dimensions (time validity)))
@@ -54,5 +54,5 @@
 
 (def test test/dimensional/association/m-n/cache ()
   (test/dimensional/association/cache
-   (find-association
+   (find-persistent-association
     'dimensional-course-test~validity-dependent-students~dimensional-student-test~validity-dependent-courses)))

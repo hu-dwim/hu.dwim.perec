@@ -33,11 +33,11 @@
    (birthday :type date)
    (age 32 :persistent #f :type integer-32)))
 
-(def association*
+(def persistent-association*
   ((:class topic-test :slot messages :type (set message-test))
    (:class message-test :slot topic :type topic-test)))
 
-(def association*
+(def persistent-association*
   ((:class owner-test :slot topics :type (set topic-test))
    (:class topic-test :slot owner :type owner-test)))
 

@@ -29,11 +29,11 @@
 (def persistent-class* actress-test (performer-test woman-test)
   ())
 
-(def association*
+(def persistent-association*
   ((:class man-test :slot wife :type (or null woman-test))
    (:class woman-test :slot husband :type (or null man-test))))
 
-(def association*
+(def persistent-association*
   ((:class movie-test :slot performers :type (set performer-test))
    (:class performer-test :slot movies :type (set movie-test))))
 
