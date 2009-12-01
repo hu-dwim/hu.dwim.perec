@@ -371,7 +371,7 @@
   (declare (ignore date))
   t)
 
-(def persistent-type local-time::date ()
+(def (persistent-type e) date ()
   '(and timestamp
         (satisfies date-p)))
 
@@ -389,7 +389,7 @@
   (declare (ignore time))
   t)
 
-(def (persistent-type e) local-time::time ()
+(def (persistent-type e) time ()
   '(and timestamp
         (satisfies time-p)))
 

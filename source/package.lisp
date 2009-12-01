@@ -36,17 +36,15 @@
 
   (:shadow #:name
            #:set
+           #:time
            #:form
            #:children
            #:variable
            #:class-slots
            #:transaction
-           #:create-temporary-table ; TODO resolve by renaming something. hu.dwim.rdbms exports this.
+           #:create-temporary-table ; TODO resolve by renaming to something. hu.dwim.rdbms exports this.
            #:float-type
            #:class-name-of)
-
-  (:shadowing-import-from :iterate
-                          #:finish)
 
   (:shadowing-import-from :cl-containers
                           #:dequeue
@@ -56,6 +54,12 @@
   (:shadowing-import-from :hu.dwim.rdbms
                           #:update-index
                           #:insert-record)
+
+  (:shadowing-import-from :iterate
+                          #:finish)
+
+  (:shadowing-import-from :local-time
+                          #:time)
 
   (:export ;; defining persistent classes
            #:defpclass
