@@ -39,6 +39,10 @@
   (:direct-store :push-down)
   (:documentation "Base class for all persistent classes. If this class is not inherited by a persistent class then it is automatically added to the direct superclasses. There is only one persistent instance in a transaction with a give oid therefore eq will return true iff the oids are equal."))
 
+(def method hash-key ((instance persistent-object))
+  "Used to calculate the key for hashtable access."
+  (oid-of instance))
+
 (def (function e) persistent-object-internal-slot-p (slot)
   (member (slot-definition-name slot) '(oid persistent transaction transaction-event) :test #'eq))
 
