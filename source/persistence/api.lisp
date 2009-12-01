@@ -9,7 +9,7 @@
 ;;;;;;
 ;;; defpclass
 
-(defgeneric expand-defpclass-form (metaclass defclass-macro name superclasses slots options)
+(def generic expand-defpclass-form (metaclass defclass-macro name superclasses slots options)
   (:method ((metaclass null) defclass-macro name superclasses slots options)
     (bind ((specified-metaclass (second (find :metaclass options :key #'first)))
            (metaclass (or specified-metaclass 'persistent-class)))
@@ -19,11 +19,11 @@
                                  options
                                  (append options `((:metaclass ,metaclass))))))))
 
-(defmacro defpclass (name superclasses slots &rest options)
+(def macro defpclass (name superclasses slots &rest options)
   "Defines a persistent class. Slots may have an additional :persistent slot option which is true by default. For standard options see defclass."
   (expand-defpclass-form nil 'defclass name superclasses slots options))
 
-(defmacro defpclass* (name superclasses slots &rest options)
+(def macro defpclass* (name superclasses slots &rest options)
   "Same as defpclass but uses defclass*."
   (expand-defpclass-form nil 'defclass* name superclasses slots options))
 
@@ -36,7 +36,7 @@
 ;;;;;;
 ;;; defassociation
 
-(defgeneric expand-defassociation-form (metaclass association-ends options)
+(def generic expand-defassociation-form (metaclass association-ends options)
   (:method ((metaclass null) association-ends options)
     (bind ((specified-metaclass (second (find :metaclass options :key #'first)))
            (metaclass (or specified-metaclass 'persistent-association)))
@@ -46,10 +46,10 @@
                                       options
                                       (append options `((:metaclass ,metaclass))))))))
 
-(defmacro defassociation (&body association-ends)
+(def macro defassociation (&body association-ends)
   (expand-defassociation-form nil (car association-ends) (cdr association-ends)))
 
-(defmacro defassociation* (&body association-ends)
+(def macro defassociation* (&body association-ends)
   (expand-defassociation-form nil
                               (mapcar [append !1
                                               (unless (getf !1 :accessor)
@@ -103,10 +103,10 @@
       (make-transient-using-class (class-of instance) instance)
       (error "Instance ~A is already transient, you may want to use ensure-transient instead" instance)))
 
-(defgeneric make-persistent-using-class (class instance)
+(def generic make-persistent-using-class (class instance)
   (:documentation "Extension point"))
 
-(defgeneric make-transient-using-class (class instance)
+(def generic make-transient-using-class (class instance)
   (:documentation "Extension point"))
 
 ;;;;;;
@@ -114,16 +114,16 @@
 
 ;;; insert-item, delete-item, empty-p, empty!, find-item are inherited from cl-containers
 
-(defgeneric ensure-item (persistent-collection fn)
+(def generic ensure-item (persistent-collection fn)
   (:documentation "Ensure that item is present in the container."))
 
-(defgeneric iterate-items (persistent-collection fn)
+(def generic iterate-items (persistent-collection fn)
   (:documentation "Applies function to each item in the persistent container."))
 
-(defgeneric list-of (persistent-collection)
+(def generic list-of (persistent-collection)
   (:documentation "Returns a non lazy list of items present in the persistent collection."))
 
-(defgeneric (setf list-of) (new-value persistent-collection)
+(def generic (setf list-of) (new-value persistent-collection)
   (:documentation "Returns a non lazy list of items present in the persistent collection."))
 
 ;;;;;;

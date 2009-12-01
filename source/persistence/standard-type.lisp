@@ -70,7 +70,7 @@
   (integer->member-reader normalized-type)
   (member->integer-writer normalized-type))
 
-(defmacro def-member-type (name &body members)
+(def macro def-member-type (name &body members)
   `(def persistent-type ,name ()
     `(member ,@',members)))
 
@@ -371,7 +371,7 @@
   (declare (ignore date))
   t)
 
-(def (persistent-type e) date ()
+(def persistent-type local-time::date ()
   '(and timestamp
         (satisfies date-p)))
 
@@ -389,7 +389,7 @@
   (declare (ignore time))
   t)
 
-(def (persistent-type e) time ()
+(def (persistent-type e) local-time::time ()
   '(and timestamp
         (satisfies time-p)))
 

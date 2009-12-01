@@ -8,9 +8,9 @@
 
 (def suite* (test/persistence/transformer :in test/persistence))
 
-(def parameter +transformer-string-test-value+ "value")
+(def special-variable +transformer-string-test-value+ "value")
 
-(def parameter +transformer-integer-test-value+ 42)
+(def special-variable +transformer-integer-test-value+ 42)
 
 (def function is-equal-using-writer (type slot-value rdbms-values)
   (is (equalp rdbms-values (lisp-value->rdbms-values type slot-value))))

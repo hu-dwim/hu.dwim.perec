@@ -35,7 +35,7 @@
     (make-instance 'aggregate-test
                    :int-attr nil)))
 
-(def macro aggregate-test (name (&rest args) &body body)
+(def definer aggregate-test (name (&rest args) &body body)
   `(def test ,name ,args
     (with-setup aggregate-data
       (with-transaction

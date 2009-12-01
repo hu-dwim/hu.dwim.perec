@@ -8,7 +8,7 @@
 
 (def special-variable *exporting-to-rdbms* #f)
 
-(defcclass* exportable ()
+(def computed-class* exportable ()
   ((ensure-exported
     (compute-as (export-to-rdbms -self-) -self-)
     :reader ensure-exported
@@ -29,5 +29,3 @@
     (dolist (slot (class-slots class))
       (when (typep slot 'computed-effective-slot-definition)
         (slot-value-using-class class thing slot)))))
-
-

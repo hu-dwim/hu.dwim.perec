@@ -40,7 +40,7 @@
   `(debug-only
      (assert (eq (class-of instance) (slot-definition-class slot)))))
 
-(defgeneric propagate-cache-changes (class instance slot new-value)
+(def generic propagate-cache-changes (class instance slot new-value)
   (:documentation "Partially invalidate or update the cache to reflect setting the slot of instance to new-value.")
 
   (:method ((class persistent-class) (instance persistent-object) (slot persistent-effective-slot-definition) new-value)
@@ -102,7 +102,7 @@
      (not (not-cached-slot-marker-p value))
      value)))
 
-(defgeneric slot-value-equal-p (value-1 value-2)
+(def generic slot-value-equal-p (value-1 value-2)
   (:documentation "When a new slot value is set in a persistent slot it will be compared to the cached value and will not be propagated to the database when this function returns true.")
 
   (:method (value-1 value-2)

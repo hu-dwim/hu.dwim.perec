@@ -154,7 +154,7 @@
   `(bind ((*type-check-slot-values* #f))
     ,@body))
 
-(defcondition* slot-type-error (type-error)
+(def condition* slot-type-error (type-error)
   ((instance
     nil
     :type persistent-object)
@@ -348,7 +348,7 @@
       ordered-set
       t))
 
-(defclass* mapping ()
+(def class* mapping ()
   ((specified-type
     :type (or symbol list)
     :documentation "The original mapped lisp type.")
@@ -400,7 +400,7 @@
                    `',it)
                writer)))))
 
-(defgeneric compute-type-tag (mapped-type)
+(def generic compute-type-tag (mapped-type)
   (:documentation "Returns a type tag which will be stored in the tag column when needed.")
 
   (:method (mapped-type)
@@ -409,7 +409,7 @@
 (def function compute-rdbms-types (type)
   (rdbms-types-of (compute-mapping type)))
 
-(defgeneric compute-rdbms-types* (mapped-type normalized-type)
+(def generic compute-rdbms-types* (mapped-type normalized-type)
   (:method (mapped-type normalized-type)
     (error "Cannot map type ~A to RDBMS types" mapped-type))
 
@@ -421,7 +421,7 @@
 (def function compute-reader (type)
   (reader-of (compute-mapping type)))
 
-(defgeneric compute-reader* (mapped-type normalized-type)
+(def generic compute-reader* (mapped-type normalized-type)
   (:method (mapped-type normalized-type)
     (error "Cannot map type ~A to a reader" mapped-type))
 
@@ -435,7 +435,7 @@
 (def function compute-writer (type)
   (writer-of (compute-mapping type)))
 
-(defgeneric compute-writer* (mapped-type normalized-type)
+(def generic compute-writer* (mapped-type normalized-type)
   (:method (mapped-type normalized-type)
     (error "Cannot map type ~A to a writer" mapped-type))
 
@@ -699,22 +699,22 @@
             (type-violation () #f))
           (body)))))
 
-(defcondition* type-violation ()
+(def condition* type-violation ()
   ())
 
-(defcondition* value-type-violation (type-violation)
+(def condition* value-type-violation (type-violation)
   ((value
     :type t)
    (value-type
     :type the-type)))
 
-(defcondition* instance-slot-type-violation (type-violation)
+(def condition* instance-slot-type-violation (type-violation)
   ((instance
     :type persistent-object)
    (slot
     :type persistent-effective-slot-definition)))
 
-(defgeneric matches-type* (value type)
+(def generic matches-type* (value type)
   (:documentation "Checks if the given value matches the type.")
 
   (:method (value type)

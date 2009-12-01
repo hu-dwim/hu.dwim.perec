@@ -103,7 +103,7 @@
 (def persistent-class* persistent-class-type-test ()
   ((slot 0 :type integer)))
 
-(def struct structure-type-test
+(def structure structure-type-test
   (slot 0 :type integer))
 
 (def type-test t/1 t)

@@ -19,7 +19,7 @@
     (make-instance 'embedded-sql-test :int-attr 2 :string-attr "a")
     (make-instance 'embedded-sql-test :int-attr 3 :string-attr "b")))
 
-(def macro embedded-sql-test (name (&rest args) &body body)
+(def definer embedded-sql-test (name (&rest args) &body body)
   `(def test ,name ,args
     (with-setup embedded-sql-data
       (with-transaction

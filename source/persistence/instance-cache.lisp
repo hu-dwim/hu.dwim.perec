@@ -7,7 +7,7 @@
 (in-package :hu.dwim.perec)
 
 ;; TODO: consider merging the created, modified, and deleted hash-tables
-(defclass* transaction-instance-cache-mixin ()
+(def class* transaction-instance-cache-mixin ()
   ((instances
     (make-hash-table :test #'eql)
     :type hash-table

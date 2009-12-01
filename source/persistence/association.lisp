@@ -11,7 +11,7 @@
 
 ;; TODO: make sure that 1-1 and 1-n associations both store the foreign key in the primary-association-end's table 
 
-(defcclass* persistent-association (exportable)
+(def computed-class* persistent-association (exportable)
   ((name
     :type symbol
     :documentation "Unique name of the association. This name can be used to find the association using find-association.")
@@ -50,7 +50,7 @@
     :type table
     :documentation "The table which holds the oids of the associated instances.")))
 
-(defcclass* persistent-association-end-slot-definition (persistent-slot-definition)
+(def computed-class* persistent-association-end-slot-definition (persistent-slot-definition)
   ((association
     (compute-as nil)
     :type persistent-association)
@@ -94,7 +94,7 @@
     :type boolean
     :documentation "True iff this end is the secondary association end of its association.")))
 
-(defcclass* persistent-association-end-direct-slot-definition (persistent-association-end-slot-definition persistent-direct-slot-definition)
+(def computed-class* persistent-association-end-direct-slot-definition (persistent-association-end-slot-definition persistent-direct-slot-definition)
   ((min-cardinality
     (compute-as (bind ((type (canonical-type-of -self-)))
                   (if (and (not (null-subtype-p type))
@@ -114,7 +114,7 @@
     :type persistent-association-end-direct-slot-definition))
   (:metaclass identity-preserving-class))
 
-(defcclass* persistent-association-end-effective-slot-definition (persistent-association-end-slot-definition persistent-effective-slot-definition)
+(def computed-class* persistent-association-end-effective-slot-definition (persistent-association-end-slot-definition persistent-effective-slot-definition)
   ((association-end-tables
     (compute-as (compute-association-end-tables -self-))
     :type (list table))
@@ -128,7 +128,7 @@
                   (other-effective-association-end-for class -self-)))
     :type persistent-association-end-direct-slot-definition)))
 
-(defcclass* association-primary-table (table)
+(def computed-class* association-primary-table (table)
   ((persistent-association
     :type persistent-association
     :documentation "The persistent association for which this table is the primary table."))

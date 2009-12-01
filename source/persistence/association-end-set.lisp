@@ -61,13 +61,13 @@
 ;;;;;;
 ;;; Lazy association end set containers
 
-(defclass* persistent-association-end-set-container (persistent-slot-set-container)
+(def class* persistent-association-end-set-container (persistent-slot-set-container)
   ())
 
 ;;;;;;
 ;;; 1-n association end set
 
-(defclass* persistent-1-n-association-end-set-container (persistent-association-end-set-container)
+(def class* persistent-1-n-association-end-set-container (persistent-association-end-set-container)
   ())
 
 (def method insert-item :after ((set persistent-1-n-association-end-set-container) item)
@@ -93,7 +93,7 @@
 ;;;;;;
 ;;; m-n association end set
 
-(defclass* persistent-m-n-association-end-set-container (persistent-association-end-set-container)
+(def class* persistent-m-n-association-end-set-container (persistent-association-end-set-container)
   ())
 
 (def method insert-item ((set persistent-m-n-association-end-set-container) item)

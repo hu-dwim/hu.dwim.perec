@@ -28,7 +28,7 @@
                    :int-attr 4
                    :str-attr "2")))
 
-(def macro having-test (name (&rest args) &body body)
+(def definer having-test (name (&rest args) &body body)
   `(def test ,name ,args
     (with-setup having-data
       (with-transaction

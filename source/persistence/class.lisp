@@ -12,7 +12,7 @@
 ;; TODO: support flattenning subclasses into superclass and dispatch on type
 ;; TODO: support flattenning (1-1) associations and slots with persistent object subtype into referer's table
 
-(defcclass* persistent-class (standard-class exportable)
+(def computed-class* persistent-class (standard-class exportable)
   ((abstract
     (compute-as #f)
     :type boolean
@@ -117,11 +117,11 @@
     :documentation "The list of persistent classes which must look at this class when computing RDBMS meta data."))
   (:documentation "Persistent class is a class meta instance for classes. Standard defclass forms may be used to define persistent classes. A persistent class will have persistent slots unless marked with :persistent #f. A persistent slot should have type specification to be efficient both in storage and speed. The special type unbound must be used to mark slots which might be unbound."))
 
-(defclass identity-preserving-class (computed-class)
+(def class identity-preserving-class (computed-class)
   ()
   (:documentation "This class serves a very special purpose, namely being able to return the very same instance in make-instance for slot definition meta instances."))
 
-(defcclass* persistent-slot-definition (standard-slot-definition)
+(def computed-class* persistent-slot-definition (standard-slot-definition)
   ((prefetch
     :type boolean
     :computed-in compute-as
@@ -168,14 +168,14 @@
     :documentation "On commit type check means that during the transaction the slot may have null and/or unbound value and the type check will be done when the transaction commits."))
   (:documentation "Base class for both persistent direct and effective slot definitions."))
 
-(defcclass* persistent-direct-slot-definition (persistent-slot-definition standard-direct-slot-definition)
+(def computed-class* persistent-direct-slot-definition (persistent-slot-definition standard-direct-slot-definition)
   ((specified-type
     :initarg :type
     :documentation "The slot type as it was originally specified in the defclass form."))
   (:metaclass identity-preserving-class)
   (:documentation "Class for persistent direct slot definitions."))
 
-(defcclass* persistent-effective-slot-definition (persistent-slot-definition standard-effective-slot-definition)
+(def computed-class* persistent-effective-slot-definition (persistent-slot-definition standard-effective-slot-definition)
   ((direct-slots
     :type (list persistent-direct-slot-definition)
     :documentation "The list of direct slots definitions used to compute this effective slot during the class finalization procedure in class precedence list order.")
@@ -254,7 +254,7 @@
 (eval-always
   (mapc [pushnew !1 *allowed-slot-definition-properties*] '(:persistent :prefetch :cache :index :unique :type-check)))
 
-(defcclass* class-primary-table (table)
+(def computed-class* class-primary-table (table)
   ((persistent-class
     :type persistent-class
     :documentation "The persistent class for which this table is the primary table.")

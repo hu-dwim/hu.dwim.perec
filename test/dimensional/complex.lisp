@@ -19,7 +19,7 @@
 
 (def special-variable *test-slot-name* nil)
 
-(def struct (history-entry (:conc-name he-))
+(def structure (history-entry (:conc-name he-))
   (step (incf *history-entry-counter*) :type integer)
   (transaction-index *transaction-counter* :type integer)
   (action nil :type (member :set :insert :delete))

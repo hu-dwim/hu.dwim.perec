@@ -43,7 +43,7 @@
 ;;;;;;
 ;;; Lazy slot set container
 
-(defclass* persistent-slot-set-container (set-container)
+(def class* persistent-slot-set-container (set-container)
   ((instance
     :type persistent-object)
    (slot
@@ -120,15 +120,15 @@
 ;;;;;;
 ;;; Lazy persistent set with identity
 
-(defpclass persistent-set-element ()
+(def persistent-class persistent-set-element ()
   ()
   (:abstract #t)
   (:direct-store :push-down))
 
-(defpclass persistent-set ()
+(def persistent-class persistent-set ()
   ())
 
-(defassociation*
+(def association*
   ((:class persistent-set :slot items :type (set persistent-set-element))
    (:class persistent-set-element :slot sets :type (set persistent-set))))
 

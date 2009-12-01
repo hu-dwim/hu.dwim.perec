@@ -12,7 +12,7 @@
 (def special-variable *make-persistent-instances* #t
   "True means make-instance will make the new instance persistent by default.")
 
-(defpclass* persistent-object ()
+(def persistent-class* persistent-object ()
   ((oid
     nil
     :type (or null integer)

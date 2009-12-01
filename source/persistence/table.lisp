@@ -10,7 +10,7 @@
 ;;; RDBMS model classes
 
 ;; TODO: use sql-table when available from hu.dwim.rdbms
-(defcclass* table (exportable)
+(def computed-class* table (exportable)
   ((name
     :type symbol
     :documentation "The name of the RDBMS table.")
@@ -20,7 +20,7 @@
     :documentation "The list of RDBMS columns of this table. This list uses the sql column type of hu.dwim.rdbms."))
   (:documentation "An RDBMS table with some related RDBMS definitions. The actual table will be created in the database when export-to-rdbms is called on it."))
 
-(defcclass* view (exportable)
+(def computed-class* view (exportable)
   ((name
     :type symbol
     :documentation "The name of the RDBMS view.")
@@ -31,7 +31,7 @@
     :type sql-query-expression
     :documentation "The SQL create view statement.")))
 
-(defcclass* column (sql-column)
+(def computed-class* column (sql-column)
   ((index
     (compute-as nil)
     :type (or null sql-index)
