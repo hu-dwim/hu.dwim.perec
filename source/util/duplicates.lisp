@@ -285,3 +285,12 @@
 
 (defmacro swap (place-1 place-2)
   `(rotatef ,place-1 ,place-2))
+
+;; TODO this should come from a lib...
+(def generic generic-equal (left right)
+  (:method (left right)
+    (equal left right))
+  (:method ((left timestamp) (right timestamp))
+    (timestamp= left right))
+  (:method ((left sequence) (right sequence))
+    (every* #'generic-equal left right)))
