@@ -25,7 +25,7 @@
                 (:action "[read in]" ,(lambda () (slot-value-using-class class instance slot))))))
       (call-next-method)))
 
-(defmethod swank::emacs-inspect ((instance persistent-object))
+(defmethod swank-backend::emacs-inspect ((instance persistent-object))
   (flet ((annotate (content)
            (append (if (debug-persistent-p instance)
                        (if (instance-in-transaction-p instance)
