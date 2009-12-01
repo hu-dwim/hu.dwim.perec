@@ -10,11 +10,7 @@
 
 (defsystem :hu.dwim.perec.sqlite
   :class hu.dwim.system
-  :author ("Levente Mészáros <levente.meszaros@gmail.com>"
-           "Tamás Borbély <tomi.borbely@gmail.com>"
-           "Attila Lendvai <attila.lendvai@gmail.com>")
-  :licence "BSD / Public domain"
-  :description "Sqlite backend for hu.dwim.perec"
+  :description "Sqlite backend for hu.dwim.perec."
   :depends-on (:hu.dwim.perec
                :hu.dwim.rdbms.sqlite)
   :components ((:module "source"

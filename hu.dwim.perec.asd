@@ -10,11 +10,7 @@
 
 (defsystem :hu.dwim.perec
   :class hu.dwim.system
-  :author ("Levente Mészáros <levente.meszaros@gmail.com>"
-           "Tamás Borbély <tomi.borbely@gmail.com>"
-           "Attila Lendvai <attila.lendvai@gmail.com>")
-  :licence "BSD / Public domain"
-  :description "RDBMS based persistent CLOS, an object relational mapping (ORM)"
+  :description "RDBMS based persistent CLOS, an object relational mapping (ORM)."
   :depends-on (:babel
                :contextl
                :cl-containers

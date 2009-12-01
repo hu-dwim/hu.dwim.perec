@@ -11,7 +11,7 @@
 (defsystem :hu.dwim.perec.postgresql.test
   :class hu.dwim.test-system
   :package-name :hu.dwim.perec.test
-  :description "Test suite for hu.dwim.perec with Postgresql backend"
+  :description "Test suite for hu.dwim.perec with Postgresql backend."
   :depends-on (:hu.dwim.perec.test
                :hu.dwim.perec.postgresql)
   :components ((:module "test"

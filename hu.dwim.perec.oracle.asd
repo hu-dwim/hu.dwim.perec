@@ -10,11 +10,7 @@
 
 (defsystem :hu.dwim.perec.oracle
   :class hu.dwim.system
-  :author ("Levente Mészáros <levente.meszaros@gmail.com>"
-           "Tamás Borbély <tomi.borbely@gmail.com>"
-           "Attila Lendvai <attila.lendvai@gmail.com>")
-  :licence "BSD / Public domain"
-  :description "Oracle backend for hu.dwim.perec"
+  :description "Oracle backend for hu.dwim.perec."
   :depends-on (:hu.dwim.perec
                :hu.dwim.rdbms.oracle)
   :components ((:module "source"

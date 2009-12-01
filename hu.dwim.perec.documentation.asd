@@ -10,11 +10,6 @@
 
 (defsystem :hu.dwim.perec.documentation
   :class hu.dwim.documentation-system
-  :author ("Levente Mészáros <levente.meszaros@gmail.com>"
-           "Tamás Borbély <tomi.borbely@gmail.com>"
-           "Attila Lendvai <attila.lendvai@gmail.com>")
-  :licence "BSD / Public domain"
-  :description "Documentation for hu.dwim.perec"
   :depends-on (:hu.dwim.perec.oracle.test
                :hu.dwim.perec.postgresql.test
                :hu.dwim.perec.sqlite.test
