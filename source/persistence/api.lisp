@@ -59,6 +59,12 @@
                                       (car association-ends))
                               (cdr association-ends)))
 
+(def (definer e) association (&body association-ends)
+  `(defassociation ,@association-ends))
+
+(def (definer e) association* (&body association-ends)
+  `(defassociation* ,@association-ends))
+
 ;;;;;;
 ;;; types
 
