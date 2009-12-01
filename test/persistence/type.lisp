@@ -74,7 +74,8 @@
                             (list (first (slot-definition-initargs (find-slot 'type-test name)))
                                   test-value)))))
            (test-object (object)
-             (when test-value-provided?
+             (when (and test-value
+                        test-value-provided?)
                (is (= 0 (type-test/select-object name))))
              (if test-value-provided?
                  (is (object-equal-p test-value (slot-value object name)))
@@ -201,8 +202,8 @@
 (def type-test timestamp/3 timestamp (parse-timestring "1000-01-01T01:01:01Z"))
 (def type-test timestamp/4 timestamp (parse-timestring "3000-03-03T03:03:03Z"))
 
-(def type-test ip-address/1 ip-address (coerce #(127 0 0 1) '(vector (unsigned-byte 8))))
-(def type-test ip-address/2 ip-address (coerce #(0 0 0 0 0 65535 32512 1) '(vector (unsigned-byte 16))))
+(def type-test ip-address/1 ip-address-vector (coerce #(127 0 0 1) '(vector (unsigned-byte 8))))
+(def type-test ip-address/2 ip-address-vector (coerce #(0 0 0 0 0 65535 32512 1) '(vector (unsigned-byte 16))))
 
 (def type-test duration/1 duration (+ (* 5 60 60) (* 5 60) 5))
 (def type-test duration/2 duration (+ (* 1 (* +seconds-per-day+ 30)) (* 1 +seconds-per-day+) (* 5 +seconds-per-hour+) (* 5 +seconds-per-minute+) 5))
