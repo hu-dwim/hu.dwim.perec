@@ -70,6 +70,7 @@
   (integer->member-reader normalized-type)
   (member->integer-writer normalized-type))
 
+;; KLUDGE: TODO: remove these when type mapping is refactored to use linear-mapping from util
 (def macro def-member-type (name &body members)
   `(def persistent-type ,name ()
     `(member ,@',members)))
