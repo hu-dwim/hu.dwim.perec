@@ -72,7 +72,8 @@
                                     :metaclass (class-of class)
                                     :direct-superclasses (class-direct-superclasses class)
                                     :direct-slots nil)
-          (with-confirmed-destructive-changes (ensure-exported class))
+          (with-confirmed-destructive-schema-changes
+            (ensure-exported class))
           (with-transaction
             (execute-query query)
             (is (= counter 2))))))))

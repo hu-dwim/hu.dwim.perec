@@ -89,7 +89,7 @@
      (bind (,@(when test-value-provided?
                 `((value (with-transaction ,test-value)))))
        (with-transaction
-         (with-confirmed-destructive-changes
+         (with-confirmed-destructive-schema-changes
            (ensure-exported
             (def persistent-class* type-test ()
               ((,name :type ,type))))))

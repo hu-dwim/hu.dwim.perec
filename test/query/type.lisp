@@ -14,7 +14,7 @@
       (let ((,value ,(when test-value-p `(with-transaction ,test-value))))
         (declare (ignorable ,value))
         (with-transaction
-          (with-confirmed-destructive-changes
+          (with-confirmed-destructive-schema-changes
             (ensure-exported
              (def persistent-class* query-type-test ()
                ((,name :type ,type)))))
