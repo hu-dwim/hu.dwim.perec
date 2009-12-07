@@ -44,16 +44,6 @@
         (intern symbol-name package)
         (intern symbol-name))))
 
-(def constant +ascii-alphabet+ "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-(def function random-string (&optional (length 32) (alphabet +ascii-alphabet+))
-  (loop with id = (make-string length)
-     with alphabet-length = (length alphabet)
-     for i below length
-     do (setf (cl:aref id i)
-              (cl:aref alphabet (random alphabet-length)))
-     finally (return id)))
-
 (def function hasf (plist indicator)
   (not (eq (getf plist indicator :unbound) :unbound)))
 

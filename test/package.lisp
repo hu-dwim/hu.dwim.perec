@@ -52,5 +52,5 @@
                                 table-of columns-of reader-name-of writer-name-of
                                 lisp-value->rdbms-values rdbms-values->lisp-value
                                 depends-on-of depends-on-me-of primary-class-of effective-store-of
-                                compile-query random-string)"))
+                                compile-query)"))
           :hu.dwim.perec.test))
