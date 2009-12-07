@@ -15,6 +15,7 @@
         :hu.dwim.perec
         :hu.dwim.rdbms
         :hu.dwim.stefil
+        :hu.dwim.util
         :local-time
         :metacopy-with-contextl)
 
