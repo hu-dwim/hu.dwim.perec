@@ -7,8 +7,7 @@
 (in-package :hu.dwim.perec.test)
 
 ;;;; TODO: specify expected result in tests
-
-(def suite* (test/query/select :in test/query))
+(in-suite test/query/select)
 
 (def persistent-class* topic-test ()
   ((title :type (text 50))))

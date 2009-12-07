@@ -6,6 +6,8 @@
 
 (in-package :hu.dwim.perec.test)
 
+(def suite (test/query/select :in test/query))
+
 (def special-variable *show-query* nil)
 
 (def macro with-sql-recording (&body body)
