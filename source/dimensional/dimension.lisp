@@ -215,30 +215,30 @@
                          (bind ((,coordinate-name ,name))
                            (funcall thunk)))))))))
 
-(def (definer e :available-flags "ioed") dimensional-function ()
-  (bind ((name (elt -whole- 2))
-         (arguments (elt -whole- 3))
-         (key-start-position (position '&key arguments))
+(def (definer e :available-flags "ioed") dimensional-function (name arguments &body body)
+  (bind ((key-start-position (position '&key arguments))
          (key-end-position (position '&aux arguments))
          (key-arguments (when key-start-position
                           (subseq arguments (1+ key-start-position) key-end-position)))
          (coordinates-start-position (aprog1 (position '&coordinate arguments) (assert it)))
          (coordinates-end-position (or key-start-position key-end-position))
          (coordinate-arguments (subseq arguments (1+ coordinates-start-position) coordinates-end-position))
-         (new-key-arguments (mapcar (lambda (dimension-name)
-                                      (bind ((coordinate-name (format-symbol *package* "*~A*" dimension-name)))
-                                        `((,(intern (symbol-name dimension-name) :keyword)
-                                            ,coordinate-name)
-                                          ,coordinate-name)))
-                                    coordinate-arguments))
+         (extra-key-arguments (mapcar (lambda (entry)
+                                        (bind ((dimension-name (first (ensure-list entry)))
+                                               (default-value (second (ensure-list entry)))
+                                               (coordinate-name (format-symbol *package* "*~A*" dimension-name)))
+                                          `((,(intern (symbol-name dimension-name) :keyword)
+                                              ,coordinate-name)
+                                            ,(or default-value coordinate-name))))
+                                      coordinate-arguments))
          (whole (list* 'def 'dimensional-function name
                        (append (subseq arguments 0 coordinates-start-position)
                                (list '&key)
-                               new-key-arguments
+                               extra-key-arguments
                                key-arguments
                                (when key-end-position
                                  (subseq arguments key-end-position)))
-                       (nthcdr 4 -whole-))))
+                       body)))
     (hu.dwim.def::function-like-definer -definer- 'defun whole -environment- -options-)))
 
 (def function dependent-object-name (dimension-name)
