@@ -82,6 +82,7 @@
 (def print-object dimension ()
   (princ (name-of -self-)))
 
+;; TODO use namespace definer
 (def special-variable *dimensions* (make-hash-table) "The list of defined dimensions")
 
 (def (function e) find-dimension (name &key (otherwise :error))

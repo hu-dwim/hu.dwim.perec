@@ -6,6 +6,8 @@
 
 (in-package :hu.dwim.perec)
 
+;; TODO move most of this into transaction.lisp (the query-compiler dependent parts) into source/transaction.lisp
+
 ;;;;;;
 ;;; Persistent constraint
 
@@ -142,5 +144,6 @@
             (body))))))
 
 (def method commit-transaction :before (database (transaction transaction-mixin))
+  ;; TODO check here a slot of the transaction that is initialized to *ignore-constraints*
   (unless *ignore-constraints*
     (check-all-constraints)))

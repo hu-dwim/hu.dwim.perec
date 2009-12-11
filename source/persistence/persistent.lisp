@@ -16,6 +16,7 @@
                                   (list (name-of (primary-table-of (class-of instance))))
                                   :where (make-oid-matcher-where-clause instance))))))
 
+;; TODO rename to persistent?/debug or something else. debug- here sounds as a verb not as an adjective...
 (def function debug-persistent-p (instance)
   "Same as persistent-p except it never prefetches slot values. Use for debug purposes."
   (if (slot-boundp instance 'persistent)

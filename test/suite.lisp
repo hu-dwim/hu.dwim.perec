@@ -16,7 +16,8 @@
   (without-caching-slot-values
     (-body-))
   (with-caching-slot-values
-    (-body-)))
+    (-body-))
+  (values))
 
 (def macro with-two-transactions (instance-factory &body body)
   `(bind ((-instance- (with-transaction
