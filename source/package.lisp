@@ -45,6 +45,9 @@
                           #:update-index
                           #:insert-record)
 
+  (:shadowing-import-from :hu.dwim.def
+                          #:iterator)
+
   (:shadowing-import-from :iterate
                           #:finish)
 
