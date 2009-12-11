@@ -209,11 +209,9 @@
                            ,(if default-coordinate?
                                 default-coordinate
                                 +whole-domain-marker+))
-                       (def (macro e) ,with-macro-name (,name &body forms)
-                         `(,',call-with-fn-name ,,name (lambda () ,@forms)))
-                       (def (function e) ,call-with-fn-name (,name thunk)
-                         (bind ((,coordinate-name ,name))
-                           (funcall thunk)))))))))
+                       (def (with-macro e) ,with-macro-name (coordinate-value)
+                         (bind ((,coordinate-name coordinate-value))
+                           (-body-)))))))))
 
 (def (definer e :available-flags "ioed") dimensional-function (name arguments &body body)
   (bind ((key-start-position (position '&key arguments))
