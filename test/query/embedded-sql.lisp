@@ -17,11 +17,12 @@
     (purge-instances 'embedded-sql-test)
     (make-instance 'embedded-sql-test :int-attr 1 :string-attr "a")
     (make-instance 'embedded-sql-test :int-attr 2 :string-attr "a")
-    (make-instance 'embedded-sql-test :int-attr 3 :string-attr "b")))
+    (make-instance 'embedded-sql-test :int-attr 3 :string-attr "b"))
+  (-body-))
 
 (def definer embedded-sql-test (name (&rest args) &body body)
   `(def test ,name ,args
-    (with-setup embedded-sql-data
+    (with-fixture embedded-sql-data
       (with-transaction
         ,@body))))
 

@@ -96,7 +96,8 @@
     (make-instance 'purge-6-test :int-attr-1 8 :int-attr-2 4 :int-attr-3 4 :int-attr-6 0)
     (make-instance 'purge-6-test :int-attr-1 9 :int-attr-2 5 :int-attr-3 5 :int-attr-6 1)
     (make-instance 'purge-7-test :int-attr-1 10 :int-attr-3 6 :int-attr-7 0)
-    (make-instance 'purge-7-test :int-attr-1 11 :int-attr-3 7 :int-attr-7 1)))
+    (make-instance 'purge-7-test :int-attr-1 11 :int-attr-3 7 :int-attr-7 1))
+  (-body-))
 
 (def purge-query-test test/query/purge/delete-0-all 0 nil
   `(0 nil

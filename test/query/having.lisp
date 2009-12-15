@@ -26,11 +26,12 @@
                    :str-attr "2")
     (make-instance 'having-test
                    :int-attr 4
-                   :str-attr "2")))
+                   :str-attr "2"))
+  (-body-))
 
 (def definer having-test (name (&rest args) &body body)
   `(def test ,name ,args
-    (with-setup having-data
+    (with-fixture having-data
       (with-transaction
         ,@body))))
 

@@ -45,7 +45,7 @@
 
 (def macro test-query ((&key (select-count 1) (record-count nil) (fixture nil)) &body forms)
   `(finishes
-    (with-setup ,fixture
+    (with-fixture ,fixture
       (run-queries
         (without-debug-query-compiler
           (with-select-count-check ,select-count

@@ -57,26 +57,26 @@
   (:metaclass persistent-class-d))
 
 (def test test/dimensional/slot/normal ()
-  (with-setup test-dimension-fixture
+  (with-fixture test-dimension-fixture
     (run-complex-tests :class-name 'dimensional-complex-test
                        :instance-count 1)))
 
 (def test test/dimensional/slot/unbound ()
-  (with-setup test-dimension-fixture
+  (with-fixture test-dimension-fixture
     (run-complex-tests :class-name 'dimensional-complex-unbound-test
                        :instance-count 1)))
 
 (def test test/dimensional/slot/null ()
-  (with-setup test-dimension-fixture
+  (with-fixture test-dimension-fixture
     (run-complex-tests :class-name 'dimensional-complex-null-test
                        :instance-count 1)))
 
 (def test test/dimensional/slot/unbound-or-null ()
-  (with-setup test-dimension-fixture
+  (with-fixture test-dimension-fixture
     (run-complex-tests :class-name 'dimensional-complex-unbound-or-null-test
                        :instance-count 1)))
 
 (def test test/dimensional/slot/inheritance ()
-  (with-setup test-dimension-fixture
+  (with-fixture test-dimension-fixture
     (run-complex-tests :class-name 'dimensional-complex-inheritance-test
                        :instance-count 1)))

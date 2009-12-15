@@ -23,7 +23,8 @@
   (with-transaction
     (purge-instances 'scroll-test)
     (iter (for i from 0 below 10)
-          (make-instance 'scroll-test :attr-1 i))))
+          (make-instance 'scroll-test :attr-1 i)))
+  (-body-))
 
 (def macro run-scroll-test (&body body)
   `(progn

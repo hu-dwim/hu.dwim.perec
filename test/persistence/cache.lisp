@@ -6,17 +6,13 @@
 
 (in-package :hu.dwim.perec.test)
 
-(def suite* (test/persistence/cache :in test/persistence))
-
-(def test test/persistence/cache/with-caching-slot-values ()
+(def suite* (test/persistence/cache :in test/persistence) ()
   (with-caching-slot-values
-    (test/persistence/cache/slot-access)))
-
-(def test test/persistence/cache/without-caching-slot-values ()
+    (run-child-tests))
   (without-caching-slot-values
-    (test/persistence/cache/slot-access)))
+    (run-child-tests)))
 
-(def suite* (test/persistence/cache/slot-access :in nil))
+(def suite* (test/persistence/cache/slot-access :in test/persistence/cache))
 
 (def function counter+ (counter value)
   (if *cache-slot-values* counter (+ counter value)))

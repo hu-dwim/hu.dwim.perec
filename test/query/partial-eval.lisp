@@ -15,7 +15,8 @@
   (with-transaction
     (purge-instances 'partial-eval-test)
     (make-instance 'partial-eval-test :int-attr 1)
-    (make-instance 'partial-eval-test :int-attr 2)))
+    (make-instance 'partial-eval-test :int-attr 2))
+  (-body-))
 
 (def special-variable *counter* 0)
 
@@ -23,7 +24,7 @@
   (incf *counter*))
 
 (def test test/query/partial-eval/static ()
-  (with-setup partial-eval-data
+  (with-fixture partial-eval-data
     (bind ((*enable-partial-eval* #t) 
            (query (make-query '(select ((int-attr-of o))
                                 (from (o partial-eval-test))
@@ -36,7 +37,7 @@
         (is (equal (first (execute-query query)) 1))))))
 
 (def test test/query/partial-eval/volatile ()
-  (with-setup partial-eval-data
+  (with-fixture partial-eval-data
     (bind ((*enable-partial-eval* #t)
            (query (make-query '(select ((int-attr-of o))
                                 (from (o partial-eval-test))

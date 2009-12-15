@@ -38,7 +38,8 @@
     (make-instance 'purge-c-test)
     (make-instance 'purge-e-test)
     (make-instance 'purge-f-test)
-    (make-instance 'purge-g-test)))
+    (make-instance 'purge-g-test))
+  (-body-))
 
 (def function purge-test (class-name delete-counter)
   (with-fixture fixture/persistent/purge

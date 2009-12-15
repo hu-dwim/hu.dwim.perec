@@ -31,7 +31,8 @@
     (purge-instances 'sub-1-test)
     (purge-instances 'sub-2-test)
     (make-instance 'sub-1-test)
-    (make-instance 'sub-2-test)))
+    (make-instance 'sub-2-test))
+  (-body-))
 
 (def macro type-test (&body body)
   `(progn

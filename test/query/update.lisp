@@ -21,7 +21,8 @@
     (purge-instances 'update-2-test)
     (make-instance 'update-1-test :int-attr 0)
     (make-instance 'update-1-test :int-attr 1)
-    (make-instance 'update-2-test :int-attr 0)))
+    (make-instance 'update-2-test :int-attr 0))
+  (-body-))
 
 (def macro run-update-test (&body body)
   `(progn

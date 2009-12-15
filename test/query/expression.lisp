@@ -22,7 +22,8 @@
                    :date-attr (parse-datestring "2007-07-11"))
     (make-instance 'expression-test
                    :string-attr "String2"
-                   :date-attr (parse-datestring "2007-07-15"))))
+                   :date-attr (parse-datestring "2007-07-15")))
+  (-body-))
 
 (def test test/query/expression/timestamp<= ()
   (test-query (:select-count 1 :record-count 1 :fixture expression-data)

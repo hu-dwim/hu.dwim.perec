@@ -22,7 +22,8 @@
     (purge-instances 'pt-1-test)
     (purge-instances 'pt-2-test)
     (make-instance 'pt-1-test :attr1 1)
-    (make-instance 'pt-2-test :attr1 "1")))
+    (make-instance 'pt-2-test :attr1 "1"))
+  (-body-))
 
 (def test test/query/select/polymorph-1 ()
   (test-query (:select-count 0 :record-count 0 :fixture polymorph-test-data)

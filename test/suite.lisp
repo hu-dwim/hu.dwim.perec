@@ -78,12 +78,5 @@
     (purge-instances 'dimension-test)
     (make-instance 'dimension-test)
     (make-instance 'dimension-test)
-    (make-instance 'dimension-test)))
-
-(def macro with-setup (fixture &body body)
-  (if fixture
-      `(progn
-        (funcall ',fixture)
-        ,@body)
-      `(progn
-        ,@body)))
+    (make-instance 'dimension-test))
+  (-body-))

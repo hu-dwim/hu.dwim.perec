@@ -33,11 +33,12 @@
                    :str-attr nil
                    :date-attr nil)
     (make-instance 'aggregate-test
-                   :int-attr nil)))
+                   :int-attr nil))
+  (-body-))
 
 (def definer aggregate-test (name (&rest args) &body body)
   `(def test ,name ,args
-    (with-setup aggregate-data
+    (with-fixture aggregate-data
       (with-transaction
         ,@body))))
 

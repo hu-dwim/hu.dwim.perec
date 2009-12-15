@@ -48,7 +48,8 @@
           (angelina-jolie (make-instance 'actress-test :name "Angelina Jolie")))
       (setf (performers-of oceans-twelwe) (list george-clooney brad-pitt)
             (performers-of mr&mrs-smith) (list brad-pitt angelina-jolie)
-            (wife-of brad-pitt) angelina-jolie))))
+            (wife-of brad-pitt) angelina-jolie)))
+  (-body-))
 
 (def test test/query/select/association-1-1/1 ()
   (test-query (:select-count 1 :record-count 1 :fixture association-test-fixture)

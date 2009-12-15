@@ -59,7 +59,8 @@
       (make-instance 'message-test :subject "subject1" :content "content1" :topic topic1)
       (make-instance 'message-test :subject "subject2" :content "content2" :topic topic1)
       (make-instance 'ad-test :subject "ad1" :content "content3" :topic topic1)
-      (make-instance 'spam-test :subject "spam1" :content "content4" :topic topic1 :score 10 :spam-type 'viagra))))
+      (make-instance 'spam-test :subject "spam1" :content "content4" :topic topic1 :score 10 :spam-type 'viagra)))
+  (-body-))
 
 (def test test/query/select/simple ()
   (test-query (:record-count 4 :fixture forum-data)

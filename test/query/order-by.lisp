@@ -59,7 +59,8 @@
               (make-instance 'order-by-test
                              :int-attr (random-element int-values)
                              :str-attr (random-element str-values)
-                             :date-attr (random-element date-values)))))))
+                             :date-attr (random-element date-values))))))
+  (-body-))
 
 (def test test/query/select/order-by/integer/asc ()
   (run-order-by-test

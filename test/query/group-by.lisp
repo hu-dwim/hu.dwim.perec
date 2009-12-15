@@ -43,11 +43,12 @@
                    :int-attr nil
                    :str-attr nil
                    :date-attr nil
-                   :children nil )))
+                   :children nil ))
+  (-body-))
 
 (def definer group-by-test (name (&rest args) &body body)
   `(def test ,name ,args
-    (with-setup group-by-data
+    (with-fixture group-by-data
       (with-transaction
         ,@body))))
 

@@ -30,11 +30,12 @@
       (make-instance 'subselect-child-test :parent p2 :int-attr 3)
       (make-instance 'subselect-child-test :parent p2 :int-attr 4)
       (make-instance 'subselect-child-test :parent p3 :int-attr 5)
-      (make-instance 'subselect-child-test :parent p3 :int-attr 6))))
+      (make-instance 'subselect-child-test :parent p3 :int-attr 6)))
+  (-body-))
 
 (def definer subselect-test (name (&rest args) &body body)
   `(def test ,name ,args
-    (with-setup subselect-data
+    (with-fixture subselect-data
       (with-transaction
         ,@body))))
 

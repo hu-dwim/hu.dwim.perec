@@ -28,7 +28,8 @@
   (with-transaction
     (purge-instances 'query-cache-test)
     (make-instance 'query-cache-test :attr-1 1)
-    (make-instance 'query-cache-test :attr-1 2)))
+    (make-instance 'query-cache-test :attr-1 2))
+  (-body-))
 
 (def test test/query/cache-1 ()
   (run-cache-test

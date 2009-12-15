@@ -15,11 +15,12 @@
   (with-transaction
     (purge-instances 'limit-test)
     (iter (for i from 0 below 10)
-          (make-instance 'limit-test :int-attr i))))
+          (make-instance 'limit-test :int-attr i)))
+  (-body-))
 
 (def definer limit-test (name (&rest args) &body body)
   `(def test ,name ,args
-    (with-setup limit-data
+    (with-fixture limit-data
       (with-transaction
         ,@body))))
 
