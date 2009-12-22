@@ -177,10 +177,10 @@
            (type (if on-commit
                      canonical-type
                      (always-checked-type-of slot)))
-           (check-type (if (set-type-p* canonical-type)
-                           (set-type-class-for canonical-type)
-                           type)))
-      (unless (typep slot-value check-type)
+           (expected-type (if (set-type-p* canonical-type)
+                              (set-type-class-for canonical-type)
+                              type)))
+      (unless (typep slot-value expected-type)
         (cerror "Ignore type error and mark transaction for rollback only" 'slot-type-error :instance instance :slot slot :datum slot-value :expected-type type)
         (mark-transaction-for-rollback-only)
         #t))))
