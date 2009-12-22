@@ -182,6 +182,7 @@
                               type)))
       (unless (typep slot-value expected-type)
         (cerror "Ignore type error and mark transaction for rollback only" 'slot-type-error :instance instance :slot slot :datum slot-value :expected-type type)
+        ;; TODO this is not doing what seems to be obviously doing: MARK-TRANSACTION-FOR-ROLLBACK-ONLY is too late here... rdbms should assert for this, TODO marked over there...
         (mark-transaction-for-rollback-only)
         #t))))
 
