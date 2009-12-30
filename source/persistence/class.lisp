@@ -358,7 +358,11 @@
     t)
 
   (:method ((slot persistent-effective-slot-definition))
-    (bind ((types (remove t (mapcar #'specified-type-of (direct-slots-of slot)))))
+    (bind ((types (remove t (mapcar (lambda (direct-slot)
+                                      (etypecase direct-slot
+                                        (persistent-effective-slot-definition (specified-type-of direct-slot))
+                                        (standard-slot-definition (slot-definition-type direct-slot))))
+                                    (direct-slots-of slot)))))
       (if (length= 1 types)
           (first types)
           (cons 'and types)))))
@@ -664,7 +668,7 @@
           (collect slot))))
 
 (def function slot-definer-superclass (slot)
-  (slot-definition-class (last-elt (direct-slots-of slot))))
+  (slot-definition-class (find-if (of-type 'persistent-direct-slot-definition) (direct-slots-of slot) :from-end #t)))
 
 (def function find-class-store-location (owner-class definer-class)
   (second (find (class-name definer-class) (effective-store-of owner-class) :key #'first)))
