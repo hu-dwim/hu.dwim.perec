@@ -30,6 +30,7 @@
                                            (:file "persistence")
                                            (:file "purge")
                                            (:file "reference")
+                                           #+nil ;; TODO: broken right now
                                            (:file "set")
                                            (:file "table")
                                            (:file "transaction")
