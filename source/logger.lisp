@@ -6,4 +6,4 @@
 
 (in-package :hu.dwim.perec)
 
-(def logger perec () :appenders ((debug-only* (make-instance 'brief-stream-appender :stream *debug-io*))))
+(def logger perec ())
