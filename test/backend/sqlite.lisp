@@ -15,4 +15,4 @@
 
 (def test (test/sqlite :in test) ()
   (with-database *sqlite-database*
-    (test/type)))
+    (test/database)))

@@ -16,7 +16,6 @@
                                                                                    :user-name "hu.dwim.perec.test"
                                                                                    :password "engedjbe")))
 
-
 (def test (test/oracle :in test) ()
   (with-database *oracle-database*
-    (test/type)))
+    (test/database)))
