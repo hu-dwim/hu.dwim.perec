@@ -25,8 +25,7 @@
   (-body-))
 
 (def macro run-update-test (&body body)
-  `(progn
-    (update-query-fixture)
+  `(with-fixture update-query-fixture
     (with-transaction* (:default-terminal-action :rollback)
       (when *show-query*
         (format t "~{~&~A~}" ',body))
