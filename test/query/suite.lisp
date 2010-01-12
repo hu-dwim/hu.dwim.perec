@@ -13,9 +13,9 @@
 (def macro with-sql-recording (&body body)
   `(unwind-protect
     (progn
-      (start-sql-recording)
+      (enable-sql-log)
       ,@body)
-    (stop-sql-recording)))
+    (disable-sql-log)))
 
 (def macro with-debug-query-compiler (&body body)
   `(let ((*test-query-compiler* #t))

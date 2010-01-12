@@ -168,7 +168,7 @@ To test hu.dwim.perec:
 
 To play around:
    ;; to turn on logging of SQL statements in SLIME
-   (start-sql-recording)
+   (enable-sql-log)
    ;; to create a persistent class
    (defpclass* test ()
      ((name :type (text 20))
