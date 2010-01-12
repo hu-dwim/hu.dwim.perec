@@ -22,12 +22,11 @@
             "Table ~S: expected ~S, but found ~S" table-name expected-records records-in-database)))
 
 (def macro run-purge-test (&body body)
-  `(progn
-    (purge-query-fixture)
-    (with-transaction* (:default-terminal-action :rollback)
-      (when *show-query*
-        (format t "~{~&~A~}" ',body))
-      ,@body)))
+  `(with-fixture purge-query-fixture
+     (with-transaction* (:default-terminal-action :rollback)
+       (when *show-query*
+         (format t "~{~&~A~}" ',body))
+       ,@body)))
 
 (def definer purge-query-test (name class-id attr-value &body expected)
   (bind ((class (read-from-string (format nil "purge-~d-test" class-id)))

@@ -26,10 +26,10 @@
 
 (def macro run-update-test (&body body)
   `(with-fixture update-query-fixture
-    (with-transaction* (:default-terminal-action :rollback)
-      (when *show-query*
-        (format t "~{~&~A~}" ',body))
-      ,@body)))
+     (with-transaction* (:default-terminal-action :rollback)
+       (when *show-query*
+         (format t "~{~&~A~}" ',body))
+       ,@body)))
 
 (def function check-database-content (expected)
   (bind ((content (select ((int-attr-of instance))

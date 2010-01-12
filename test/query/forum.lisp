@@ -128,22 +128,22 @@
 
 (def test test/query/select/with-dynamic-variables ()
   (with-fixture forum-data
-      (let ((user (with-transaction (select-first-matching-instance user-test))))
-        (test-query (:select-count nil :record-count 2)
-          (revive-instance user)          ; for eq
-          (select (o)
-            (from (o topic-test))
-            (where (eq (owner-of o) user)))))))
+    (let ((user (with-transaction (select-first-matching-instance user-test))))
+      (test-query (:select-count nil :record-count 2)
+        (revive-instance user)          ; for eq
+        (select (o)
+          (from (o topic-test))
+          (where (eq (owner-of o) user)))))))
 
 (def test test/query/select/with-literal-object ()
   (with-fixture forum-data
-      (bind ((user (with-transaction (select-first-matching-instance user-test))))
-        (test-query (:select-count nil :record-count 2)
-          (execute-query
-           (make-query
-            `(select (o)
-              (from (o topic-test))
-              (where (eq (owner-of o) (first-arg ,user o))))))))))
+    (bind ((user (with-transaction (select-first-matching-instance user-test))))
+      (test-query (:select-count nil :record-count 2)
+        (execute-query
+         (make-query
+          `(select (o)
+             (from (o topic-test))
+             (where (eq (owner-of o) (first-arg ,user o))))))))))
 
 (def test test/query/select/polimorph-association-end ()
   (test-query (:select-count (+ 2 1) :record-count 2 :fixture forum-data)

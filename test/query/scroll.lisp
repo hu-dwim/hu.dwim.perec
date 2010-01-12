@@ -27,10 +27,9 @@
   (-body-))
 
 (def macro run-scroll-test (&body body)
-  `(progn
-    (fill-data-5)
-    (run-queries
-      ,@body)))
+  `(with-fixture fill-data-5
+     (run-queries
+       ,@body)))
 
 (def test test/query/select/scroll/counts ()
   (run-scroll-test
@@ -76,14 +75,14 @@
 
 (def test test/query/select/scroll/transactions ()
   (with-fixture fill-data-5
-      (bind ((scroll (with-transaction
-                       (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test))))))
-        (setf (page-size scroll) 3)
-        (run-queries
-          (first-page! scroll)
-          (check-page (elements scroll) 0 3)
-          (last-page! scroll)
-          (check-page (elements scroll) 9 10)))))
+    (bind ((scroll (with-transaction
+                     (select (:result-type scroll) ((attr-1-of o)) (from (o scroll-test))))))
+      (setf (page-size scroll) 3)
+      (run-queries
+        (first-page! scroll)
+        (check-page (elements scroll) 0 3)
+        (last-page! scroll)
+        (check-page (elements scroll) 9 10)))))
 
 (def test test/query/select/scroll/modify ()
   (run-scroll-test

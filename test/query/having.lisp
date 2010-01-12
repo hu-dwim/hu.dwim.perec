@@ -31,9 +31,9 @@
 
 (def definer having-test (name (&rest args) &body body)
   `(def test ,name ,args
-    (with-fixture having-data
-      (with-transaction
-        ,@body))))
+     (with-fixture having-data
+       (with-transaction
+         ,@body))))
 
 (def having-test test/query/having/1 ()
   (is

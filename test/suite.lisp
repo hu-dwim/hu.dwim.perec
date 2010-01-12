@@ -59,7 +59,7 @@
                 (hash-table-values *persistent-associations*)))
   (test))
 
-(def suite* (test :in root-suite))
+(def suite (test :in root-suite))
 
 (def suite (test/database :in test))
 

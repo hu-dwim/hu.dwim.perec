@@ -9,8 +9,7 @@
 (def suite* (test/query/cache :in test/query))
 
 (def macro run-cache-test (&body body)
-  `(progn
-     (fill-data-3)
+  `(with-fixture fill-data-3
      (with-transaction
        (with-new-compiled-query-cache
          (reset-compile-query-counter)
@@ -57,8 +56,7 @@
       (is (not (equal result (execute-query query)))))))
 
 (def test test/query/cache-4 ()
-  (progn
-    (fill-data-3)
+  (with-fixture fill-data-3
     (bind ((class (find-class 'query-cache-2-test))
            (query (make-query '(select (o) (from (o query-cache-2-test))))))
       (reset-compile-query-counter)

@@ -48,9 +48,9 @@
 
 (def definer group-by-test (name (&rest args) &body body)
   `(def test ,name ,args
-    (with-fixture group-by-data
-      (with-transaction
-        ,@body))))
+     (with-fixture group-by-data
+       (with-transaction
+         ,@body))))
 
 (def group-by-test test/query/group-by/string ()
   (is

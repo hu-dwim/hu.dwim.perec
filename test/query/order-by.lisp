@@ -33,10 +33,9 @@
           (finally (return #t)))))
 
 (def macro run-order-by-test (&body body)
-  `(progn
-    (fill-data-6)
-    (run-queries
-      ,@body)))
+  `(with-fixture fill-data-6
+     (run-queries
+       ,@body)))
 
 (def persistent-class* order-by-test ()
   ((int-attr :type integer-32)

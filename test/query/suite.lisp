@@ -45,14 +45,14 @@
 
 (def macro test-query ((&key (select-count 1) (record-count nil) (fixture nil)) &body forms)
   `(finishes
-    (with-fixture ,fixture
-      (run-queries
-        (without-debug-query-compiler
-          (with-select-count-check ,select-count
-            (with-record-count-check ,record-count
-              ,@forms)))
-        (with-debug-query-compiler
-          ,@forms)))))
+     (with-fixture ,fixture
+       (run-queries
+         (without-debug-query-compiler
+           (with-select-count-check ,select-count
+             (with-record-count-check ,record-count
+               ,@forms)))
+         (with-debug-query-compiler
+           ,@forms)))))
 
 (def function run-query-tests ()
   (with-sql-recording

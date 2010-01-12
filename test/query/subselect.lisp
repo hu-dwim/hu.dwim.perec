@@ -35,9 +35,9 @@
 
 (def definer subselect-test (name (&rest args) &body body)
   `(def test ,name ,args
-    (with-fixture subselect-data
-      (with-transaction
-        ,@body))))
+     (with-fixture subselect-data
+       (with-transaction
+         ,@body))))
 
 #+nil
 (def subselect-test test/query/subselect/int ()

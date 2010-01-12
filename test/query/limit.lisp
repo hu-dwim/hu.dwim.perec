@@ -20,9 +20,9 @@
 
 (def definer limit-test (name (&rest args) &body body)
   `(def test ,name ,args
-    (with-fixture limit-data
-      (with-transaction
-        ,@body))))
+     (with-fixture limit-data
+       (with-transaction
+         ,@body))))
 
 (def limit-test test/query/limit/sql/1 ()
   (is

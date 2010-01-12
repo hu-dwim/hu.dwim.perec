@@ -35,11 +35,10 @@
   (-body-))
 
 (def macro type-test (&body body)
-  `(progn
-    (create-type-test-data)
-    (finishes
-      (run-queries
-        ,@body))))
+  `(with-fixture create-type-test-data
+     (finishes
+       (run-queries
+         ,@body))))
 
 (def test test/query/table-ref/none ()
   (type-test
