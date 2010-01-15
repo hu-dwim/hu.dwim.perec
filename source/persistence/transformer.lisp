@@ -156,7 +156,7 @@
 (def function identity-reader (rdbms-values index)
   (elt rdbms-values index))
 
-(def function identity-writer (slot-value rdbms-values index) 
+(def function identity-writer (slot-value rdbms-values index)
   (setf (elt rdbms-values index) slot-value))
 
 ;;;;;;
@@ -181,10 +181,10 @@
 ;;; Symbol
 
 (def function string->symbol-reader (rdbms-values index)
-  (symbol-from-canonical-name (elt rdbms-values index)))
+  (canonical-name->symbol (elt rdbms-values index)))
 
 (def function symbol->string-writer (slot-value rdbms-values index)
-  (setf (elt rdbms-values index) (canonical-symbol-name slot-value)))
+  (setf (elt rdbms-values index) (symbol->canonical-name slot-value)))
 
 ;;;;;;
 ;;; List

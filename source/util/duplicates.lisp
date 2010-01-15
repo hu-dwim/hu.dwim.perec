@@ -8,22 +8,24 @@
 
 ;;; THE CONTENT OF THIS FILE IS COPIED OVER FROM SOME OTHER LIBRARIES TO DECREASE THE NUMBER OF DEPENDENCIES
 
-(def (function o) canonical-symbol-name (symbol)
+(def (function o) symbol->canonical-name (symbol)
   "Returns the package name and symbol name concatenated."
   (declare (type symbol symbol))
   ;; TODO: check for valid symbol names and ':'
-  (concatenate 'string
-               (package-name (symbol-package symbol))
-               "::"
-               (symbol-name symbol)))
+  (bind ((package (symbol-package symbol)))
+    (if package
+        (string+ (package-name package) "::" (symbol-name symbol))
+        (string+  "#:" (symbol-name symbol)))))
 
-(def (function o) symbol-from-canonical-name (name)
+(def (function o) canonical-name->symbol (name)
   (declare (type string name))
-  (bind ((pos (position #\: name))
-         (package-name (subseq name 0 pos))
-         (symbol-name (subseq name (+ 2 pos)))
-         (package (find-package package-name)))
-    (intern symbol-name package)))
+  (bind ((position (position #\: name))
+         (package-name (subseq name 0 position))
+         (symbol-name (subseq name (or (position #\: name :start (1+ position) :test-not #'char=)
+                                       (1+ position)))))
+    (if (string= package-name "#")
+        (make-symbol symbol-name)
+        (intern symbol-name (find-package package-name)))))
 
 (def function concatenate-symbol (&rest args)
   "Args are processed as parts of the result symbol with an exception: when a package is encountered then it is stored as the target package at intern."
@@ -68,7 +70,7 @@
 
 (def macro bind-cartesian-product (((&rest variables) lst) &body body)
   (labels ((generate (variables l)
-             (if (cdr variables) 
+             (if (cdr variables)
                  `(dolist (,(car variables) ,l)
                     ,(generate (cdr variables) l))
                  `(dolist (,(car variables) ,l)

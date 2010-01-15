@@ -45,7 +45,7 @@
                                                             (slot-value (etypecase value
                                                                           ((member #f #t) (if value "#t" "#f"))
                                                                           (string value)
-                                                                          (symbol (canonical-symbol-name value))
+                                                                          (symbol (symbol->canonical-name value))
                                                                           (number (princ-to-string value))
                                                                           (timestamp (format-timestring nil value
                                                                                                         :format '((:year 4) #\- (:month 2) #\- (:day 2) #\Space

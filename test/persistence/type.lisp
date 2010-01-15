@@ -193,7 +193,8 @@
 
 (def type-test symbol/1 symbol 'something)
 (def type-test symbol/2 symbol 'hu.dwim.perec.test::something)
-(def type-test symbol/3 (symbol* 30) 'hu.dwim.perec.test::something)
+(def type-test symbol/3 symbol '#:something)
+(def type-test symbol/4 (symbol* 30) 'hu.dwim.perec.test::something)
 
 (def type-test date/1 date (parse-datestring "2006-06-06"))
 
