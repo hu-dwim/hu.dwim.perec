@@ -43,6 +43,7 @@
           ,result))
       `(progn ,@body)))
 
+;; TODO use the :fixtures arg for def test
 (def macro test-query ((&key (select-count 1) (record-count nil) (fixture nil)) &body forms)
   (bind ((body `(run-queries
                   (without-debug-query-compiler

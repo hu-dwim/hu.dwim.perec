@@ -147,7 +147,7 @@
                 (aref vector (aref indices i))))
     (replace vector vector-copy)))
 
-;; Lambda list stuff from Stefil
+;; TODO get rid of this, used only by obsolete defptype
 (def macro with-lambda-parsing ((lambda-form &key finally) &body body)
   (with-unique-names (cell)
     `(iter
