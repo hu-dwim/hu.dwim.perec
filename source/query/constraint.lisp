@@ -39,10 +39,10 @@
     :type form)
    (constrained-class
     :type persistent-class
-    :computed-in compute-as)
+    :computed-in computed-universe/perec)
    (assert
     :type form
-    :computed-in compute-as)))
+    :computed-in computed-universe/perec)))
 
 (defcclass* persistent-association-constraint (persistent-constraint)
   ((association
@@ -54,10 +54,10 @@
     :type persistent-class)
    (constrained-slot
     :type persistent-effective-slot-definition
-    :computed-in compute-as)
+    :computed-in computed-universe/perec)
    (assert
     :type form
-    :computed-in compute-as)))
+    :computed-in computed-universe/perec)))
 
 ;;;;;;
 ;;; Macro interface

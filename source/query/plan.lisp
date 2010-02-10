@@ -808,7 +808,7 @@
   (lambda (rdbms-values index)
     (funcall reader (nreverse (subseq rdbms-values index (+ index column-count))) 0)))
 
-(defcfun (compute-column-reader :memoize-test-fn equalp :computed-in compute-as) (type)
+(defcfun (compute-column-reader :memoize-test-fn equalp :computed-in computed-universe/perec) (type)
   (cond
     ((eq type +unknown-type+)
      (cons #'or-null-identity-reader 1)) ;; FIXME unsafe

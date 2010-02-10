@@ -124,19 +124,19 @@
 (def computed-class* persistent-slot-definition (standard-slot-definition)
   ((prefetch
     :type boolean
-    :computed-in compute-as
+    :computed-in computed-universe/perec
     :documentation "Prefetched slots are loaded from and stored into the database at once. A prefetched slot must be in a table which can be accessed using a where clause matching to the id of the instance thus it must be in a data table. The default prefetched slot semantics can be overriden on a per direct slot basis.")
    (cache
     :type boolean
-    :computed-in compute-as
+    :computed-in computed-universe/perec
     :documentation "All prefetched slots are cached slots but the opposite may not be true. When a cached slot is loaded it's value will be stored in the CLOS instance for fast subsequent read operations. Also whenever a cached slot is set the value will be remembered. The default cached slot semantics can be overriden on a per direct slot basis.")
    (index
     :type boolean
-    :computed-in compute-as
+    :computed-in computed-universe/perec
     :documentation "True means the slot value will be indexed in the underlying RDBMS.")
    (unique
     :type boolean
-    :computed-in compute-as
+    :computed-in computed-universe/perec
     :documentation "True means the slot value will be enforced to be unique among instances in the underlying RDBMS.")
    (specified-type
     (compute-as (compute-specified-type -self-))
@@ -164,7 +164,7 @@
     :documentation "When type-check is :always then this type will be checked whenever a new value is set during the transaction. This type may be different from the specified type.")
    (type-check
     :type (member :always :on-commit)
-    :computed-in compute-as
+    :computed-in computed-universe/perec
     :documentation "On commit type check means that during the transaction the slot may have null and/or unbound value and the type check will be done when the transaction commits."))
   (:documentation "Base class for both persistent direct and effective slot definitions."))
 
