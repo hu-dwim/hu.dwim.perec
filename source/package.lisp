@@ -365,8 +365,8 @@
 
 (import-sql-constructor-names)
 
-(def computed-universe computed-universe/perec
-    :computed-state-factory-name compute-as)
+(def computed-universe (computed-universe/perec
+                        :computed-state-factory-name compute-as))
 
 (dolist (node-class (hu.dwim.walker:collect-standard-walked-form-subclasses))
   (bind ((node-class-name (class-name node-class)))
