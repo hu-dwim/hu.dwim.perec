@@ -204,7 +204,7 @@
            #:copy-into-transaction-cache
            #:unbound-slot-marker-p
 
-           ;; most of the collection API is inherited from cl-containers 
+           ;; most of the collection API is inherited from cl-containers
            #:insert-item
            #:ensure-item
            #:first-item
@@ -365,8 +365,9 @@
 
 (import-sql-constructor-names)
 
-(def computed-universe (computed-universe/perec
-                        :computed-state-factory-name compute-as))
+(def computed-universe computed-universe/perec ()
+  ()
+  (:computed-state-factory-name compute-as))
 
 (dolist (node-class (hu.dwim.walker:collect-standard-walked-form-subclasses))
   (bind ((node-class-name (class-name node-class)))
