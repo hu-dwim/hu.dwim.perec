@@ -78,11 +78,11 @@
           ,@lexical-variables))))
 
 (def walker select
-  (let ((lexical-variables (remove-duplicates (append (collect-variables-in-lexenv (hu.dwim.walker::env/lexical-environment -environment-))
-                                                      ;; TODO: walker sux when accessing environment
-                                                      (iter (for entry :in (hu.dwim.walker::env/walked-environment -environment-))
-                                                            (when (eq :variable (first entry))
-                                                              (collect (second entry))))))))
+  (let ((lexical-variables (remove-duplicates
+                            (append (collect-variables-in-lexenv (walk-environment/lexical-environment -environment-))
+                                    (iter (for (name type) :in (walk-environment/variables -environment-))
+                                          (case type
+                                            (:variable (collect name))))))))
     (walk-form `(execute-query
                  (make-query ',-form- ',lexical-variables)
                  ,@lexical-variables)
