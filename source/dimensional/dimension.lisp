@@ -82,7 +82,7 @@
 (def print-object dimension ()
   (princ (name-of -self-)))
 
-(def namespace dimension)
+(def (namespace e) dimension)
 
 ;; TODO rename it to find-dimension*, or just merge it into find-dimension (namespace definer supports naming the generated finder...)
 (def (function e) lookup-dimension (dimension)
