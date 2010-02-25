@@ -293,27 +293,30 @@
 ;;;;;
 ;;; Singleton persistent instance
 
-(def function singleton-variable-name-for (name)
-  (bind ((name-string (symbol-name name)))
-    (concatenate-symbol (subseq name-string 0 (1- (length name-string)))
-                        "-singleton*"
-                        (symbol-package name))))
+(def function %persistent-singleton/fn (variable-name new-value-thunk)
+  (aif (symbol-value variable-name)
+       (load-instance it)
+       (progn
+         (register-transaction-hook :before :rollback
+           (setf (symbol-value variable-name) nil))
+         (setf (symbol-value variable-name)
+               (funcall new-value-thunk)))))
 
-(def (definer e :available-flags "e") singleton-persistent-instance (name &body forms)
-  (bind ((singleton-variable-name (singleton-variable-name-for name)))
-    (with-standard-definer-options name
-      `(progn
-         (defparameter ,singleton-variable-name nil)
-         (define-symbol-macro ,name
-             (progn
-               (aif ,singleton-variable-name
-                    (load-instance it)
-                    (progn
-                      (register-transaction-hook :before :rollback
-                        (setf ,singleton-variable-name nil))
-                      (setf ,singleton-variable-name
-                            (progn
-                              ,@forms))))))))))
+(def (definer e :available-flags "e") persistent-singleton (name &body forms)
+  (flet ((singleton-variable-name-for (name)
+           (bind ((name-string (symbol-name name)))
+             (symbolicate (subseq name-string 0 (1- (length name-string)))
+                          '#:-singleton*))))
+    (bind ((singleton-variable-name (singleton-variable-name-for name)))
+      (with-standard-definer-options name
+        `(progn
+           (defparameter ,singleton-variable-name nil)
+           (define-symbol-macro ,name
+               (%persistent-singleton/fn
+                ',singleton-variable-name
+                (named-lambda ,(symbolicate '#:persistent-singleton/factory/ name)
+                    ()
+                  ,@forms))))))))
 
 ;;;;;;
 ;;; Making instances persistent and transient
