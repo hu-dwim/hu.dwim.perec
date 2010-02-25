@@ -82,15 +82,13 @@
 (def print-object dimension ()
   (princ (name-of -self-)))
 
-;; TODO use namespace definer
-(def special-variable *dimensions* (make-hash-table) "The list of defined dimensions")
+(def namespace dimension)
 
-(def (function e) find-dimension (name &key (otherwise :error))
-  (or (gethash name *dimensions*)
-      (handle-otherwise otherwise)))
-
-(def function (setf find-dimension) (dimension name)
-  (setf (gethash name *dimensions*) dimension))
+;; TODO rename it to find-dimension*, or just merge it into find-dimension (namespace definer supports naming the generated finder...)
+(def (function e) lookup-dimension (dimension)
+  (etypecase dimension
+    (symbol (find-dimension dimension))
+    (dimension dimension)))
 
 ;;;;;;
 ;;; Defining
@@ -266,11 +264,6 @@
 
 ;;;;;;
 ;;; Functional
-
-(def (function e) lookup-dimension (dimension)
-  (if (symbolp dimension)
-      (find-dimension dimension)
-      dimension))
 
 (def (function e) coordinate (dimension)
   (bind ((dimension (lookup-dimension dimension))
