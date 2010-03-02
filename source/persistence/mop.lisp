@@ -109,7 +109,8 @@
 
 (def function compute-standard-effective-slot-definition-initargs (class direct-slot-definitions)
   #+sbcl(sb-pcl::compute-effective-slot-definition-initargs class direct-slot-definitions)
-  #-sbcl(not-yet-implemented))
+  #+allegro(excl::compute-effective-slot-definition-initargs class direct-slot-definitions)
+  #-(or sbcl allegro) (not-yet-implemented))
 
 (def function compute-persistent-effective-slot-definition-initargs (class direct-slot-definitions)
   (iter (for slot-option-name in (delete-duplicates
