@@ -255,17 +255,14 @@
       (maphash-keys [consolidate-c-values d-value !1] index)
       d-value)))
 
-(def (function e) single-value-at-coordinates (d-value coordinates &key (otherwise :signal-default-error))
+(def (function e) single-value-at-coordinates (d-value coordinates &key (otherwise :error))
   (debug-only (assert-valid-d-value d-value))
   (iter (with dimensions = (dimensions-of d-value))
         (for c-value :in (c-values-of d-value))
         (when (covering-coordinates-p dimensions (coordinates-of c-value) coordinates)
           (return-from single-value-at-coordinates (value-of c-value)))
         (finally
-         (return (handle-otherwise
-                  (if (eq otherwise :signal-default-error)
-                      (list :error "Covering c-value not found for ~A in ~A" coordinates d-value)
-                      otherwise))))))
+         (return (handle-otherwise/value otherwise :default-message `("~S: Covering c-value not found for ~A in ~A" 'single-value-at-coordinates ,coordinates ,d-value))))))
 
 (def (function e) value-at-coordinates (d-value coordinates)
   (debug-only (assert-valid-d-value d-value))
