@@ -38,7 +38,7 @@
 
 (def macro assert-instance-slot-correspondence ()
   `(debug-only
-     (assert (eq (class-of instance) (slot-definition-class slot)))))
+     #+nil(assert (eq (class-of instance) (slot-definition-class slot))))) ;; TODO THL wasn't portable, don't want this for non-persistent slots
 
 (def generic propagate-cache-changes (class instance slot new-value)
   (:documentation "Partially invalidate or update the cache to reflect setting the slot of instance to new-value.")

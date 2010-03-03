@@ -122,7 +122,8 @@
   (:documentation "This class serves a very special purpose, namely being able to return the very same instance in make-instance for slot definition meta instances."))
 
 (def computed-class* persistent-slot-definition (standard-slot-definition)
-  ((prefetch
+  ((%%class :initarg :class :accessor slot-definition-class) ;; instead of sb-pcl::%class
+   (prefetch
     :type boolean
     :computed-in computed-universe/perec
     :documentation "Prefetched slots are loaded from and stored into the database at once. A prefetched slot must be in a table which can be accessed using a where clause matching to the id of the instance thus it must be in a data table. The default prefetched slot semantics can be overriden on a per direct slot basis.")
@@ -628,15 +629,16 @@
   #+sbcl(slot-value slot 'sb-pcl::%class)
   #-sbcl(not-yet-implemented))
 
-(def function find-persistent-slot (class-or-name slot-name &key (otherwise :error otherwise?))
-  (or (find slot-name
-            (the list
-              (persistent-effective-slots-of (if (symbolp class-or-name)
-                                                 (find-class class-or-name)
-                                                 class-or-name)))
-            :key #'slot-definition-name
-            :test #'eq)
-      (handle-otherwise (error "Could not find the persistent slot ~S of class ~A" slot-name class-or-name))))
+(def function find-persistent-slot (class-or-name slot-name &key (otherwise :error))
+  (bind ((result (find slot-name
+                       (the list
+                         (persistent-effective-slots-of (if (symbolp class-or-name)
+                                                            (find-class class-or-name)
+                                                            class-or-name)))
+                       :key #'slot-definition-name
+                       :test #'eq)))
+    (or result
+        (handle-otherwise otherwise))))
 
 (def function persistent-effective-slot-precedence-list-of (slot)
   (bind ((slot-name (slot-definition-name slot))

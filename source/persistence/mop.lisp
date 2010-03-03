@@ -93,6 +93,7 @@
             (if (subtypep effective-slot-class 'persistent-effective-slot-definition)
                 (apply #'make-instance effective-slot-class :direct-slots direct-slot-definitions initargs)
                 (apply #'make-instance effective-slot-class initargs))
+          (setf (slot-value effective-slot-definition '%%class) class)
           (bind ((type (canonical-type-of effective-slot-definition))
                  (normalized-type (normalized-type-for type))
                  (mapped-type (mapped-type-for normalized-type))
