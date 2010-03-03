@@ -81,6 +81,7 @@
   (find-class 'persistent-association-end-effective-slot-definition))
 
 (def method compute-effective-slot-definition ((class persistent-class) slot-name direct-slot-definitions)
+  (declare (ignore slot-name))
   (if (some (lambda (slot)
               (typep slot 'persistent-direct-slot-definition))
             direct-slot-definitions)
