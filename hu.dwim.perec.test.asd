@@ -42,7 +42,7 @@
                                            (:file "1-n-association" :depends-on ("suite" "association"))
                                            (:file "aggregate" :depends-on ("suite"))
                                            (:file "association" :depends-on ("suite"))
-                                           (:file "cache" :depends-on ("suite"))
+                                           (:file "cache" :depends-on ("association"))
                                            (:file "embedded-sql" :depends-on ("suite"))
                                            (:file "expression" :depends-on ("suite"))
                                            (:file "forum" :depends-on ("suite"))
