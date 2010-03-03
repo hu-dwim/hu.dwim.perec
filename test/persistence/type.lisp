@@ -200,10 +200,14 @@
 
 (def type-test time/1 time (parse-timestring "06:06:06Z"))
 
+(def type-test timestamp/now timestamp (local-time:now))
 (def type-test timestamp/1 timestamp (parse-timestring "2006-06-06T06:06:06Z"))
 (def type-test timestamp/2 timestamp (parse-timestring "2006-06-06T06:06:06.123456Z"))
 (def type-test timestamp/3 timestamp (parse-timestring "1000-01-01T01:01:01Z"))
 (def type-test timestamp/4 timestamp (parse-timestring "3000-03-03T03:03:03Z"))
+(def type-test timestamp/5 timestamp (parse-timestring "2000-01-02T03:04:05.6789Z"))
+(def type-test timestamp/6 timestamp (parse-timestring "4000-01-02T03:04:05.6789Z"))
+(def type-test timestamp/7 timestamp (parse-timestring "0001-01-02T03:04:05.6789Z"))
 
 (def type-test ip-address/1 ip-address-vector (coerce #(127 0 0 1) '(vector (unsigned-byte 8))))
 (def type-test ip-address/2 ip-address-vector (coerce #(0 0 0 0 0 65535 32512 1) '(vector (unsigned-byte 16))))
