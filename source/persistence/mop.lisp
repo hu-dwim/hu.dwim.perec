@@ -105,12 +105,11 @@
                            (set-type-p* type))
                        (not unbound-subtype-p)
                        (not initfunction))
-              #+allegro
-              (setf (slot-value effective-slot-definition 'excl::initfunction)
-                    (constantly nil))
-              #-allegro
-              (setf (slot-definition-initfunction effective-slot-definition)
-                    (constantly nil))))))
+              (setf #*((:allegro
+                        (slot-value effective-slot-definition 'excl::initfunction))
+                       (t
+                        (slot-definition-initfunction effective-slot-definition)))
+                   (constantly nil))))))
       (call-next-method)))
 
 (def function compute-standard-effective-slot-definition-initargs (class direct-slot-definitions)
