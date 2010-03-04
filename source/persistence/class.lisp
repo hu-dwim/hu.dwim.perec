@@ -624,21 +624,15 @@
 (def function persistent-slot-p (slot)
   (typep slot 'persistent-slot-definition))
 
-(def function slot-definition-class (slot)
-  "Returns the class to which the given slot belongs."
-  #+sbcl(slot-value slot 'sb-pcl::%class)
-  #-sbcl(not-yet-implemented))
-
-(def function find-persistent-slot (class-or-name slot-name &key (otherwise :error))
-  (bind ((result (find slot-name
-                       (the list
-                         (persistent-effective-slots-of (if (symbolp class-or-name)
-                                                            (find-class class-or-name)
-                                                            class-or-name)))
-                       :key #'slot-definition-name
-                       :test #'eq)))
-    (or result
-        (handle-otherwise otherwise))))
+(def function find-persistent-slot (class-or-name slot-name &key (otherwise :error otherwise?))
+  (or (find slot-name
+            (the list
+              (persistent-effective-slots-of (if (symbolp class-or-name)
+                                                 (find-class class-or-name)
+                                                 class-or-name)))
+            :key #'slot-definition-name
+            :test #'eq)
+      (handle-otherwise (error "Could not find the persistent slot ~S of class ~A" slot-name class-or-name))))
 
 (def function persistent-effective-slot-precedence-list-of (slot)
   (bind ((slot-name (slot-definition-name slot))
