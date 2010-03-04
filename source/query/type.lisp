@@ -292,7 +292,7 @@
       (first slots))
      ((and (not (eq owner-type +unknown-type+))
            (not (contains-syntax-p owner-type)))
-      (find owner-type slots :key 'slot-definition-class :test 'subtypep)))))
+      (find owner-type slots :key 'persistent-slot-definition-class :test 'subtypep)))))
 
 (defun find-slot-by-slot-type (type slots)
   (cond
@@ -321,7 +321,7 @@
 
 (defun slot-not-found-warning (access slots)
   (flet ((qualified-name-of (slot)
-           (concatenate-symbol (class-name (slot-definition-class slot))
+           (concatenate-symbol (class-name (persistent-slot-definition-class slot))
                                ":"
                                (slot-definition-name slot))))
     (if slots

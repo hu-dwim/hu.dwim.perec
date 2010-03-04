@@ -106,7 +106,7 @@
                   (cond ((persistent-class-type-p* canonical-type) 1)
                         ((set-type-p* canonical-type) :n)
                         (t (error "The type ~A is not a valid persistent association end type for association end ~A of persistent-class ~A."
-                                  canonical-type -self- (slot-definition-class -self-)))))))
+                                  canonical-type -self- (persistent-slot-definition-class -self-)))))))
    (other-association-end
     (compute-as (if (primary-association-end-p -self-)
                     (secondary-association-end-of (association-of -self-))
@@ -265,7 +265,7 @@
   (:method ((slot persistent-association-end-effective-slot-definition))
     (bind ((other-slot (other-association-end-of slot))
            (other-slot-name (slot-definition-name other-slot))
-           (other-class (slot-definition-class other-slot)))
+           (other-class (persistent-slot-definition-class other-slot)))
       (remove-duplicates
        (iter (for class :in (list* other-class (persistent-effective-subclasses-of other-class)))
              (awhen (table-of (find-slot class other-slot-name))
@@ -319,7 +319,7 @@
       (:1-n (if (eq :1 (cardinality-kind-of slot))
                 (call-next-method)
                 (columns-of (other-association-end-of slot))))
-      (:m-n (list (make-column-for-reference-slot (class-name (slot-definition-class slot))
+      (:m-n (list (make-column-for-reference-slot (class-name (persistent-slot-definition-class slot))
                                                   (string+ (symbol-name (slot-definition-name slot))
                                                                       "-for-"
                                                                       (symbol-name (set-type-class-for (canonical-type-of slot))))))))))
@@ -360,7 +360,7 @@
   (eq (cardinality-kind-of association-end) :n))
 
 (def (function io) effective-association-end-for (direct-association-end)
-  (find-slot (slot-definition-class direct-association-end) (slot-definition-name direct-association-end)))
+  (find-slot (persistent-slot-definition-class direct-association-end) (slot-definition-name direct-association-end)))
 
 (def (function io) other-effective-association-end-for (class effective-slot)
   (find-slot class (slot-definition-name (some #'other-association-end-of (direct-slots-of effective-slot)))))

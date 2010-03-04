@@ -366,7 +366,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 (defun sql-exists-subselect-for-association-end (variable association-end &optional class)
   "Returns an sql expression which evaluates to true iff the query variable VARIABLE
  has associated objects through ASSOCIATION-END with class CLASS."
-  (bind ((class (or class (slot-definition-class (other-association-end-of association-end))))
+  (bind ((class (or class (persistent-slot-definition-class (other-association-end-of association-end))))
          (table-ref (sql-table-reference-for class (sql-alias-for class))))
     (if table-ref
         (sql-exists
@@ -380,7 +380,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 
 (defun sql-aggregate-subselect-for-variable (aggregate-function n-association-end 1-var)
   (bind ((1-association-end (other-association-end-of n-association-end))
-         (n-class (slot-definition-class 1-association-end))
+         (n-class (persistent-slot-definition-class 1-association-end))
          (n-var (make-query-variable :name (gensym (symbol-name (class-name n-class)))
                                      :persistent-type n-class
                                      :referenced-slots (list (slot-definition-name 1-association-end))))
@@ -413,7 +413,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 
 (defun sql-subselect-for-secondary-association-end (association-end variable)
   (bind ((primary-association-end (other-association-end-of association-end))
-         (class (slot-definition-class primary-association-end))
+         (class (persistent-slot-definition-class primary-association-end))
          (table-ref (sql-table-reference-for class nil (list (slot-definition-name primary-association-end)))))
     (if table-ref
         (sql-subquery

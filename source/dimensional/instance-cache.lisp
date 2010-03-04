@@ -334,8 +334,8 @@
 (def function persistent-effective-association-ends-of (association)
   (bind ((primary-direct-association-end (primary-association-end-of association))
          (secondary-direct-association-end (secondary-association-end-of association))
-         (primary-class (slot-definition-class primary-direct-association-end))
-         (secondary-class (slot-definition-class secondary-direct-association-end))
+         (primary-class (persistent-slot-definition-class primary-direct-association-end))
+         (secondary-class (persistent-slot-definition-class secondary-direct-association-end))
          (primary-effective-association-end
           (find-slot primary-class (slot-definition-name primary-direct-association-end)))
          (secondary-effective-association-end

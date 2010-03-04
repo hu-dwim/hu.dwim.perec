@@ -53,7 +53,7 @@
 
 ;; TODO: this is hell slow for huge transactions, what if this kind of caching is turned off after some limit?
 (def function invalidate-cached-1-n-association-end-set-slot (slot)
-  (bind ((class (slot-definition-class slot)))
+  (bind ((class (persistent-slot-definition-class slot)))
     (map-cached-instances
      [when (typep !1 class)
        (invalidate-cached-slot !1 (find-slot (class-of !1) (slot-definition-name slot)))])))

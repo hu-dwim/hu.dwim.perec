@@ -51,7 +51,7 @@
 
 (defcclass* persistent-effective-slot-definition-d (persistent-slot-definition-d persistent-effective-slot-definition)
   ((h-slot
-    (compute-as (find-persistent-slot (h-class-of (slot-definition-class -self-)) (slot-definition-name -self-) :otherwise nil))
+    (compute-as (find-persistent-slot (h-class-of (persistent-slot-definition-class -self-)) (slot-definition-name -self-) :otherwise nil))
     :type persistent-effective-slot-definition)
    (cache
     (compute-as #t))))

@@ -122,7 +122,7 @@
   (:documentation "This class serves a very special purpose, namely being able to return the very same instance in make-instance for slot definition meta instances."))
 
 (def computed-class* persistent-slot-definition (standard-slot-definition)
-  ((%%class :initarg :class :accessor slot-definition-class) ;; instead of sb-pcl::%class
+  ((%%class :initarg :class :accessor persistent-slot-definition-class) ;; instead of sb-pcl::%class
    (prefetch
     :type boolean
     :computed-in computed-universe/perec
@@ -516,7 +516,7 @@
 (def generic compute-primary-table-slot-p (slot)
   (:method ((slot persistent-effective-slot-definition))
     (and (data-table-slot-p slot)
-         (eq (primary-class-of slot) (slot-definition-class slot)))))
+         (eq (primary-class-of slot) (persistent-slot-definition-class slot)))))
 
 (def generic compute-data-table-slot-p (slot)
   (:method ((slot persistent-effective-slot-definition))
@@ -527,7 +527,7 @@
 (def generic compute-primary-class (slot)
   (:method ((slot persistent-effective-slot-definition))
     (bind ((type (canonical-type-of slot))
-           (owner-class (slot-definition-class slot))
+           (owner-class (persistent-slot-definition-class slot))
            (slot-definer-superclass (slot-definer-superclass slot)))
       (awhen (if (set-type-p* type)
                  (bind ((referred-class (find-class (set-type-class-for type))))
@@ -546,7 +546,7 @@
 
 (def generic compute-columns (slot)
   (:method ((slot persistent-effective-slot-definition))
-    (bind ((class (slot-definition-class slot))
+    (bind ((class (persistent-slot-definition-class slot))
            (primary-class (primary-class-of slot))
            (class-name (class-name (or primary-class class)))
            (name (slot-definition-name slot))
@@ -636,7 +636,7 @@
 
 (def function persistent-effective-slot-precedence-list-of (slot)
   (bind ((slot-name (slot-definition-name slot))
-         (slot-class (slot-definition-class slot)))
+         (slot-class (persistent-slot-definition-class slot)))
     (ensure-finalized slot-class)
     (iter (for class in (persistent-effective-superclasses-of slot-class))
           (ensure-finalized class)
@@ -663,7 +663,7 @@
           (collect slot))))
 
 (def function slot-definer-superclass (slot)
-  (slot-definition-class (find-if (of-type 'persistent-direct-slot-definition) (direct-slots-of slot) :from-end #t)))
+  (persistent-slot-definition-class (find-if (of-type 'persistent-direct-slot-definition) (direct-slots-of slot) :from-end #t)))
 
 (def function find-class-store-location (owner-class definer-class)
   (second (find (class-name definer-class) (effective-store-of owner-class) :key #'first)))

@@ -7,8 +7,8 @@
 (in-package :hu.dwim.perec.test)
 
 (def test test/dimensional/association/cache (association &key (size 10))
-  (bind ((primary-class (hu.dwim.perec::slot-definition-class (hu.dwim.perec::primary-association-end-of association)))
-         (secondary-class (hu.dwim.perec::slot-definition-class (hu.dwim.perec::secondary-association-end-of association)))
+  (bind ((primary-class (hu.dwim.perec::persistent-slot-definition-class (hu.dwim.perec::primary-association-end-of association)))
+         (secondary-class (hu.dwim.perec::persistent-slot-definition-class (hu.dwim.perec::secondary-association-end-of association)))
          (primary-instances)
          (secondary-instances))
 
@@ -23,8 +23,8 @@
   (bind ((primary-association-end (hu.dwim.perec::primary-association-end-of association))
          (secondary-association-end (hu.dwim.perec::secondary-association-end-of association))
          (primary-slot-name (slot-definition-name primary-association-end))
-         (primary-class (hu.dwim.perec::slot-definition-class primary-association-end))
-         (secondary-class (hu.dwim.perec::slot-definition-class secondary-association-end))
+         (primary-class (hu.dwim.perec::persistent-slot-definition-class primary-association-end))
+         (secondary-class (hu.dwim.perec::persistent-slot-definition-class secondary-association-end))
          (primary-instances)
          (secondary-instances))
     (with-transaction

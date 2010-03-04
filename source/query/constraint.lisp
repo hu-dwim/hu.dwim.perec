@@ -50,7 +50,7 @@
 
 (defcclass* persistent-slot-constraint (persistent-class-constraint)
   ((constrained-class
-    (compute-as (slot-definition-class (constrained-slot-of -self-)))
+    (compute-as (persistent-slot-definition-class (constrained-slot-of -self-)))
     :type persistent-class)
    (constrained-slot
     :type persistent-effective-slot-definition
