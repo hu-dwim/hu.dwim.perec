@@ -22,7 +22,7 @@
                               :depends-on ("suite")
                               :components ((:file "1-1-association")
                                            (:file "1-n-association")
-                                           (:file "cache")
+                                           (:file "cache" :depends-on ("1-n-association" "1-1-association"))
                                            (:file "canonical")
                                            (:file "inheritance")
                                            (:file "instance")
