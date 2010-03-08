@@ -6,13 +6,11 @@
 
 (in-package :hu.dwim.perec.test)
 
-(def suite* (test/persistence/association :in test/persistence))
-
 (def special-variable *association-1-1-brother-class-name* 'brother-test)
 
 (def special-variable *association-1-1-sister-class-name* 'sister-test)
 
-(def suite* test/persistence/association/1-1 ()
+(def suite* (test/persistence/association/1-1 :in test/persistence/association) ()
   (flet ((body ()
            (with-and-without-caching-slot-values
              (run-child-tests))))
@@ -34,7 +32,7 @@
 
 (def persistent-class* brother-test ()
   ())
-   
+
 (def persistent-class* sister-test ()
   ())
 
@@ -44,7 +42,7 @@
 
 (def persistent-class* strict-brother-test ()
   ())
-   
+
 (def persistent-class* strict-sister-test ()
   ())
 
@@ -54,7 +52,7 @@
 
 (def persistent-class* unbound-brother-test ()
   ())
-   
+
 (def persistent-class* unbound-sister-test ()
   ())
 
@@ -76,7 +74,7 @@
 
 (def persistent-class* concrete-brother-test (abstract-brother-test)
   ())
-   
+
 (def persistent-class* abstract-sister-test ()
   ()
   (:abstract #t)
@@ -159,7 +157,7 @@
     (setf (brother-of sister) nil)
     (is (eq nil (sister-of brother)))
     (is (eq nil (brother-of sister)))))
-   
+
 (def test test/persistence/association/1-1/referential-integrity/5 ()
   (with-sister-and-brother-transaction
     (setf (sister-of brother) sister)

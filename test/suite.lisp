@@ -65,6 +65,8 @@
 
 (def suite (test/persistence :in test/database))
 
+(def suite (test/persistence/association :in test/persistence))
+
 (def suite (test/query :in test/database))
 
 (def suite (test/dimensional :in test/database))
