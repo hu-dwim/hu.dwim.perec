@@ -413,6 +413,11 @@
             (coordinates-list-difference dimensions coordinates-list-1 intersections)
             (coordinates-list-difference dimensions coordinates-list-2 intersections))))
 
+(def (function e) overlapping-coordinates-list-self-intersection (dimensions coordinates-list)
+  (reduce (lambda (&optional coordinates-list-1 coordinates-list-2)
+            (split-coordinates-lists dimensions coordinates-list-1 coordinates-list-2))
+          (mapcar 'list coordinates-list)))
+
 (def function split-d-values-coordinates-lists (d-values)
   (bind ((dimensions (dimensions-of (first d-values))))
     (reduce (lambda (coordinates-list-1 coordinates-list-2)
@@ -421,9 +426,9 @@
             :key (lambda (d-value)
                    (mapcar #'coordinates-of (c-values-of d-value))))))
 
-;;;
+;;;;;;
 ;;; Set-valued d-value operations
-;;;
+
 (def (function e) insert-at-coordinates (d-value coordinates value &key (test #'eql))
   (debug-only (assert-valid-d-value d-value))
   (iter (for (coordinates set) :in-d-value (value-at-coordinates d-value coordinates))
@@ -479,25 +484,24 @@
                                           (list coordinates)
                                           coordinates))))
 
-;; TODO remove this
 (def (function e) d-project (function projection-dimensions d-value)
+  (debug-only (assert (every (of-type 'dimension) projection-dimensions)))
   (bind ((dimensions (dimensions-of d-value))
          (remaining-dimensions (remove-if [member !1 projection-dimensions] (dimensions-of d-value)))
-         (projection-coordinates-list (remove-duplicates (mapcar-d-value d-value
-                                                                         (lambda (coordinates value)
-                                                                           (declare (ignorable value))
-                                                                           (collect-subcoordinates dimensions projection-dimensions coordinates)))
-                                                         :test #'coordinates=)))
-    (setf projection-coordinates-list
-          (coordinates-list-intersection projection-dimensions
-                                         projection-coordinates-list
-                                         projection-coordinates-list))
+         (projection-coordinates-list (remove-duplicates
+                                       (overlapping-coordinates-list-self-intersection
+                                        projection-dimensions
+                                        (mapcar-d-value d-value
+                                                        (lambda (coordinates value)
+                                                          (declare (ignorable value))
+                                                          (collect-subcoordinates dimensions projection-dimensions coordinates))))
+                                       :test #'coordinates=)))
     (iter (for projection-coordinates :in projection-coordinates-list)
           (for coordinates = (iter (generate projection-coordinate :in projection-coordinates)
                                    (for dimension :in dimensions)
                                    (collect (if (member dimension projection-dimensions)
                                                 (next projection-coordinate)
-                                                ;; FIXME
+                                                ;; FIXME:
                                                 (etypecase dimension
                                                   (ordering-dimension (make-ie-coordinate-range
                                                                        (minimum-coordinate-of dimension)
@@ -508,9 +512,8 @@
                                   (iter (for c-value :in (c-values-of projected-d-value))
                                         (for value = (value-of c-value))
                                         (for coordinates = (collect-subcoordinates dimensions remaining-dimensions (coordinates-of c-value)))
-                                        (when coordinates
-                                          (collect value :into values)
-                                          (collect coordinates :into remaining-coordinates-list))
+                                        (collect value :into values)
+                                        (collect coordinates :into remaining-coordinates-list)
                                         (finally
                                          (return (list remaining-coordinates-list values)))))
                            :dimensions projection-dimensions
@@ -524,37 +527,32 @@
             (for (coordinates value) :in-d-value d-value)
             (for folded-coordinates = (collect-subcoordinates dimensions folded-dimensions coordinates))
             (for unfolded-coordinates = (collect-subcoordinates dimensions unfolded-dimensions coordinates))
-            (for accumulated-d-value = (aprog1 (make-single-d-value
-                                                unfolded-dimensions unfolded-coordinates initial-value)
-                                         (setf (into-d-value it)
-                                               (value-at-coordinates result unfolded-coordinates))))
+            (for accumulated-d-value = (aprog1 (make-single-d-value unfolded-dimensions unfolded-coordinates initial-value)
+                                         (setf (into-d-value it) (value-at-coordinates result unfolded-coordinates))))
             (iter (for (unfolded-coordinates-2 accumulated-value) :in-d-value accumulated-d-value)
                   (setf (value-at-coordinates result unfolded-coordinates-2)
                         (funcall function accumulated-value folded-coordinates value)))
             (finally (return result)))
       d-value))
 
-;; TODO remove (remove-dimensions)
-;; it was (mutating c-values!):
-;;
-;;(def (function e) remove-dimensions (d-value dimensions)
-;;  (debug-only (assert-valid-d-value d-value))
-;;  (bind ((original-dimensions (dimensions-of d-value)))
-;;    (iter (for c-value :in (c-values-of d-value))
-;;          (setf (coordinates-of c-value)
-;;                (iter (for dimension :in original-dimensions)
-;;                      (for coordinate :in (coordinates-of c-value))
-;;                      (unless (member dimension dimensions)
-;;                        (collect coordinate)))))
-;;    (setf (dimensions-of d-value)
-;;          (iter (for dimension :in (dimensions-of d-value))
-;;                (unless (member dimension dimensions)
-;;                  (collect dimension)))))
-;;  (debug-only (assert-valid-d-value d-value))
-;;  d-value)
-
 (def (function e) remove-dimensions (d-value dimensions)
-  (d-fold (lambda (x y z) (declare (ignore x y)) z) dimensions d-value))
+  (d-fold (lambda (a d c v) (declare (ignore a d c)) v) dimensions d-value))
+
+(def (function e) d-volume (d-value &key (volume-function #'*))
+  (iter (with dimensions = (dimensions-of d-value))
+        (for c-value :in (c-values-of d-value))
+        (summing (funcall volume-function
+                          (value-of c-value)
+                          (iter (for dimension :in dimensions)
+                                (for coordinate :in (coordinates-of c-value))
+                                (for volume :initially 1 :then (typecase dimension
+                                                                 (inheriting-dimension volume)
+                                                                 (ordering-dimension (- (coordinate-range-end coordinate)
+                                                                                        (coordinate-range-begin coordinate)))
+                                                                 (t
+                                                                  (* volume (length coordinate)))))
+                                (finally
+                                 (return volume)))))))
 
 (def (function e) d-equal (d-value-1 d-value-2)
   (d-apply #'equal (list d-value-1 d-value-2)))
