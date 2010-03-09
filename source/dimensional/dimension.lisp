@@ -228,15 +228,13 @@
                                               ,coordinate-name)
                                             ,(or default-value coordinate-name))))
                                       coordinate-arguments))
-         (whole (list* 'def 'dimensional-function name
-                       (append (subseq arguments 0 coordinates-start-position)
-                               (list '&key)
-                               extra-key-arguments
-                               key-arguments
-                               (when key-end-position
-                                 (subseq arguments key-end-position)))
-                       body)))
-    (hu.dwim.def::function-like-definer -definer- 'defun whole -environment- -options-)))
+         (processed-arguments (append (subseq arguments 0 coordinates-start-position)
+                                      (list '&key)
+                                      extra-key-arguments
+                                      key-arguments
+                                      (when key-end-position
+                                        (subseq arguments key-end-position)))))
+    `(def (function ,@-options-) ,name ,processed-arguments ,@body)))
 
 (def function dependent-object-name (dimension-name)
   (format-symbol *package* "~A-DEPENDENT-OBJECT" dimension-name))
