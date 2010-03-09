@@ -11,6 +11,7 @@
 (defsystem :hu.dwim.perec.sqlite.test
   :class hu.dwim.test-system
   :package-name :hu.dwim.perec.test
+  :test-name "TEST/SQLITE"
   :description "Test suite for hu.dwim.perec with Sqlite backend."
   :depends-on (:hu.dwim.perec.test
                :hu.dwim.perec.sqlite)

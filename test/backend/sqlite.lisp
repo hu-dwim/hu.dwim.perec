@@ -15,4 +15,5 @@
 
 (def test (test/sqlite :in test) ()
   (with-database *sqlite-database*
-    (test/database)))
+    (with-new-compiled-query-cache
+      (test/backend))))

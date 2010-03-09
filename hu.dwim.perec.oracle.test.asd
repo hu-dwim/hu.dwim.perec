@@ -11,6 +11,7 @@
 (defsystem :hu.dwim.perec.oracle.test
   :class hu.dwim.test-system
   :package-name :hu.dwim.perec.test
+  :test-name "TEST/ORACLE"
   :description "Test suite for hu.dwim.perec with Oracle backend."
   :depends-on (:hu.dwim.perec.test
                :hu.dwim.perec.oracle)

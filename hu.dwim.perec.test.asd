@@ -9,7 +9,7 @@
 (in-package :hu.dwim.asdf)
 
 (defsystem :hu.dwim.perec.test
-  :class hu.dwim.test-system
+  :class hu.dwim.system
   :description "Test suite for hu.dwim.perec"
   :depends-on (:hu.dwim.perec+swank
                :hu.dwim.perec+iolib

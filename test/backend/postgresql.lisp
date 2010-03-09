@@ -16,4 +16,5 @@
 
 (def test (test/postgresql :in test) ()
   (with-database *postgresql-database*
-    (test/database)))
+    (with-new-compiled-query-cache
+      (test/backend))))

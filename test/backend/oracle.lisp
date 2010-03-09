@@ -18,4 +18,5 @@
 
 (def test (test/oracle :in test) ()
   (with-database *oracle-database*
-    (test/database)))
+    (with-new-compiled-query-cache
+      (test/backend))))

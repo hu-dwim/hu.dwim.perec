@@ -61,15 +61,15 @@
 
 (def suite (test :in root-suite))
 
-(def suite (test/database :in test))
+(def suite (test/backend :in test))
 
-(def suite (test/persistence :in test/database))
+(def suite (test/persistence :in test/backend))
 
 (def suite (test/persistence/association :in test/persistence))
 
-(def suite (test/query :in test/database))
+(def suite (test/query :in test/backend))
 
-(def suite (test/dimensional :in test/database))
+(def suite (test/dimensional :in test/backend))
 
 ;; test dimension
 (def persistent-class* dimension-test ()
