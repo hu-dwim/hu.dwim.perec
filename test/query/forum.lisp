@@ -43,9 +43,7 @@
 ;; PORT:
 (def fixture forum-data
   (with-transaction
-    (purge-instances 'owner-test)
-    (purge-instances 'topic-test)
-    (purge-instances 'message-test)
+    (purge-instances 'persistent-object)
     (bind ((user1 (make-instance 'user-test
                                  :name "user1"
                                  :birthday (parse-timestring "1984-04-22T00:00:00Z")
@@ -101,7 +99,7 @@
     (select (s)
       (from (s spam-test))
       (where (<= 50 (score-of s) 100))))
-  
+
   (test-query (:select-count 1 :record-count 1)
     (select (s)
       (from (s spam-test))
