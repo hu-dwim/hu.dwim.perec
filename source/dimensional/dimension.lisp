@@ -54,7 +54,11 @@
    (default-coordinate
     nil
     :type (or null function)
-    :documentation "A function which computes the default coordinate value for this dimension when the special variable is unbound.")))
+    :documentation "A function which computes the default coordinate value for this dimension when the special variable is unbound.")
+   (documentation
+    nil
+    :type (or null string)
+    :documentation "A documentation string.")))
 
 (def class* ordering-dimension (dimension)
   ((coordinate-begin-name
@@ -101,7 +105,8 @@
                                                     (default-coordinate-begin nil default-coordinate-begin?)
                                                     (default-coordinate-end nil default-coordinate-end?)
                                                     (minimum-coordinate nil minimum-coordinate?)
-                                                    (maximum-coordinate nil maximum-coordinate?))
+                                                    (maximum-coordinate nil maximum-coordinate?)
+                                                    documentation)
   (when inherit
     (setf ordered #t))
   (bind ((dimension-class-name (cond (inherit 'inheriting-dimension)
@@ -151,6 +156,7 @@
                           :name ',name
                           :dependent-object-name ',dependent-object-name
                           :type ',type
+                          :documentation ,documentation
                           ,@dimension-args))
        (setf (find-dimension ',name) ,dimension-variable-name)
        (defpclass* ,dependent-object-name ()
@@ -313,4 +319,3 @@
       (mapcar [coordinate-name-of (lookup-dimension !1)] dimensions)
       coordinates
     (-body-)))
-
