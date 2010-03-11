@@ -10,9 +10,7 @@
 
 (defsystem :hu.dwim.perec.documentation
   :class hu.dwim.documentation-system
-  :depends-on (:hu.dwim.perec.oracle.test
-               :hu.dwim.perec.postgresql.test
-               :hu.dwim.perec.sqlite.test
+  :depends-on (:hu.dwim.perec.all.test
                :hu.dwim.wui)
   :components ((:module "documentation"
                 :components ((:file "package")
