@@ -70,6 +70,7 @@
                                            (:file "syntax" :depends-on ("copy"))
                                            (:file "runtime" :depends-on ("syntax"))
                                            (:file "scroll")
+                                           (:file "text-search")
                                            (:file "result-set" :depends-on ("scroll"))
                                            (:file "cache" :depends-on ("query"))
                                            (:file "query" :depends-on ("conditions" "syntax" "api"))
