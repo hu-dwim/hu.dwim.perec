@@ -15,7 +15,9 @@
                :hu.dwim.rdbms.postgresql)
   :components ((:module "source"
                 :components ((:module "backend"
-                              :components ((:file "postgresql")))))))
+                              :components ((:file "postgresql")))
+                             (:module "query"
+                              :components ((:file "text-search")))))))
 
 (defmethod perform :after ((op develop-op) (system (eql (find-system :hu.dwim.perec.postgresql))))
   (let ((database-variable (read-from-string "hu.dwim.rdbms::*database*")))
