@@ -66,7 +66,7 @@
   ;; TODO: support AND/OR/NOT using to_tsquery instead of plainto_tsquery
   ;; TODO: need to make a parser for that
   (set-text-search-threshold threshold)
-  (bind ((words (split-sequence:split-sequence #\Space text))
+  (bind ((words (split #\Space text))
          (table-names (iter (for index :from 0)
                             (for word :in words)
                             (for table-name = (format nil "_text_search_word~A" index))
