@@ -27,15 +27,21 @@
 ;;;;;;;
 ;;; rebuild-text-search-index
 
-;;; TODO: include the localized class names from the class precedence list
-(def (function e) rebuild-text-search-index (&key (configuration "english") (class-name-provider #'class-name))
+(def (special-variable) *text-search-configuration* "simple")
+
+(def function text-search-class-name-provider (class)
+  (substitute #\Space #\- (string-downcase (class-name class))))
+
+(def (function e) rebuild-text-search-index (&key (configuration *text-search-configuration*) (class-name-provider #'text-search-class-name-provider))
   (check-type *database* hu.dwim.rdbms.postgresql:postgresql)
   (with-transaction
     (ignore-errors (execute "DROP TABLE _text_search_object")))
   (with-transaction
     (execute (format nil "CREATE TABLE _text_search_object AS ~{~A~^ UNION ALL ~}"
                      (iter (for (name class) :in-hashtable *persistent-classes*)
-                           (for class-names = (mapcar 'string (mapcar class-name-provider (class-precedence-list class))))
+                           (for class-names = (mapcar class-name-provider
+                                                      ;; NOTE: leave out persistent-object
+                                                      (butlast (hu.dwim.perec::persistent-class-precedence-list-of class))))
                            (for direct-instances-prefetch-view = (direct-instances-prefetch-view-of class))
                            (when direct-instances-prefetch-view
                              (when-bind column-names
@@ -46,66 +52,96 @@
                                                (for column :in (columns-of slot))
                                                (when (typep (hu.dwim.rdbms::type-of column) 'hu.dwim.rdbms::sql-string-type)
                                                  (in slot-loop (collect (hu.dwim.rdbms::name-of column)))))))
-                               (collect (format nil "SELECT _oid AS _oid, to_tsvector('~A', '~{~A~^ ~}' || ~{coalesce(~A,'')~^ || ~}) AS _tsv FROM ~A"
+                               (collect (format nil "SELECT _oid AS _oid, to_tsvector('~A', '~{~A ~}' || ~{coalesce(~A,'')~^ || ~}) AS _tsv FROM ~A"
                                                 configuration class-names column-names (name-of direct-instances-prefetch-view))))))))
-    (execute "CREATE INDEX _text_search_object_idx ON _text_search_object USING gin(_tsv)"))
+    (execute "CREATE INDEX _text_search_object_idx ON _text_search_object USING gin(_tsv)")
+    (execute "ANALYZE _text_search_object"))
   (with-transaction
     (ignore-errors (execute "DROP TABLE _text_search_dictionary")))
   (with-transaction
     (execute "CREATE TABLE _text_search_dictionary AS SELECT word AS _word FROM stat('SELECT _tsv FROM _text_search_object')")
-    (execute "CREATE INDEX _text_search_dictionary_ids ON _text_search_dictionary USING gist(_word gist_trgm_ops);")))
+    ;; NOTE: we must ensure that the class names are in the dictionary literally
+    (iter (for (name class) :in-hashtable *persistent-classes*)
+          (for class-name = (funcall class-name-provider class))
+          (unless (length= 1 (execute (format nil "SELECT 1 FROM _text_search_dictionary WHERE _word = '~A'" class-name)))
+            (execute (format nil "INSERT INTO _text_search_dictionary VALUES ('~A')" class-name))))
+    (execute "CREATE INDEX _text_search_dictionary_ids ON _text_search_dictionary USING gist(_word gist_trgm_ops);")
+    (execute "ANALYZE _text_search_dictionary")))
 
 ;;;;;;;
 ;;; text-search-instances
 
-(def (function e) text-search-dictionary (text &key limit threshold)
+(def (function e) text-search-dictionary (word &key offset limit threshold)
   (set-text-search-threshold threshold)
-  (execute (make-text-search-dictionary-query text :limit limit)))
+  (execute (make-text-search-dictionary-query word :offset offset :limit limit)))
 
-(def (function e) text-search-instances (text &key limit threshold)
+(def (function e) text-search-instances (text &key (configuration *text-search-configuration*) (fuzzy #t) offset limit threshold)
   ;; TODO: support AND/OR/NOT using to_tsquery instead of plainto_tsquery
   ;; TODO: need to make a parser for that
   (set-text-search-threshold threshold)
+  (when fuzzy
+    (create-fuzzy-text-search-temporary-table text :limit limit))
+  (prog1
+      (map 'list [load-instance (first-elt !1) :skip-existence-check #t]
+           (execute (make-text-search-instances-query text :configuration configuration :fuzzy fuzzy :offset offset :limit limit)))
+    (when fuzzy
+      (drop-table "_text_search_text"))))
+
+(def function create-fuzzy-text-search-temporary-table (text &key limit)
   (bind ((words (split #\Space text))
          (table-names (iter (for index :from 0)
                             (for word :in words)
                             (for table-name = (format nil "_text_search_word~A" index))
-                            (execute (format nil "CREATE TEMPORARY TABLE ~A AS ~A" table-name (make-text-search-dictionary-query word)))
+                            (execute (format nil "CREATE TEMPORARY TABLE ~A AS ~A" table-name (make-text-search-dictionary-query word :limit limit)))
                             (collect table-name)))
          (word-column-names (iter (for table-name :in table-names)
                                   (collect (format nil "~A._word" table-name))))
          (similarity-column-names (iter (for table-name :in table-names)
-                                        (collect (format nil "~A._similarity" table-name))))
-         (records (progn
-                    (execute (format nil "
+                                        (collect (format nil "~A._similarity" table-name)))))
+    (execute (format nil "
 CREATE TEMPORARY TABLE _text_search_text AS
 SELECT ~{~A~^ || ' ' || ~} AS _text, ~{~A~^ * ~} AS _similarity
 FROM ~{~A~^, ~}
-ORDER BY _similarity" word-column-names similarity-column-names table-names))
-                    (execute (format nil "
-SELECT _inner_select.*, _rank * _similarity AS _rank_similarity
-FROM (SELECT _oid, _text_search_text._text, ts_rank_cd(_tsv, plainto_tsquery(_text_search_text._text)) AS _rank, _text_search_text._similarity
-      FROM _text_search_object, _text_search_text
-      WHERE _tsv @@ plainto_tsquery(_text_search_text._text)) AS _inner_select
-ORDER BY _rank_similarity DESC
-~A;" (make-limit-clause limit))))))
-    (foreach 'drop-table table-names)
-    (drop-table "_text_search_text")
-    (map 'list [load-instance (first-elt !1) :skip-existence-check #t] records)))
+~A" word-column-names similarity-column-names table-names (make-limit-clause limit)))
+    #+nil ;; for debug
+    (print (execute "select * from _text_search_text"))
+    (foreach 'drop-table table-names)))
 
-(def function make-text-search-dictionary-query (text &key limit)
+(def function make-text-search-dictionary-query (word &key offset limit)
   (format nil "
 SELECT _word, similarity(_word, '~A') AS _similarity
 FROM _text_search_dictionary
 WHERE _word % '~A'
 ORDER BY _similarity DESC, _word
-~A;" text text (make-limit-clause limit)))
+~A ~A" word word (make-offset-clause offset) (make-limit-clause limit)))
 
-(def function set-text-search-threshold (threshold)
-  (when threshold
-    (execute (format nil "SELECT set_limit(~A);" threshold))))
+(def function make-text-search-instances-query (text &key (configuration *text-search-configuration*) (fuzzy #t) offset limit)
+  ;; TODO: ensure that no _oid is returned twice!
+  (if fuzzy
+      (format nil "
+SELECT _inner_select.*, _rank * _similarity AS _rank_similarity
+FROM (SELECT _oid, _text_search_text._text, ts_rank_cd(_tsv, _text_search_query._query) AS _rank, _text_search_text._similarity
+      FROM _text_search_object, _text_search_text, (SELECT plainto_tsquery('~A', '~A') AS _query) AS _text_search_query
+      WHERE _tsv @@ _text_search_query._query) AS _inner_select
+ORDER BY _rank_similarity DESC
+~A" configuration text (make-limit-clause limit))
+      (format nil "
+SELECT _oid, ts_rank_cd(_tsv, _query) AS _rank
+FROM _text_search_object, (SELECT plainto_tsquery('~A', '~A') AS _query) AS _test_search_query
+WHERE _tsv @@ _query
+ORDER BY _rank DESC
+~A ~A" configuration text (make-limit-clause offset) (make-limit-clause limit))))
+
+(def function make-offset-clause (offset)
+  (if offset
+      (format nil "OFFSET ~A" offset)
+      ""))
 
 (def function make-limit-clause (limit)
   (if limit
       (format nil "LIMIT ~A" limit)
       ""))
+
+(def function set-text-search-threshold (threshold)
+  (when threshold
+    (execute (format nil "SELECT set_limit(~A)" threshold))))
