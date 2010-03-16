@@ -47,7 +47,7 @@
                              (when-bind column-names
                                  (iter slot-loop
                                        (for slot :in (prefetched-slots-of class))
-                                       (when (subtypep (canonical-type-of slot) '(or unbound null string))
+                                       (when (subtypep (canonical-type-of slot) '(or h-unused unbound null string))
                                          (iter column-loop
                                                (for column :in (columns-of slot))
                                                (when (typep (hu.dwim.rdbms::type-of column) 'hu.dwim.rdbms::sql-string-type)
@@ -103,8 +103,6 @@ CREATE TEMPORARY TABLE _text_search_text AS
 SELECT ~{~A~^ || ' ' || ~} AS _text, ~{~A~^ * ~} AS _similarity
 FROM ~{~A~^, ~}
 ~A" word-column-names similarity-column-names table-names (make-limit-clause limit)))
-    #+nil ;; for debug
-    (print (execute "select * from _text_search_text"))
     (foreach 'drop-table table-names)))
 
 (def function make-text-search-dictionary-query (word &key offset limit)
@@ -116,15 +114,15 @@ ORDER BY _similarity DESC, _word
 ~A ~A" word word (make-offset-clause offset) (make-limit-clause limit)))
 
 (def function make-text-search-instances-query (text &key (configuration *text-search-configuration*) (fuzzy #t) offset limit)
-  ;; TODO: ensure that no _oid is returned twice!
   (if fuzzy
       (format nil "
 SELECT _inner_select.*, _rank * _similarity AS _rank_similarity
-FROM (SELECT _oid, _text_search_text._text, ts_rank_cd(_tsv, _text_search_query._query) AS _rank, _text_search_text._similarity
-      FROM _text_search_object, _text_search_text, (SELECT plainto_tsquery('~A', '~A') AS _query) AS _text_search_query
-      WHERE _tsv @@ _text_search_query._query) AS _inner_select
+FROM (SELECT _oid, max(ts_rank_cd(_tsv, plainto_tsquery('~A', _text_search_text._text))) AS _rank, max(_text_search_text._similarity) AS _similarity
+      FROM _text_search_object, _text_search_text
+      WHERE _tsv @@ plainto_tsquery('~A', _text_search_text._text)
+      GROUP BY _oid) AS _inner_select
 ORDER BY _rank_similarity DESC
-~A" configuration text (make-limit-clause limit))
+~A" configuration configuration (make-limit-clause limit))
       (format nil "
 SELECT _oid, ts_rank_cd(_tsv, _query) AS _rank
 FROM _text_search_object, (SELECT plainto_tsquery('~A', '~A') AS _query) AS _test_search_query
