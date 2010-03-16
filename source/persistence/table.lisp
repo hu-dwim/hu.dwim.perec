@@ -12,7 +12,7 @@
 ;; TODO: use sql-table when available from hu.dwim.rdbms
 (def computed-class* table (exportable)
   ((name
-    :type symbol
+    :type string
     :documentation "The name of the RDBMS table.")
    (columns
     (compute-as nil)
@@ -22,7 +22,7 @@
 
 (def computed-class* view (exportable)
   ((name
-    :type symbol
+    :type string
     :documentation "The name of the RDBMS view.")
    (columns
     :type list
