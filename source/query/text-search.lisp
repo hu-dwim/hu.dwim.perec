@@ -78,6 +78,8 @@
 (def (function e) text-search-instances (text &key (configuration *text-search-configuration*) (fuzzy #t) offset limit threshold)
   ;; TODO: support AND/OR/NOT using to_tsquery instead of plainto_tsquery
   ;; TODO: need to make a parser for that
+  ;; TODO: when using fuzzy 'foo and not bar' must be turned into '(foo1 | foo2) & !(bar1 | bar2)
+  ;; TODO: but how do we get the correct score then?
   (set-text-search-threshold threshold)
   (when fuzzy
     (create-fuzzy-text-search-temporary-table text :limit limit))
@@ -98,6 +100,7 @@
                                   (collect (format nil "~A._word" table-name))))
          (similarity-column-names (iter (for table-name :in table-names)
                                         (collect (format nil "~A._similarity" table-name)))))
+    ;; TODO: how do we combine score better than this?
     (execute (format nil "
 CREATE TEMPORARY TABLE _text_search_text AS
 SELECT ~{~A~^ || ' ' || ~} AS _text, ~{~A~^ * ~} AS _similarity
@@ -114,7 +117,9 @@ ORDER BY _similarity DESC, _word
 ~A ~A" word word (make-offset-clause offset) (make-limit-clause limit)))
 
 (def function make-text-search-instances-query (text &key (configuration *text-search-configuration*) (fuzzy #t) offset limit)
+  ;; TODO: some views could help about this
   (if fuzzy
+      ;; TODO: how do we combine score better than this?
       (format nil "
 SELECT _inner_select.*, _rank * _similarity AS _rank_similarity
 FROM (SELECT _oid, max(ts_rank_cd(_tsv, plainto_tsquery('~A', _text_search_text._text))) AS _rank, max(_text_search_text._similarity) AS _similarity
