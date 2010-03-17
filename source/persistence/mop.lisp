@@ -7,7 +7,7 @@
 (in-package :hu.dwim.perec)
 
 ;;;;;;
-;;; MOP methods 
+;;; MOP methods
 
 ;; allows persistent keyword argument for persistent-direct-slot-definitions according to CLOS mop
 ;; even though there is no such slot in the class
@@ -24,7 +24,7 @@
        it
        (call-next-method)))
 
-;; NOTE: allows to have standard slots within a persistent-class and prevents defpassociation to kill these slots 
+;; NOTE: allows to have standard slots within a persistent-class and prevents defpassociation to kill these slots
 (def method make-instance :around ((class (eql (find-class 'standard-direct-slot-definition))) &key instance &allow-other-keys)
   (aif instance
        it
@@ -161,6 +161,8 @@
   (mapc [ensure-slot-reader* class !1]
         (collect-if [set-type-p* (canonical-type-of !1)]
                     (persistent-effective-slots-of class)))
+  (bind ((class-name (class-name class)))
+    (setf (class-id->class-name (class-name->class-id class-name)) class-name))
   (setf (standard-instance-access (class-prototype class) (slot-definition-location (find-slot class 'persistent))) #f))
 
 (def method compute-slots :after ((class persistent-class))

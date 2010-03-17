@@ -284,8 +284,6 @@
 (def method export-to-rdbms ((class persistent-class))
   ;; TODO: the view should be first dropped, then the alter statements executed, and after that the view recreated
   ;; TODO: because the view will prevent some alter tables to execute.
-  (bind ((class-name (class-name class)))
-    (setf (class-id->class-name (class-name->class-id class-name)) class-name))
   (ensure-finalized class)
   (dolist (superclass (persistent-effective-superclasses-of class))
     (awhen (primary-table-of superclass)
@@ -824,7 +822,7 @@
 
 (def (function e) collect-storage-locations-for-updating-classes-and-slots (classes-or-class-names slot-names)
   (update-storage-location-where-clauses
-   (merge-storage-location-slot-names 
+   (merge-storage-location-slot-names
     (merge-storage-location-classes
      (iter outer
            (for class :in (remove-if #'abstract-p (find-and-ensure-classes classes-or-class-names)))

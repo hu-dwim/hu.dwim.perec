@@ -23,11 +23,12 @@
     (purge-instances 'export-parent-test)
     (purge-instances 'export-child-test)
     (make-instance 'export-child-test :export-parent-test (make-instance 'export-parent-test)))
-  ;; NOTE: emulate a reload and the fact that export-parent-test is not exported
+  ;; NOTE: emulate a reload and the fact that the classes are not exported
   (dolist (class-name '(export-parent-test export-child-test))
     (bind ((class (find-class class-name)))
       (invalidate-computed-slot class 'hu.dwim.perec::ensure-exported)
-      (setf (gethash (hu.dwim.perec::class->class-id class) hu.dwim.perec::*oid-class-id->class-name-map*) nil)))
+      (remhash (hu.dwim.perec::class->class-id class) hu.dwim.perec::*oid-class-id->class-name-map*)
+      (finalize-inheritance class)))
   (finishes
     (with-transaction
       (export-parent-test-of (select-first-matching-instance export-child-test)))))
