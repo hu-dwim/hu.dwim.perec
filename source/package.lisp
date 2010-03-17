@@ -59,6 +59,7 @@
            #:defpclass*
            #:find-class
            #:find-persistent-class
+           #:ensure-exported
            #:abstract-p
            #:cache-p
            #:prefetch-p
