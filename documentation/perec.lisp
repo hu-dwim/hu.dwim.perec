@@ -45,7 +45,8 @@
     (chapter (:title "Cache")
       )
     (chapter (:title "Export")
-      )
+      (paragraph ()
+        "Export is the mechanism which syncronizes the relational database schema with the persistent class and association meta objects. In a single threaded environment you can rely on automatic export. In a multi threaded environment you have to explicitily call " (find-function 'ensure-exported) " before using your persistent classes."))
     (chapter (:title "Query Lanugage")
       )
     (chapter (:title "Query Compiler")
@@ -98,7 +99,7 @@ For some details on how to set up the PostgreSQL specific configuration see the 
 #| ;; TODO:
 Columns
 =======
-Status Priority Description 
+Status Priority Description
 
 Status
 ======
@@ -120,7 +121,7 @@ use M-x sort-lines to keep the order
 -0 subclassing a dimensional class does not make the subclass dimensional if there are no dimensional slots in the subclass
 -1 change-class, add-class, remove-class, ensure-class, desure-class (support anonymous persistent classes)
 -1 add delayed updates using mark dirty-slots and provide a flush function
--1 revise perec persistent-p/debug-persistent-p 
+-1 revise perec persistent-p/debug-persistent-p
 -2 add asserts in update/select statements for the number of affected rows in store
 -2 prefetching 1-1 association does not always work due to not knowing that both ends are persistent (why do we assume broken references there) and thus executing a query upon persistent-p
 -3 finish sqlite support (issues: there are no sequences; no reflection on the column level; no date, time, timestamp data type)
@@ -156,7 +157,7 @@ To setup the test database:
    createuser -d -r -l -P hu.dwim.perec.test
    ;; type in 'engedjbe' for password
 
-In emacs do: 
+In emacs do:
    ;; the swank server uses utf-8, so
    M-S-: (setq slime-net-coding-system 'utf-8-unix)
    M-x slime-connect
@@ -174,7 +175,7 @@ To play around:
      ((name :type (text 20))
       (age :type integer-32)
       (flag :type boolean)))
-   ;; to make an instance 
+   ;; to make an instance
    ;; this should automatically create/update the tables needed for the class
    ;; note: if you have run the test suite, this might execute several queries
    ;;       to check all persistent classes present in your lisp image
