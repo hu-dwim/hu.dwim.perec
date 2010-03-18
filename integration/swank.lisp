@@ -11,29 +11,56 @@
 
 #+hu.dwim.slime
 (progn
-
 (defmethod swank::slot-value-for-inspector ((class persistent-class)
                                             (instance persistent-object)
                                             (slot persistent-effective-slot-definition))
-  (if (debug-persistent-p instance)
-      `(,@(if (slot-value-cached-p instance slot)
-              `((:value ,(standard-instance-access instance (slot-definition-location slot)))
-                " "
-                (:action "[invalidate cache]" ,(lambda () (invalidate-cached-slot instance slot))))
-              `("#<not cached>"
-                " "
-                (:action "[read in]" ,(lambda () (slot-value-using-class class instance slot))))))
-      (call-next-method)))
+  (cond ((or (not (in-transaction-p))
+             (not (instance-in-transaction-p instance)))
+         `((:value ,(with-transaction
+                     (typecase slot
+                       (persistent-effective-slot-definition-d
+                        (restore-slot class instance slot :coordinates (collect-coordinates-from-variables (dimensions-of slot))))
+                       (persistent-effective-slot-definition
+                        (restore-slot class instance slot)))))))
+        ((debug-persistent-p instance)
+         `(,@(if (slot-value-cached-p instance slot)
+                 `((:value ,(standard-instance-access instance (slot-definition-location slot)))
+                   " "
+                   (:action "[invalidate cache]" ,(lambda () (invalidate-cached-slot instance slot))))
+                 `("#<not cached>"
+                   " "
+                   (:action "[read into cache]" ,(lambda () (setf (underlying-slot-value-using-class class instance slot)
+                                                             (slot-value-using-class class instance slot))))))))
+        (t (call-next-method))))
 
 (defmethod swank-backend::emacs-inspect ((instance persistent-object))
   (flet ((annotate (content)
-           (append (if (debug-persistent-p instance)
-                       (if (instance-in-transaction-p instance)
-                           `("A persistent instance in transaction " (:value ,(transaction-of instance)) ".")
-                           `("A detached persistent instance."))
-                       "A transient instance")
-                   `((:newline) (:newline))
-                   content)))
+           (bind ((persistent (if (or (slot-boundp instance 'persistent)
+                                      (instance-in-current-transaction-p instance))
+                                  (persistent-p instance)
+                                  :unknown)))
+             `(,(ecase persistent
+                  (:unknown
+                   "An instance not yet known to be persistent")
+                  ((#f)
+                   "A transient instance")
+                  (#t
+                   "A persistent instance"))
+                ,(if (instance-in-transaction-p instance)
+                     (if (instance-in-current-transaction-p instance)
+                         " in the current transaction."
+                         " from another transaction.")
+                     ", detached from transactions.")
+                (:newline)
+                ,@(when (and persistent
+                             (instance-in-transaction-p instance))
+                   `("Instance transaction = " (:value ,(transaction-of instance)) "." (:newline)))
+                ,@(when (and persistent
+                             (in-transaction-p)
+                             (not (instance-in-current-transaction-p instance)))
+                   `("Current transaction  = " (:value ,*transaction*) "." (:newline)))
+                (:newline)
+                ,@content))))
     (bind ((result (call-next-method)))
       (if (and (consp result)
                (keywordp (first result)))
