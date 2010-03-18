@@ -45,13 +45,13 @@
       (error 'slot-type-error :instance instance :slot slot :expected-type (specified-type-of slot) :datum (subseq rdbms-values index (+ index (length (columns-of slot))))))))
 
 (def (function o) restore-slot-set (instance slot)
-  "Restores the non lazy list without local side effects from the database."
+  "Loads a non-lazy list from the database without doing any side effects in the Lisp VM."
   (map 'list [object-reader !1 0]
        (select-records +oid-column-names+
                        (bind ((other-association-end (other-association-end-of slot)))
-                         (assert other-association-end () "RESTORE-SLOT-SET: other-association-end is NIL for instance ~A, slot ~A" instance slot)
+                         (assert other-association-end () "RESTORE-SLOT-SET: other-association-end is NIL for class ~A, slot ~A" (class-of instance) slot)
                          (bind ((other-association-end-view (association-end-view-of other-association-end)))
-                           (assert other-association-end-view () "RESTORE-SLOT-SET: other-association-end-view is NIL for instance ~A, slot ~A" instance slot)
+                           (assert other-association-end-view () "RESTORE-SLOT-SET: other-association-end-view is NIL for class ~A, slot ~A" (class-of instance) slot)
                            (list (name-of other-association-end-view))))
                        :where (make-oid-matcher-where-clause instance (oid-column-of slot))
                        :order-by (bind ((type (canonical-type-of slot)))
