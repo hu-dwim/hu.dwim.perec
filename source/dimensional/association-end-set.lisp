@@ -25,9 +25,11 @@
   nil)
 
 (def method insert-item ((set persistent-association-end-set-container-d) item)
-  (bind ((instance (instance-of set)))
-    (assert-instance-access instance (persistent-p instance))
-    (assert-instance-access item (persistent-p item))
+  (bind ((instance (instance-of set))
+         (persistent-instance? (persistent-p instance))
+         (persistent-item? (persistent-p item)))
+    (assert-instance-access instance persistent-instance?)
+    (assert-instance-access item persistent-item?)
     (bind ((slot (slot-of set))
            (dimensions (dimensions-of slot))
            (coordinates (collect-coordinates-from-variables dimensions))
@@ -40,18 +42,20 @@
 
 (def method delete-item ((set persistent-association-end-set-container-d) item)
   (bind ((instance (instance-of set))
+         (persistent? (persistent-p instance))
          (slot (slot-of set))
          (dimensions (dimensions-of slot))
          (coordinates (collect-coordinates-from-variables dimensions))
          (d-value (make-single-d-value dimensions coordinates item)))
-    (assert-instance-access instance (persistent-p instance))
+    (assert-instance-access instance persistent?)
     (delete-from-association-end-set-d instance slot item :coordinates coordinates)
     (update-cache (class-of instance) instance slot :delete d-value)))
 
 (def method find-item ((set persistent-association-end-set-container-d) (item persistent-object))
   ;; TODO optimize
-  (bind ((instance (instance-of set)))
-    (assert-instance-access instance (persistent-p instance))
+  (bind ((instance (instance-of set))
+         (persistent? (persistent-p instance)))
+    (assert-instance-access instance persistent?)
     (bind ((dimensions (dimensions-of (slot-of set)))
            (d-value (bind ((*lazy-slot-value-collections* #f))
                       (restore-slot (class-of instance) instance (slot-of set)
@@ -61,9 +65,11 @@
 
 (def method ensure-item ((set persistent-association-end-set-container-d) (item persistent-object))
   ;; TODO optimize
-  (bind ((instance (instance-of set)))
-    (assert-instance-access instance (persistent-p instance))
-    (assert-instance-access item (persistent-p item))
+  (bind ((instance (instance-of set))
+         (persistent-instance? (persistent-p instance))
+         (persistent-item? (persistent-p item)))
+    (assert-instance-access instance persistent-instance?)
+    (assert-instance-access item persistent-item?)
     (bind ((association-end (slot-of set))
            (dimensions (dimensions-of association-end))
            (d-value (bind ((*lazy-slot-value-collections* #f))
@@ -90,4 +96,3 @@
 
 (def method iterate-items ((set persistent-association-end-set-container-d) fn)
   (not-yet-implemented))
-

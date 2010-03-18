@@ -28,13 +28,26 @@
 (def (function io) not-cached-slot-marker-p (value)
   (eq +not-cached-slot-marker+ value))
 
-(def (function io) assert-instance-access (instance persistent)
-  (unless (or (not persistent)
-              (in-transaction-p))
-    (error "Accessing a persistent ~A while there's no transaction in progress." instance))
-  (unless (or (not persistent)
-              (instance-in-current-transaction-p instance))
-    (error "Accessing a persistent ~A while it is not attached to the current transaction." instance)))
+(def macro assert-instance-access (instance persistent)
+  (check-type instance symbol)
+  (check-type persistent symbol)
+  `(progn
+     (unless (or (not ,persistent)
+                 (in-transaction-p))
+       (error "Accessing a persistent ~A while there's no transaction in progress." ,instance))
+     (unless (or (not ,persistent)
+                 (instance-in-current-transaction-p ,instance))
+       (restart-case
+           (error "Accessing a persistent ~A while it is ~A transaction."
+                  ,instance
+                  (if (instance-in-transaction-p ,instance)
+                      "attached to another"
+                      "not attached to the current"))
+         (load-instance ()
+           :report (lambda (stream)
+                     (format stream "Load instance ~A into the current transaction and go on" ,instance))
+           (setf ,instance (load-instance ,instance)
+                 ,persistent (persistent-p ,instance)))))))
 
 (def macro assert-instance-slot-correspondence ()
   `(debug-only
@@ -48,8 +61,9 @@
 
 (def (function eo) invalidate-cached-instance (instance)
   "Invalidates all cached slot values in the instance."
-  (bind ((class (class-of instance)))
-    (assert-instance-access instance (persistent-p instance))
+  (bind ((class (class-of instance))
+         (persistent? (persistent-p instance)))
+    (assert-instance-access instance persistent?)
     (iter (for slot in (persistent-effective-slots-of class))
           (when (cache-p slot)
             (invalidate-cached-slot instance slot)))))
@@ -284,7 +298,8 @@
          (cache (cache-p slot)))
     (assert-instance-access instance persistent)
     (when (persistent-object-p new-value)
-      (assert-instance-access new-value (persistent-p new-value)))
+      (bind ((persistent-new-value? (persistent-p new-value)))
+        (assert-instance-access new-value persistent-new-value?)))
     ;; always store the slot into the database
     (when persistent
       (bind (((:values slot-value-cached cached-value)
