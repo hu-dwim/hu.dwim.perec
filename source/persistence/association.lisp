@@ -75,7 +75,7 @@
     :documentation "The minimum number of instances present in an association for this end.")
    (max-cardinality
     :type integer
-    :documentation "The maximum number of instances present in an association for this end. Unbound means the maximum number is not defined.")
+    :documentation "The maximum number of instances present in an association for this end. The value NIL means the maximum number is not defined.")
    (cardinality-kind
     (compute-as (if (and (slot-boundp -self- 'max-cardinality)
                          (eq (max-cardinality-of -self-) 1))
@@ -104,7 +104,7 @@
    (max-cardinality
     (compute-as (bind ((canonical-type (canonical-type-of -self-)))
                   (cond ((persistent-class-type-p* canonical-type) 1)
-                        ((set-type-p* canonical-type) :n)
+                        ((set-type-p* canonical-type) nil)
                         (t (error "The type ~A is not a valid persistent association end type for association end ~A of persistent-class ~A."
                                   canonical-type -self- (persistent-slot-definition-class -self-)))))))
    (other-association-end
@@ -374,6 +374,5 @@
               (effective-slots-for-accessor name)))
 
 (def function min* (&rest args)
-  (if (find-if #'numberp args)
-      (apply #'min (remove-if-not #'numberp args))
-      :n))
+  (when (find-if #'numberp args)
+    (apply #'min (remove-if-not #'numberp args))))
