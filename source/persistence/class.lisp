@@ -161,7 +161,7 @@
     :documentation "The normalized form of the specified type. See normalized-type-for for more details.")
    (always-checked-type
     (compute-as (compute-always-checked-type -self-))
-    :type list
+    :type t
     :documentation "When type-check is :always then this type will be checked whenever a new value is set during the transaction. This type may be different from the specified type.")
    (type-check
     :type (member :always :on-commit)

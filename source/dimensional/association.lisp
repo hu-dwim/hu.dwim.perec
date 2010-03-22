@@ -46,7 +46,7 @@
     :type persistent-effective-slot-definition)
    (other-end-h-slot
     (compute-as (h-slot-of (other-association-end-of -self-)))
-    :type list)))
+    :type persistent-effective-slot-definition)))
 
 ;;;;;;
 ;;; defpassociation
