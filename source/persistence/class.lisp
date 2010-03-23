@@ -886,3 +886,7 @@
                          classes))))
            (collect-storage-locations-for-selecting-classes-and-slots classes-or-class-names slot-names)
            :initial-value nil)))
+
+(def (function e) collect-all-persistent-class-tables ()
+  (sort (remove nil (mapcar 'primary-table-of (hash-table-values *persistent-classes*)))
+        #'string< :key #'name-of))

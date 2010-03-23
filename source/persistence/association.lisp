@@ -376,3 +376,12 @@
 (def function min* (&rest args)
   (when (find-if #'numberp args)
     (apply #'min (remove-if-not #'numberp args))))
+
+(def (function e) collect-all-persistent-association-tables ()
+  (sort (remove nil (mapcar 'primary-table-of (hash-table-values *persistent-associations*)))
+        #'string< :key #'name-of))
+
+(def (function e) collect-all-persistent-tables ()
+  (sort (append (collect-all-persistent-class-tables)
+                (collect-all-persistent-association-tables))
+        #'string< :key #'name-of))
