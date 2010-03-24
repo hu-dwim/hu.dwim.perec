@@ -220,7 +220,7 @@
                                             columns
                                             rdbms-values
                                             (make-oid-matcher-where-clause instance))))
-                (assert (= 1 count))))))))
+                (assert (eql 1 count))))))))
 
   (:method ((class persistent-class) (instance persistent-object) (slot persistent-association-end-effective-slot-definition) value)
     (ecase (association-kind-of (association-of slot))
