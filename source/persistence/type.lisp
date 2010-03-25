@@ -76,7 +76,6 @@
           ,(when allow-nil-args-p
                  `(bind ((prototype (class-prototype class))
                          (substituter (substituter-of prototype))
-                         (parser (parser-of prototype))
                          (substituted-type (funcall substituter)))
                    (ensure-class ',type-class-name :direct-superclasses
                     (list (ensure-finalized (find-class (type-superclass-name-for ',name substituted-type)))))
