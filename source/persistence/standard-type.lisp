@@ -368,7 +368,7 @@
         (satisfies maximum-symbol-name-length-p)))
 
 (defmapping symbol* (if (consp normalized-type)
-                        (sql-character-varying-type :size (second (find 'symbol* normalized-type :key [when (listp !1) (first !1)])))
+                        (sql-character-varying-type :size (maximum-length-of (parse-type normalized-type)))
                         (sql-character-large-object-type))
   'string->symbol-reader
   'symbol->string-writer)
