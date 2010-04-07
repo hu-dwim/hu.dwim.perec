@@ -4,7 +4,7 @@
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :hu.dwim.util)
+(in-package :hu.dwim.def)
 
 (def package :hu.dwim.perec
   (:use :babel
@@ -357,7 +357,7 @@
            #:read-persistent-object-by-oid)
 
   (:readtable-setup
-   (enable-standard-hu.dwim-syntaxes)
+   (hu.dwim.util:enable-standard-hu.dwim-syntaxes)
    (hu.dwim.syntax-sugar:enable-lambda-with-bang-args-syntax)))
 
 (in-package :hu.dwim.perec)

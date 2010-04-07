@@ -4,7 +4,7 @@
 ;;;
 ;;; See LICENCE for details.
 
-(in-package :hu.dwim.util)
+(in-package :hu.dwim.def)
 
 (def package :hu.dwim.perec.test
   (:use :cl-ppcre
@@ -36,7 +36,7 @@
                                 *mapped-type-precedence-list* *canonical-types* *compile-query-counter*
                                 *test-query-compiler* +unbound-slot-marker+ +not-cached-slot-marker+
                                 unbound-slot-marker-p
-                                canonical-type-for normalized-type-for mapped-type-for 
+                                canonical-type-for normalized-type-for mapped-type-for
                                 first-moment-for-partial-timestamp last-moment-for-partial-timestamp
                                 less-or-equal-p greater-or-equal-p
                                 validity-begin validity-end t-value unbound-slot-t
@@ -45,7 +45,7 @@
                                 invalidate-cached-instance invalidate-all-cached-instances persistent
                                 clear-compiled-query-cache reset-compile-query-counter
                                 ensure-exported primary-table-slot-p data-table-slot-p
-                                primary-table-of primary-table-of data-tables-of 
+                                primary-table-of primary-table-of data-tables-of
                                 direct-instances-identity-view-of direct-instances-data-view-of
                                 all-instances-identity-view-of all-instances-data-view-of
                                 prefetch-p cache-p compute-mapping reader-of writer-of
