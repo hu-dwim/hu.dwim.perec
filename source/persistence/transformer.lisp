@@ -295,33 +295,6 @@
       (setf (elt rdbms-values index) (symbol->string-writer slot-value rdbms-values index)))))
 
 ;;;;;;
-;;; Date and time
-
-;;; NOTE: the following code assumes that the database server is configured to return times in the UTC timezone
-(def function string->timestamp-reader (rdbms-values index)
-  (parse-timestring (elt rdbms-values index) :date-time-separator #\Space :offset 0))
-
-(def function date->string-writer (slot-value rdbms-values index)
-  (setf (elt rdbms-values index)
-        (format-timestring nil slot-value
-                           :format '((:year 4) #\- (:month 2) #\- (:day 2))
-                           :timezone +utc-zone+)))
-
-(def function time->string-writer (slot-value rdbms-values index)
-  (setf (elt rdbms-values index)
-        (format-timestring nil slot-value
-                           :format '((:hour 2) #\: (:min 2) #\: (:sec 2) #\. (:usec 6))
-                           :timezone +utc-zone+)))
-
-(def function timestamp->string-writer (slot-value rdbms-values index)
-  (setf (elt rdbms-values index)
-        (format-timestring nil slot-value
-                           :format '((:year 4) #\- (:month 2) #\- (:day 2) #\Space
-                                     (:hour 2) #\: (:min 2) #\: (:sec 2) #\.
-                                     (:usec 6) :gmt-offset)
-                           :timezone +utc-zone+)))
-
-;;;;;;
 ;;; IP address
 
 (def (function o) unsigned-byte-vector->ip-address-vector-reader (rdbms-values index)

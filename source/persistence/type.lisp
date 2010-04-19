@@ -211,7 +211,7 @@
       string
       timestamp
       date
-      time
+      time-of-day
       ip-address-vector
       unsigned-byte-vector
       member
@@ -334,7 +334,7 @@
       text
       string
       date
-      time
+      time-of-day
       timestamp
       ip-address-vector
       unsigned-byte-vector

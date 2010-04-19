@@ -364,44 +364,30 @@
 
 ;;;;;;
 ;;; Date
-;;;
-;;; non date -> (type-error)
 
-;; TODO:
-(def function date-p (date)
-  (declare (ignore date))
-  t)
-
+;; FIXME this redefines local-time:date
 (def (persistent-type e) date ()
   '(and timestamp
-        (satisfies date-p)))
+        (satisfies local-time::%valid-date?)))
 
 (defmapping date (sql-date-type)
   'identity-reader
-  'date->string-writer)
+  'identity-writer)
 
 ;;;;;;
 ;;; Time
-;;;
-;;; non date -> (type-error)
 
-;; TODO:
-(def function time-p (time)
-  (declare (ignore time))
-  t)
-
-(def (persistent-type e) time ()
+;; FIXME this redefines local-time:time-of-day
+(def (persistent-type e) time-of-day ()
   '(and timestamp
-        (satisfies time-p)))
+        (satisfies local-time::%valid-time-of-day?)))
 
-(defmapping time (sql-time-type)
+(defmapping time-of-day (sql-time-type)
   'identity-reader
-  'time->string-writer)
+  'identity-writer)
 
 ;;;;;;
 ;;; Timestamp
-;;;
-;;; non date -> (type-error)
 
 (locally #+sbcl(declare (sb-ext:muffle-conditions style-warning))
   (def (persistent-type e) timestamp ()
@@ -409,7 +395,7 @@
 
 (defmapping timestamp (sql-timestamp-type :with-timezone #f)
   'identity-reader
-  'timestamp->string-writer)
+  'identity-writer)
 
 ;;;;;;
 ;;; Duration
