@@ -407,7 +407,7 @@
   (def (persistent-type e) timestamp ()
     'timestamp))
 
-(defmapping timestamp (sql-timestamp-type :with-timezone #t)
+(defmapping timestamp (sql-timestamp-type :with-timezone #f)
   'identity-reader
   'timestamp->string-writer)
 
