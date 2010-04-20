@@ -393,7 +393,8 @@
   (def (persistent-type e) timestamp ()
     'timestamp))
 
-(defmapping timestamp (sql-timestamp-type :with-timezone #f)
+;; TODO should be sql-timestamp-type but then legacy systems would break
+(defmapping timestamp (sql-timestamp-with-timezone-type)
   'identity-reader
   'identity-writer)
 
