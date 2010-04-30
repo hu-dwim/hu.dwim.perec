@@ -145,7 +145,7 @@
 
 (def query-type-test date/1 date (parse-timestring "2006-06-06TZ"))
 
-(def query-type-test time/1 time (parse-timestring "06:06:06Z"))
+(def query-type-test time-of-day/1 time-of-day (parse-timestring "06:06:06Z"))
 
 (def query-type-test timestamp/1 timestamp (parse-timestring "2006-06-06T06:06:06Z"))
 (def query-type-test timestamp/2 timestamp (parse-timestring "2006-06-06T06:06:06.123456Z"))
