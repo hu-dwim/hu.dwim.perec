@@ -12,6 +12,7 @@
         :hu.dwim.computed-class
         :hu.dwim.def
         :hu.dwim.defclass-star
+        :hu.dwim.logger
         :hu.dwim.perec
         :hu.dwim.rdbms
         :hu.dwim.stefil
