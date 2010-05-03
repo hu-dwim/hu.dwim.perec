@@ -324,7 +324,10 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
                    (sql-column-reference-for (first column-names) qualifier))))))
 
   (:method (element qualifier)
-           (sql-column-reference-for element (sql-alias-for qualifier)))
+    (if (or (null qualifier)
+            (stringp qualifier))
+        (error "Dont know how to create column reference from ~S." element)
+        (sql-column-reference-for element (sql-alias-for qualifier))))
 
   (:method ((column-alias sql-column-alias) qualifier)
            (sql-column-reference-for (hu.dwim.rdbms::column-of column-alias) qualifier)))

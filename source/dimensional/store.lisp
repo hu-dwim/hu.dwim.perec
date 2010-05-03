@@ -645,6 +645,7 @@
 ;;;
 (def function iterate-with-enumerated-coordinate-sets (function dimensions coordinates)
   "FUNCTION accepts a coordinate list when each coordinate belongs to an enumerated dimension contains only one value. COORDINATES may contain a set of values in these dimensions, the FUNCTION will be called with each value."
+  (assert (length= dimensions coordinates))
   (labels ((recurse (remaining-dimensions remaining-coordinates &optional accumulator)
              (cond
                ((null remaining-dimensions)
