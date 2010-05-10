@@ -67,6 +67,9 @@
     (covering-range-p cover coordinate)))
 
 (def (generic e) coordinate-intersection (dimension coordinate-1 coordinate-2)
+  (:method ((dimension dimension) (coordinate-1 null) (coordinate-2 null))
+    nil)
+
   (:method ((dimension dimension) (coordinate-1 null) (coordinate-2 cons))
     nil)
 

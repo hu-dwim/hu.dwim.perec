@@ -429,16 +429,17 @@
                             (slot-value h-instance ',(end-slot-name-of dimension)))))
 
             (dimension
-             (assert coordinate () "~A coordinate is bound to NIL." (coordinate-name-of dimension))
              (add-collect query `(or (and (null (slot-value h-instance ',(slot-name-of dimension)))
                                           +whole-domain-marker+) ; FIXME if
                                      (list (slot-value h-instance ',(slot-name-of dimension)))))
              (unless (whole-domain-marker-p coordinate)
-               (add-assert query
-                           `(or (null (slot-value h-instance ',(slot-name-of dimension)))
-                                (member
-                                 (slot-value h-instance ',(slot-name-of dimension))
-                                 ,(name-of dimension))))))))
+               (if coordinate
+                   (add-assert query
+                               `(or (null (slot-value h-instance ',(slot-name-of dimension)))
+                                    (member
+                                     (slot-value h-instance ',(slot-name-of dimension))
+                                     ,(name-of dimension))))
+                   (add-assert query #f))))))
 
 
     (apply #'execute-query query d-instance coordinates)))
