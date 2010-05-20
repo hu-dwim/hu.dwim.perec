@@ -51,11 +51,15 @@
 
 (def macro defpassociation* (&body association-ends)
   (expand-defpassociation-form nil
-                               (mapcar [append !1
-                                               (unless (getf !1 :accessor)
-                                                 `(:accessor ,(default-accessor-name-transformer (getf !1 :slot) nil)))
-                                               (unless (getf !1 :initarg)
-                                                 `(:initarg ,(default-initarg-name-transformer (getf !1 :slot) nil)))]
+                               (mapcar (lambda (entry)
+                                         (bind ((slot-name (getf entry :slot)))
+                                           (unless slot-name
+                                             (error "Illegal association end definition ~S: missing :slot" entry))
+                                           (append entry
+                                                   (unless (getf entry :accessor)
+                                                     `(:accessor ,(default-accessor-name-transformer slot-name nil)))
+                                                   (unless (getf entry :initarg)
+                                                     `(:initarg ,(default-initarg-name-transformer slot-name nil))))))
                                        (car association-ends))
                                (cdr association-ends)))
 
