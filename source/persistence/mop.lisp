@@ -189,6 +189,7 @@
                          direct-superclasses))
       (list (find-class 'persistent-object)))))
 
+;; TODO used only at one place, move into flet
 (def function process-direct-slot-definitions (direct-slots)
   (loop for direct-slot :in direct-slots
      collect (if (or (getf direct-slot :instance)

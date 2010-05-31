@@ -98,7 +98,7 @@
 (def function make-persistent (instance)
   "Makes an instance persistent without making its associated instances persistent."
   (if (persistent-p instance)
-      (error "Instance ~A is already persistent, you may want to use ensure-persistent instead" instance)
+      (error "Instance ~A is already persistent, you may want to use ~S instead" instance 'ensure-persistent)
       (make-persistent-using-class (class-of instance) instance)))
 
 (def function make-transient (instance)
