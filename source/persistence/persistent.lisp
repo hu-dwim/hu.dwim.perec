@@ -108,7 +108,7 @@
 
 (def generic purge-instance (instance)
   (:documentation "Purges the given instance without respect to associations and references to it.")
-  
+
   (:method ((instance persistent-object))
     (ensure-exported (class-of instance))
     (dolist (table (data-tables-of (class-of instance)))
@@ -143,9 +143,6 @@
                              where-clause))
                           (association-primary-table
                            nil)))))))
-
-(def function purge-all-instances ()
-  (purge-instances 'persistent-object))
 
 ;;;;;;
 ;;; Drop
