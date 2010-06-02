@@ -46,18 +46,17 @@
 
 (def (function o) restore-slot-set (instance slot)
   "Loads a non-lazy list from the database without doing any side effects in the Lisp VM."
-  (map 'list [object-reader !1 0]
-       (select-records +oid-column-names+
-                       (bind ((other-association-end (other-association-end-of slot)))
-                         (assert other-association-end () "RESTORE-SLOT-SET: other-association-end is NIL for class ~A, slot ~A" (class-of instance) slot)
-                         (bind ((other-association-end-view (association-end-view-of other-association-end)))
-                           (assert other-association-end-view () "RESTORE-SLOT-SET: other-association-end-view is NIL for class ~A, slot ~A" (class-of instance) slot)
-                           (list (name-of other-association-end-view))))
-                       :where (make-oid-matcher-where-clause instance (oid-column-of slot))
-                       :order-by (bind ((type (canonical-type-of slot)))
-                                   (if (ordered-set-type-p type)
-                                       ;; TODO: use reflection instead of third
-                                       (list (sql-identifier :name (rdbms-name-for (third type)))))))))
+  (bind ((other-association-end (other-association-end-of slot))
+         (other-association-end-view (association-end-view-of other-association-end)))
+    (when other-association-end-view
+      (map 'list [object-reader !1 0]
+           (select-records +oid-column-names+
+                           (list (name-of other-association-end-view))
+                           :where (make-oid-matcher-where-clause instance (oid-column-of slot))
+                           :order-by (bind ((type (canonical-type-of slot)))
+                                       (if (ordered-set-type-p type)
+                                           ;; TODO: use reflection instead of third
+                                           (list (sql-identifier :name (rdbms-name-for (third type)))))))))))
 
 (def (function o) restore-1-n-association-end-set (instance slot)
   "Restores the non lazy list association end value without local side effects from the database."
