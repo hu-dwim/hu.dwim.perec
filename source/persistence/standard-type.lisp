@@ -75,12 +75,12 @@
   `(def persistent-type ,name ()
     `(member ,@',members)))
 
-(def (definer e :available-flags "e") member-type (name &body members)
+(def (definer e :available-flags "e") persistent-member-type (name &body members)
   `(def-member-type ,name ,@members))
 
 ;;;;;;
 ;;; Unbound
-;;; 
+;;;
 ;;; unbound -> NULL
 ;;; t -> type-error
 
@@ -109,7 +109,7 @@
 
 ;;;;;;
 ;;; Null
-;;; 
+;;;
 ;;; nil -> NULL
 ;;; t -> (type-error)
 
@@ -125,7 +125,7 @@
 
 ;;;;;
 ;;; t
-;;; 
+;;;
 ;;; unbound -> NULL, NULL
 ;;; nil -> true, NULL
 ;;; other -> true, (byte-vector)
@@ -139,7 +139,7 @@
 
 ;;;;;;
 ;;; Serialized
-;;; 
+;;;
 ;;; unbound -> (type-error)
 ;;; nil -> (type-error)
 ;;; other -> (byte-vector)
@@ -162,7 +162,7 @@
 
 ;;;;;;
 ;;; Boolean
-;;; 
+;;;
 ;;; nil -> false
 ;;; t -> true
 ;;; other -> (type-error)
