@@ -217,11 +217,10 @@
           (when-bind columns (columns-of slot)
             (bind ((rdbms-values (make-array (length (the list columns)))))
               (store-slot-value instance slot value rdbms-values 0)
-              (bind ((count
-                      (update-records (name-of (table-of slot))
-                                      columns
-                                      rdbms-values
-                                      (make-oid-matcher-where-clause instance))))
+              (bind ((count (update-records (name-of (table-of slot))
+                                            columns
+                                            rdbms-values
+                                            (make-oid-matcher-where-clause instance))))
                 (assert (= 1 count))))))))
 
   (:method ((class persistent-class) (instance persistent-object) (slot persistent-association-end-effective-slot-definition) value)

@@ -24,6 +24,7 @@
                                            (:file "1-n-association" :depends-on ("1-1-association"))
                                            (:file "cache" :depends-on ("1-n-association" "1-1-association"))
                                            (:file "canonical")
+                                           (:file "change-class")
                                            (:file "export")
                                            (:file "inheritance")
                                            (:file "instance")

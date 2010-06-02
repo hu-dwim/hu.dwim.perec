@@ -350,32 +350,16 @@
   (setf (slot-boundp-or-value-using-class class instance slot) +unbound-slot-marker+)
   instance)
 
-;; TODO: add tests
-(def method update-instance-for-different-class :after ((previous-instance persistent-object)
-                                                       (current-instance persistent-object)
-                                                       &rest initargs &key &allow-other-keys)
-  (declare (ignore initargs))
-  ;; TODO: add tests
-  (not-yet-implemented)
-  ;; TODO: update foreign key references according to class name
-  (bind ((previous-class (class-of previous-instance))
-         (current-class (class-of current-instance))
-         (current-oid (oid-of current-instance))
-         (at-current-instance (make-oid-matcher-where-clause current-instance)))
-    #+nil ;; TODO: change oid
-    (setf (oid-class-name current-oid) (name-of current-class))
-    (dolist (table (data-tables-of current-class))
-      (if (member table (data-tables-of previous-class))
-          ;; TODO: update class id in the oid columns
-          (update-records (name-of table)
-                          (list #+nil (class-name-column-of table))
-                          (list (oid-class-name current-oid))
-                          at-current-instance)
-          ;; TODO: handle initargs
-          (insert-record (name-of table)
-                         (list (oid-column-of table))
-                         (oid->rdbms-values current-oid))))
-    (dolist (table (data-tables-of previous-class))
-      (unless (member table (data-tables-of current-class))
-        (delete-records (name-of table)
-                        at-current-instance)))))
+(def method change-class :before ((instance persistent-object) (new-class standard-class) &key &allow-other-keys)
+  (make-transient instance))
+
+(def method update-instance-for-different-class :before ((old-instance persistent-object) (new-instance persistent-object) &key &allow-other-keys)
+  (bind ((new-oid (class-id-and-instance-id->oid (class-name->class-id (class-name (class-of new-instance)))
+                                                 (oid-instance-id (oid-of old-instance)))))
+    (setf (oid-of new-instance) new-oid)
+    (setf (persistent-p new-instance) #f)
+    (setf (transaction-of new-instance) nil)
+    (setf (transaction-event-of new-instance) nil)))
+
+(def method update-instance-for-different-class :after ((old-instance persistent-object) (new-instance persistent-object) &key &allow-other-keys)
+  (make-persistent new-instance))
