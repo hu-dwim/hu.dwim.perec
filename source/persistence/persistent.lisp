@@ -94,8 +94,8 @@
            it
            (let ((new-instance (make-revived-instance (find-class (oid-class-name oid)) :oid oid)))
              ;; REVIEW: is this the correct thing to do?
-             ;; we push the new-instance into the cache first
-             ;; even tough we are unsure if the instance is persistent or not
+             ;; we push new-instance into the cache first
+             ;; even though we are unsure if the instance is persistent or not
              ;; because prefetching slots may recursively call load-instance from persistent-p
              ;; we also want to have non persistent instances in the cache anyway
              (setf (cached-instance-of oid) new-instance)
@@ -118,7 +118,7 @@
 
 ;; TODO: what about invalidating cache instances, references?
 (def generic purge-instances (class)
-  (:documentation "Purges all instances of the given class without respect to associations and references.")
+  (:documentation "Purges all instances of the given class without respect to associations and references thus it may introduce new broken references.")
 
   (:method ((name null))
     (values))
@@ -143,6 +143,22 @@
                              where-clause))
                           (association-primary-table
                            nil)))))))
+
+(def (function e) purge-instance-recursively (instance)
+  "Properly purges INSTANCE and the minimal number of other instances that refer to it recursively so that the database integrity is kept and no new broken references are introduced."
+  (check-type instance persistent-object)
+  (labels ((recurse (instance)
+             (when (persistent-p instance)
+               (purge-instance instance)
+               (iter (with class = (class-of instance))
+                     (with data-tables = (data-tables-of class))
+                     (for slot :in (persistent-effective-slots-of class))
+                     (when (and (typep slot 'persistent-association-end-slot-definition)
+                                (not (typep slot 'persistent-association-end-slot-definition-d))
+                                (slot-boundp-using-class class instance slot))
+                       (unless (member (table-of slot) data-tables)
+                         (foreach #'recurse (ensure-list (slot-value-using-class class instance slot)))))))))
+    (recurse instance)))
 
 ;;;;;;
 ;;; Drop

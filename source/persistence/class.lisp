@@ -122,6 +122,7 @@
   (:documentation "This class serves a very special purpose, namely being able to return the very same instance in make-instance for slot definition meta instances."))
 
 (def computed-class* persistent-slot-definition (standard-slot-definition)
+  ;; TODO: make this fallback on sb-pcl::%class on sbcl
   ((%%class :initarg :class :accessor persistent-slot-definition-class) ;; instead of sb-pcl::%class
    (prefetch
     :type boolean
