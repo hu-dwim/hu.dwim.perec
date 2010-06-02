@@ -138,4 +138,4 @@
 (def function ensure-oid (instance)
   "Makes sure that the instance has a valid oid."
   (unless (oid-of instance)
-    (setf (oid-of instance) (make-new-oid (class-name (class-of instance))))))
+    (setf (oid-of instance) (make-new-oid (class-of instance)))))

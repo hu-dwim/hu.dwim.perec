@@ -63,21 +63,14 @@
       (error "Two different class names have the same class id ~A ~A" it class-name)))
   (setf (gethash class-id *oid-class-id->class-name-map*) class-name))
 
-(def (function io) class->class-id (class)
-  (class-name->class-id (class-name class)))
-
-(def (function io) class-name->class-id (class-name)
-  (mod (ironclad:octets-to-integer (ironclad:digest-sequence :crc32 (string-to-octets (symbol-name class-name) :encoding :utf-8)))
-       +oid-maximum-class-id+))
-
 (def (function io) class-id-and-instance-id->oid (class-id instance-id)
   (logior (ash instance-id +oid-class-id-bit-size+) class-id))
 
-(def (function o) make-new-oid (class-name)
+(def (function o) make-new-oid (class)
   "Creates a fresh and unique oid which was never used before in the relational database."
   (or (oid-instance-id-sequence-exists-p *database*)
       (ensure-instance-id-sequence))
-  (bind ((class-id (class-name->class-id class-name))
+  (bind ((class-id (id-of class))
          (instance-id (next-instance-id)))
     (class-id-and-instance-id->oid class-id instance-id)))
 

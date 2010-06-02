@@ -13,7 +13,7 @@
 
 (define-copy-method (copy-self copy-persistent-instance) ((instance persistent-object))
   (bind ((class (class-of instance)))
-    (make-instance class :persistent #f :oid (make-new-oid (class-name class)))))
+    (make-instance class :persistent #f :oid (make-new-oid class))))
 
 (define-copy-method (metacopy-with-contextl::copy-final copy-persistent-instance) ((instance persistent-object) (copy persistent-object))
   (ensure-persistent copy))

@@ -27,7 +27,7 @@
   (dolist (class-name '(export-parent-test export-child-test))
     (bind ((class (find-class class-name)))
       (invalidate-computed-slot class 'hu.dwim.perec::ensure-exported)
-      (remhash (hu.dwim.perec::class->class-id class) hu.dwim.perec::*oid-class-id->class-name-map*)
+      (remhash (hu.dwim.perec::id-of class) hu.dwim.perec::*oid-class-id->class-name-map*)
       (finalize-inheritance class)))
   (finishes
     (with-transaction

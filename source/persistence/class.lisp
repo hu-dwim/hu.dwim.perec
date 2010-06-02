@@ -13,7 +13,11 @@
 ;; TODO: support flattenning (1-1) associations and slots with persistent object subtype into referer's table
 
 (def computed-class* persistent-class (standard-class exportable)
-  ((abstract
+  ((id
+    (compute-as (compute-class-id -self-))
+    :type integer
+    :documentation "A unique integer that identifies the persistent class. This integer will be part of the oid for each instance in the database")
+   (abstract
     (compute-as #f)
     :type boolean
     :documentation "An abstract persistent class cannot be instantiated but still can be used in associations and may have slots. Calling make-instance on an abstract persistent class will signal an error. On the other hand abstract classes might not have a primary table and thus handling the instances of subclasses may require simpler or less SQL statements.")
@@ -344,6 +348,12 @@
 
 ;;;;;;
 ;;; Computed
+
+(def generic compute-class-id (class)
+  (:method ((class persistent-class))
+    (bind ((class-name-bytes (string-to-octets (symbol-name (class-name class)) :encoding :utf-8)))
+      (mod (ironclad:octets-to-integer (ironclad:digest-sequence :crc32 class-name-bytes))
+           +oid-maximum-class-id+))))
 
 (def generic compute-always-checked-type (slot)
   (:method ((slot persistent-slot-definition))
@@ -703,8 +713,8 @@
                                           :left (sql-identifier :name +oid-column-name+)
                                           :right +oid-maximum-class-id+)))
     (if (length= 1 classes)
-        (sql-= oid-clause (class->class-id (first classes)))
-        (sql-in oid-clause (mapcar #'class->class-id classes)))))
+        (sql-= oid-clause (id-of (first classes)))
+        (sql-in oid-clause (mapcar #'id-of classes)))))
 
 (def (function e) make-view-for-classes-and-slots (name class-or-names slot-names)
   (when-bind query (make-query-for-classes-and-slots class-or-names slot-names)

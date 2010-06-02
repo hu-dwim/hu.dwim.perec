@@ -162,7 +162,7 @@
         (collect-if [set-type-p* (canonical-type-of !1)]
                     (persistent-effective-slots-of class)))
   (bind ((class-name (class-name class)))
-    (setf (class-id->class-name (class-name->class-id class-name)) class-name))
+    (setf (class-id->class-name (id-of class)) class-name))
   (setf (standard-instance-access (class-prototype class) (slot-definition-location (find-slot class 'persistent))) #f))
 
 (def method compute-slots :after ((class persistent-class))
@@ -220,7 +220,7 @@
 ;; this is not the real shared-initialize because portable programs are not allowed to override that
 ;; so we are somewhat emulating it by calling this function from both initialize-instance and reinitialize-instance
 (def function shared-initialize-around-persistent-class (class call-next-method &rest args
-                                                         &key (reinitialize #f) name direct-slots (direct-superclasses nil direct-superclasses?) abstract direct-store &allow-other-keys)
+                                                         &key (reinitialize #f) name direct-slots (direct-superclasses nil direct-superclasses?) abstract direct-store id &allow-other-keys)
   ;; call initialize-instance or reinitialize-instance next method
   (prog1
       (apply call-next-method
@@ -236,6 +236,8 @@
                                                                                                  :name name
                                                                                                  :direct-slots direct-slots
                                                                                                  :direct-superclasses direct-superclasses))))
+                     (when id
+                       (list :id (first id)))
                      (remove-from-plist args :reinitialize :direct-slots :direct-superclasses :abstract)))
     (setf (find-persistent-class name) class)
     (invalidate-inheritance class)
