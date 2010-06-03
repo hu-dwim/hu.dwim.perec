@@ -146,7 +146,7 @@
                            nil)))))))
 
 (def (function e) purge-instance-recursively (instance &key (skip-predicate (constantly #f)))
-  "Purges instance and the minimal number of other instances that refer to it recursively so that the database integrity is kept and no new broken references are introduced."
+  "Recursively purges INSTANCE and a minimal set of other instances that refer to it. Makes sure that the database integrity is kept, i.e. no broken references are introduced."
   (check-type instance persistent-object)
   (labels ((recurse (instance)
              (when (persistent-p instance)
