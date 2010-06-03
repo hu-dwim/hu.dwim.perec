@@ -145,20 +145,31 @@
                           (association-primary-table
                            nil)))))))
 
-(def (function e) purge-instance-recursively (instance)
-  "Properly purges INSTANCE and the minimal number of other instances that refer to it recursively so that the database integrity is kept and no new broken references are introduced."
+(def (function e) purge-instance-recursively (instance &key (skip-predicate (constantly #f)))
+  "Purges instance and the minimal number of other instances that refer to it recursively so that the database integrity is kept and no new broken references are introduced."
   (check-type instance persistent-object)
   (labels ((recurse (instance)
              (when (persistent-p instance)
-               (purge-instance instance)
-               (iter (with class = (class-of instance))
-                     (with data-tables = (data-tables-of class))
-                     (for slot :in (persistent-effective-slots-of class))
-                     (when (and (typep slot 'persistent-association-end-slot-definition)
-                                (not (typep slot 'persistent-association-end-slot-definition-d))
-                                (slot-boundp-using-class class instance slot))
-                       (unless (member (table-of slot) data-tables)
-                         (foreach #'recurse (ensure-list (slot-value-using-class class instance slot)))))))))
+               ;; NOTE: purge must come before recurse, but we need to get the data before purge
+               (bind ((instances (iter (with class = (class-of instance))
+                                       (with data-tables = (data-tables-of class))
+                                       (for slot :in (persistent-effective-slots-of class))
+                                       (for table = (table-of slot))
+                                       (when (and (typep slot 'persistent-association-end-slot-definition)
+                                                  (not (typep slot 'persistent-association-end-slot-definition-d))
+                                                  (slot-boundp-using-class class instance slot))
+                                         (if (eq :m-n (association-kind-of (association-of slot)))
+                                             (setf (slot-value-using-class class instance slot) nil)
+                                             (unless (member table data-tables)
+                                               (dolist (referred-instance (ensure-list (slot-value-using-class class instance slot)))
+                                                 (if (funcall skip-predicate referred-instance)
+                                                     (bind ((other-slot (find-slot (class-of referred-instance)
+                                                                                   (slot-definition-name (other-association-end-of slot)))))
+                                                       (declare (ignore other-slot))
+                                                       (not-yet-implemented))
+                                                     (collect referred-instance)))))))))
+                 (purge-instance instance)
+                 (foreach #'recurse instances)))))
     (recurse instance)))
 
 ;;;;;;
