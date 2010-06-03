@@ -114,7 +114,8 @@
     (dolist (table (data-tables-of (class-of instance)))
       (delete-records (name-of table)
                       (make-oid-matcher-where-clause instance)))
-    (update-instance-cache-for-deleted-instance instance)))
+    (update-instance-cache-for-deleted-instance instance)
+    (setf (persistent-p instance) #f)))
 
 ;; TODO: what about invalidating cache instances, references?
 (def generic purge-instances (class)
@@ -351,7 +352,6 @@
             (for restored-slot in restored-slots)
             (setf (underlying-slot-boundp-or-value-using-class class instance restored-slot) restored-slot-value))))
   (remove-cached-instance instance)
-  (setf (persistent-p instance) #f)
   (purge-instance instance))
 
 ;;;;;;
