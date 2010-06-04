@@ -536,7 +536,10 @@
       d-value))
 
 (def (function e) remove-dimensions (d-value dimensions)
-  (d-fold (lambda (a d c v) (declare (ignore a d c)) v) dimensions d-value))
+  (d-fold (lambda (accumulated-value folded-coordinates value)
+            (declare (ignore accumulated-value folded-coordinates))
+            value)
+          dimensions d-value))
 
 (def (function e) d-volume (d-value &key (volume-function #'*))
   (iter (with dimensions = (dimensions-of d-value))

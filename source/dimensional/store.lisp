@@ -124,13 +124,13 @@
 (def constant +missing-value+ (cons t t))
 
 
-(defmethod restore-slot ((d-class persistent-class-d) (d-instance persistent-object-d) (d-association-end persistent-association-end-effective-slot-definition-d) &key coordinates)
+(def method restore-slot ((d-class persistent-class-d) (d-instance persistent-object-d) (d-association-end persistent-association-end-effective-slot-definition-d) &key coordinates)
   (restore-d-association-end d-instance d-association-end coordinates))
 
-(defmethod restore-slot ((class persistent-class) (instance persistent-object) (d-association-end persistent-association-end-effective-slot-definition-d) &key coordinates)
+(def method restore-slot ((class persistent-class) (instance persistent-object) (d-association-end persistent-association-end-effective-slot-definition-d) &key coordinates)
   (restore-d-association-end instance d-association-end coordinates))
 
-(defun restore-d-association-end (instance d-association-end coordinates)
+(def function restore-d-association-end (instance d-association-end coordinates)
   (bind ((dimensions (dimensions-of d-association-end))
          (default-value (if (null-subtype-p (canonical-type-of d-association-end)) 
                             nil

@@ -99,16 +99,15 @@
 
 ;; TODO the with-... macros here assume that the coordinate specification is a literal, therefore things like
 ;; (with-validity validity-in-a-variable ...) doesn't work
-(def (definer :available-flags "e") dimension (name &key (type name) ordered inherit external
-                                                    (bind-default-coordinate #t)
+;; TODO timezone must be explicit when dwim-ishly parsing coordinates. define a special variable for the dimension that specifies the timezone and delay coordinate parsing to runtime.
+(def (definer :available-flags "e") dimension (name &key (type name) inherit (ordered (to-boolean inherit))
+                                                    external (bind-default-coordinate #t)
                                                     (default-coordinate nil default-coordinate?)
                                                     (default-coordinate-begin nil default-coordinate-begin?)
                                                     (default-coordinate-end nil default-coordinate-end?)
                                                     (minimum-coordinate nil minimum-coordinate?)
                                                     (maximum-coordinate nil maximum-coordinate?)
                                                     documentation)
-  (when inherit
-    (setf ordered #t))
   (bind ((dimension-class-name (cond (inherit 'inheriting-dimension)
                                      (ordered 'ordering-dimension)
                                      (t 'dimension)))
