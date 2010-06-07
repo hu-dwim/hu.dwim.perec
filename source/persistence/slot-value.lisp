@@ -354,8 +354,7 @@
   (make-transient instance))
 
 (def method update-instance-for-different-class :before ((old-instance persistent-object) (new-instance persistent-object) &key &allow-other-keys)
-  (bind ((new-oid (class-id-and-instance-id->oid (id-of (class-of new-instance))
-                                                 (oid-instance-id (oid-of old-instance)))))
+  (bind ((new-oid (class-id-and-instance-id->oid (id-of (class-of new-instance)) (oid-instance-id (oid-of old-instance)))))
     (setf (oid-of new-instance) new-oid)
     (setf (persistent-p new-instance) #f)
     (setf (transaction-of new-instance) nil)

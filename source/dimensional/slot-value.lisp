@@ -140,6 +140,12 @@
   (setf (slot-boundp-or-value-using-class-d class instance slot) +unbound-slot-marker+)
   instance)
 
+(def method update-instance-for-different-class :before ((old-instance persistent-object-d) (new-instance persistent-object-d) &key &allow-other-keys)
+  (iter (with class = (class-of new-instance))
+        (for slot :in (persistent-effective-slots-of class))
+        (when (typep slot 'persistent-effective-slot-definition-d)
+          (setf (underlying-slot-boundp-or-value-using-class class new-instance slot) +not-cached-slot-marker+))))
+
 (def method update-instance-for-different-class :after ((old-instance persistent-object-d) (new-instance persistent-object-d) &key &allow-other-keys)
   (dolist (h-instance (h-instances-of old-instance))
     (change-class h-instance (h-class-of (class-of new-instance)))))

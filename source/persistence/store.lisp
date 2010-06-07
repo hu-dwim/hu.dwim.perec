@@ -291,5 +291,6 @@
   "Stores all slots wihtout local side effects into the database."
   (bind ((class (class-of instance)))
     (store-prefetched-slots class instance)
-    (mapc [store-slot class instance !1 (underlying-slot-boundp-or-value-using-class class instance !1)]
+    (mapc [when (slot-value-cached-p instance !1)
+            (store-slot class instance !1 (underlying-slot-boundp-or-value-using-class class instance !1))]
           (non-prefetched-slots-of class))))
