@@ -14,20 +14,15 @@
 ;;;
 ;;; Slot access
 ;;;
-(def method restore-slot ((d-class persistent-class-d)
-                           (d-instance persistent-object-d)
-                          (d-slot persistent-effective-slot-definition-d)
-                          &key coordinates)
+(def method restore-slot ((d-class persistent-class-d) (d-instance persistent-object-d) (d-slot persistent-effective-slot-definition-d)
+                          &key (coordinates (collect-coordinates-from-variables (dimensions-of d-slot))))
   (bind (((d-slot-default-value . has-default-p) (default-value-for-type-of d-slot))
          (default-value (if has-default-p d-slot-default-value +unbound-slot-marker+))
          (dimensions (dimensions-of d-slot))
          (records (select-slot-values-with-dimensions d-class d-instance d-slot coordinates)))
     (make-d-value-from-records records default-value dimensions coordinates)))
 
-(def method store-slot ((d-class persistent-class-d)
-                         (d-instance persistent-object-d)
-                        (d-slot persistent-effective-slot-definition-d)
-                        value)
+(def method store-slot ((d-class persistent-class-d) (d-instance persistent-object-d) (d-slot persistent-effective-slot-definition-d) value)
   ;; store-all-slots may pass simple values here
   #+nil(assert (d-value-p value))
   (unless (d-value-p value)
@@ -35,7 +30,7 @@
                  (dimensions-of d-slot)
                  (collect-coordinates-from-variables (dimensions-of d-slot))
                  value)))
-  
+
   (iter (for (coordinates v) :in-d-value value)
         (check-slot-value-type d-instance d-slot v))
 
@@ -69,7 +64,7 @@
       (return-from store-slot-t*))
 
     (iterate-with-enumerated-coordinate-sets
-     
+
      (lambda (coordinates)
       ;; first try to update value in the h-instance having the same coordinates
       (setf update-count (update-h-instance-slot-value d-class d-instance d-slot value coordinates))
@@ -124,21 +119,22 @@
 (def constant +missing-value+ (cons t t))
 
 
-(def method restore-slot ((d-class persistent-class-d) (d-instance persistent-object-d) (d-association-end persistent-association-end-effective-slot-definition-d) &key coordinates)
+(def method restore-slot ((d-class persistent-class-d) (d-instance persistent-object-d) (d-association-end persistent-association-end-effective-slot-definition-d)
+                          &key (coordinates (collect-coordinates-from-variables (dimensions-of d-association-end))))
   (restore-d-association-end d-instance d-association-end coordinates))
 
-(def method restore-slot ((class persistent-class) (instance persistent-object) (d-association-end persistent-association-end-effective-slot-definition-d) &key coordinates)
+(def method restore-slot ((class persistent-class) (instance persistent-object) (d-association-end persistent-association-end-effective-slot-definition-d)
+                          &key (coordinates (collect-coordinates-from-variables (dimensions-of d-association-end))))
   (restore-d-association-end instance d-association-end coordinates))
 
 (def function restore-d-association-end (instance d-association-end coordinates)
   (bind ((dimensions (dimensions-of d-association-end))
-         (default-value (if (null-subtype-p (canonical-type-of d-association-end)) 
+         (default-value (if (null-subtype-p (canonical-type-of d-association-end))
                             nil
                             +unbound-slot-marker+))
          (association (association-of d-association-end)))
     (labels ((unchecked-value (d-association-end instance coordinates)
-               (bind ((records (select-association-end-values-with-dimensions instance d-association-end
-                                                                              coordinates)))
+               (bind ((records (select-association-end-values-with-dimensions instance d-association-end coordinates)))
                  (ecase (association-kind-of association)
                    (:1-1
                     (make-d-value-from-records records default-value dimensions coordinates))
@@ -418,7 +414,7 @@
             (ordering-dimension
              (add-collect query `(slot-value h-instance ',(begin-slot-name-of dimension)))
              (add-collect query `(slot-value h-instance ',(end-slot-name-of dimension)))
-             
+
              (add-assert query
                          `(,(if interval-p (dimension-less dimension) (dimension-less-or-equal dimension))
                             (slot-value h-instance ',(begin-slot-name-of dimension))
@@ -538,7 +534,7 @@
                                                     (coordinate-range-end coordinate)))
                               (coordinate< (coordinate-range-begin coordinate)
                                            (coordinate-range-end coordinate))))
-          
+
           (add-lexical-variable query (name-of dimension))
 
           (etypecase dimension
@@ -579,7 +575,7 @@
             (ordering-dimension
              (add-collect query `(slot-value h-instance ',(begin-slot-name-of dimension)))
              (add-collect query `(slot-value h-instance ',(end-slot-name-of dimension)))
-             
+
              (add-assert query
                          `(,(if interval-p (dimension-less dimension) (dimension-less-or-equal dimension))
                             (slot-value h-instance ',(begin-slot-name-of dimension))
