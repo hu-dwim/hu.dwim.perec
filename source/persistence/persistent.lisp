@@ -259,7 +259,7 @@
 
   (:method ((class persistent-class))
     (first-elt (first-elt (execute (sql-select :columns (list (sql-count (sql-all-columns)))
-                                               :tables (list (name-of (primary-table-of class)))))))))
+                                               :tables (list (name-of (all-instances-identity-view-of class)))))))))
 
 ;;;;;;
 ;;; Revive
