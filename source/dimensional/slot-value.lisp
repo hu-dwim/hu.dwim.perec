@@ -139,3 +139,7 @@
   "Writes boundness to the database and the cache."
   (setf (slot-boundp-or-value-using-class-d class instance slot) +unbound-slot-marker+)
   instance)
+
+(def method update-instance-for-different-class :after ((old-instance persistent-object-d) (new-instance persistent-object-d) &key &allow-other-keys)
+  (dolist (h-instance (h-instances-of old-instance))
+    (change-class h-instance (h-class-of (class-of new-instance)))))
