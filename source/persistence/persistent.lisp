@@ -316,9 +316,9 @@
      ,@body))
 
 ;;;;;
-;;; Singleton persistent instance
+;;; Persistent instance
 
-(def function %persistent-singleton/fn (variable-name new-value-thunk)
+(def function %persistent-instance/fn (variable-name new-value-thunk)
   (aif (symbol-value variable-name)
        (load-instance it)
        (progn
@@ -327,21 +327,18 @@
          (setf (symbol-value variable-name)
                (funcall new-value-thunk)))))
 
-(def (definer e :available-flags "e") persistent-singleton (name &body forms)
-  (flet ((singleton-variable-name-for (name)
-           (bind ((name-string (symbol-name name)))
-             (symbolicate (subseq name-string 0 (1- (length name-string)))
-                          '#:-singleton*))))
-    (bind ((singleton-variable-name (singleton-variable-name-for name)))
-      (with-standard-definer-options name
-        `(progn
-           (defparameter ,singleton-variable-name nil)
-           (define-symbol-macro ,name
-               (%persistent-singleton/fn
-                ',singleton-variable-name
-                (named-lambda ,(symbolicate '#:persistent-singleton/factory/ name)
-                    ()
-                  ,@forms))))))))
+(def (definer e :available-flags "e") persistent-instance (name &body forms)
+  (bind ((name-string (symbol-name name))
+         (variable-name (symbolicate (subseq name-string 0 (1- (length name-string))) '#:-instance*)))
+    (with-standard-definer-options name
+      `(progn
+         (defparameter ,variable-name nil)
+         (define-symbol-macro ,name
+             (%persistent-instance/fn
+              ',variable-name
+              (named-lambda ,(symbolicate '#:persistent-instance/factory/ name)
+                  ()
+                ,@forms)))))))
 
 ;;;;;;
 ;;; Making instances persistent and transient
