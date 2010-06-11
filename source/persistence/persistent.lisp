@@ -338,7 +338,7 @@
               ',variable-name
               (named-lambda ,(symbolicate '#:persistent-instance/factory/ name)
                   ()
-                ,@forms)))))))
+                (the-non-nil ,@forms))))))))
 
 ;;;;;;
 ;;; Making instances persistent and transient
