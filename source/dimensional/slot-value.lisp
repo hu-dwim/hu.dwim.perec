@@ -50,7 +50,7 @@
           (for (coordinates value) :in-d-value d-value)
           (iter (for dimension :in dimensions)
                 (for coordinate :in coordinates)
-                (when (and (not (typep dimensions 'ordering-dimension))
+                (when (and (not (typep dimension 'ordering-dimension))
                            (listp coordinate))
                   (mapc (lambda (coordinate-value)
                           (when (persistent-object-p coordinate-value)
