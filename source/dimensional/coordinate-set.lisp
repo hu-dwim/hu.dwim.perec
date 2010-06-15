@@ -30,7 +30,8 @@
     (if (or (coordinate-range-p coordinate-1)
             (coordinate-range-p coordinate-2))
         (coordinate-range= coordinate-1 coordinate-2)
-        (and (subsetp* coordinate-1 coordinate-2 :key #'key-for)
+        (and (length= coordinate-1 coordinate-2)
+             (subsetp* coordinate-1 coordinate-2 :key #'key-for)
              (subsetp* coordinate-2 coordinate-1 :key #'key-for)))))
 
 (def (generic e) coordinate-equal (dimension coordinate-1 coordinate-2)
@@ -59,7 +60,7 @@
 
   (:method ((dimension dimension) (cover list) (coordinate (eql +whole-domain-marker+)))
     (coordinate= cover (domain dimension)))
-  
+
   (:method ((dimension dimension) (cover cons) (coordinate cons))
     (subsetp* coordinate cover :key #'key-for))
 
@@ -81,7 +82,7 @@
 
   (:method ((dimension dimension) (coordinate-1 t) (coordinate-2 (eql +whole-domain-marker+)))
     coordinate-1)
-  
+
   (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 cons))
     (intersection* coordinate-1 coordinate-2 :key #'key-for))
 
@@ -100,7 +101,7 @@
 
   (:method ((dimension dimension) (coordinate-1 t) (coordinate-2 (eql +whole-domain-marker+)))
     +whole-domain-marker+)
-  
+
   (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 cons))
     (union* coordinate-1 coordinate-2 :key #'key-for))
 
@@ -213,11 +214,10 @@
                                                           (rest coordinates-1)
                                                           (rest coordinates-2)))
                             (collect (cons intersection rest-coords)))))))))
-    
+
     (cond
       ((null dimensions)
        nil)
       ((coordinates-intersection dimensions coordinates-1 coordinates-2)
        (recurse dimensions coordinates-1 coordinates-2))
       (t (list coordinates-1)))))
-
