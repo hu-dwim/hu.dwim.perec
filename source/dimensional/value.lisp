@@ -229,18 +229,6 @@
                                     d-value-1-part
                                     :test test))))))
 
-(def (function e) print-d-value-differences (d-value-1 d-value-2 &key (test #'eql) unspecified-value)
-  (iter (with difference-count = 0)
-        (for (coordinates values) :in-d-values (d-value-1 d-value-2) :unspecified-value unspecified-value)
-        (for value-1 = (first values))
-        (for value-2 = (second values))
-        (for count :from 0)
-        (unless (funcall test value-1 value-2)
-          (incf difference-count)
-          (format t "The values ~A and ~A are different for coordinates ~A~%" value-1 value-2 coordinates))
-        (finally
-         (format t "Checked ~A values and found ~A differences~%" count difference-count))))
-
 (def (function e) covering-d-value-p (d-value coordinates)
   (debug-only (assert-valid-d-value d-value))
   (bind ((remaining-coordinates (list coordinates)))
@@ -465,6 +453,18 @@
 
 ;;;;;;
 ;;; D operations
+
+(def (function e) print-d-value-differences (d-value-1 d-value-2 &key (test #'eql) unspecified-value)
+  (iter (with difference-count = 0)
+        (for (coordinates values) :in-d-values (d-value-1 d-value-2) :unspecified-value unspecified-value)
+        (for value-1 = (first values))
+        (for value-2 = (second values))
+        (for count :from 0)
+        (unless (funcall test value-1 value-2)
+          (incf difference-count)
+          (format t "The values ~A and ~A are different for coordinates ~A~%" value-1 value-2 coordinates))
+        (finally
+         (format t "Checked ~A values and found ~A differences~%" count difference-count))))
 
 (def (function e) map-d-value (d-value function)
   (mapc (lambda (c-value)
