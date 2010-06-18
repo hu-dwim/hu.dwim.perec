@@ -107,19 +107,27 @@
            (= (the integer (oid-of instance-1))
               (the integer (oid-of instance-2))))))
 
-(def function print-persistent-instance (instance)
+(def function print-persistent-instance (instance &key (include-persistent-flag #t) (include-oid #t))
   (declare (type persistent-object instance))
-  (write-string ":persistent ")
-  (write-string (cond ((not (slot-boundp instance 'persistent))
-                       "#? ")
-                      ((persistent-p instance)
-                       "#t ")
-                      (t "#f ")))
-  (if (slot-boundp instance 'oid)
-      (aif (oid-of instance)
-           (princ (oid-instance-id it))
-           (write-string "nil"))
-      (write-string "?")))
+  (when include-persistent-flag
+    (write-string ":persistent ")
+    (write-string (cond ((not (slot-boundp instance 'persistent))
+                         "#? ")
+                        ((persistent-p instance)
+                         "#t ")
+                        (t "#f "))))
+  (when include-oid
+    (if (slot-boundp instance 'oid)
+        (aif (oid-of instance)
+             (princ (oid-instance-id it))
+             (write-string "nil"))
+        (write-string "?"))))
+
+(def (definer e) print-object/persistent (class-name* &body body)
+  `(def print-object ,class-name*
+     ,@body
+     (write-string " ")
+     (print-persistent-instance -self- :include-persistent-flag #f)))
 
 (def print-object (persistent-object :identity (or (not (slot-boundp -self- 'persistent))
                                                    (not (persistent-p -self-))))
