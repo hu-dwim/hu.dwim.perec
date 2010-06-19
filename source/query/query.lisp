@@ -267,7 +267,7 @@
   ())
 
 (defun preprocess-query-expression (query expression)
-  (setf expression (tree-substitute (name-of (current-query-variable-of query))
+  (setf expression (substitute/tree (name-of (current-query-variable-of query))
                                     '*current-query-variable* expression))
   expression)
 
