@@ -119,7 +119,7 @@
   (when include-oid
     (if (slot-boundp instance 'oid)
         (aif (oid-of instance)
-             (princ (oid-instance-id it))
+             (princ it)
              (write-string "nil"))
         (write-string "?"))))
 
