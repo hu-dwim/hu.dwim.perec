@@ -128,6 +128,47 @@ use M-x sort-lines to keep the order
 -3 what about purge-instance making references broken?
 -4 eliminate barely used (by increasing duplicates) system and package dependencies
 -4 eliminate superfluous duplicates (which are covered by other systems)
+
+
+
+
+the default value handling of dimensional slots is not totally correct:
+(some-slot 0 :type integer) -> unless +whole-domain-marker+ is used at make-instance, there'll be unbound ranges in the d-value.
+resolution: remove premature optimization and always insert the whole-domain-markers no matter what.
+
+
+BUG: the coordinate 'cooking' in make-d-value is broken:
+ - sometimes the conses come out of it
+ - sometimes it dies due to something is not of type cons
+
+
+
+broken optimization: when setf'ing a dimensional slot, we have the chance to update a row instead of inserting a new one.
+the current try is pretty much useless due to MAX(_h_instance_2._oid). a more effective optimization is very complex.
+
+this might be worth considering:
+  - when a subcube is set
+  - and there's a row that exactly matches the coordinates
+  - and there are no other rows that overlap the coordinates with a bigger oid
+  then that row can be updated to the new value.
+
+$1 = 0 as SMALLINT, $2 = 5880000 as NUMERIC, $3 = 210349740372 as BIGINT, $4 = 210349740372 as BIGINT, $5 = 210369796166 as BIGINT, $6 = 210369796166 as BIGINT, $7 = NIL as BOOL, $8 = 210369796166 as BIGINT, $9 = 2010-01-01T01:00:00.000000+01:00 as TIMESTAMP WITH TIME ZONE, $10 = 2011-01-01T01:00:00.000000+01:00 as TIMESTAMP WITH TIME ZONE, $11 = 302785128137 as BIGINT, $12 = 302785128137 as BIGINT, $13 = NIL as BOOL, $14 = 302785128137 as BIGINT, $15 = 210349126661 as BIGINT, $16 = 210349126661 as BIGINT, $17 = NIL as BOOL, $18 = 210349126661 as BIGINT, $19 = 210349740372 as BIGINT, $20 = 210349740372 as BIGINT
+UPDATE _támogatási_kimutatás_h SET _támogatási_összeg_tag = $1::SMALLINT,
+                                   _támogatási_összeg = $2::NUMERIC
+WHERE (_támogatási_kimutatás_h._oid IN (SELECT _h_instance._oid FROM _támogatási_kimutatás_h_ap _h_instance
+                                        WHERE (((NOT ($3::BIGINT IS NULL)) AND
+                                                (_h_instance._d_instance_oid = $4::BIGINT)) AND
+                                               (CASE WHEN ((_h_instance._kimutatási_alany_oid IS NULL) OR ($5::BIGINT IS NULL)) THEN (CASE WHEN ((_h_instance._kimutatási_alany_oid IS NULL) AND ($6::BIGINT IS NULL)) THEN (2 = 2) ELSE $7::BOOL END) ELSE (_h_instance._kimutatási_alany_oid = $8::BIGINT) END) AND
+                                               ((_h_instance._validity_begin = $9::TIMESTAMP WITH TIME ZONE)) AND
+                                               ((_h_instance._validity_end = $10::TIMESTAMP WITH TIME ZONE)) AND
+                                               (CASE WHEN ((_h_instance._felmérés_oid IS NULL) OR ($11::BIGINT IS NULL)) THEN (CASE WHEN ((_h_instance._felmérés_oid IS NULL) AND ($12::BIGINT IS NULL)) THEN (2 = 2) ELSE $13::BOOL END) ELSE (_h_instance._felmérés_oid = $14::BIGINT) END) AND
+                                               (CASE WHEN ((_h_instance._támogatási_jogcím_oid IS NULL) OR ($15::BIGINT IS NULL)) THEN (CASE WHEN ((_h_instance._támogatási_jogcím_oid IS NULL) AND ($16::BIGINT IS NULL)) THEN (2 = 2) ELSE $17::BOOL END) ELSE (_h_instance._támogatási_jogcím_oid = $18::BIGINT) END) AND
+                                               (_h_instance._oid = (SELECT MAX(_h_instance_2._oid)
+                                                                    FROM (SELECT _oid, _támogatási_kimutatás_h._d_instance_oid
+                                                                          FROM _támogatási_kimutatás_h)
+                                                                         _h_instance_2
+                                                                    WHERE (((NOT ($19::BIGINT IS NULL)) AND
+                                                                            (_h_instance_2._d_instance_oid = $20::BIGINT))))))))
 |#
 
 
