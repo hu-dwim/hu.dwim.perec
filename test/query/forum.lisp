@@ -76,6 +76,15 @@
     (select (o)
       (from o))))
 
+(def test test/query/select/volatile ()
+  (run-queries
+    (with-fixture forum-data
+      (bind ((title "topic2"))
+        (is (equal (title-of (the-only-element (finishes (select (o)
+                                                           (from (o topic-test))
+                                                           (where (equal (title-of o) (volatile title)))))))
+                   title))))))
+
 (def test test/query/select/symbol-enum ()
   (test-query (:select-count 1 :record-count 1 :fixture forum-data)
     (select (s)
