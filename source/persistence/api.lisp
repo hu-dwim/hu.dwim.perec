@@ -13,7 +13,7 @@
   (:method ((metaclass null) defclass-macro name superclasses slots options)
     (bind ((specified-metaclass (second (find :metaclass options :key #'first)))
            (metaclass (or specified-metaclass 'persistent-class)))
-      (expand-defpclass-form (class-prototype (find-class metaclass))
+      (expand-defpclass-form (class-prototype (ensure-finalized (find-class metaclass)))
                              defclass-macro name superclasses slots
                              (if specified-metaclass
                                  options
@@ -40,7 +40,7 @@
   (:method ((metaclass null) association-ends options)
     (bind ((specified-metaclass (second (find :metaclass options :key #'first)))
            (metaclass (or specified-metaclass 'persistent-association)))
-      (expand-defpassociation-form (class-prototype (find-class metaclass))
+      (expand-defpassociation-form (class-prototype (ensure-finalized (find-class metaclass)))
                                    association-ends
                                    (if specified-metaclass
                                        options
