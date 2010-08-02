@@ -6,7 +6,35 @@
 
 (in-package :hu.dwim.perec.documentation)
 
-(def project :hu.dwim.perec)
+(def project :hu.dwim.perec
+  :description (book ()
+                 (chapter (:title "Introduction")
+                   (paragraph ()
+                     "The class metaobject called persistent-class in cl-perec extends the CLOS standard-class and allows classes to have persistent slots. In fact defpclass is nothing more than a defclass with a (:metaclass persistent-class). In a persistent class all slots are persistent by default unless the :persistent nil slot option is specified in which case the slot will be a standard slot. The persistent-class implements a subset of the CL type system and maps slots to RDBMS tables and columns. For several primitive types this can be done efficiently while some CL types need to be serialized and stored as BLOB in the RDBMS.")
+                   (paragraph ()
+                     "The intention of cl-perec is to completely hide the RDBMS part from the user. It creates and alters tables automatically (signals continuable errors for schema changes) so the user can mostly think in CLOS terms.")
+                   (paragraph ()
+                     "There is another class metaobject called persistent-association which allows two slots in two different classes to be in referential integrity. There are three different kind of associations: one-to-one, one-to-many and many-to-many. The many association end means an unordered set of persistent objects.")
+                   (paragraph ()
+                     "Another nice part is the query compiler which provides a convenient way to express queries in the lisp type system which is then mapped to efficient SQL queries if possible. Even if the entire query cannot be mapped to a single SQL statement, parts of it will transparently be run in the Lisp VM. Ordering, slot accessors, literals and lisp predicates can be used to build the query, see the huge number of tests for more details.")
+                   (paragraph ()
+                     "The persistent type system supports a subset of the Common Lisp type system, type aliasing and subtyping are transparently mapped to RDBMS. New primitive persistent types can be defined with defptype and defmapping. The extended metaobject protocol allows mapping lisp types to multiple RDBMS columns (e.g. the type (or null unbound integer) needs two columns)."))
+                 (chapter (:title "Features")
+                   (paragraph ()
+                     (list "supported extensible primitive types: t, serialized, unbound, null, boolean, integer, integer-16, integer-32, integer-64, float, double, number, string, (string exact-size), text, (text size-limit), symbol, (symbol* size-limit) date, time, timestamp, member, duration, form, unsigned-byte-vector, ip-address"
+                           "limited or type support (or null ...) and unbound slot support (can be specified with (or unbound ...))"
+                           "persistent classes with CLOS multiple inheritence"
+                           "lazy slot access both for primitive types and class reference types with prefetch support for performance finetuning"
+                           "lazy persistent sets (with and without identity)"
+                           "one-to-one, one-to-many and many-to-many associations that maintain referential integrity"
+                           "ACID transactions and concurrency inherited from the underlying RDBMS, nested transaction support"
+                           "efficient object and slot level caching with transaction isolation"
+                           "expressive query language (possibly partially) compiled into SQL"
+                           "the query compiler understands polimorphism, associations and the persistent type system"
+                           "SQL queries can still be used if needed and lazy slot access and navigation will work automatically"
+                           "limited schema evolution, transparent additive changes"
+                           "support for destructive schema changes (see the confirmation example)"
+                           "time machine (tesites) to be able to sepcify slot values in terms of timestamps and time intervalls")))))
 
 (def method make-project-tab-pages ((component project/detail/inspector) (project (eql (find-project :hu.dwim.perec))))
   (append (call-next-method)
