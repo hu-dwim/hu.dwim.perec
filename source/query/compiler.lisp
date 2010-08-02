@@ -87,7 +87,7 @@ with the result of the naively compiled query.")
   (:documentation "Query compiler that does not optimize sql queries."))
 
 (defmethod emit-query ((compiler trivial-query-compiler) query)
-  (bind ((lexical-variables (lexical-variables-of query))
+  (bind ((lexical-variables (mapcar 'name-of (lexical-variables-of query)))
          (variables (get-query-variable-names query))
          (asserts (asserts-of query))
          (action (case (action-of query)
@@ -135,11 +135,12 @@ with the result of the naively compiled query.")
  to the result of the PREDICATE-FORM."
   (let* ((predicate-form (%compile-query (make-instance 'trivial-query-compiler) query))
          (compiled-form (%compile-query (make-instance 'simple-query-compiler) query))
-         (lexical-variables (lexical-variables-of query)))
+         (lexical-variables (lexical-variables-of query))
+         (lexical-variables-names (mapcar 'name-of lexical-variables)))
     (with-unique-names (result expected result-list expected-list)
       (unparse-query-syntax
-       `(named-lambda debug-query ,lexical-variables
-         (declare (ignorable ,@lexical-variables))
+       `(named-lambda debug-query ,lexical-variables-names
+         (declare (ignorable ,@lexical-variables-names))
          (bind ((,result (funcall ,compiled-form ,@lexical-variables))
                 (,expected (funcall ,predicate-form ,@lexical-variables))
                 (,result-list (to-list ,result))
@@ -160,7 +161,7 @@ with the result of the naively compiled query.")
   (:documentation "Query compiler that can transform queries to SQL."))
 
 (defmethod emit-query ((compiler simple-query-compiler) (query query))
-  (bind ((lexical-variables (lexical-variables-of query)))
+  (bind ((lexical-variables (mapcar 'name-of (lexical-variables-of query))))
     `(named-lambda simple-query ,lexical-variables
       (declare (ignorable ,@lexical-variables))
       ,(with-reloading-persistent-objects
