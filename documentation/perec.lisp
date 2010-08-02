@@ -6,7 +6,7 @@
 
 (in-package :hu.dwim.perec.documentation)
 
-(def project :hu.dwim.perec :path (system-pathname :hu.dwim.perec))
+(def project :hu.dwim.perec)
 
 (def method make-project-tab-pages ((component project/detail/inspector) (project (eql (find-project :hu.dwim.perec))))
   (append (call-next-method)
