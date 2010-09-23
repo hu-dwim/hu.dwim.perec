@@ -689,7 +689,7 @@
                                     (sql-primary-key-constraint))))
 
 (def function make-column-for-reference-slot (class-name column-name)
-  (bind ((oid-column-name (rdbms-name-for (concatenate-symbol column-name "-oid")) :column)
+  (bind ((oid-column-name (rdbms-name-for (concatenate-symbol column-name "-oid") :column))
          (oid-index-name (rdbms-name-for (concatenate-symbol column-name "-oid-on-" class-name "-idx") :index)))
     (make-instance 'column
                    :name oid-column-name
