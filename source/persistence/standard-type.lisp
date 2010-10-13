@@ -183,7 +183,18 @@
   (declare (ignore bit-size))
   `(integer ,minimum-value ,maximum-value))
 
-(defmapping integer (sql-integer-type)
+(defmapping integer (sql-integer-type :bit-size (when (and (consp normalized-type)
+                                                           (> (length normalized-type) 1))
+                                                  (flet ((process (bound)
+                                                           (if (integerp bound)
+                                                               (abs bound)
+                                                               0)))
+                                                    (bind ((lower-bound (process (second normalized-type)))
+                                                           (upper-bound (process (third normalized-type)))
+                                                           (bound (max lower-bound upper-bound)))
+                                                      (unless (zerop bound)
+                                                        ;; KLUDGE we treat sql-integer-type as unsigned... see comment at (def syntax-node sql-integer-type ...)
+                                                        (ceiling (log bound 2)))))))
   'object->integer-reader
   'identity-writer)
 
