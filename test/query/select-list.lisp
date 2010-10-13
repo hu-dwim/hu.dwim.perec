@@ -21,7 +21,8 @@
                    :date-attr (parse-datestring "2007-07-11"))
     (make-instance 'select-list-test
                    :string-attr "String2"
-                   :date-attr (parse-datestring "2007-07-15"))))
+                   :date-attr (parse-datestring "2007-07-15"))
+    (-body-)))
 
 (deftest test/query/select-list/select-columns/1 ()
   (test-query (:select-count 1 :record-count 1 :fixture select-list-data)
