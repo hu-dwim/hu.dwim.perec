@@ -6,9 +6,6 @@
 
 (in-package :hu.dwim.perec)
 
-(def type oid ()
-  'integer)
-
 (def constant +oid-class-id-bit-size+ 16
   "Size of the class id in bits. These are the lower bits in the oid.")
 
@@ -35,6 +32,9 @@
 
 (def constant +oid-column-count+ (length +oid-column-names+)
   "The number of oid columns.")
+
+(def type oid ()
+  `(integer 0 ,(expt 2 +oid-bit-size+)))
 
 (def special-variable *oid-class-id->class-name-map* (make-hash-table)
   "This map is used to cache class names by class ids. It gets filled when ensure-class is called for the first time and kept up to date.")
