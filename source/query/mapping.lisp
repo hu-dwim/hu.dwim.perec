@@ -488,7 +488,7 @@
 ;;;
 (def query-function oid-of (instance)
   ""
-  (declare (persistent-type (function (persistent-object) number)))
+  (declare (persistent-type (function (persistent-object) oid)))
   instance)
 
 ;;;
