@@ -13,7 +13,7 @@
 (def suite* (test/persistence/association/m-n :in test/persistence/association) ()
   (flet ((body ()
            (with-and-without-caching-slot-values
-             (run-child-tests))))
+             (-run-child-tests-))))
     (body)
     (bind ((*association-m-n-student-class-name* 'm-n-self-association-test)
            (*association-m-n-course-class-name* 'm-n-self-association-test))

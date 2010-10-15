@@ -8,9 +8,9 @@
 
 (def suite* (test/persistence/cache :in test/persistence) ()
   (with-caching-slot-values
-    (run-child-tests))
+    (-run-child-tests-))
   (without-caching-slot-values
-    (run-child-tests)))
+    (-run-child-tests-)))
 
 (def suite* (test/persistence/cache/slot-access :in test/persistence/cache))
 
