@@ -310,7 +310,7 @@
      (list* (first type) (mapcar #'canonical-type-for (cdr type))))
     ;; expand types
     ((?is ?type symbolp)
-     (canonical-type-for (substitute-type-arguments type nil)))
+     (canonical-type-for (expand-type-1 type)))
     ;; known system type
     ((?is ?type type-specifier-p)
      (let ((substituted-type (substitute-type-arguments (first type) (cdr type))))
