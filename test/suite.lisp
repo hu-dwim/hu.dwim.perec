@@ -62,11 +62,11 @@
 (def suite (test :in root-suite) (&key (with-logging #f))
   (if with-logging
       (-run-child-tests-)
-      (bind ((original-level (log-level/runtime 'standard-logger)))
-        (setf (log-level/runtime 'standard-logger) +info+)
+      (bind ((original-level (log-level/runtime 'root-logger)))
+        (setf (log-level/runtime 'root-logger) +info+)
         (unwind-protect
              (-run-child-tests-)
-          (setf (log-level/runtime 'standard-logger) original-level)))))
+          (setf (log-level/runtime 'root-logger) original-level)))))
 
 (def suite (test/backend :in test))
 
