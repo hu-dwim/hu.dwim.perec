@@ -327,9 +327,16 @@ with the result of the naively compiled query.")
       (bind ((joined-variable (joined-variable-for-association-end-access query (arg-of access))))
         (setf (arg-of access) joined-variable)))
     (when (query-variable-p (arg-of access)) ; FIXME association-ends?
-      (when (slot-of access) ; FIXME handle this case properly
+      (let ((slot (slot-of access))) ; FIXME handle this case properly
+	(when (typecase slot
+		(null nil)
+		(persistent-association-end-slot-definition
+		 (ecase (cardinality-kind-of (slot-of access))
+		   (:|1| t)
+		   (:n nil)))
+		(persistent-slot-definition t))
           (pushnew (slot-definition-name (slot-of access))
-                   (referenced-slots-of (arg-of access)))))
+                   (referenced-slots-of (arg-of access))))))
     (values)))
 
 (defun add-prefetched-slots (query)
