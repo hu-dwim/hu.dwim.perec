@@ -256,16 +256,16 @@
                  (persistent-p instance))
          (store-m-n-association-end-set instance slot value))))))
 
-(def generic store-prefetched-slots (class instance)
-  (:documentation "Stores all prefetched slots without local side effects into the database. Executes one insert statement for each table.")
+(def generic store-preinsert-slots (class instance)
+  (:documentation "Stores all 'preinsert capable' slots without local side effects into the database. Executes one insert statement for each table.")
 
   (:method ((class persistent-class) (instance persistent-object))
-    (bind ((prefetched-slots (prefetched-slots-of (class-of instance)))
-           (tables (delete-duplicates (mapcar #'table-of prefetched-slots)))
+    (bind ((preinsert-slots (preinsert-slots-of (class-of instance)))
+           (tables (delete-duplicates (mapcar #'table-of preinsert-slots)))
            (oid (oid-of instance))
            (error? #f))
       (dolist (table tables)
-        (bind ((slots (collect-if [eq (table-of !1) table] prefetched-slots))
+        (bind ((slots (collect-if [eq (table-of !1) table] preinsert-slots))
                (slot-values (mapcar [underlying-slot-boundp-or-value-using-class (class-of instance) instance !1] slots))
                (oid-columns (list (oid-column-of table)))
                (columns (mappend #'columns-of slots))
@@ -287,10 +287,31 @@
           (unless error?
             (insert-record (name-of table) (list (oid-column-of table)) (oid->rdbms-values oid))))))))
 
+;; A 'preinsert capable' slot is a slot that we can immediately fill on
+;; the initial INSERT, as opposed to a 'postinsert' slot that needs to
+;; be updated explicitly in a later step.
+;;
+;; Slots are 'preinsert capable' if they are either prefetched or
+;; non-association slots.
+;;
+;; In the past, this code never preinserted non-prefetched slots, but
+;; that strategy fails for non-prefetched that are NOT NULL and must be
+;; filled immediately.
+;;
+(defun preinsert-slots-of (class)
+  (remove-if #'postinsert-p (persistent-effective-slots-of class)))
+
+(defun postinsert-slots-of (class)
+  (remove-if-not #'postinsert-p (persistent-effective-slots-of class)))
+
+(defun postinsert-p (slot)
+  (and (typep slot 'persistent-association-end-slot-definition)
+       (not (prefetch-p slot))))
+
 (def (function o) store-all-slots (instance)
   "Stores all slots wihtout local side effects into the database."
   (bind ((class (class-of instance)))
-    (store-prefetched-slots class instance)
+    (store-preinsert-slots class instance)
     (mapc [when (slot-value-cached-p instance !1)
             (store-slot class instance !1 (underlying-slot-boundp-or-value-using-class class instance !1))]
-          (non-prefetched-slots-of class))))
+          (postinsert-slots-of class))))

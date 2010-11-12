@@ -489,7 +489,7 @@
   (:method ((class persistent-class))
     (make-view-for-classes-and-slots (view-name-for-class class "_dp")
                                      (list class)
-                                     (mapcar #'slot-definition-name (prefetched-slots-of class)))))
+                                     (mapcar #'slot-definition-name (preinsert-slots-of class)))))
 
 (def generic compute-direct-instances-data-view (class)
   (:method ((class persistent-class))
@@ -507,7 +507,7 @@
   (:method ((class persistent-class))
     (make-view-for-classes-and-slots (view-name-for-class class "_ap")
                                      (list* class (persistent-effective-subclasses-of class))
-                                     (mapcar #'slot-definition-name (prefetched-slots-of class)))))
+                                     (mapcar #'slot-definition-name (preinsert-slots-of class)))))
 
 (def generic compute-all-instances-data-view (class)
   (:method ((class persistent-class))
