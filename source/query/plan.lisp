@@ -840,10 +840,11 @@
     (type-equal type (canonical-type-for `(and ,type persistent-object)))))
 
 (defun query-variable-binder (query)
-  (query-variable-binder2 (query-variables-of query)
+  (query-variable-binder2 query
+			  (query-variables-of query)
                           (prefetch-mode-of query)))
 
-(defun query-variable-binder2 (variables &optional (prefetch-mode :accessed))
+(defun query-variable-binder2 (query variables &optional (prefetch-mode :accessed))
   (lambda (row i referenced-by)
     (bind ((referenced-variables (collect-query-variables referenced-by))
            (names (mapcar (lambda (variable) (gensym (symbol-name (name-of variable)))) variables))
@@ -856,21 +857,17 @@
              (for slots = (prefetched-slots-for variable prefetch-mode))
              (for column-counts = (mapcar #'column-count-of slots))
              (for total-column-count = (reduce '+ column-counts :initial-value +oid-column-count+))
-             (cond ((not (member variable referenced-variables))
-                    (incf skipped-columns total-column-count))
-
-                   ((zerop skipped-columns)
-                    (collect
-                        `(,name (prog1
-                                    (cache-instance-with-prefetched-slots ,row ,i ,type ',slots ',column-counts)
-                                  (incf ,i ,total-column-count)))))
-                   (t
-                    (collect
-                        `(,name (prog1
-                                    (cache-instance-with-prefetched-slots
-                                     ,row (+ ,i ,skipped-columns) ,type ',slots ',column-counts)
-                                  (incf ,i ,(+ total-column-count skipped-columns)))))
-                    (setf skipped-columns 0))))
+	     (cond
+	       ((or (find variable (action-args-of query))
+		    (member variable referenced-variables))
+		(collect
+		    `(,name (prog1
+				(cache-instance-with-prefetched-slots
+				 ,row (+ ,i ,skipped-columns) ,type ',slots ',column-counts)
+			      (incf ,i ,(+ total-column-count skipped-columns)))))
+		(setf skipped-columns 0))
+	       (t
+		(incf skipped-columns total-column-count))))
        (substitute-syntax referenced-by substitutions)))))
 
 (defun ignorable-variables-declaration (variables)
