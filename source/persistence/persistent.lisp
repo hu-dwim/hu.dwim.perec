@@ -108,7 +108,21 @@
              (setf (cached-instance-of oid) new-instance)
              (if (or skip-existence-check (persistent-p new-instance))
                  new-instance
-                 (instance-not-found)))))))
+                 (progn
+		   ;; REVIEW #2: following up on the above comment: the
+		   ;; old code was definitely not correct, since
+		   ;;   (load-instance <nonexisting-oid> ...)
+		   ;; would put a transient object for that oid into the
+		   ;; cache, with slots all set to the
+		   ;; +NOT-CACHED-SLOT-MARKER+, which then leaks into
+		   ;; user code (in particular with :otherwise, but also
+		   ;; without otherwise if user code traps the condition).
+		   ;;
+		   ;; My workaround is to remove the object here, fixing at
+		   ;; least this particular problem.
+		   ;;   -- david
+		   (remove-cached-instance new-instance)
+		   (instance-not-found))))))))
 
 ;;;;;;
 ;;; Purge
