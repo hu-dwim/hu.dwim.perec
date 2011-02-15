@@ -598,7 +598,9 @@
               (timestamp (make-empty-coordinate-range (random-timestamp choices)))
               (t (cond
                    (choices (random-elt choices))
-                   (t (random-non-empty-subset-of (domain dimension)))))))
+                   (t (if (< (random 1.0) 0.1)
+                          +whole-domain-marker+
+                          (random-non-empty-subset-of (domain dimension))))))))
           (random-coordinate-range (empty-interval-probability)
             (case type
               (timestamp
