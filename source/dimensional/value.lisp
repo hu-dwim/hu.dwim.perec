@@ -140,20 +140,19 @@
                    (for coordinate :in coordinates)
                    (etypecase (lookup-dimension dimension)
                      (ordering-dimension (collect coordinate))
-                     (dimension (collect (if (and (consp coordinate)
-                                                  (persistent-object-p (first coordinate)))
-                                             (mapcar [cons (oid-of !1) !1] coordinate)
-                                             coordinate))))))
+                     (dimension (collect (if (whole-domain-marker-p coordinate)
+                                             coordinate
+                                             (progn
+                                               (debug-only (assert (consp coordinate)))
+                                               (cook-coordinate coordinate))))))))
            (uncook-coordinates (coordinates)
              (iter (for dimension :in dimensions)
                    (for coordinate :in coordinates)
                    (etypecase (lookup-dimension dimension)
                      (ordering-dimension (collect coordinate))
-                     (dimension (collect (if (and (consp coordinate)
-                                                  (consp (first coordinate))
-                                                  (persistent-object-p (cdr (first coordinate))))
-                                             (mapcar #'cdr coordinate)
-                                             coordinate))))))
+                     (dimension (collect (if (whole-domain-marker-p coordinate)
+                                             coordinate
+                                             (uncook-coordinate coordinate)))))))
            (uncook-d-value (d-value)
              (iter (for c-value :in (c-values-of d-value))
                    (setf (slot-value c-value 'coordinates) ;; FIXME mutating coordinates!
@@ -364,8 +363,9 @@
   (iter outer
         (for coordinate-1 :in coordinate-list-1)
         (iter (for coordinate-2 :in coordinate-list-2)
-              (awhen (coordinate-intersection dimension coordinate-1 coordinate-2)
-                (in outer (collect it))))))
+              (for intersection = (coordinate-intersection dimension coordinate-1 coordinate-2))
+              (unless (empty-set-p intersection)
+                (in outer (collect intersection))))))
 
 (def function split-coordinate-lists (dimension coordinate-list-1 coordinate-list-2)
   (bind ((intersections (coordinate-list-intersection dimension coordinate-list-1 coordinate-list-2)))

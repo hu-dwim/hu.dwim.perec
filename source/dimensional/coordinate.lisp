@@ -22,6 +22,7 @@
   (:method ((instance persistent-object))
     (oid-of instance))
 
+  ;; FIXME fragile
   (:method ((oid-and-instance cons))
     (car oid-and-instance)))
 

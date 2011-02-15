@@ -7,6 +7,41 @@
 (in-package :hu.dwim.perec)
 
 ;;;
+;;; KLUDGE
+;;;
+(def class* cooked-instance-set ()
+  ((value () :type list)))
+
+(def function make-cooked-instance-set (instance-set)
+  (debug-only (assert (every [and (consp !1) (integerp (car !1)) (persistent-object-p (cdr !1))] instance-set)))
+  (make-instance 'cooked-instance-set :value instance-set))
+
+(def function cook-coordinate (instance-set)
+  (if (and (consp instance-set)
+           (persistent-object-p (first instance-set)))
+      (make-cooked-instance-set (mapcar [cons (oid-of !1) !1] instance-set))
+      instance-set))
+
+(def function uncook-coordinate (cooked-instance-set)
+  (check-type cooked-instance-set (or cooked-instance-set cons))
+  (if (typep cooked-instance-set 'cooked-instance-set)
+      (mapcar #'cdr (value-of cooked-instance-set))
+      cooked-instance-set))
+
+(def generic empty-set-p (set)
+  (:method ((set null))
+    #t)
+
+  (:method ((set cons))
+    #f)
+
+  (:method ((set (eql +whole-domain-marker+)))
+    #f) ;; FIXME always?
+
+  (:method ((set cooked-instance-set))
+    (null (value-of set))))
+
+;;;
 ;;; coordinate-set equality
 ;;;
 (def (generic e) coordinate= (coordinate-1 coordinate-2)
@@ -21,7 +56,7 @@
     (assert #f () "Unable to compare ~A and ~A. Consider using COORDINATE-EQUAL."
             coordinate-1 coordinate-2))
 
-  (:method ((coordinate-1 cons) (coordinate-2 (eql +whole-domain-marker+)))
+  (:method (coordinate-1 (coordinate-2 (eql +whole-domain-marker+)))
     (assert #f () "Unable to compare ~A and ~A. Consider using COORDINATE-EQUAL."
             coordinate-1 coordinate-2))
 
@@ -32,7 +67,11 @@
         (coordinate-range= coordinate-1 coordinate-2)
         (and (length= coordinate-1 coordinate-2)
              (subsetp* coordinate-1 coordinate-2 :key #'key-for)
-             (subsetp* coordinate-2 coordinate-1 :key #'key-for)))))
+             (subsetp* coordinate-2 coordinate-1 :key #'key-for))))
+
+  ;; sets and ranges
+  (:method ((coordinate-1 cooked-instance-set) (coordinate-2 cooked-instance-set))
+    (coordinate= (value-of coordinate-1) (value-of coordinate-2))))
 
 (def (generic e) coordinate-equal (dimension coordinate-1 coordinate-2)
 
@@ -45,11 +84,17 @@
   (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 (eql +whole-domain-marker+)))
     #t)
 
-  (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) coordinate-2)
+  (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 cons))
     (coordinate= (domain dimension) coordinate-2))
 
-  (:method ((dimension dimension) coordinate-1 (coordinate-2 (eql +whole-domain-marker+)))
-    (coordinate= coordinate-1 (domain dimension))))
+  (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 (eql +whole-domain-marker+)))
+    (coordinate= coordinate-1 (domain dimension)))
+
+  (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 cooked-instance-set))
+    (coordinate= (cook-coordinate (domain dimension)) coordinate-2))
+
+  (:method ((dimension dimension) (coordinate-1 cooked-instance-set) (coordinate-2 (eql +whole-domain-marker+)))
+    (coordinate= coordinate-1 (cook-coordinate (domain dimension)))))
 
 ;;;;;;
 ;;; Dimension coordinate
@@ -61,8 +106,14 @@
   (:method ((dimension dimension) (cover list) (coordinate (eql +whole-domain-marker+)))
     (coordinate= cover (domain dimension)))
 
+  (:method ((dimension dimension) (cover cooked-instance-set) (coordinate (eql +whole-domain-marker+)))
+    (coordinate= cover (cook-coordinate (domain dimension))))
+
   (:method ((dimension dimension) (cover cons) (coordinate cons))
     (subsetp* coordinate cover :key #'key-for))
+
+  (:method ((dimension dimension) (cover cooked-instance-set) (coordinate cooked-instance-set))
+    (covering-coordinate-p dimension (value-of cover) (value-of coordinate)))
 
   (:method ((dimension ordering-dimension) (cover cons) (coordinate cons))
     (covering-range-p cover coordinate)))
@@ -86,6 +137,9 @@
   (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 cons))
     (intersection* coordinate-1 coordinate-2 :key #'key-for))
 
+  (:method ((dimension dimension) (coordinate-1 cooked-instance-set) (coordinate-2 cooked-instance-set))
+    (make-cooked-instance-set (coordinate-intersection dimension (value-of coordinate-1) (value-of coordinate-2))))
+
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (range-intersection coordinate-1 coordinate-2)))
 
@@ -105,6 +159,9 @@
   (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 cons))
     (union* coordinate-1 coordinate-2 :key #'key-for))
 
+  (:method ((dimension dimension) (coordinate-1 cooked-instance-set) (coordinate-2 cooked-instance-set))
+    (make-cooked-instance-set (coordinate-union dimension (value-of coordinate-1) (value-of coordinate-2))))
+
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (range-union coordinate-1 coordinate-2)))
 
@@ -121,12 +178,18 @@
   (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 cons))
     (coordinate-difference dimension (domain dimension) coordinate-2))
 
+  (:method ((dimension dimension) (coordinate-1 (eql +whole-domain-marker+)) (coordinate-2 cooked-instance-set))
+    (coordinate-difference dimension (cook-coordinate (domain dimension)) coordinate-2))
+
   (:method ((dimension dimension) (coordinate-1 t) (coordinate-2 (eql +whole-domain-marker+)))
     nil)
 
   (:method ((dimension dimension) (coordinate-1 cons) (coordinate-2 cons))
     (awhen (set-difference* coordinate-1 coordinate-2 :key #'key-for)
       (list it)))
+
+  (:method ((dimension dimension) (coordinate-1 cooked-instance-set) (coordinate-2 cooked-instance-set))
+    (mapcar #'make-cooked-instance-set (coordinate-difference dimension (value-of coordinate-1) (value-of coordinate-2))))
 
   (:method ((dimension ordering-dimension) (coordinate-1 cons) (coordinate-2 cons))
     (range-difference coordinate-1 coordinate-2)))
@@ -160,9 +223,10 @@
   (iter (for dimension :in dimensions)
         (for coordinate-1 :in coordinates-1)
         (for coordinate-2 :in coordinates-2)
-        (aif (coordinate-intersection dimension coordinate-1 coordinate-2)
-             (collect it)
-             (return-from coordinates-intersection nil))))
+        (for intersection = (coordinate-intersection dimension coordinate-1 coordinate-2))
+        (if (empty-set-p intersection)
+            (return-from coordinates-intersection nil)
+            (collect intersection))))
 
 (def (function e) coordinates-union (dimensions coordinates-1 coordinates-2)
   (iter (with different-index = nil)
@@ -209,7 +273,7 @@
                     (iter (for difference :in difference-list)
                           (when difference
                             (collect (cons difference (rest coordinates-1)))))
-                    (when intersection
+                    (unless (empty-set-p intersection)
                       (iter (for rest-coords :in (recurse (rest dimensions)
                                                           (rest coordinates-1)
                                                           (rest coordinates-2)))
