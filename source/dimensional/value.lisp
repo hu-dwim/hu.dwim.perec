@@ -532,6 +532,7 @@
                            :coordinates projection-coordinates))))
 
 (def (function e) d-fold (function folded-dimensions d-value &key initial-value)
+  (assert (every (of-type 'dimension) folded-dimensions))
   (if folded-dimensions
       (iter (with dimensions = (dimensions-of d-value))
             (with unfolded-dimensions = (remove-if [member !1 folded-dimensions] (dimensions-of d-value)))
