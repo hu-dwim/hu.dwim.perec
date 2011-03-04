@@ -25,7 +25,10 @@
                                        (1+ position)))))
     (if (string= package-name "#")
         (make-symbol symbol-name)
-        (intern symbol-name (find-package package-name)))))
+        (bind ((package (find-package package-name)))
+          (unless package
+            (error "~S: failed to find package while trying to convert ~S" 'canonical-name->symbol name))
+          (intern symbol-name package)))))
 
 (def function concatenate-symbol (&rest args)
   "Args are processed as parts of the result symbol with an exception: when a package is encountered then it is stored as the target package at intern."
