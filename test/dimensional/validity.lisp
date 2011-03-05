@@ -28,6 +28,10 @@
        (bind ((*validity-dependent-class-name* 'validity-dependent-null-test))
          (,body)))))
 
+(def test test/dimensional/validity-dependent/illegal-validity-errors ()
+  (signals error
+    (make-dimension-coordinate-range *validity-dimension* 'illegal-coordinate)))
+
 (def test test/dimensional/validity-dependent/table ()
   (with-validity-dependent-test-classes
     (ensure-finalized (find-class *validity-dependent-class-name*))
