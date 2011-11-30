@@ -7,6 +7,29 @@
 (in-package :hu.dwim.perec)
 
 ;;;;;;
+;;; production
+
+(def (function e) export-persistent-classes-to-database-schema ()
+  (bind ((all-the-rest-confirmed? #f))
+    (handler-bind ((unconfirmed-schema-change
+                    (lambda (condition)
+                      (when all-the-rest-confirmed?
+                        (continue-with-schema-change condition)))))
+      (restart-bind ((accept-all-schema-changes
+                      (lambda ()
+                        (setf all-the-rest-confirmed? #t)
+                        (continue-with-schema-change))
+                       :report-function (lambda (stream)
+                                          (format stream "~@<Confirm this and all upcoming schema changes inside this call to ~S without entering the debugger~@:>" 'export-persistent-classes-to-database-schema)))
+                     (abort (lambda ()
+                              (return-from export-persistent-classes-to-database-schema (values)))
+                       :report-function (lambda (stream)
+                                          (format stream "~@<Cancel ~S and return with (values)~@:>" 'export-persistent-classes-to-database-schema))))
+        (maphash-values 'ensure-exported *persistent-classes*)
+        (finalize-persistent-classes)
+        (finalize-persistent-associations)))))
+
+;;;;;;
 ;;; API
 
 (def (generic e) export-persistent-instances (thing format stream &key &allow-other-keys))
