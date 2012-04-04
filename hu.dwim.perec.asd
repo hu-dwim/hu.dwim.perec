@@ -37,7 +37,6 @@
                              (:module "util"
                               :depends-on ("package" "logger")
                               :components ((:file "duplicates")
-                                           (:file "pattern-matcher")
                                            (:file "logic")))
                              (:module "persistence"
                               :depends-on ("util")
