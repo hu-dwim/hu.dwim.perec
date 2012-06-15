@@ -6,7 +6,7 @@
 
 (in-package :hu.dwim.perec)
 
-(def special-variable *compiled-query-cache*)
+(def (special-variable e) *compiled-query-cache*)
 
 (def (with-macro e) with-compiled-query-cache (cache)
   (bind ((*compiled-query-cache* cache))
@@ -43,4 +43,3 @@
 (defmethod execute-query ((query cons) &rest lexical-variable-values)
   (assert (null lexical-variable-values) () "Lexical vairables are not supported this way, use a nested MAKE-QUERY/EXECUTE-QUERY.")
   (execute-query (make-query query)))
-
