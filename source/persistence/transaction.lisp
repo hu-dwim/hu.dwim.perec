@@ -8,6 +8,7 @@
 
 ;;; with-database, open-database, close-database, with-transaction, with-transaction*, begin, commit, rollback are all inherited from hu.dwim.rdbms
 
+;; TODO rename to perec-database-mixin (don't export something called database-mixin...)
 (def (class* e) database-mixin ()
   ((oid-instance-id-sequence-exists #f :type boolean)))
 
