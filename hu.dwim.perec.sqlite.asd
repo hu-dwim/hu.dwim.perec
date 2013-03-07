@@ -4,12 +4,9 @@
 ;;;
 ;;; See LICENCE for details.
 
-(load-system :hu.dwim.asdf)
-
-(in-package :hu.dwim.asdf)
-
 (defsystem :hu.dwim.perec.sqlite
-  :class hu.dwim.system
+  :defsystem-depends-on (:hu.dwim.asdf)
+  :class "hu.dwim.asdf:hu.dwim.system"
   :description "Sqlite backend for hu.dwim.perec."
   :depends-on (:hu.dwim.perec
                :hu.dwim.rdbms.sqlite)
@@ -17,7 +14,7 @@
                 :components ((:module "backend"
                               :components ((:file "sqlite")))))))
 
-(defmethod perform :after ((op develop-op) (system (eql (find-system :hu.dwim.perec.sqlite))))
+(defmethod perform :after ((op hu.dwim.asdf:develop-op) (system (eql (find-system :hu.dwim.perec.sqlite))))
   (let ((database-variable (read-from-string "hu.dwim.rdbms::*database*")))
     (unless (boundp database-variable)
       (setf (symbol-value database-variable)

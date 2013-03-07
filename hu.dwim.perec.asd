@@ -4,12 +4,9 @@
 ;;;
 ;;; See LICENCE for details.
 
-(load-system :hu.dwim.asdf)
-
-(in-package :hu.dwim.asdf)
-
 (defsystem :hu.dwim.perec
-  :class hu.dwim.system
+  :defsystem-depends-on (:hu.dwim.asdf)
+  :class "hu.dwim.asdf:hu.dwim.system"
   :description "RDBMS based persistent CLOS, an object relational mapping (ORM)."
   :depends-on (:babel
                :contextl
@@ -101,7 +98,7 @@
                                            (:file "association-end-set" :depends-on ("value"))
                                            (:file "instance-cache" :depends-on ("slot-value"))))))))
 
-(defmethod perform :after ((op develop-op) (system (eql (find-system :hu.dwim.perec))))
+(defmethod perform :after ((op hu.dwim.asdf:develop-op) (system (eql (find-system :hu.dwim.perec))))
   (eval (let ((*package* (find-package :hu.dwim.perec)))
           (read-from-string "(setf *compiled-query-cache* (make-compiled-query-cache))")))
   (warn "The global value of *compiled-query-cache* was initialized."))
