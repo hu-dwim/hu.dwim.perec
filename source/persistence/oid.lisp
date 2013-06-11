@@ -39,6 +39,7 @@
 (def special-variable *oid-class-id->class-name-map* (make-hash-table)
   "This map is used to cache class names by class ids. It gets filled when ensure-class is called for the first time and kept up to date.")
 
+;; TODO get rid of this constant and use the normal type mapping machinery for the 'oid type, too?
 (def (constant :test (lambda (type-1 type-2) (hu.dwim.rdbms::equal-type-p type-1 type-2 nil))) +oid-sql-type+ (sql-integer-type :bit-size +oid-bit-size+)
   "The RDBMS type for the oid column.")
 

@@ -225,6 +225,10 @@
     (declare (ignore query))
     (persistent-type-of syntax))
 
+  #+nil ; TODO this should be enabled in some form...
+  (:method ((node literal-value) query)
+    (setf (persistent-type-of node) (type-of (value-of node))))
+
   (:method ((subselect subselect) query)
     (infer-types subselect)
     (persistent-type-of subselect))

@@ -148,6 +148,7 @@ Entries
 use M-x sort-lines to keep the order
 
 -0 subclassing a dimensional class does not make the subclass dimensional if there are no dimensional slots in the subclass
+-0 lichteblau: For queries like (eql (prc:oid-of table) 123), perec infers the type of 123 as NUMERIC (not BIGINT), meaning that PostgreSQL does a sequential scan on the ID column.
 -1 change-class, add-class, remove-class, ensure-class, desure-class (support anonymous persistent classes)
 -1 add delayed updates using mark dirty-slots and provide a flush function
 -1 revise perec persistent-p/debug-persistent-p

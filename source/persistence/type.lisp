@@ -230,7 +230,7 @@
       (find-class class-or-name)))
 
 (def function canonical-type-p (type)
-  (member (first (ensure-list type)) *canonical-types*))
+  (to-boolean (member (first (ensure-list type)) *canonical-types*)))
 
 (def function class-type-p (type)
   (and (symbolp type)
@@ -247,6 +247,7 @@
           (subtypep (canonical-type-for `(and ,type-1 ,type-2)) nil))))
 
 (def function canonical-type-for* (type)
+  ;; TODO use lisp constructs for the non-pattern-matching part like canonical-type-p, etc
   (pattern-case type
     ((?is ?type canonical-type-p)
      type)
