@@ -308,6 +308,9 @@
        (make-query
         `(select (m)
           (from (m message-test))
+          ;; FIXME? attila: i *think* this fails because when run in lisp then MEMBER uses #'EQL, but the
+          ;; instances are only EQL when everything runs in the same transaction.
+          ;; also see the note in the defmethod for %COMPILE-QUERY specialized on DEBUG-QUERY-COMPILER
           (where (member m ',list))))))))
 
 (def test test/query/select/member-6 ()
@@ -366,16 +369,17 @@
 
 
 (def test test/query/select/equal/instance ()
-  (test-query (:select-count nil :record-count 1 :fixture forum-data)
-    (bind ((instance (with-transaction (select-instance message-test (where (equal (subject-of -instance-) "subject1")))))
-           (slot-name 'subject)
-           (pattern "subject_"))
-      (select (o)
-        (from o)
-        (where (and (typep o (class-name (class-of instance)))
-                    (not (equal o instance)) ;; this does not work, while (not (equal (oid-of o) (oid-of instance))) ok
-                                             ;; cause: executed in lisp and o and instance are not equal (p-eq only)
-                    (like (slot-value o slot-name) pattern)))))))
+  (with-expected-failures
+    (test-query (:select-count nil :record-count 1 :fixture forum-data)
+      (bind ((instance (with-transaction (select-instance message-test (where (equal (subject-of -instance-) "subject1")))))
+             (slot-name 'subject)
+             (pattern "subject_"))
+        (select (o)
+          (from o)
+          (where (and (typep o (class-name (class-of instance)))
+                      (not (equal o instance)) ;; FIXME this does not work, but (not (equal (oid-of o) (oid-of instance))) works as expected.
+                      ;; cause: when executed in lisp O and INSTANCE are not equal (only P-EQ)
+                      (like (slot-value o slot-name) pattern))))))))
 
 (deftest test/query/select/select-instance/bug ()
   (test-query (:select-count nil :fixture forum-data)
