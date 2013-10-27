@@ -60,6 +60,7 @@
 (defcondition* query-runtime-error (query-error)
   ((query)))
 
+;; FIXME this should be in the test suite...
 (defcondition* query-result-mismatch-error (query-runtime-error)
   ((result)
    (expected))

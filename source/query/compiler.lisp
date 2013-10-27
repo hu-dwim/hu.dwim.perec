@@ -126,6 +126,9 @@ with the result of the naively compiled query.")
 ;;;;
 ;;;; Debug query compiler
 ;;;;
+
+;; FIXME this should be in the test suite...
+
 (defclass* debug-query-compiler (query-compiler)
   ()
   (:documentation "Query compiler which compiles the query with trivial-query-compiler and simple-query-compuler and checks that the results of the compiled queries matches. (used only for testing)"))
