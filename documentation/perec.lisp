@@ -159,6 +159,7 @@ use M-x sort-lines to keep the order
 -4 eliminate barely used (by increasing duplicates) system and package dependencies
 -4 eliminate superfluous duplicates (which are covered by other systems)
 
+   clean up condition inheritance, introduce a common base class for all perec conditions
 
 
 
