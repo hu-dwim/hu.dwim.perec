@@ -76,13 +76,11 @@
 
   (:method ((instance persistent-object) &rest args &key (skip-existence-check #f) (copy-cached-slot-values #f) &allow-other-keys)
     (ensure-exported (class-of instance))
-    (if (persistent-p instance)
-        (prog1-bind new-instance (apply #'load-instance (oid-of instance) args)
-          (when copy-cached-slot-values
-            (assert skip-existence-check)
-            (setf (persistent-p new-instance) (persistent-p instance))
-            (copy-cached-slot-values instance new-instance)))
-        instance))
+    (prog1-bind new-instance (apply #'load-instance (oid-of instance) args)
+      (when copy-cached-slot-values
+        (assert skip-existence-check)
+        (setf (persistent-p new-instance) (persistent-p instance))
+        (copy-cached-slot-values instance new-instance))))
 
   (:method ((oid integer) &key (otherwise nil otherwise-provided-p) (prefetch #f) (skip-existence-check #f) &allow-other-keys)
     (declare (ignore prefetch))
