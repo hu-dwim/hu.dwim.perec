@@ -366,7 +366,7 @@
       (iter (for restored-slot-value in restored-slot-values)
             (for restored-slot in restored-slots)
             (setf (underlying-slot-boundp-or-value-using-class class instance restored-slot) restored-slot-value))))
-  (remove-cached-instance instance)
+  (remove-instance-from-transaction-cache instance)
   (purge-instance instance))
 
 ;;;;;;

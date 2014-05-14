@@ -54,10 +54,11 @@
     (assert key)
     (setf (gethash key (instances-of *transaction*)) instance)))
 
-;; TODO rename to remove-instance-from-transaction-cache and export it
 ;; TODO what about assocation caches keeping the instance from getting gc'd?
-(def (function io) remove-cached-instance (instance)
-  "Removes an instance from the current transaction's instance cache and detaches it from the transaction."
+(def (function ioe) remove-instance-from-transaction-cache (instance)
+  "Removes an instance from the current transaction's instance cache and detaches it from the transaction.
+
+Take note that the removed instance will not be attached to the current transaction anymore, so if you later want to access some of its slots that are unfetched, then you'll need to reattach it to the transaction using LOAD-INSTANCE, or its cousine, REVIVE-INSTANCE."
   (bind ((oid (oid-of instance))
          (key (oid-instance-id oid)))
     (debug-only
