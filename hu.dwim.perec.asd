@@ -13,7 +13,7 @@
                :cl-containers
                :cl-ppcre
                :hu.dwim.common
-               :hu.dwim.computed-class+hu.dwim.defclass-star
+               :hu.dwim.computed-class
                :hu.dwim.def+hu.dwim.common
                :hu.dwim.def+hu.dwim.delico
                :hu.dwim.def+contextl
