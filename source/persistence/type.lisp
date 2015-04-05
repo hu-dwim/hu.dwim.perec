@@ -73,6 +73,7 @@
         (:export-accessor-names-p #t))
       (eval-when (:load-toplevel :execute)
         (bind ((class (ensure-finalized (find-class ',type-class-name))))
+          (declare (ignorable class))
           ,(when allow-nil-args-p
                  `(bind ((prototype (class-prototype class))
                          (substituter (substituter-of prototype))
