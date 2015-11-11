@@ -8,6 +8,6 @@
   :defsystem-depends-on (:hu.dwim.asdf)
   :class "hu.dwim.asdf:hu.dwim.system"
   :depends-on (:hu.dwim.perec
-               :iolib.sockets)
+               :iolib/sockets)
   :components ((:module "integration"
                 :components ((:file "iolib")))))
