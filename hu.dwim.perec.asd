@@ -22,7 +22,7 @@
                :hu.dwim.rdbms
                :hu.dwim.serializer
                :hu.dwim.syntax-sugar+hu.dwim.walker
-               :hu.dwim.util.mop
+               :hu.dwim.util/mop
                :hu.dwim.walker
                :ironclad
                :local-time
