@@ -32,3 +32,20 @@
   (finishes
     (with-transaction
       (export-parent-test-of (select-first-matching-instance export-child-test)))))
+
+(def persistent-class* authentication-instrument ()
+  ())
+
+(def persistent-class* named-audited-object ()
+  ()
+  ;; A possible workaround for the time being. The test machinery also needs it
+  ;; to avoid triggering an assert in a sensitive state.
+  (:id 42))
+
+(def test test/persistence/export/class-id/bug1 ()
+  (is (not (eql (hu.dwim.perec::id-of (find-class 'authentication-instrument))
+                (hu.dwim.perec::id-of (find-class 'named-audited-object)))))
+  (with-expected-failures
+    ;; TODO FIXME
+    (is (not (eql (hu.dwim.perec::compute-class-id (find-class 'authentication-instrument))
+                  (hu.dwim.perec::compute-class-id (find-class 'named-audited-object)))))))
