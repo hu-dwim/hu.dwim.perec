@@ -302,16 +302,17 @@
             (where (member m ',topics)))))))))
 
 (def test test/query/select/member-5 ()
-  (test-query (:select-count 3 :record-count 1 :fixture forum-data)
-    (let ((list (append (select-instances topic-test) (select-instances spam-test))))
-      (execute-query
-       (make-query
-        `(select (m)
-          (from (m message-test))
-          ;; FIXME? attila: i *think* this fails because when run in lisp then MEMBER uses #'EQL, but the
-          ;; instances are only EQL when everything runs in the same transaction.
-          ;; also see the note in the defmethod for %COMPILE-QUERY specialized on DEBUG-QUERY-COMPILER
-          (where (member m ',list))))))))
+  (with-expected-failures
+    (test-query (:select-count 3 :record-count 1 :fixture forum-data)
+      (let ((list (append (select-instances topic-test) (select-instances spam-test))))
+        (execute-query
+         (make-query
+          `(select (m)
+             (from (m message-test))
+             ;; FIXME? attila: i *think* this fails because when its executed in lisp then MEMBER uses #'EQL,
+             ;; but the instances are only EQL (EQ in fact) when everything runs in the same transaction.
+             ;; also see the note in the defmethod for %COMPILE-QUERY specialized on DEBUG-QUERY-COMPILER
+             (where (member m ',list)))))))))
 
 (def test test/query/select/member-6 ()
   (signals error
@@ -378,7 +379,7 @@
           (from o)
           (where (and (typep o (class-name (class-of instance)))
                       (not (equal o instance)) ;; FIXME this does not work, but (not (equal (oid-of o) (oid-of instance))) works as expected.
-                      ;; cause: when executed in lisp O and INSTANCE are not equal (only P-EQ)
+                      ;; reason: when executed in lisp O and INSTANCE are not equal (only P-EQ)
                       (like (slot-value o slot-name) pattern))))))))
 
 (deftest test/query/select/select-instance/bug ()

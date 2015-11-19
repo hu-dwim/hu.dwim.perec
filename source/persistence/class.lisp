@@ -352,6 +352,7 @@
 (def generic compute-class-id (class)
   (:method ((class persistent-class))
     (bind ((class-name-bytes (string-to-octets (symbol-name (class-name class)) :encoding :utf-8)))
+      ;; TODO FIXME the probability of clashes is too high this way. e.g. see failing test test/persistence/export/class-id/bug1
       (mod (ironclad:octets-to-integer (ironclad:digest-sequence :crc32 class-name-bytes))
            +oid-maximum-class-id+))))
 

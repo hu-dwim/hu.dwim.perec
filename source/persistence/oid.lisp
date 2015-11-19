@@ -58,10 +58,10 @@
     (assert it nil "Could not find the class name for the class id ~A, probably the class has not yet been exported." class-id)))
 
 (def (function o) (setf class-id->class-name) (class-name class-id)
-  (assert (and class-id class-name (symbolp class-name) (integerp class-id)))
+  (check-type class-name (and symbol (not null)))
+  (check-type class-id integer)
   (awhen (gethash class-id *oid-class-id->class-name-map*)
-    (unless (eq it class-name)
-      (error "Two different class names have the same class id ~A ~A" it class-name)))
+    (assert (eq it class-name) () "Two different class names have the same class id ~A ~A" it class-name))
   (setf (gethash class-id *oid-class-id->class-name-map*) class-name))
 
 (def (function io) class-id-and-instance-id->oid (class-id instance-id)
