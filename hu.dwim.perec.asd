@@ -21,7 +21,8 @@
                :hu.dwim.logger
                :hu.dwim.rdbms
                :hu.dwim.serializer
-               :hu.dwim.syntax-sugar+hu.dwim.walker
+               :hu.dwim.syntax-sugar
+               :hu.dwim.syntax-sugar/lambda-with-bang-args
                :hu.dwim.util/mop
                :hu.dwim.walker
                :ironclad
