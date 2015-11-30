@@ -107,15 +107,43 @@
                        (not initfunction))
               (setf #*((:allegro
                         (slot-value effective-slot-definition 'excl::initfunction))
+                       (:clozure
+                        (slot-value effective-slot-definition 'ccl::initfunction))
                        (t
                         (slot-definition-initfunction effective-slot-definition)))
                    (constantly nil))))))
       (call-next-method)))
 
 (def function compute-standard-effective-slot-definition-initargs (class direct-slot-definitions)
-  #+sbcl(sb-pcl::compute-effective-slot-definition-initargs class direct-slot-definitions)
-  #+allegro(excl::compute-effective-slot-definition-initargs class direct-slot-definitions)
-  #-(or sbcl allegro) (not-yet-implemented))
+  #*((:sbcl
+      (sb-pcl::compute-effective-slot-definition-initargs class direct-slot-definitions))
+     (:allegro
+      (excl::compute-effective-slot-definition-initargs class direct-slot-definitions))
+     (:clozure
+      (bind ((initer (dolist (s direct-slot-definitions)
+                       (when (ccl::%slot-definition-initfunction s)
+                         (return s))))
+             (documentor (dolist (s direct-slot-definitions)
+                           (when (ccl::%slot-definition-documentation s)
+                             (return s))))
+             (first (car direct-slot-definitions))
+             (initargs (let* ((initargs nil))
+                         (dolist (dslot direct-slot-definitions initargs)
+                           (dolist (dslot-arg (ccl::%slot-definition-initargs  dslot))
+                             (pushnew dslot-arg initargs :test #'eq))))))
+        (list
+         :name (c2mop:slot-definition-name (car direct-slot-definitions))
+         :allocation (ccl::%slot-definition-allocation first)
+         :documentation (when documentor (nth-value
+                                          1
+                                          (ccl::%slot-definition-documentation
+                                           documentor)))
+         :class (ccl::%slot-definition-class first)
+         :initargs initargs
+         :initfunction (if initer (ccl::%slot-definition-initfunction initer))
+         :initform (if initer (ccl::%slot-definition-initform initer))
+         :type (ccl::dslotd-type-intersection direct-slot-definitions))))
+     (t (not-yet-implemented/crucial-api))))
 
 (def function compute-persistent-effective-slot-definition-initargs (class direct-slot-definitions)
   (iter (for slot-option-name in (delete-duplicates
