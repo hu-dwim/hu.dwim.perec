@@ -28,6 +28,17 @@
 (def (function io) not-cached-slot-marker-p (value)
   (eq +not-cached-slot-marker+ value))
 
+(def condition* instance-not-in-current-transaction (error)
+  ((instance))
+  (:report
+   (lambda (condition stream)
+     (bind ((instance (instance-of condition)))
+       (format stream "Accessing a persistent ~A while it is ~A transaction."
+               instance
+               (if (instance-in-transaction-p instance)
+                   "attached to another"
+                   "not attached to the current"))))))
+
 (def macro assert-instance-access (instance persistent)
   (check-type instance symbol)
   (check-type persistent symbol)
@@ -38,11 +49,7 @@
      (unless (or (not ,persistent)
                  (instance-in-current-transaction-p ,instance))
        (restart-case
-           (error "Accessing a persistent ~A while it is ~A transaction."
-                  ,instance
-                  (if (instance-in-transaction-p ,instance)
-                      "attached to another"
-                      "not attached to the current"))
+           (error 'instance-not-in-current-transaction :instance ,instance)
          (load-instance ()
            :report (lambda (stream)
                      (format stream "Load instance ~A into the current transaction and go on" ,instance))
