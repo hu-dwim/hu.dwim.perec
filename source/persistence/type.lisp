@@ -19,7 +19,7 @@
   ((name
     :type symbol)
    (documentation
-    :type string)
+    :type (or null string))
    (args
     :type list)
    (body

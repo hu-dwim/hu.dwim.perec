@@ -29,7 +29,7 @@
     :type (member :none :accessed :all))
    (result-type
     'list
-    :type (member 'list 'scroll))
+    :type (member list scroll))
    (asserts
     nil
     :type list
@@ -54,11 +54,11 @@
     :documentation "Format: (:ascending <expr1> :descending <expr2> ...)")
    (offset
     nil
-    :type (or null integer)
+    :type (or null integer literal-value symbol lexical-variable sql-literal)
     :documentation "Offset of the first returned element, default is 0")
    (limit
     nil
-    :type (or null integer)
+    :type (or null integer literal-value symbol lexical-variable sql-literal)
     :documentation "Number of max. returned elements, default is all.")
    (sql-select-list
     nil)
