@@ -491,7 +491,7 @@
                                   :action :update
                                   :action-args ,(rest set-clause)
                                   :options ,options))))
-    
+
     (pattern-case (query-macro-expand form)
       ((select (?and (?or nil ((?is ?k keywordp) . ?rest)) ?options) (?is ?select-list listp) .
                ?clauses)

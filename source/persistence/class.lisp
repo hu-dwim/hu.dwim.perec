@@ -596,6 +596,7 @@
 ;;;;;;
 ;;; Utility
 
+;; TODO reloading perec shouldn't clear this state
 (def (special-variable :documentation "A mapping from persistent class names to persistent instances.")
     *persistent-classes* (make-hash-table))
 

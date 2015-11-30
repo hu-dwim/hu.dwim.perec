@@ -87,4 +87,3 @@
 (def function first-arg (arg-1 &rest rest-args)
   (declare (ignore rest-args))
   arg-1)
-

@@ -340,6 +340,7 @@
 ;;;;;;
 ;;; Utility
 
+;; TODO reloading perec shouldn't clear this state
 (def special-variable *persistent-associations* (make-hash-table)
   "A mapping from association names to association instances.")
 

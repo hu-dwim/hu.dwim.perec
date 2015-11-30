@@ -67,6 +67,9 @@
   (:documentation "Condition signalling that the runtime check of the query failed.")
   (:report (lambda (condition stream)
              (with-slots (query result expected) condition
+               #+nil ; only when it's moved into the test suite
+               (format stream "Query failed~:[~:; (expected)~]:~&~S. Result is ~:W, but expected ~:W."
+                       hu.dwim.stefil::*failures-and-errors-are-expected* query result expected)
                (format stream "Query ~S failed. Result is ~:W, but expected ~:W."
                        query result expected)))))
 
@@ -96,6 +99,3 @@
              (with-slots (accessor arg-type access-type slot-names) condition
                (format stream "More slots found with type <~A> for slot access (~A <~A>): ~A."
                        access-type accessor arg-type slot-names)))))
-
-
-
