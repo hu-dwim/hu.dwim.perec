@@ -44,7 +44,9 @@
       `(progn ,@body)))
 
 ;; TODO use the :fixtures arg for def test
-(def macro test-query ((&key (select-count 1) (record-count nil) (fixture nil)) &body forms)
+(def macro test-query ((&key (select-count 1) (record-count nil) (fixture nil) (with-expected-failures nil))
+                        &body forms)
+  (check-type with-expected-failures boolean)
   (bind ((body `(progn
                   (run-queries
                     (without-debug-query-compiler
@@ -53,12 +55,16 @@
                           ,@forms))))
                   (run-queries
                     (with-debug-query-compiler
-                      ,@forms)))))
+                      ,@forms))))
+         (expected-wrapper (if with-expected-failures
+                               'with-expected-failures
+                               'progn)))
     `(finishes
-       ,(if fixture
-            `(with-fixture ,fixture
-               ,body)
-            body))))
+       (,expected-wrapper
+        ,(if fixture
+             `(with-fixture ,fixture
+                ,body)
+             body)))))
 
 (def function run-query-tests ()
   (with-sql-recording
