@@ -121,7 +121,7 @@
 		   ;; My workaround is to remove the object here, fixing at
 		   ;; least this particular problem.
 		   ;;   -- david
-		   (remove-cached-instance new-instance)
+		   (remove-instance-from-transaction-cache new-instance)
 		   (instance-not-found))))))))
 
 ;;;;;;
