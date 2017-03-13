@@ -171,6 +171,10 @@ with the result of the naively compiled query.")
         (compile-plan (optimize-plan (generate-plan query)))))))
 
 (defun with-reloading-persistent-objects (form)
+  ;; KLUDGE FIXME attila-2017 this is very fragile in this form:
+  ;; test/query/select/member-5 exposes a problem with a form that contains (member x '(a-persistent-object)).
+  ;; in the current implementation the result will contain a quoted list of variable names instead of the reloaded instances.
+  ;; see http://paste.lisp.org/display/341335
   (bind ((objects (collect-persistent-object-literals form))
          (variables (mapcar [gensym (symbol-name (class-name (class-of !1)))] objects))
          (substitutions (mapcar 'cons objects variables))
@@ -214,19 +218,19 @@ with the result of the naively compiled query.")
   (typep <object> '<class-name>)               -> (typep <object> <class>)
   (subtypep (class-of <obj>) '<class-name>) -> (typep <object> <class>)
   (subtypep (class-of <obj>) <type>)         -> (typep <object> <type>)")
-  
+
   (:method (syntax)
     syntax)
-  
+
   (:method ((subselect subselect))
     (normalize-query subselect)
     subselect)
-  
+
   (:method ((form compound-form))
     (setf (operands-of form)
           (mapcar 'normalize-syntax (operands-of form)))
     form)
-  
+
   (:method ((call function-call))
     (call-next-method)
     (pattern-case call
@@ -262,7 +266,7 @@ with the result of the naively compiled query.")
 (defgeneric %normalize-association-end-access (syntax)
   (:method (syntax)
     syntax)
-  
+
   (:method ((form compound-form))
     (setf (operands-of form)
           (mapcar '%normalize-association-end-access (operands-of form)))
@@ -270,7 +274,7 @@ with the result of the naively compiled query.")
 
   (:method ((subselect subselect))
     (normalize-association-end-access subselect))
-  
+
   (:method ((call function-call))
     (pattern-case call
       (#M(function-call :fn eq
@@ -315,7 +319,7 @@ with the result of the naively compiled query.")
     (set-slot-references subselect))
   ;; recurse on compound forms
   (:method ((syntax compound-form) query)
-    (mapc [set-slot-references-in !1 query] (operands-of syntax)))  
+    (mapc [set-slot-references-in !1 query] (operands-of syntax)))
   ;; slot access -> ensure that arg is a query variable with the correct type
   (:method ((access slot-access) query)
     (call-next-method)
@@ -439,4 +443,3 @@ with the result of the naively compiled query.")
 
   (:method ((form compound-form) &optional result)
            (collect-persistent-object-literals (operands-of form) result)))
-
