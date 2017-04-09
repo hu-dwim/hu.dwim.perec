@@ -33,14 +33,15 @@
 (def constant +oid-column-count+ (length +oid-column-names+)
   "The number of oid columns.")
 
+;; TODO deal with the load order and then use PERSISTENT-TYPE instead of TYPE
 (def type oid ()
   `(integer 0 ,(expt 2 +oid-bit-size+)))
 
 (def special-variable *oid-class-id->class-name-map* (make-hash-table)
   "This map is used to cache class names by class ids. It gets filled when ensure-class is called for the first time and kept up to date.")
 
-;; TODO get rid of this constant and use the normal type mapping machinery for the 'oid type, too?
-(def (constant :test (lambda (type-1 type-2) (hu.dwim.rdbms::equal-type-p type-1 type-2 nil))) +oid-sql-type+ (sql-integer-type :bit-size +oid-bit-size+)
+;; TODO deal with the load order and then use: (the-only-element (rdbms-types-of (compute-mapping 'oid)))
+(def (constant :test (rcurry 'hu.dwim.rdbms::equal-type-p nil)) +oid-sql-type+ (sql-integer-type :bit-size +oid-bit-size+)
   "The RDBMS type for the oid column.")
 
 (def (function io) oid-class-id (oid)
