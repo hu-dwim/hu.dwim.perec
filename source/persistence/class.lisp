@@ -857,12 +857,12 @@
                     (for class :in (remove-if #'abstract-p (find-and-ensure-classes classes-or-class-names)))
                     (if slot-names
                         (collect (make-instance 'storage-location
-                                                :tables (delete-duplicates (mapcar [table-of (find-slot class !1)] slot-names))
+                                                :tables (delete-duplicates (mapcar [the (not null) (table-of (find-slot class !1))] slot-names))
                                                 :classes (list class)
                                                 :slot-names slot-names))
                         (iter (for table :in (data-tables-of class))
                               (in outer (collect (make-instance 'storage-location
-                                                                :tables (list table)
+                                                                :tables (list (the (not null) table))
                                                                 :classes (list class)
                                                                 :slot-names nil)))))))))))
 
