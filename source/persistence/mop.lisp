@@ -16,7 +16,8 @@
   (declare (ignore persistent))
   (apply #'call-next-method slot slot-names args))
 
-(def method make-instance ((instance identity-preserving-class) &key instance &allow-other-keys)
+(def method make-instance ((_ identity-preserving-class) &key instance &allow-other-keys)
+  (declare (ignore _))
   ;; used in class finalization protocol when instantiating direct slot definitions
   ;; this allows associations to be defined independently of direct slot definitions
   ;; and ensure-class to be called without loosing the old non association direct slot definitions
