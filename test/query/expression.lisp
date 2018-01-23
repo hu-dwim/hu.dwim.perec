@@ -11,17 +11,19 @@
 (def persistent-class* expression-test ()
   ((string-attr :type (text 50))
    (or-null-string-attr :type (or null (text 50)))
+   (int-attr :type integer-16)
    (date-attr :type date)))
 
 (def fixture expression-data
   (with-transaction
     (purge-instances 'expression-test)
-    
     (make-instance 'expression-test
                    :string-attr "string1"
+                   :int-attr 1
                    :date-attr (parse-datestring "2007-07-11"))
     (make-instance 'expression-test
                    :string-attr "String2"
+                   :int-attr 2
                    :date-attr (parse-datestring "2007-07-15")))
   (-body-))
 
@@ -32,6 +34,17 @@
       (where (timestamp<= (parse-datestring "2007-07-10")
                           (date-attr-of o)
                           (parse-datestring "2007-07-12"))))))
+
+(def test test/query/expression/int-/= ()
+  (test-query (:select-count 1 :record-count 0 :fixture expression-data)
+    (select (o)
+      (from (o expression-test))
+      (where (or (/= (int-attr-of o)
+                     1
+                     2)
+                 (/= 1
+                     2
+                     (int-attr-of o)))))))
 
 (def test test/query/expression/like-1 ()
   (test-query (:select-count 1 :record-count 1 :fixture expression-data)
