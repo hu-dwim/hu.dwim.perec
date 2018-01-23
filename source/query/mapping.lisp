@@ -34,7 +34,7 @@
 
 (defgeneric syntax-to-sql (syntax)
   (:documentation "Maps a lisp form to SQL.")
-  
+
   (:method (syntax)
     (syntax-to-sql-literal-if-possible syntax))
 
@@ -266,7 +266,7 @@
 
 (defgeneric unbound-check-for (syntax)
   (:documentation "Returns an SQL expression that checks if the value of SYNTAX is unbound.")
-  
+
   (:method (syntax)
     nil)
 
@@ -296,7 +296,7 @@
 ;; TODO needs review
 (defgeneric null-check-for (syntax)
   (:documentation "Returns an SQL expression that checks if the value of SYNTAX is a unit type value (except unbound) .")
-  
+
   (:method (syntax)
     nil)
 
@@ -340,7 +340,7 @@
                 (null slot)
                 (not (query-variable-p variable)))
         (sql-map-failed))
-      
+
       (bind ((mapping (compute-mapping (canonical-type-for type)))
              (unit-types (remove 'unbound (unit-types-of mapping))))
         (when unit-types
@@ -348,7 +348,7 @@
 
 (defgeneric null-tag-for (syntax)
   (:documentation "Returns an SQL expression that gives the tag for the value of SYNTAX.")
-  
+
   (:method (syntax)
     (sql-literal :value (compute-type-tag t)))
 
@@ -375,7 +375,7 @@
       (debug-only (assert (not (contains-syntax-p type))))
       (when (eq type +unknown-type+)
         (sql-map-failed))
-      
+
       (bind ((mapping (compute-mapping (canonical-type-for type)))
              (unit-types (remove 'unbound (unit-types-of mapping))))
         ;; FIXME does not work for (or null h-unused ...)
@@ -389,7 +389,7 @@
       (debug-only (assert (not (contains-syntax-p type))))
       (when (eq type +unknown-type+)
         (sql-map-failed))
-      
+
       (bind ((mapping (compute-mapping (canonical-type-for type)))
              (unit-types (remove 'unbound (unit-types-of mapping))))
         ;; FIXME does not work for (or null h-unused ...)
@@ -408,7 +408,7 @@
                 (null slot)
                 (not (query-variable-p variable)))
         (sql-map-failed))
-      
+
       (bind ((type (canonical-type-for type))
              (mapping (compute-mapping type))
              (unit-types (unit-types-of mapping)))
@@ -510,7 +510,7 @@
   (sql-not value))
 
 ;;;
-;;; Comparison 
+;;; Comparison
 ;;;
 
 ;; eq unbound x     = NULL
@@ -603,7 +603,14 @@
 (def query-function timestamp/= (&rest values)
   ""
   (declare (persistent-type (forall ((a (or null unbound date time timestamp))) (function (&rest a) boolean))))
-  (apply (chained-operator 'sql-/= #t) values)) ;; TODO should not be pairwise-operator?
+  ;; NOTE: TIMESTAMP/= behaves differently than CL:/=
+  ;; CL-USER> (local-time:timestamp/= (mapcar 'local-time:parse-timestring '("2000-01-01" "2000-01-02" "2000-01-01")))
+  ;; T
+  ;; CL-USER> (/= 1 2 1)
+  ;; NIL
+  ;; the current code below mimics the current behavior of LOCAL-TIME:TIMESTAMP/=
+  ;; to mimic CL:/= we would need to use PAIRWISE-OPERATOR
+  (apply (chained-operator 'sql-/= #t) values))
 
 (def query-function timestamp> (&rest values)
   ""
@@ -808,6 +815,3 @@
   "Returns the first of its arguments that is not null. Null is returned only if all arguments are null."
   (declare (persistent-type (forall (a) (function (a &rest a) a))))
   (sql-function-call :name 'coalesce :arguments args))
-
-
-

@@ -63,7 +63,7 @@
      (hu.dwim.rdbms::expand-sql-ast-into-lambda-form
       (sql-select :tables (list temp-table)
                   :columns (list (hu.dwim.rdbms::sql-count-*))))
-     
+
      (mapcar (lambda (storage-location)
                 (assert (length= 1 (tables-of storage-location)))
                 (assert (classes-of storage-location))
@@ -169,11 +169,11 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   (:method ((element null) alias &optional referenced-slots)
     (declare (ignore element alias referenced-slots))
     nil)
-  
+
   (:method ((table sql-table-alias) (alias null) &optional referenced-slots)
     (declare (ignore referenced-slots))
     table)
-  
+
   (:method ((table table) alias &optional referenced-slots)
     (declare (ignore referenced-slots))
     (ensure-exported table)
@@ -229,7 +229,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
   (sql-table-reference-for-type* (simplify-persistent-class-type* type) referenced-slots alias))
 
 (defgeneric sql-table-reference-for-type* (type referenced-slots alias)
-  
+
   (:method ((class persistent-class) referenced-slots alias)
     (ensure-class-and-subclasses-exported class)
     (cond
@@ -308,7 +308,7 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
 
   (:method ((column-name string) (qualifier null))
            (sql-column-alias :column column-name))
-  
+
   (:method ((column column) qualifier)
            (sql-column-reference-for (hu.dwim.rdbms::name-of column) qualifier))
 
