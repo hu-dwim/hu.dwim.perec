@@ -47,7 +47,7 @@
 (def macro test-query ((&key (select-count 1) (record-count nil) (fixture nil) (with-expected-failures nil))
                         &body forms)
   (check-type with-expected-failures boolean)
-  (bind ((body `(progn
+  (bind ((body `(with-new-compiled-query-cache
                   (run-queries
                     (without-debug-query-compiler
                       (with-select-count-check ,select-count
