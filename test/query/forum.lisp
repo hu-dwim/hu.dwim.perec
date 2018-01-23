@@ -302,17 +302,16 @@
             (where (member m ',topics)))))))))
 
 (def test test/query/select/member-5 ()
-  (with-expected-failures
-    (test-query (:select-count 3 :record-count 1 :fixture forum-data)
-      (let ((list (append (select-instances topic-test) (select-instances spam-test))))
-        (execute-query
-         (make-query
-          `(select (m)
-             (from (m message-test))
-             ;; FIXME? attila: i *think* this fails because when its executed in lisp then MEMBER uses #'EQL,
-             ;; but the instances are only EQL (EQ in fact) when everything runs in the same transaction.
-             ;; also see the note in the defmethod for %COMPILE-QUERY specialized on DEBUG-QUERY-COMPILER
-             (where (member m ',list)))))))))
+  (test-query (:select-count 3 :record-count 1 :fixture forum-data :with-expected-failures #t)
+    (let ((list (append (select-instances topic-test) (select-instances spam-test))))
+      (execute-query
+       (make-query
+        `(select (m)
+           (from (m message-test))
+           ;; FIXME? attila: i *think* this fails because when its executed in lisp then MEMBER uses #'EQL,
+           ;; but the instances are only EQL (EQ in fact) when everything runs in the same transaction.
+           ;; also see the note in the defmethod for %COMPILE-QUERY specialized on DEBUG-QUERY-COMPILER
+           (where (member m ',list))))))))
 
 (def test test/query/select/member-6 ()
   (signals error
@@ -370,17 +369,18 @@
 
 
 (def test test/query/select/equal/instance ()
-  (with-expected-failures
-    (test-query (:select-count nil :record-count 1 :fixture forum-data)
-      (bind ((instance (with-transaction (select-instance message-test (where (equal (subject-of -instance-) "subject1")))))
-             (slot-name 'subject)
-             (pattern "subject_"))
-        (select (o)
-          (from o)
-          (where (and (typep o (class-name (class-of instance)))
-                      (not (equal o instance)) ;; FIXME this does not work, but (not (equal (oid-of o) (oid-of instance))) works as expected.
-                      ;; reason: when executed in lisp O and INSTANCE are not equal (only P-EQ)
-                      (like (slot-value o slot-name) pattern))))))))
+  (test-query (:select-count nil :record-count 1 :fixture forum-data :with-expected-failures #t)
+    (bind ((instance (with-transaction (select-instance message-test (where (equal (subject-of -instance-) "subject1")))))
+           (slot-name 'subject)
+           (pattern "subject_"))
+      (select (o)
+        (from o)
+        (where (and (typep o (class-name (class-of instance)))
+                    (not (equal o instance)) ;; FIXME this does not work
+                    ;; (not (p-eq o instance)) ;; this works
+                    ;; (not (equal (oid-of o) (oid-of instance))) ;; this works
+                    ;; reason: when executed in lisp O and INSTANCE are not equal (only P-EQ)
+                    (like (slot-value o slot-name) pattern)))))))
 
 (deftest test/query/select/select-instance/bug ()
   (test-query (:select-count nil :fixture forum-data)
