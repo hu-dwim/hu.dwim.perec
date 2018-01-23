@@ -543,9 +543,10 @@ by setting *SUPRESS-ALIAS-NAMES* to true.")
     (if (null more-args)
         default
         (apply 'sql-and
-               (iter outer (for rest-args on more-args)
-                     (for first previous (car rest-args) initially first-arg)
-                     (iter (for second in rest-args)
+               (iter outer
+                     (for rest-args :on more-args)
+                     (for first :initially first-arg :then (car rest-args))
+                     (iter (for second :in rest-args)
                            (in outer (collect (funcall binary-operator first second)))))))))
 
 (defun sql-equal (sql-expr-1 sql-expr-2 &key unbound-check-1 unbound-check-2 null-check-1 null-check-2
