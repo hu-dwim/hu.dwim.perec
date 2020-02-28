@@ -137,7 +137,7 @@
       (if signal-constraint-violations
           (body)
           (handler-bind
-              ((constraint-violation
+              ((persistent-constraint-violation
                 (lambda (error)
                   (push error violations)
                   (continue error))))
