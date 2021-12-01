@@ -617,9 +617,6 @@
         (dolist (slot (class-slots class))
           (ensure-all-computed-slots-are-valid slot))))
 
-(def function persistent-class-p (class)
-  (typep class 'persistent-class))
-
 (def function persistent-class-name-p (name)
   (and name
        (symbolp name)

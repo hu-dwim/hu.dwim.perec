@@ -60,13 +60,7 @@
                                      ,@(mapcar (lambda (slot-name)
                                                  `(when (slot-boundp -self- ',slot-name)
                                                     (copy-set-slot ,slot-name (slot-value -self- ',slot-name))))
-                                               slot-names)))))
-     ;; predicate
-     ,(bind ((predicate-name (if (position #\- (symbol-name name))
-                                 (concatenate-symbol name "-p")
-                                 (concatenate-symbol name "p"))))
-            `(defun ,predicate-name (object)
-               (typep object ',name)))))
+                                               slot-names)))))))
 
 ;;;
 ;;; Reader

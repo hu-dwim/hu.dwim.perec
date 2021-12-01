@@ -13,9 +13,6 @@
   ((coordinates :reader coordinates-of)
    (value :reader value-of)))
 
-(def (function e) c-value-p (value)
-  (typep value 'c-value))
-
 (def print-object c-value ()
   (princ (value-of -self-)))
 
@@ -55,9 +52,6 @@
   ((dimensions)
    (c-values)
    (index :type hash-table)))
-
-(def (function e) d-value-p (value)
-  (typep value 'd-value))
 
 (def (special-variable e) *print-d-value-details* #t)
 
