@@ -70,7 +70,14 @@
                                          (lambda-list-to-variable-list args :include-&rest #t))))
              :allocation :class))
           (mapcar [list !1 nil] (lambda-list-to-variable-list args :include-&rest #t)))
-        (:export-accessor-names-p #t))
+        (:export-accessor-names-p #t)
+        ;; KLUDGE FIXME defclass* introduced automatic generation of
+        ;; namep and long-name-p predicate defun's. we completely
+        ;; disable that for DEFPTYPE because it causes a lot of
+        ;; headache in the rest of the perec codebase. the proper
+        ;; solution is probably to rename SET-TYPE-P to something that
+        ;; doesn't get redefined by defclass*.
+        (:automatic-predicates-p #f))
       (eval-when (:load-toplevel :execute)
         (bind ((class (ensure-finalized (find-class ',type-class-name))))
           (declare (ignorable class))
