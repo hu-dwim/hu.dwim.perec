@@ -153,8 +153,8 @@
     (compute-as (bind (((:values canonical-type error) (ignore-errors
                                                          (canonical-type-for (specified-type-of -self-)))))
                   (or canonical-type
-                      (progn
-                        ;; due to the MOP we must not fail when this is called, otherwise the entire (sblc) image breaks
+                      (bind ((*package* (find-package :hu.dwim.util/error-reports)))
+                        ;; due to the MOP we must not fail when this is called, otherwise the entire (sbcl) image breaks
                         (warn "Could not process type ~S specified for slot ~S, falling back to type T. The error was: ~A"
                               (specified-type-of -self-) (slot-definition-name -self-) error)
                         (canonical-type-for t)))))
@@ -591,7 +591,7 @@
                                                       (rdbms-name-for (concatenate-symbol name "-on-" class-name "-idx")
                                                                       :index)))))))
               (t
-               (error "Unknown type ~A in slot ~A" type slot)))))))
+               (error "Unknown type ~S in slot ~A" type slot)))))))
 
 ;;;;;;
 ;;; Utility
