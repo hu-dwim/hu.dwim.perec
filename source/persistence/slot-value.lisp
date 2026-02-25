@@ -361,11 +361,20 @@
   (make-transient instance))
 
 (def method update-instance-for-different-class :before ((old-instance persistent-object) (new-instance persistent-object) &key &allow-other-keys)
-  (bind ((new-oid (class-id-and-instance-id->oid (id-of (class-of new-instance)) (oid-instance-id (oid-of old-instance)))))
+  (bind ((new-class (class-of new-instance))
+         (new-oid (class-id-and-instance-id->oid (id-of new-class) (oid-instance-id (oid-of old-instance)))))
     (setf (oid-of new-instance) new-oid)
     (setf (persistent-p new-instance) #f)
     (setf (transaction-of new-instance) nil)
-    (setf (transaction-event-of new-instance) nil)))
+    (setf (transaction-event-of new-instance) nil)
+    ;; Ensure that new slots are initialized with +UNBOUND-SLOT-MARKER+.
+    ;; We cannot assume the ALLOCATE-INSTANCE created NEW-INSTANCE.
+    #+sbcl
+    (iter
+      (for slot :in (persistent-effective-slots-of new-class))
+      (for value = (standard-instance-access new-instance (slot-definition-location slot)))
+      (when (eq value sb-pcl:+slot-unbound+)
+      (underlying-slot-makunbound-using-class new-class new-instance slot)))))
 
 (def method update-instance-for-different-class :after ((old-instance persistent-object) (new-instance persistent-object) &key &allow-other-keys)
   (make-persistent new-instance))
