@@ -395,6 +395,7 @@
                 (setf (binder-of sql-query) (field-binder collects)
                       (columns-of sql-query) sql-exprs)
                 sql-query)
+               #+nil
                ((every [not (set-type-p* (persistent-type-of !1))] collects)
                 (setf (binder-of sql-query) (field-binder collects)
                       (columns-of sql-query) sql-exprs
